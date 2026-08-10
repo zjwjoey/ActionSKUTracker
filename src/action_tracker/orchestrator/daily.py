@@ -85,7 +85,7 @@ def run_daily(
             log.error("sitemap 失败: %s", e)
             browser_blocked = True
         # 3. listing 轻量扫描
-        listing_map = listing_mod.scan_all_categories(browser, categories)
+        listing_map = listing_mod.scan_all_categories(browser, categories, max_pages=max_pages)
         for cat_items in listing_map.values():
             for lp in cat_items:
                 today_light[str(lp.sku)] = _light_dict(lp)

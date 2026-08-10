@@ -186,14 +186,14 @@ def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None)
     return list(seen.values())
 
 
-def scan_all_categories(browser, categories: dict[str, str]) -> dict[str, list[LightProduct]]:
+def scan_all_categories(browser, categories: dict[str, str], max_pages: int | None = None) -> dict[str, list[LightProduct]]:
     """扫描所有类目，返回 {cat: [LightProduct, ...]}。"""
     result = {}
     label_map = {k: v for k, v in CATEGORY_LABELS.items()}
     for cat, url in categories.items():
         log.info("扫描类别: %s", cat)
         try:
-            items = scan_category(browser, cat, url)
+            items = scan_category(browser, cat, url, max_pages=max_pages)
             for it in items:
                 it.cat1_es = label_map.get(cat, cat)
             result[cat] = items

@@ -37,9 +37,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     from .config import ensure_runtime_dirs, load_settings
+    from .log import setup_logging
 
     cfg = load_settings()
     ensure_runtime_dirs(cfg)
+    setup_logging(cfg["paths"]["logs"])
 
     if args.command in (None, "status"):
         return _status(cfg)
