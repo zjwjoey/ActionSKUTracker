@@ -6,7 +6,8 @@ site:
   sitemap_url: https://www.action.com/es-es/product-sitemap.xml
   locale: es-ES
   user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36
-  # 需要全量轻量扫描的类别（与旧 Node 脚本 VERSION 映射一致）
+  # 官网 17 个入口：15 个一级类目 + Nuevo(新品) + Promoción semanal(每周促销)
+  # Nuevo/促销页是徽章检测的权威信号源：sku 出现在该页 = 徽章开启
   categories:
     vivienda: https://www.action.com/es-es/c/vivienda/
     cuidado-personal: https://www.action.com/es-es/c/cuidado-personal/
@@ -23,6 +24,9 @@ site:
     mascotas: https://www.action.com/es-es/c/mascotas/
     viajes: https://www.action.com/es-es/c/viajes/
     articulos-deportivos: https://www.action.com/es-es/c/articulos-deportivos/
+    # 专属徽章入口（不在商品类目里，但必须扫）
+    nuevo: https://www.action.com/es-es/nuevo/
+    promocion-semanal: https://www.action.com/es-es/promocion-semanal/
 
 browser:
   # HEADFUL：旧 Node 脚本在另一台机器用有头模式跑通 CF；无头更易被识别限流

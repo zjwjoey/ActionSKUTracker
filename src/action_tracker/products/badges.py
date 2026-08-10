@@ -46,6 +46,34 @@ class Badges:
         }
 
 
+_NUEVO_TAG = "Nuevo"
+_PROMO_TAG_PREFIX = "Promoción semanal"
+
+
+def build_badge_state(base_tags: str | None, in_nuevo: bool, in_promo: bool) -> str:
+    """由"专属徽章页成员集合" + 基线徽章，构造今日权威 raw_tags。
+
+    徽章检测的权威信号是页面成员集合（sku 出现在 /nuevo/ 页 = 有 Nuevo 徽章；
+    出现在 /promocion-semanal/ 页 = 促销中）。实测卡片标签不可靠（同一页面有的卡
+    片漏显徽章），不能作为徽章判定依据。
+
+      - Nuevo：in_nuevo=True 时加入
+      - 促销：in_promo=True 时加入（基线带日期范围则保留，维持 promotion_start/end）
+      - 可持续/折扣等无专属页面的徽章：保留基线（无法每日检测，详情抓取时更新）
+      - 促销结束（in_promo=False）时移除基线折扣百分比标签（折扣随促销走）
+    """
+    base_toks = [t.strip() for t in (base_tags or "").split("|") if t.strip()]
+    kept = [t for t in base_toks if t != _NUEVO_TAG and not t.startswith(_PROMO_TAG_PREFIX)]
+    if not in_promo:
+        kept = [t for t in kept if not _DISCOUNT_RE.search(t)]
+    if in_nuevo:
+        kept.append(_NUEVO_TAG)
+    if in_promo:
+        dated = next((t for t in base_toks if t.startswith(_PROMO_TAG_PREFIX) and _DATE_RANGE_RE.search(t)), None)
+        kept.append(dated or _PROMO_TAG_PREFIX)
+    return " | ".join(kept)
+
+
 def _date_ddmm(day: str, month: str, run_year: int) -> dt.date:
     try:
         return dt.date(run_year, int(month), int(day))

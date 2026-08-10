@@ -38,7 +38,12 @@ CATEGORY_LABELS = {
     "mascotas": "Mascotas",
     "viajes": "Viajes",
     "articulos-deportivos": "Artículos deportivos",
+    "nuevo": "Nuevo",
+    "promocion-semanal": "Promoción semanal",
 }
+
+# 徽章专属入口：sku 出现在该页 = 对应徽章开启（徽章检测的权威信号）
+BADGE_ENTRY_KEYS = {"nuevo": "nuevo", "promocion-semanal": "promo"}
 
 _EXTRACT_JS = r"""
 () => {
@@ -193,6 +198,13 @@ def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None)
                 log.warning("  [%s] 页 %d/%d 网格未加载(疑似被拦截)，跳过", cat, p, total)
                 browser.sleep()
                 continue
+            # 徽章(product-tag)晚于网格渲染；不等待就提取会漏掉绝大多数徽章
+            # （实测：全量跑徽章捕获率仅 6-9%，等待后单页 23/24 卡均有徽章）
+            try:
+                page.wait_for_selector('[data-testid="product-tag"]', timeout=5000)
+                page.wait_for_timeout(500)  # 等剩余卡片徽章陆续渲染
+            except Exception:
+                pass
             raw_list = page.evaluate(_EXTRACT_JS)
             added = 0
             for r in raw_list:

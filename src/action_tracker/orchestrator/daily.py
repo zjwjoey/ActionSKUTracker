@@ -21,6 +21,7 @@ from ..monitor import listing as listing_mod
 from ..monitor.sku_monitor import run_sku_monitor
 from ..monitor.sitemap import fetch_sitemap
 from ..products import updater as updater_mod
+from ..products.badges import build_badge_state
 from ..qa.validator import run_qa
 from ..services import change as change_mod
 from ..services.browser import BrowserSession
@@ -30,7 +31,29 @@ from ..translation.service import apply_zh
 
 log = logging.getLogger(__name__)
 
-_LIGHT_FIELDS = ["current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es"]
+_LIGHT_FIELDS = ["current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "product_url"]
+
+
+def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
+                 in_nuevo: bool = False, in_promo: bool = False) -> None:
+    """把 listing 轻量字段合并进今日记录。
+
+    raw_tags 特殊处理：徽章状态 = 徽章页成员集合 + 基线徽章（build_badge_state），
+    不再依赖不可靠的卡片标签。可持续/折扣等仅详情页显示的徽章保留基线，避免误报
+    "徽章消失"。skip_raw_tags=True 时跳过 raw_tags（该 SKU 已抓详情，详情页标签
+    或 fetch_and_merge 已按成员集合设定）。其余字段仅在非空时覆盖，避免 listing
+    缺字段误清数据。
+    """
+    for k in _LIGHT_FIELDS:
+        v = light.get(k)
+        if v is None:
+            continue
+        if k == "raw_tags":
+            if skip_raw_tags:
+                continue
+            rec[k] = build_badge_state(rec.get("raw_tags"), in_nuevo, in_promo)
+        elif v != "":
+            rec[k] = v
 
 
 def _light_dict(lp) -> dict:
@@ -70,6 +93,8 @@ def run_daily(
     sitemap = None
     listing_map: dict[str, list] = {}
     today_light: dict[str, dict] = {}
+    nuevo_skus: set[str] = set()
+    promo_skus: set[str] = set()
     browser_blocked = False
     with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path")) as browser:
         # 1. 首页建立会话
@@ -84,9 +109,18 @@ def run_daily(
         except Exception as e:
             log.error("sitemap 失败: %s", e)
             browser_blocked = True
-        # 3. listing 轻量扫描
+        # 3. listing 轻量扫描（17 个入口：15 个类目 + Nuevo + Promoción semanal）
         listing_map = listing_mod.scan_all_categories(browser, categories, max_pages=max_pages)
-        for cat_items in listing_map.values():
+        for cat, cat_items in listing_map.items():
+            if cat == "nuevo":
+                # 专属徽章页：sku 在该页 = Nuevo 徽章开启（徽章检测的权威信号）
+                nuevo_skus = {str(lp.sku) for lp in cat_items}
+                continue
+            if cat == "promocion-semanal":
+                promo_skus = {str(lp.sku) for lp in cat_items}
+                continue
+            # 徽章页不进 today_light：它们不是真实类目（cat1_es 不应写成 "Nuevo"），
+            # 且卡片标签不可靠，徽章状态由上面的成员集合决定
             for lp in cat_items:
                 today_light[str(lp.sku)] = _light_dict(lp)
         # 4. 详情抓取（只处理变化 SKU）
@@ -106,7 +140,9 @@ def run_daily(
                                    {"NEW", "ACTIVE", "REAPPEARED", "MISSING_FIRST", "MISSING_CONTINUED", "OFFLINE", "ABSENT"}})
 
     # ---- 计划更新 ----
-    plans = updater_mod.plan_updates(statuses, baseline, today_light, cfg["run"]["detail_refresh_days"])
+    plans = updater_mod.plan_updates(
+        statuses, baseline, today_light, cfg["run"]["detail_refresh_days"],
+        nuevo_skus=nuevo_skus, promo_skus=promo_skus)
     log.info("需要更新的 SKU: %d (原因: %s)",
              len(plans), {r: sum(1 for p in plans if p["reason"] == r) for r in {p["reason"] for p in plans}})
 
@@ -116,22 +152,23 @@ def run_daily(
     if do_detail:
         with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path")) as browser:
             _, updated = updater_mod.fetch_and_merge(
-                browser, [p for p in plans if p["need_detail"]], baseline, snap_dir, cfg["lifecycle"]["max_detail_retries"])
-    # 轻量合并（无论是否抓详情都执行）
+                browser, [p for p in plans if p["need_detail"]], baseline, snap_dir,
+                cfg["lifecycle"]["max_detail_retries"], nuevo_skus=nuevo_skus, promo_skus=promo_skus)
+    # 轻量合并（无论是否抓详情都执行）：light 字段必须落到最终保存的记录上，
+    # 否则 fetch_and_merge 的产物（缺 cat1_es/product_url）会盖掉 light 的类目/链接。
+    # 已抓详情的 SKU 跳过 raw_tags（详情页标签权威），只补 cat1_es/product_url 等。
+    detail_handled = set(updated.keys())
     for plan in plans:
         sku = plan["sku"]
-        base = baseline.get(sku) or {}
-        rec = dict(base)
-        rec.update({"sku": sku, "canonical_id": plan["canonical_id"], "last_seen": run_date, "status": "CURRENT"})
+        rec = updated.get(sku)
+        if rec is None:
+            base = baseline.get(sku) or {}
+            rec = dict(base)
+            rec.update({"sku": sku, "canonical_id": plan["canonical_id"], "last_seen": run_date, "status": "CURRENT"})
         if plan.get("light"):
-            for k in _LIGHT_FIELDS:
-                v = plan["light"].get(k)
-                if v not in (None, ""):
-                    rec[k] = v
-        if sku in updated:
-            rec.update({k: v for k, v in updated[sku].items() if v not in (None, "")})
-        else:
-            updated[sku] = rec
+            _merge_light(rec, plan["light"], skip_raw_tags=(sku in detail_handled),
+                         in_nuevo=(sku in nuevo_skus), in_promo=(sku in promo_skus))
+        updated[sku] = rec
 
     # ---- 变化事件 ----
     price_events, badge_events, content_events, anomalies, review_rows = [], [], [], [], []

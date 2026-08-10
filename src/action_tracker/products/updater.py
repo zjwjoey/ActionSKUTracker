@@ -14,6 +14,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from ..products.badges import build_badge_state
 from ..services.hashing import content_hash, price_hash
 
 log = logging.getLogger(__name__)
@@ -28,11 +29,19 @@ def plan_updates(
     baseline: dict[str, dict],
     today_light: dict[str, dict],
     detail_refresh_days: int = 7,
+    nuevo_skus: set[str] | None = None,
+    promo_skus: set[str] | None = None,
 ) -> list[dict]:
     """返回需要更新的 SKU 计划列表。
 
     每项: {sku, canonical_id, reason, need_detail, light}
+
+    nuevo_skus/promo_skus 是来自 /nuevo/ 与 /promocion-semanal/ 专属徽章页的
+    SKU 集合——徽章检测的权威信号（sku 在该页 = 徽章开启）。BADGE_CHANGE 依据
+    成员集合判定，不需要详情页确认（卡片标签不可靠）。
     """
+    nuevo_skus = nuevo_skus or set()
+    promo_skus = promo_skus or set()
     plans = []
     for sku, st in sku_statuses.items():
         base = baseline.get(sku)
@@ -50,7 +59,8 @@ def plan_updates(
             new_price = light.get("current_price")
             if (old_price is None) or (new_price is not None and abs(new_price - (old_price or 0)) > 1e-9):
                 reason = "PRICE_CHANGE_CANDIDATE"
-            elif (base.get("raw_tags") or "") != (light.get("raw_tags") or ""):
+            elif _badge_changed(base, sku in nuevo_skus, sku in promo_skus):
+                # 成员集合权威，无需详情确认
                 reason = "BADGE_CHANGE"
             elif (base.get("image_url") or "") != (light.get("image_url") or ""):
                 reason = "IMAGE_CHANGE"
@@ -75,6 +85,15 @@ def plan_updates(
     return plans
 
 
+def _badge_changed(base: dict, in_nuevo: bool, in_promo: bool) -> bool:
+    """页面成员集合派生出的徽章状态是否与基线不同。
+
+    用 build_badge_state 合并后的状态对比，而非原始字符串：可持续等无专属页面的
+    徽章保留基线，不会因无法每日检测而产生误报。
+    """
+    return (base.get("raw_tags") or "") != build_badge_state(base.get("raw_tags"), in_nuevo, in_promo)
+
+
 def _missing_field(rec: dict) -> bool:
     return not (rec.get("desc_es") or rec.get("details_es") or rec.get("spec_es"))
 
@@ -96,13 +115,20 @@ def fetch_and_merge(
     baseline: dict[str, dict],
     checkpoint_dir: Path,
     max_detail_retries: int = 5,
+    nuevo_skus: set[str] | None = None,
+    promo_skus: set[str] | None = None,
 ) -> tuple[list[dict], dict[str, dict]]:
     """抓取需要详情的 SKU，合并轻量/详情字段，返回 (变化列表, 更新后记录)。
 
     checkpoint_dir 存详情抓取进度，重启自动跳过已抓取 SKU（复刻旧脚本断点续跑）。
+
+    nuevo_skus/promo_skus 用于详情抓取失败时的 raw_tags 兜底：徽章状态改由
+    专属徽章页成员集合派生（build_badge_state），不再依赖不可靠的卡片标签。
     """
     from .parser import fetch_product_detail
 
+    nuevo_skus = nuevo_skus or set()
+    promo_skus = promo_skus or set()
     changes: list[dict] = []
     updated: dict[str, dict] = {}
     ckpt_file = checkpoint_dir / "detail_fetch.jsonl"
@@ -116,9 +142,11 @@ def fetch_and_merge(
         if rec.get("status") not in (None, "MISSING_FIRST", "MISSING_CONTINUED"):
             rec["status"] = "CURRENT"
 
+        has_detail = False
         if plan["need_detail"]:
             detail = _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries)
             if detail:
+                has_detail = True
                 for k, v in detail.items():
                     if v is not None and v != "":
                         rec[k] = v
@@ -128,9 +156,17 @@ def fetch_and_merge(
                 log.warning("  #%s 详情抓取失败，保留既有字段", sku)
         if plan.get("light"):
             light = plan["light"]
-            for k in ("current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es"):
-                if light.get(k) is not None and light.get(k) != "":
-                    rec[k] = light[k]
+            for k in ("current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "product_url"):
+                v = light.get(k)
+                if v is None:
+                    continue
+                if k == "raw_tags":
+                    # 详情成功则详情 raw_tags 权威（含详情页才显示的徽章）；
+                    # 否则 build_badge_state：徽章状态 = 徽章页成员集合 + 基线徽章
+                    if not has_detail:
+                        rec[k] = build_badge_state(rec.get("raw_tags"), sku in nuevo_skus, sku in promo_skus)
+                elif v != "":
+                    rec[k] = v
 
         changes.append({
             "sku": sku,
