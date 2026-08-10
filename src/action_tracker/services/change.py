@@ -9,6 +9,11 @@ from dataclasses import dataclass, field
 
 from ..products.badges import Badges, parse_badges
 from .price import PriceChange, compare_price, is_price_anomaly, update_hist_min_max
+from .review import add_review_item
+
+# 事件写入的 03/04 来源说明
+_SOURCE_FILE = "Action_Master.xlsx"
+_PRICE_SHEET = "03_PRICE_HISTORY"
 
 
 @dataclass
@@ -41,11 +46,10 @@ def compute_changes(
             "date": run_date, "sku": sku, "problem": "PRICE_ANOMALY",
             "evidence": f"price={new_price}", "suggested_action": "人工核对",
         })
-        out.review_rows.append({
-            "date": run_date, "sku": sku, "problem_type": "异常价格",
-            "evidence": f"price={new_price}", "candidate": None, "confidence": None,
-            "suggested_action": "人工核对",
-        })
+        out.review_rows.append(add_review_item(
+            run_date, sku, "PRICE_ANOMALY",
+            evidence=f"price={new_price}", suggested_action="人工核对",
+        ))
     else:
         pc: PriceChange = compare_price(old_price, new_price)
         if pc.change_type in ("NEW", "UP", "DOWN"):
@@ -60,7 +64,8 @@ def compute_changes(
                 "变化金额 (€)": pc.amount,
                 "变化幅度 (%)": pc.percent,
                 "促销状态": _promo_label(after),
-                "来源": run_id or "daily-run",
+                "来源文件": _SOURCE_FILE,
+                "来源Sheet": _PRICE_SHEET,
             })
 
     # ---- 历史最低/最高更新 ----
@@ -79,6 +84,7 @@ def compute_changes(
 
     # ---- 内容哈希变化 ----
     from .hashing import content_hash
+    src = run_id or "daily-run"
     if before is not None:
         if content_hash(before) != content_hash(after):
             out.content_events.append({
@@ -88,7 +94,8 @@ def compute_changes(
                 "事件类型": "CONTENT_CHANGE",
                 "旧值": content_hash(before)[:12],
                 "新值": content_hash(after)[:12],
-                "来源": run_id or "daily-run",
+                "来源文件": _SOURCE_FILE,
+                "备注": src,
             })
     else:
         out.content_events.append({
@@ -98,7 +105,8 @@ def compute_changes(
             "事件类型": "FIRST_SEEN",
             "旧值": None,
             "新值": None,
-            "来源": run_id or "daily-run",
+            "来源文件": _SOURCE_FILE,
+            "备注": "首次建档",
         })
     return out
 
@@ -116,7 +124,8 @@ def _badge_events(out: ChangeOutcome, sku, cid, old: Badges, new: Badges, run_da
             "事件类型": "ACTION_NEW_BADGE_ON" if new.action_new_badge else "ACTION_NEW_BADGE_OFF",
             "旧值": "TRUE" if old.action_new_badge else None,
             "新值": "TRUE" if new.action_new_badge else None,
-            "来源": src,
+            "来源文件": _SOURCE_FILE,
+            "备注": src,
         })
     if old.promotion_active != new.promotion_active:
         out.badge_events.append({
@@ -124,7 +133,8 @@ def _badge_events(out: ChangeOutcome, sku, cid, old: Badges, new: Badges, run_da
             "事件类型": "PROMO_START" if new.promotion_active else "PROMO_END",
             "旧值": "TRUE" if old.promotion_active else None,
             "新值": "TRUE" if new.promotion_active else None,
-            "来源": src,
+            "来源文件": _SOURCE_FILE,
+            "备注": src,
         })
     if old.sustainable_badge != new.sustainable_badge:
         out.badge_events.append({
@@ -132,5 +142,6 @@ def _badge_events(out: ChangeOutcome, sku, cid, old: Badges, new: Badges, run_da
             "事件类型": "SUSTAINABLE_BADGE_ON" if new.sustainable_badge else "SUSTAINABLE_BADGE_OFF",
             "旧值": "TRUE" if old.sustainable_badge else None,
             "新值": "TRUE" if new.sustainable_badge else None,
-            "来源": src,
+            "来源文件": _SOURCE_FILE,
+            "备注": src,
         })

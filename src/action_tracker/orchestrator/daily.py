@@ -17,6 +17,7 @@ from typing import Any
 
 from .. import state as st
 from ..excel import reader as excel_reader
+from ..excel.writer import RUN_LOG_HEADERS, write_master
 from ..monitor import listing as listing_mod
 from ..monitor.sku_monitor import run_sku_monitor
 from ..monitor.sitemap import fetch_sitemap
@@ -25,7 +26,9 @@ from ..products.badges import build_badge_state
 from ..qa.validator import run_qa
 from ..services import change as change_mod
 from ..services.browser import BrowserSession
+from ..services.gitutil import git_commit_info
 from ..services.hashing import content_hash
+from ..services.review import add_review_item
 from ..snapshot import write_snapshot, write_staging
 from ..translation.service import apply_zh
 
@@ -68,8 +71,10 @@ def run_daily(
     max_categories: int | None = None,
     max_pages: int | None = None,
 ) -> dict:
+    start_dt = datetime.now()
     run_date = date.today().isoformat()
-    run_id = f"{run_date}_{datetime.now().strftime('%H%M%S')}"
+    run_id = f"{run_date}_{start_dt.strftime('%H%M%S')}"
+    start_time = start_dt.strftime("%H:%M:%S")
     do_detail = fetch_details if fetch_details is not None else cfg["run"]["dry_run_fetch_details"]
 
     paths: dict[str, Path] = cfg["paths"]
@@ -183,6 +188,23 @@ def run_daily(
         anomalies += outcome.anomalies
         review_rows += outcome.review_rows
 
+    # ---- REVIEW_QUEUE：来源分歧（sitemap/listing 互相不一致、身份不明） ----
+    for sku, s in statuses.items():
+        if s.source_flag == "SITEMAP_ONLY":
+            review_rows.append(add_review_item(
+                run_date, sku, "SITEMAP_ONLY",
+                evidence="sitemap 有、listing 无", suggested_action="核对 listing 是否漏扫或 sitemap 残留"))
+        elif s.source_flag == "LISTING_ONLY":
+            review_rows.append(add_review_item(
+                run_date, sku, "LISTING_ONLY",
+                evidence="sitemap 无、listing 有", suggested_action="确认是否为新品或列表漂移"))
+        elif s.ever_seen and s.source_flag == "NONE" and s.missing_count == 0 and not s.was_yesterday:
+            # 曾认识但今天/昨天均未出现且无缺失计数 → 身份不明确
+            review_rows.append(add_review_item(
+                run_date, sku, "UNKNOWN",
+                evidence="曾认识，今天与昨天均未出现且无缺失计数",
+                suggested_action="人工核对 SKU 身份/下架情况"))
+
     # ---- 翻译 fallback ----
     translation_updates = []
     for sku, rec in updated.items():
@@ -212,7 +234,7 @@ def run_daily(
 
     # ---- QA ----
     products_for_qa = list(today_records.values())
-    counts = _counts(statuses, today_set, sitemap, listing_map, price_events, anomalies)
+    counts = _counts(statuses, today_set, sitemap, listing_map, price_events, badge_events, content_events, anomalies)
     qa = run_qa(
         cfg,
         yesterday_total=len(baseline),
@@ -256,25 +278,77 @@ def run_daily(
         "translation_changes": translation_updates,
         "event_changes": badge_events + content_events,
     }
-    if not dry_run:
-        # 阶段一：正式写 Master 前需要人确认表结构方案；此处仅保留 staging 证据
-        log.warning("正式写 Master 尚未启用（先跑通 dry-run 后定表结构）。")
     write_staging(cfg, run_id, stage_data)
+    if not dry_run:
+        if qa.passed:
+            run_log_row = _run_log_row(run_id, run_date, start_time, counts, qa, dry_run,
+                                       sitemap_count=len(sitemap.skus), listing_count=len(today_light))
+            write_master(
+                cfg,
+                updated_records=today_records,
+                price_events=price_events,
+                event_events=badge_events + content_events,
+                run_log_row=run_log_row,
+                review_rows=review_rows,
+            )
+            log.info("正式 Master 已写入（QA PASS）")
+        else:
+            log.error("QA 未通过（%s），禁止写 Master", qa.state)
 
     _print_report(run_report, qa)
     return {"run_id": run_id, "run_report": run_report, "qa": qa.to_dict(), "snapshot_dir": str(snap_dir)}
 
 
-def _counts(statuses, today_set, sitemap, listing_map, price_events, anomalies) -> dict:
+def _counts(statuses, today_set, sitemap, listing_map, price_events, badge_events, content_events, anomalies) -> dict:
     st_map = {s.status: s for s in statuses.values()}
     return {
+        "active": sum(1 for s in statuses.values() if s.status == "ACTIVE"),
         "new": sum(1 for s in statuses.values() if s.status == "NEW"),
         "reappeared": sum(1 for s in statuses.values() if s.status == "REAPPEARED"),
         "missing": sum(1 for s in statuses.values() if s.status in ("MISSING_FIRST", "MISSING_CONTINUED")),
+        "missing_first": sum(1 for s in statuses.values() if s.status == "MISSING_FIRST"),
+        "missing_continued": sum(1 for s in statuses.values() if s.status == "MISSING_CONTINUED"),
         "offline": sum(1 for s in statuses.values() if s.status == "OFFLINE"),
         "price_up": sum(1 for e in price_events if e.get("变化类型") == "UP"),
         "price_down": sum(1 for e in price_events if e.get("变化类型") == "DOWN"),
+        "promo_start": sum(1 for e in badge_events if e.get("事件类型") == "PROMO_START"),
+        "promo_end": sum(1 for e in badge_events if e.get("事件类型") == "PROMO_END"),
+        "new_badge_on": sum(1 for e in badge_events if e.get("事件类型") == "ACTION_NEW_BADGE_ON"),
+        "new_badge_off": sum(1 for e in badge_events if e.get("事件类型") == "ACTION_NEW_BADGE_OFF"),
+        "content_change": len(content_events),
         "anomalies": len(anomalies),
+    }
+
+
+def _run_log_row(run_id, run_date, start_time, counts: dict, qa, dry_run: bool,
+                 sitemap_count: int, listing_count: int) -> dict:
+    """构造 05_RUN_LOG 一行，key 与 RUN_LOG_HEADERS 一致（writer 按表头取值）。"""
+    end_time = datetime.now().strftime("%H:%M:%S")
+    return {
+        "Run ID": run_id,
+        "运行日期": run_date,
+        "开始时间": start_time,
+        "结束时间": end_time,
+        "Git Commit": git_commit_info(),
+        "Sitemap SKU数": sitemap_count,
+        "Listing SKU数": listing_count,
+        "ACTIVE": counts["active"],
+        "NEW": counts["new"],
+        "REAPPEARED": counts["reappeared"],
+        "MISSING_FIRST": counts["missing_first"],
+        "MISSING_CONTINUED": counts["missing_continued"],
+        "OFFLINE": counts["offline"],
+        "PRICE_UP": counts["price_up"],
+        "PRICE_DOWN": counts["price_down"],
+        "PROMO_START": counts["promo_start"],
+        "PROMO_END": counts["promo_end"],
+        "NEW_BADGE_ON": counts["new_badge_on"],
+        "NEW_BADGE_OFF": counts["new_badge_off"],
+        "CONTENT_CHANGE": counts["content_change"],
+        "异常数量": counts["anomalies"],
+        "QA状态": qa.state,
+        "运行状态": "SUCCESS" if qa.passed else "QA_FAIL",
+        "备注": "dry-run" if dry_run else "正式写库",
     }
 
 
