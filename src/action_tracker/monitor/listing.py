@@ -144,6 +144,21 @@ def _detect_max_page(browser) -> int:
         return 1
 
 
+def _goto_page(browser, url: str, cat: str, p: int, total: int, retries: int = 3) -> bool:
+    """访问分页 URL，goto 偶发 net::ERR_CONNECTION_CLOSED（实测连续多页命中），重试后再放弃。"""
+    for attempt in range(1, retries + 1):
+        try:
+            browser.goto(url)
+            return True
+        except Exception as e:
+            if attempt == retries:
+                log.warning("  [%s] 页 %d/%d goto 失败(%s)，跳过该页", cat, p, total, str(e)[:80])
+                return False
+            log.warning("  [%s] 页 %d/%d goto 失败(%s)，重试 %d/%d", cat, p, total, str(e)[:80], attempt, retries)
+            browser.sleep()
+    return False
+
+
 def _grid_ok(browser) -> bool:
     try:
         return browser.page.evaluate(
@@ -206,7 +221,9 @@ def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None,
     for p in range(1, total + 1):
         url = cat_url if p == 1 else f"{cat_url}?page={p}"
         try:
-            browser.goto(url)
+            if not _goto_page(browser, url, cat, p, total):
+                browser.sleep()
+                continue
             if not _wait_for_grid(browser):
                 log.warning("  [%s] 页 %d/%d 网格未加载(疑似被拦截)，跳过", cat, p, total)
                 browser.sleep()
