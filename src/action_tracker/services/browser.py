@@ -21,7 +21,8 @@ DEFAULT_UA = (
     "(KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
 )
 
-CHALLENGE_RE = re.compile(r"just a moment", re.I)
+# Cloudflare 挑战页标题：英文 "Just a moment…"，西班牙语站点为 "Un momento…"
+CHALLENGE_RE = re.compile(r"just a moment|un momento", re.I)
 HOMEPAGE_TITLE_RE = re.compile(r"^action españa: pequeños precios", re.I)
 
 

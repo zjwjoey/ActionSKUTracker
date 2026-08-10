@@ -25,12 +25,13 @@ site:
     articulos-deportivos: https://www.action.com/es-es/c/articulos-deportivos/
 
 browser:
-  headless: true
+  # HEADFUL：旧 Node 脚本在另一台机器用有头模式跑通 CF；无头更易被识别限流
+  headless: false
   timeout_ms: 45000
   challenge_reloads: 15
   challenge_sleep_ms: 800
   # 温和并行节奏（复刻旧脚本经验，避免被限流）
-  sleep_ms: 1800
+  sleep_ms: 2500
   # 会话 cookies 文件（可选，存在则加载，用于保持 consent/locale）
   cookies_path: F:\260809action_cc\cookies.json
 

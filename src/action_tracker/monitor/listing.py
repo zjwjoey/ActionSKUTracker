@@ -152,8 +152,30 @@ def _grid_ok(browser) -> bool:
         return False
 
 
+def _wait_for_grid(browser, tries: int = 12) -> bool:
+    """等待商品网格真正渲染（复刻旧脚本 waitForGrid）。
+
+    Cloudflare 挑战页没有网格节点；此时 reload 触发重新校验，CF 会在几秒内
+    自动放行真实页面，因此循环 reload 直到网格出现即可自愈。
+    """
+    page = browser.page
+    for _ in range(tries):
+        if _grid_ok(browser):
+            return True
+        try:
+            page.reload(wait_until="domcontentloaded")
+        except Exception:
+            pass
+        page.wait_for_timeout(1500)
+    return False
+
+
 def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None) -> list[LightProduct]:
-    """扫描单个类目全部分页，返回轻量商品列表。"""
+    """扫描单个类目全部分页，返回轻量商品列表。
+
+    每页先确认网格真正渲染（_wait_for_grid），否则提取会读到旧 DOM/挑战页，
+    导致 34 页去重成 1 页（实测 bug：西班牙语挑战标题 'Un momento…' 未被识别）。
+    """
     page = browser.page
     passed = browser.goto(cat_url)
     if not passed:
@@ -167,11 +189,10 @@ def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None)
         url = cat_url if p == 1 else f"{cat_url}?page={p}"
         try:
             browser.goto(url)
-            page.wait_for_timeout(1500)
-            if not _grid_ok(browser):
-                # 重载一次再试
-                page.reload(wait_until="domcontentloaded")
-                page.wait_for_timeout(2000)
+            if not _wait_for_grid(browser):
+                log.warning("  [%s] 页 %d/%d 网格未加载(疑似被拦截)，跳过", cat, p, total)
+                browser.sleep()
+                continue
             raw_list = page.evaluate(_EXTRACT_JS)
             added = 0
             for r in raw_list:
@@ -179,9 +200,9 @@ def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None)
                 if lp.sku not in seen:
                     seen[lp.sku] = lp
                     added += 1
-            log.debug("  [%s] 页 %d/%d 新增 %d 累计 %d", cat, p, total, added, len(seen))
+            log.info("  [%s] 页 %d/%d 本页 %d 新增 %d 累计 %d", cat, p, total, len(raw_list), added, len(seen))
         except Exception as e:
-            log.warning("  [%s] 页 %d 失败: %s", cat, p, e)
+            log.warning("  [%s] 页 %d/%d 失败: %s", cat, p, total, e)
         browser.sleep()
     return list(seen.values())
 
