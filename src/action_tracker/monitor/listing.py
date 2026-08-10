@@ -175,17 +175,30 @@ def _wait_for_grid(browser, tries: int = 12) -> bool:
     return False
 
 
-def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None) -> list[LightProduct]:
+def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None,
+                  goto_retries: int = 3) -> list[LightProduct]:
     """扫描单个类目全部分页，返回轻量商品列表。
 
     每页先确认网格真正渲染（_wait_for_grid），否则提取会读到旧 DOM/挑战页，
     导致 34 页去重成 1 页（实测 bug：西班牙语挑战标题 'Un momento…' 未被识别）。
+
+    首屏 goto 偶发 net::ERR_CONNECTION_CLOSED（实测），整类目重试避免漏扫。
     """
     page = browser.page
-    passed = browser.goto(cat_url)
-    if not passed:
-        log.warning("类别 %s 挑战未通过", cat)
-    page.wait_for_timeout(1500)
+    for attempt in range(1, goto_retries + 1):
+        try:
+            passed = browser.goto(cat_url)
+            if not passed:
+                log.warning("类别 %s 挑战未通过(第 %d 次)", cat, attempt)
+            page.wait_for_timeout(1500)
+            if _grid_ok(browser) or attempt == goto_retries:
+                break
+            log.warning("  [%s] 首屏网格未加载，整类目重试 %d/%d", cat, attempt, goto_retries)
+        except Exception as e:
+            if attempt == goto_retries:
+                raise
+            log.warning("  [%s] 首屏 goto 失败(%s)，整类目重试 %d/%d", cat, str(e)[:90], attempt, goto_retries)
+        browser.sleep()
     total = _detect_max_page(browser)
     if max_pages:
         total = min(total, max_pages)
@@ -227,6 +240,11 @@ def scan_all_categories(browser, categories: dict[str, str], max_pages: int | No
         log.info("扫描类别: %s", cat)
         try:
             items = scan_category(browser, cat, url, max_pages=max_pages)
+            if not items:
+                # 防御：一类目 0 商品几乎必为失败（实测 ERR_CONNECTION_CLOSED 整类丢），重扫一次
+                log.warning("  %s 首次 0 商品，整类重扫一次", cat)
+                browser.sleep()
+                items = scan_category(browser, cat, url, max_pages=max_pages)
             for it in items:
                 it.cat1_es = label_map.get(cat, cat)
             result[cat] = items

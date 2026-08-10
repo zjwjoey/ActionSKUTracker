@@ -71,7 +71,16 @@ qa:
 run:
   # 详情抓取后多久需要强制刷新（天）
   detail_refresh_days: 7
+  # 翻译：阶段一不做（中文列用西语 fallback 占位）。
+  # 后续启用时走 AI API（见下方 ai 段），不用外部翻译服务。
   translation_enabled: false
   image_download_enabled: false
   # dry-run 时是否对新品/变化 SKU 抓详情
   dry_run_fetch_details: true
+
+# ---- AI（预留）：后续翻译用 AI API 配置，不接外部翻译服务 ----
+# 密钥不落盘：运行时从环境变量 ACTION_AI_API_KEY 读取
+ai:
+  translation_provider: ""   # 例如 openai / anthropic / deepseek
+  model: ""                  # 例如 claude-haiku-4-5-20251001
+  # 定时任务：已取消（不做）
