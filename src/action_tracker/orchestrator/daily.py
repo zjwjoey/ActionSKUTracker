@@ -205,6 +205,14 @@ def run_daily(
                 evidence="曾认识，今天与昨天均未出现且无缺失计数",
                 suggested_action="人工核对 SKU 身份/下架情况"))
 
+    # ---- 生命周期事件（REAPPEARED 进 EVENT_HISTORY；NEW 的 FIRST_SEEN 已由 compute_changes 产生）----
+    lifecycle_events = _build_lifecycle_events(statuses, run_date, run_id)
+    reappeared_skus = {e["SKU"] for e in lifecycle_events}
+    # 重现 SKU 的 before=None 会误判 FIRST_SEEN，剔除（首次建档不适用已下架后重现的商品）
+    content_events = [e for e in content_events
+                      if not (e.get("事件类型") == "FIRST_SEEN" and e.get("SKU") in reappeared_skus)]
+    event_events = badge_events + content_events + lifecycle_events
+
     # ---- 翻译 fallback ----
     translation_updates = []
     for sku, rec in updated.items():
@@ -229,8 +237,8 @@ def run_daily(
             today_records[sku]["missing_count"] = stat.missing_count
             today_records[sku]["last_seen"] = today_records[sku].get("last_seen") or run_date
         if stat.status == "OFFLINE":
-            today_records[sku]["status"] = "MISSING"  # 当天仍保留，但已触发 OFFLINE 判定
-            today_records[sku]["missing_count"] = stat.missing_count
+            # 确认下架：移出 CURRENT（进 offline_skus；下次出现时 was_yesterday=False → REAPPEARED）
+            today_records.pop(sku, None)
 
     # ---- QA ----
     products_for_qa = list(today_records.values())
@@ -276,27 +284,28 @@ def run_daily(
         "product_changes": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"]} for p in plans],
         "price_changes": price_events,
         "translation_changes": translation_updates,
-        "event_changes": badge_events + content_events,
+        "event_changes": event_events,
     }
     write_staging(cfg, run_id, stage_data)
+    # ---- 正式提交（只发生在 非 dry-run 且 QA PASS；否则 Master/known_skus/offline_skus 一律不动）----
+    commit_status = "DRY_RUN"
     if not dry_run:
         if qa.passed:
             run_log_row = _run_log_row(run_id, run_date, start_time, counts, qa, dry_run,
                                        sitemap_count=len(sitemap.skus), listing_count=len(today_light))
-            write_master(
-                cfg,
-                updated_records=today_records,
-                price_events=price_events,
-                event_events=badge_events + content_events,
-                run_log_row=run_log_row,
-                review_rows=review_rows,
-            )
-            log.info("正式 Master 已写入（QA PASS）")
+            commit_status = _commit_phase(
+                cfg, statuses=statuses, known=known, run_date=run_date, run_id=run_id,
+                offline_runs=cfg["lifecycle"]["offline_confirmation_runs"],
+                today_records=today_records, price_events=price_events, event_events=event_events,
+                run_log_row=run_log_row, review_rows=review_rows)
         else:
-            log.error("QA 未通过（%s），禁止写 Master", qa.state)
+            commit_status = "QA_FAIL"
+            log.error("QA 未通过（%s），禁止写 Master / known_skus / offline_skus", qa.state)
 
+    run_report["commit_status"] = commit_status
     _print_report(run_report, qa)
-    return {"run_id": run_id, "run_report": run_report, "qa": qa.to_dict(), "snapshot_dir": str(snap_dir)}
+    return {"run_id": run_id, "run_report": run_report, "qa": qa.to_dict(),
+            "commit_status": commit_status, "snapshot_dir": str(snap_dir)}
 
 
 def _counts(statuses, today_set, sitemap, listing_map, price_events, badge_events, content_events, anomalies) -> dict:
@@ -381,6 +390,85 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
     }
 
 
+def _build_lifecycle_events(statuses: dict, run_date: str, run_id: str) -> list[dict]:
+    """REAPPEARED 等生命周期事件（进 04_EVENT_HISTORY，key 与 EVENT_HISTORY_HEADERS 对齐）。
+
+    NEW 的 FIRST_SEEN 由 compute_changes 产生；这里只补 REPEARED（下架后重现），
+    旧值 OFFLINE → 新值 ACTIVE。
+    """
+    events = []
+    for sku, s in statuses.items():
+        if getattr(s, "event", None) == "REAPPEARED":
+            events.append({
+                "Canonical_ID": s.canonical_id, "SKU": sku, "日期": run_date,
+                "事件类型": "REAPPEARED", "旧值": "OFFLINE", "新值": "ACTIVE",
+                "来源文件": "Action_Master.xlsx", "备注": run_id or "daily-run",
+            })
+    return events
+
+
+def _should_commit(dry_run: bool, qa_passed: bool) -> bool:
+    """提交门禁：非 dry-run 且 QA PASS 才允许写 Master / known_skus / offline_skus。"""
+    return (not dry_run) and qa_passed
+
+
+def _commit_phase(
+    cfg,
+    *,
+    statuses: dict,
+    known: dict,
+    run_date: str,
+    run_id: str,
+    offline_runs: int,
+    today_records: dict,
+    price_events: list[dict],
+    event_events: list[dict],
+    run_log_row: dict,
+    review_rows: list[dict],
+) -> str:
+    """QA PASS 后的统一提交：known_skus + Master 先各自暂存验证，再原子替换，最后重生成 offline_skus。
+
+    返回 FULL_COMMIT / PARTIAL_COMMIT / STATE_WRITE_FAILED。
+    任一暂存失败则什么都不提交（正式文件保持原样）。
+    """
+    from .. import state as st
+    from ..excel.writer import commit_master, stage_master
+
+    state_dir = cfg["paths"]["state"]
+    master = cfg["paths"]["master"]
+    # 1) 计算新状态并暂存 known_skus（失败则不触碰 Master）
+    try:
+        transition = st.apply_state_transition(known, statuses, run_date, run_id, offline_runs)
+        known_tmp, known_path = st.stage_known_skus(state_dir, transition["known"])
+    except Exception as e:
+        log.error("STATE_WRITE_FAILED: known_skus 计算/暂存失败 %s", e)
+        return "STATE_WRITE_FAILED"
+    # 2) 暂存 Master（内部完成备份 + 旧表迁移 + 验证）
+    try:
+        master_tmp = stage_master(
+            cfg, updated_records=today_records, price_events=price_events,
+            event_events=event_events, run_log_row=run_log_row, review_rows=review_rows)
+    except Exception as e:
+        known_tmp.unlink(missing_ok=True)
+        log.error("STATE_WRITE_FAILED: Master 暂存失败 %s", e)
+        return "STATE_WRITE_FAILED"
+    # 3) 统一提交 Master + known_skus
+    try:
+        commit_master(master_tmp, master)
+        st.commit_state_file(known_tmp, known_path)
+    except Exception as e:
+        log.error("PARTIAL_COMMIT: 提交中途失败 %s（Master 或 known_skus 可能已替换，见备份）", e)
+        return "PARTIAL_COMMIT"
+    # 4) 由 known_skus 重生成 offline_skus（原子写）
+    try:
+        st.save_offline_skus(state_dir, transition["offline"])
+    except Exception as e:
+        log.error("STATE_WRITE_FAILED: offline_skus 重生成失败 %s", e)
+        return "STATE_WRITE_FAILED"
+    log.info("正式提交完成: Master + known_skus + offline_skus（FULL_COMMIT）")
+    return "FULL_COMMIT"
+
+
 def _print_report(rep: dict, qa) -> None:
     lines = [
         f"Action Daily Monitor {rep['run_date']}",
@@ -401,6 +489,7 @@ def _print_report(rep: dict, qa) -> None:
         f"内容变化: {rep['content_change']}",
         f"异常: {rep['anomalies']}",
         f"QA: {rep['qa_state']}",
+        f"提交状态: {rep.get('commit_status', '-')}",
         f"Master: {rep['master']}",
         f"Snapshot: {rep['snapshot']}",
     ]

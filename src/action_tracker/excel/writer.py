@@ -157,7 +157,7 @@ def _migrate_legacy_sheets(wb, cfg: dict[str, Any]) -> None:
         log.info("已归档 %s（%d 行）-> %s，并删除原表", label, len(data), target)
 
 
-def write_master(
+def stage_master(
     cfg: dict[str, Any],
     *,
     updated_records: dict[str, dict],
@@ -165,12 +165,12 @@ def write_master(
     event_events: list[dict],
     run_log_row: dict | None = None,
     review_rows: list[dict] | None = None,
-    dry_run: bool = False,
 ) -> Path:
-    """原子更新正式 Master。dry_run 时禁止调用。"""
-    if dry_run:
-        raise RuntimeError("dry-run 禁止写 Master")
+    """暂存新的 Master 到 temp：备份 → 复制 → 更新 → 保存 → 完整验证。
 
+    返回已就绪的 temp 路径（尚未替换正式文件），供"Master + 状态文件一起
+    先生成再统一提交"使用。只有 commit_master 才会替换正式 Master。
+    """
     master: Path = cfg["paths"]["master"]
     if not master.exists():
         raise FileNotFoundError(f"Master 不存在: {master}")
@@ -206,10 +206,32 @@ def write_master(
 
     # 完整验证
     _validate(tmp)
-    # 原子替换
+    return tmp
+
+
+def commit_master(tmp: Path, master: Path) -> Path:
+    """原子替换正式 Master（tmp 必须已通过 _validate）。"""
     os.replace(tmp, master)
     log.info("正式 Master 已更新: %s", master)
     return master
+
+
+def write_master(
+    cfg: dict[str, Any],
+    *,
+    updated_records: dict[str, dict],
+    price_events: list[dict],
+    event_events: list[dict],
+    run_log_row: dict | None = None,
+    review_rows: list[dict] | None = None,
+    dry_run: bool = False,
+) -> Path:
+    """原子更新正式 Master（stage + commit 一步完成）。dry_run 时禁止调用。"""
+    if dry_run:
+        raise RuntimeError("dry-run 禁止写 Master")
+    tmp = stage_master(cfg, updated_records=updated_records, price_events=price_events,
+                       event_events=event_events, run_log_row=run_log_row, review_rows=review_rows)
+    return commit_master(tmp, cfg["paths"]["master"])
 
 
 def _validate(path: Path) -> None:
