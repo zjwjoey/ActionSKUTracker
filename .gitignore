@@ -1,0 +1,21 @@
+# --- Python ---
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# --- Runtime data (never commit generated data) ---
+runtime/
+logs/
+snapshots/
+exports/
+images/
+temp/
+backups/
+
+# --- Temp / backup files ---
+*.tmp
+*.bak
+
+# --- Node artifacts (reference scraper lives outside this repo) ---
+node_modules/

@@ -1,0 +1,72 @@
+# Action 西班牙站商品每日监测程序 — 全局配置
+# 所有阈值集中在此，禁止在代码中散落硬编码。
+
+site:
+  base_url: https://www.action.com/es-es
+  sitemap_url: https://www.action.com/es-es/product-sitemap.xml
+  locale: es-ES
+  user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36
+  # 需要全量轻量扫描的类别（与旧 Node 脚本 VERSION 映射一致）
+  categories:
+    vivienda: https://www.action.com/es-es/c/vivienda/
+    cuidado-personal: https://www.action.com/es-es/c/cuidado-personal/
+    moda: https://www.action.com/es-es/c/moda/
+    bricolaje: https://www.action.com/es-es/c/bricolaje/
+    cocina: https://www.action.com/es-es/c/cocina/
+    hogar: https://www.action.com/es-es/c/hogar/
+    comer-y-beber: https://www.action.com/es-es/c/comer-y-beber/
+    hobby: https://www.action.com/es-es/c/hobby/
+    juguetes: https://www.action.com/es-es/c/juguetes/
+    oficina-y-papeleria: https://www.action.com/es-es/c/oficina-y-papeleria/
+    multimedia: https://www.action.com/es-es/c/multimedia/
+    jardin: https://www.action.com/es-es/c/jardin/
+    mascotas: https://www.action.com/es-es/c/mascotas/
+    viajes: https://www.action.com/es-es/c/viajes/
+    articulos-deportivos: https://www.action.com/es-es/c/articulos-deportivos/
+
+browser:
+  headless: true
+  timeout_ms: 45000
+  challenge_reloads: 15
+  challenge_sleep_ms: 800
+  # 温和并行节奏（复刻旧脚本经验，避免被限流）
+  sleep_ms: 1800
+  # 会话 cookies 文件（可选，存在则加载，用于保持 consent/locale）
+  cookies_path: F:\260809action_cc\cookies.json
+
+paths:
+  master: runtime/master/Action_Master.xlsx
+  snapshots: runtime/snapshots
+  staging: runtime/staging
+  state: runtime/state
+  images: runtime/images
+  exports: runtime/exports
+  logs: runtime/logs
+  backups: runtime/backups
+  temp: runtime/temp
+
+# ---- 生命周期（规范 §17）----
+lifecycle:
+  offline_confirmation_runs: 3
+  max_detail_retries: 5
+
+# ---- QA 阈值（规范 §42）----
+qa:
+  max_active_drop_percent: 15
+  max_active_increase_percent: 20
+  max_new_sku_percent: 5
+  max_missing_percent: 5
+  max_sitemap_listing_gap_percent: 5
+  price_min: 0.01
+  price_max: 1000.0
+  # 单日进入 REVIEW_QUEUE 的异常价格上限，超过判定为大规模异常
+  max_anomaly_count: 20
+
+# ---- 运行策略 ----
+run:
+  # 详情抓取后多久需要强制刷新（天）
+  detail_refresh_days: 7
+  translation_enabled: false
+  image_download_enabled: false
+  # dry-run 时是否对新品/变化 SKU 抓详情
+  dry_run_fetch_details: true
