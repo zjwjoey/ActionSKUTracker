@@ -153,6 +153,16 @@ def test_t10_11_transition_is_pure_no_disk_write(tmp_path):
     assert (state_dir / "known_skus.csv").read_bytes() == before  # 纯计算不写盘
 
 
+# ---- 12a. 历史缺口回填：基线在 known 之外的 ACTIVE 首次纳入时补 first_seen，已有则不覆盖 ----
+def test_t12a_active_backfills_first_seen_when_empty():
+    out = _trans({}, {"1001": _sku(status="ACTIVE")}, run_date="2026-08-11")
+    assert out["known"]["1001"]["first_seen_date"] == "2026-08-11"  # 回填
+    # 已存在的 first_seen 绝不因 ACTIVE 覆盖
+    k = _known(first_seen="2026-01-09")
+    out = _trans(k, {"1001": _sku(status="ACTIVE")}, run_date="2026-08-12")
+    assert out["known"]["1001"]["first_seen_date"] == "2026-01-09"
+
+
 # ---- 12. first_seen_date 永不被后续运行覆盖 ----
 def test_t12_first_seen_never_overwritten():
     k = _known(first_seen="2026-01-09")

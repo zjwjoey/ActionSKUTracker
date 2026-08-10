@@ -100,8 +100,8 @@ def apply_state_transition(
 
     纯函数：只读 known/statuses，不写盘。规则（规范 §56"更新 known_skus"）：
       - NEW           创建记录；first_seen_date=当天（已有则保留）；last_status=ACTIVE；missing_count=0
-      - ACTIVE         last_status=ACTIVE；last_seen_date=当天；missing_count=0
-      - REAPPEARED     last_status=ACTIVE；last_seen_date=当天；missing_count=0（ever_offline 保留）
+      - ACTIVE         last_status=ACTIVE；last_seen_date=当天；missing_count=0；first_seen 为空时回填当天
+      - REAPPEARED     last_status=ACTIVE；last_seen_date=当天；missing_count=0（ever_offline 保留；first_seen 同上回填）
       - MISSING_FIRST  last_status=MISSING；missing_count 推进（同一天重复运行不 +1）；
                        last_missing_date=当天；不更新 last_seen_date
       - MISSING_CONTINUED  继续推进；达到 offline_runs 后由状态机输出 OFFLINE
@@ -143,6 +143,10 @@ def apply_state_transition(
             rec["last_missing_date"] = ""
             rec["last_state_observation_date"] = run_date
         elif status in ("ACTIVE", "REAPPEARED"):
+            # 历史缺口回填：基线在 known 之外（如状态文件未随 Master 持久化的过渡期）时，
+            # 首次纳入即补 first_seen=当天；已存在的 first_seen 一律不覆盖
+            if not rec.get("first_seen_date"):
+                rec["first_seen_date"] = run_date
             rec["last_status"] = "ACTIVE"
             rec["last_seen_date"] = run_date
             rec["missing_count"] = "0"
