@@ -101,13 +101,23 @@ def _finalized_run(fn):
                    "dry_run": dry_run, "snap_dir": paths["snapshots"] / run_date / run_id}
         lock.acquire(run_id, command="daily-run --dry-run" if dry_run else "daily-run")
         context["snap_dir"].mkdir(parents=True, exist_ok=True)
+        result = None
         try:
-            return fn(cfg, dry_run=dry_run, _run_context=context, **kwargs)
+            result = fn(cfg, dry_run=dry_run, _run_context=context, **kwargs)
         except BaseException as error:
             _persist_fatal_run_evidence(cfg, context, error)
             raise
         finally:
             lock.release()
+            # The report is written before finally so it can survive cleanup
+            # failures; now record the verified lock outcome independently.
+            if result and result.get("run_report"):
+                result["run_report"]["cleanup_status"] = "lock_released"
+                try:
+                    write_snapshot(cfg, context["run_date"], {"run_report": result["run_report"]})
+                except Exception:
+                    log.exception("secondary failure while recording lock release")
+        return result
     return wrapped
 
 
