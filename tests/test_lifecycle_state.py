@@ -17,10 +17,12 @@ from action_tracker.services.lifecycle import classify
 
 
 def _sku(sku: str = "1001", status: str = "ACTIVE", missing_count: int = 0,
-         cid: str = "ACT0001001", event: str | None = None) -> SkuStatus:
+         cid: str = "ACT0001001", event: str | None = None,
+         previous_status: str = "") -> SkuStatus:
     return SkuStatus(sku=sku, canonical_id=cid, status=status,
                      source_flag="BOTH", sitemap_present=True, listing_present=True,
                      was_yesterday=True, ever_seen=True, first_seen="2026-08-11",
+                     previous_status=previous_status,
                      missing_count=missing_count, event=event, light=None)
 
 
@@ -39,13 +41,19 @@ def _trans(known: dict, statuses: dict, run_date="2026-08-11", run_id="R1", offl
     return st.apply_state_transition(known, statuses, run_date, run_id, offline_runs)
 
 
-def _day(known: dict, *, present: bool, was_yesterday: bool, ever_seen: bool,
+def _day(known: dict, *, present: bool, ever_seen: bool,
          run_date: str, run_id: str, offline_runs: int = 3) -> dict:
-    """用真实 classify + apply_state_transition 模拟一天。missing_count 从 known 读。"""
-    mc = int(known.get("1001", {}).get("missing_count") or 0)
-    cls = classify(today_present=present, was_yesterday=was_yesterday, ever_seen=ever_seen,
+    """用真实 classify + apply_state_transition 模拟一天。
+
+    上一有效状态与 missing_count 都从 known_skus（生命周期状态源）读取。
+    """
+    rec = known.get("1001", {})
+    mc = int(rec.get("missing_count") or 0)
+    prev_status = rec.get("last_status") or ""
+    cls = classify(today_present=present, previous_status=prev_status, ever_seen=ever_seen,
                    missing_count=mc, offline_runs=offline_runs)
-    s = _sku("1001", status=cls.status, missing_count=cls.missing_count, event=cls.event)
+    s = _sku("1001", status=cls.status, missing_count=cls.missing_count, event=cls.event,
+             previous_status=prev_status)
     return st.apply_state_transition(known, {"1001": s}, run_date, run_id, offline_runs)
 
 
@@ -217,34 +225,108 @@ def test_t15_offline_skus_derived_only():
 def test_full_lifecycle_5_days():
     state = {}
     # Day1 首次出现 -> NEW -> known 记 ACTIVE
-    state = _day(state, present=True, was_yesterday=False, ever_seen=False, run_date="2026-08-11", run_id="D1")
+    state = _day(state, present=True, ever_seen=False, run_date="2026-08-11", run_id="D1")
     assert state["known"]["1001"]["last_status"] == "ACTIVE"
     assert state["known"]["1001"]["first_seen_date"] == "2026-08-11"
     assert state["known"]["1001"]["missing_count"] == "0"
     # Day2 仍在售 -> ACTIVE
-    state = _day(state["known"], present=True, was_yesterday=True, ever_seen=True, run_date="2026-08-12", run_id="D2")
+    state = _day(state["known"], present=True, ever_seen=True, run_date="2026-08-12", run_id="D2")
     assert state["known"]["1001"]["last_status"] == "ACTIVE"
     assert state["known"]["1001"]["missing_count"] == "0"
     assert state["known"]["1001"]["last_seen_date"] == "2026-08-12"
     # Day3 缺失 -> MISSING_FIRST, missing_count 1
-    state = _day(state["known"], present=False, was_yesterday=True, ever_seen=True, run_date="2026-08-13", run_id="D3")
+    state = _day(state["known"], present=False, ever_seen=True, run_date="2026-08-13", run_id="D3")
     assert state["known"]["1001"]["last_status"] == "MISSING"
     assert state["known"]["1001"]["missing_count"] == "1"
     assert state["known"]["1001"]["last_seen_date"] == "2026-08-12"  # 缺失当天不更新
     # Day4 继续缺失 -> missing_count 2
-    state = _day(state["known"], present=False, was_yesterday=True, ever_seen=True, run_date="2026-08-14", run_id="D4")
+    state = _day(state["known"], present=False, ever_seen=True, run_date="2026-08-14", run_id="D4")
     assert state["known"]["1001"]["missing_count"] == "2"
     # Day5 达到阈值 -> OFFLINE, missing_count 3，进 offline_skus
-    state = _day(state["known"], present=False, was_yesterday=True, ever_seen=True, run_date="2026-08-15", run_id="D5")
+    state = _day(state["known"], present=False, ever_seen=True, run_date="2026-08-15", run_id="D5")
     assert state["known"]["1001"]["last_status"] == "OFFLINE"
     assert state["known"]["1001"]["missing_count"] == "3"
     assert state["known"]["1001"]["offline_date"] == "2026-08-15"
     assert "1001" in {r["official_sku"] for r in state["offline"]}
     # Day6 重新出现 -> REAPPEARED -> ACTIVE, missing_count 清零
-    state = _day(state["known"], present=True, was_yesterday=False, ever_seen=True, run_date="2026-08-16", run_id="D6")
+    state = _day(state["known"], present=True, ever_seen=True, run_date="2026-08-16", run_id="D6")
     assert state["known"]["1001"]["last_status"] == "ACTIVE"
     assert state["known"]["1001"]["missing_count"] == "0"
     assert "1001" not in {r["official_sku"] for r in state["offline"]}
+
+
+# ==================== REAPPEARED 新规则（跨日状态推进） ====================
+
+# ---- 场景 1：Day1 ACTIVE → Day2 MISSING_FIRST（仍保留 CURRENT）→ Day3 重现 ----
+def test_reappeared_after_missing_first():
+    state = {}
+    # Day1 首次出现 -> NEW -> ACTIVE
+    state = _day(state, present=True, ever_seen=False, run_date="2026-08-11", run_id="D1")
+    assert state["known"]["1001"]["last_status"] == "ACTIVE"
+    # Day2 缺失 -> MISSING_FIRST（商品仍保留在 CURRENT，known 记为 MISSING）
+    state = _day(state["known"], present=False, ever_seen=True, run_date="2026-08-12", run_id="D2")
+    assert state["known"]["1001"]["last_status"] == "MISSING"
+    assert state["known"]["1001"]["missing_count"] == "1"
+    # Day3 重现 -> REAPPEARED -> ACTIVE，missing_count 清零
+    state = _day(state["known"], present=True, ever_seen=True, run_date="2026-08-13", run_id="D3")
+    assert state["known"]["1001"]["last_status"] == "ACTIVE"
+    assert state["known"]["1001"]["missing_count"] == "0"
+    assert state["known"]["1001"]["last_seen_date"] == "2026-08-13"
+    assert state["known"]["1001"]["first_seen_date"] == "2026-08-11"   # 保持不变
+
+
+# ---- 场景 2：Day1 ACTIVE → Day2 MISSING_FIRST → Day3 MISSING_CONTINUED → Day4 重现 ----
+def test_reappeared_after_missing_continued():
+    state = {}
+    state = _day(state, present=True, ever_seen=False, run_date="2026-08-11", run_id="D1")
+    state = _day(state["known"], present=False, ever_seen=True, run_date="2026-08-12", run_id="D2")
+    state = _day(state["known"], present=False, ever_seen=True, run_date="2026-08-13", run_id="D3")
+    assert state["known"]["1001"]["last_status"] == "MISSING"
+    assert state["known"]["1001"]["missing_count"] == "2"
+    state = _day(state["known"], present=True, ever_seen=True, run_date="2026-08-14", run_id="D4")
+    assert state["known"]["1001"]["last_status"] == "ACTIVE"
+    assert state["known"]["1001"]["missing_count"] == "0"
+
+
+# ---- 场景 3：OFFLINE 后重现 -> REAPPEARED + ACTIVE ----
+def test_reappeared_after_offline():
+    k = _known(last_status="OFFLINE", missing_count="3", last_seen="2026-08-12",
+               offline="2026-08-14", obs="2026-08-15", ever_offline="true")
+    out = _trans(k, {"1001": _sku(status="REAPPEARED", missing_count=0, event="REAPPEARED",
+                                  previous_status="OFFLINE")},
+                 run_date="2026-08-16")
+    assert out["known"]["1001"]["last_status"] == "ACTIVE"
+    assert out["known"]["1001"]["missing_count"] == "0"
+    assert out["known"]["1001"]["first_seen_date"] == "2026-08-11"   # 保持不变
+
+
+# ---- 场景 4：连续 ACTIVE -> 不产生 REAPPEARED ----
+def test_consecutive_active_no_reappeared():
+    c = classify(today_present=True, previous_status="ACTIVE", ever_seen=True)
+    assert c.status == "ACTIVE"
+    assert c.event is None
+    assert c.event != "REAPPEARED"
+
+
+# ---- 场景 5：首次出现 -> FIRST_SEEN，不得 REAPPEARED ----
+def test_first_seen_never_reappeared():
+    out = _trans({}, {"1001": _sku(status="NEW", event="FIRST_SEEN")}, run_date="2026-08-11")
+    assert out["known"]["1001"]["last_status"] == "ACTIVE"
+    assert out["known"]["1001"]["first_seen_date"] == "2026-08-11"
+    events = daily_mod._build_lifecycle_events(
+        {"1001": _sku(status="NEW", event="FIRST_SEEN")}, "2026-08-11", "R1")
+    assert events == []   # FIRST_SEEN 不产生 REAPPEARED 事件
+
+
+# ---- REAPPEARED 事件旧值反映真实上一状态（MISSING 而非硬编码 OFFLINE）----
+def test_reappeared_event_old_value_reflects_previous_state():
+    events = daily_mod._build_lifecycle_events(
+        {"1001": _sku(status="REAPPEARED", event="REAPPEARED", previous_status="MISSING")},
+        "2026-08-16", "R1")
+    assert len(events) == 1
+    assert events[0]["事件类型"] == "REAPPEARED"
+    assert events[0]["旧值"] == "MISSING"
+    assert events[0]["新值"] == "ACTIVE"
 
 
 # ---- 同日重复运行的完整模拟（验收示例：08-11 两次 + 08-12 + 08-13 → OFFLINE）----

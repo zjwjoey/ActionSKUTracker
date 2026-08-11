@@ -246,7 +246,7 @@ def run_daily(
             today_records[sku]["missing_count"] = stat.missing_count
             today_records[sku]["last_seen"] = today_records[sku].get("last_seen") or run_date
         if stat.status == "OFFLINE":
-            # 确认下架：移出 CURRENT（进 offline_skus；下次出现时 was_yesterday=False → REAPPEARED）
+            # 确认下架：移出 CURRENT（进 offline_skus；下次出现时 previous_status=OFFLINE → REAPPEARED）
             today_records.pop(sku, None)
 
     # ---- QA ----
@@ -417,15 +417,16 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
 def _build_lifecycle_events(statuses: dict, run_date: str, run_id: str) -> list[dict]:
     """REAPPEARED 等生命周期事件（进 04_EVENT_HISTORY，key 与 EVENT_HISTORY_HEADERS 对齐）。
 
-    NEW 的 FIRST_SEEN 由 compute_changes 产生；这里只补 REPEARED（下架后重现），
-    旧值 OFFLINE → 新值 ACTIVE。
+    NEW 的 FIRST_SEEN 由 compute_changes 产生；这里只补 REPEARED（MISSING/OFFLINE 后重现）。
+    旧值取上一有效生命周期状态（MISSING/OFFLINE），新值 ACTIVE；记录缺失时默认 OFFLINE。
     """
     events = []
     for sku, s in statuses.items():
         if getattr(s, "event", None) == "REAPPEARED":
+            old = getattr(s, "previous_status", "") or "OFFLINE"
             events.append({
                 "Canonical_ID": s.canonical_id, "SKU": sku, "日期": run_date,
-                "事件类型": "REAPPEARED", "旧值": "OFFLINE", "新值": "ACTIVE",
+                "事件类型": "REAPPEARED", "旧值": old, "新值": "ACTIVE",
                 "来源文件": "Action_Master.xlsx", "备注": run_id or "daily-run",
             })
     return events

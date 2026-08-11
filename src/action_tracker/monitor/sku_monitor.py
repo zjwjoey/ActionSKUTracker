@@ -20,6 +20,7 @@ class SkuStatus:
     was_yesterday: bool
     ever_seen: bool
     first_seen: str | None
+    previous_status: str         # 上一有效生命周期状态（known_skus.last_status）
     missing_count: int
     event: str | None            # 需要写 EVENT_HISTORY 的事件
     light: object | None = None  # 今日 listing 轻量字段（可选携带）
@@ -57,6 +58,9 @@ def run_sku_monitor(
         k = known.get(sku)
         ever_seen = k is not None
         first_seen = k.get("first_seen_date") if k else None
+        # 上一有效生命周期状态：known_skus.last_status（ACTIVE/MISSING/OFFLINE）。
+        # 不在 known 或记录缺状态 → 空串，视为"无缺省证据"（present 时按 ACTIVE 处理）。
+        previous_status = (k.get("last_status") or "") if k is not None else ""
         missing_count = int(k.get("missing_count") or 0) if k else 0
         if today_present and was_yesterday and not ever_seen:
             # 昨天 CURRENT 但 known 缺失（理论上不会；防御）
@@ -71,7 +75,7 @@ def run_sku_monitor(
         else:
             cls = classify(
                 today_present=today_present,
-                was_yesterday=was_yesterday,
+                previous_status=previous_status,
                 ever_seen=ever_seen,
                 missing_count=missing_count,
                 offline_runs=offline_runs,
@@ -99,6 +103,7 @@ def run_sku_monitor(
             was_yesterday=was_yesterday,
             ever_seen=ever_seen,
             first_seen=first_seen,
+            previous_status=previous_status,
             missing_count=cls.missing_count,
             event=cls.event,
             light=listing_light.get(sku),
