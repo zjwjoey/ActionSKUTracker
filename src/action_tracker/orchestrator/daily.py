@@ -109,6 +109,7 @@ def run_daily(
     nuevo_skus: set[str] = set()
     promo_skus: set[str] = set()
     browser_blocked = False
+    detail_evidence: list[dict] = []
     site_structure = {"discovery_status": "NOT_STARTED", "fallback_used": False, "categories": []}
     access = AccessController(cooldown_seconds=cfg["browser"].get("cooldown_seconds", 60))
     with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path"), access_controller=access) as browser:
@@ -177,10 +178,11 @@ def run_daily(
     updated: dict[str, dict] = {}
     # 详情抓取放回浏览器会话内
     if do_detail:
-        with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path")) as browser:
+        with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path"), access_controller=access) as browser:
             _, updated = updater_mod.fetch_and_merge(
                 browser, [p for p in plans if p["need_detail"]], baseline, snap_dir,
-                cfg["lifecycle"]["max_detail_retries"], nuevo_skus=nuevo_skus, promo_skus=promo_skus)
+                cfg["lifecycle"]["max_detail_retries"], nuevo_skus=nuevo_skus, promo_skus=promo_skus,
+                access_controller=access, detail_evidence=detail_evidence)
     # 轻量合并（无论是否抓详情都执行）：light 字段必须落到最终保存的记录上，
     # 否则 fetch_and_merge 的产物（缺 cat1_es/product_url）会盖掉 light 的类目/链接。
     # 已抓详情的 SKU 跳过 raw_tags（详情页标签权威），只补 cat1_es/product_url 等。
@@ -290,7 +292,10 @@ def run_daily(
     } for s in statuses.values()]
     run_report = _run_report(cfg, run_id, run_date, dry_run, len(baseline), len(today_set), statuses,
                              price_events, badge_events, content_events, anomalies, qa, snap_dir,
-                             observation_complete, primary_coverage)
+                             observation_complete, primary_coverage,
+                             detail_planned=len([p for p in plans if p["need_detail"]]),
+                             detail_completed=len(updated), detail_evidence=detail_evidence,
+                             access_state=access.state.value)
     data = {
         "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",
         "sitemap_skus": sitemap_skus,
@@ -311,6 +316,7 @@ def run_daily(
             "config_hash": hashlib.sha256((cfg["project_root"] / "config" / "settings.yaml").read_bytes()).hexdigest(),
             "access_state": access.state.value,
         },
+        "detail_evidence": detail_evidence,
         "product_updates": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"]} for p in plans],
         "translation_updates": translation_updates,
         "qa_report": qa.to_dict(),
@@ -405,8 +411,12 @@ def _run_log_row(run_id, run_date, start_time, counts: dict, qa, dry_run: bool,
 
 def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
                 price_events, badge_events, content_events, anomalies, qa, snap_dir,
-                observation_complete: bool, category_coverage: dict[str, bool]) -> dict:
+                observation_complete: bool, category_coverage: dict[str, bool],
+                detail_planned: int = 0, detail_completed: int = 0,
+                detail_evidence: list[dict] | None = None, access_state: str = "NORMAL") -> dict:
     from .. import __version__
+    detail_evidence = detail_evidence or []
+    blocked = next((x for x in detail_evidence if x.get("error_type") == "DETAIL_BLOCKED"), None)
     return {
         "run_id": run_id,
         "run_date": run_date,
@@ -422,6 +432,12 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "unknown": sum(1 for s in statuses.values() if s.status == "UNKNOWN"),
         "observation_complete": observation_complete,
         "category_coverage": category_coverage,
+        "detail_planned": detail_planned,
+        "detail_completed": detail_completed,
+        "detail_incomplete": len(detail_evidence),
+        "detail_blocked_at_sku": blocked.get("sku") if blocked else None,
+        "blocked_stage": "PRODUCT_DETAIL" if blocked else None,
+        "access_state": access_state,
         "price_up": sum(1 for e in price_events if e.get("变化类型") == "UP"),
         "price_down": sum(1 for e in price_events if e.get("变化类型") == "DOWN"),
         "promo_start": sum(1 for e in badge_events if e.get("事件类型") == "PROMO_START"),

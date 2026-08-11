@@ -117,6 +117,8 @@ def fetch_and_merge(
     max_detail_retries: int = 5,
     nuevo_skus: set[str] | None = None,
     promo_skus: set[str] | None = None,
+    access_controller=None,
+    detail_evidence: list[dict] | None = None,
 ) -> tuple[list[dict], dict[str, dict]]:
     """抓取需要详情的 SKU，合并轻量/详情字段，返回 (变化列表, 更新后记录)。
 
@@ -133,8 +135,15 @@ def fetch_and_merge(
     updated: dict[str, dict] = {}
     ckpt_file = checkpoint_dir / "detail_fetch.jsonl"
     done = _read_ckpt(ckpt_file)
+    detail_evidence = detail_evidence if detail_evidence is not None else []
 
     for i, plan in enumerate(plans, 1):
+        if access_controller and access_controller.state.value != "NORMAL":
+            detail_evidence.append({"sku": plan["sku"], "url": (plan.get("light") or {}).get("product_url", ""),
+                                    "stage": "PRODUCT_DETAIL", "error_type": "DETAIL_BLOCKED",
+                                    "access_state_before": access_controller.state.value,
+                                    "access_state_after": access_controller.state.value, "attempt": 0})
+            break
         sku = plan["sku"]
         base = baseline.get(sku) or {}
         rec = dict(base)
@@ -144,7 +153,8 @@ def fetch_and_merge(
 
         has_detail = False
         if plan["need_detail"]:
-            detail = _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries)
+            detail = _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries,
+                                 access_controller, detail_evidence)
             if detail:
                 has_detail = True
                 for k, v in detail.items():
@@ -184,7 +194,7 @@ def fetch_and_merge(
     return changes, updated
 
 
-def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries):
+def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_controller=None, detail_evidence=None):
     cached = done.get(sku)
     if cached:
         return cached.get("detail")
@@ -195,6 +205,11 @@ def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries):
     try:
         return fetch_product_detail(browser, url, sku, max_retries=max_detail_retries)
     except Exception as e:
+        if detail_evidence is not None:
+            detail_evidence.append({"sku": sku, "url": url, "stage": "PRODUCT_DETAIL",
+                                    "error_type": type(e).__name__, "access_state_before": "NORMAL",
+                                    "access_state_after": access_controller.state.value if access_controller else "UNKNOWN",
+                                    "attempt": max_detail_retries})
         log.warning("  #%s 详情失败: %s", sku, str(e)[:120])
         return None
 

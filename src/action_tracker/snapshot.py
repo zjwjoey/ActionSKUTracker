@@ -65,6 +65,8 @@ def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> 
         _write_csv(snap_dir / "category_structure.csv", data["site_structure"].get("categories") or [])
     if data.get("run_manifest") is not None:
         (snap_dir / "run_manifest.json").write_text(_json(data["run_manifest"]), encoding="utf-8")
+    if data.get("detail_evidence"):
+        _write_csv(snap_dir / "detail_evidence.csv", data["detail_evidence"])
     if data.get("product_updates"):
         _write_csv(snap_dir / "product_updates.csv", data["product_updates"])
     if data.get("translation_updates"):

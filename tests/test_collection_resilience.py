@@ -5,6 +5,7 @@ import pytest
 from action_tracker.monitor.structure import discover_categories
 from action_tracker.services.access import AccessController, AccessState, CollectionBlocked
 from action_tracker.services.runtime import RunLock
+from action_tracker.products import updater
 
 
 class _Page:
@@ -60,3 +61,15 @@ def test_single_run_lock_and_stale_reclaim(tmp_path: Path):
         RunLock(tmp_path, stale_minutes=1).acquire("two")
     first.release()
     RunLock(tmp_path, stale_minutes=1).acquire("two")
+
+
+def test_detail_tasks_stop_when_global_access_is_not_normal(tmp_path: Path):
+    ctl = AccessController(cooldown_seconds=0)
+    ctl.record(status=429)
+    evidence = []
+    changes, updated = updater.fetch_and_merge(
+        object(), [{"sku": "1001", "canonical_id": "ACT0001001", "reason": "NEW", "need_detail": True,
+                    "light": {"product_url": "https://x/p/1001/"}}], {}, tmp_path,
+        access_controller=ctl, detail_evidence=evidence)
+    assert changes == [] and updated == {}
+    assert evidence[0]["error_type"] == "DETAIL_BLOCKED"

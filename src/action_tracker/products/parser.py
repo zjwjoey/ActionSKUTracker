@@ -133,22 +133,17 @@ def is_bad_title(title: str) -> bool:
 def fetch_product_detail(browser, url: str, sku_hint: str | None = None, max_retries: int = 5) -> dict:
     """抓取单个商品详情页并提取字段。带挑战重试 + 品名有效性校验。"""
     from ..services.browser import is_challenge
+    from ..services.access import CollectionBlocked
 
     page = browser.page
     last_err = ""
     for attempt in range(max_retries):
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=browser.cfg.get("timeout_ms", 45000))
-            for _ in range(12):
-                t = page.title()
-                if not is_challenge(t):
-                    break
-                time.sleep(1.0)
-                page.reload(wait_until="domcontentloaded")
+            if not browser.goto(url):
+                raise CollectionBlocked("detail navigation blocked or rate limited")
             t = page.title()
             if is_challenge(t):
-                last_err = f"CF 挑战未通过(第{attempt + 1}次)"
-                continue
+                raise CollectionBlocked("detail challenge detected")
             try:
                 page.wait_for_selector('[data-testid="product-card-price"], h1', timeout=15000)
             except Exception:
@@ -159,6 +154,8 @@ def fetch_product_detail(browser, url: str, sku_hint: str | None = None, max_ret
                 time.sleep(0.8)
                 continue
             return _normalize_detail(row, url)
+        except CollectionBlocked:
+            raise
         except Exception as e:  # noqa: BLE001
             last_err = str(e)
             time.sleep(0.8)

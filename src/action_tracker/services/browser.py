@@ -98,6 +98,8 @@ class BrowserSession:
             raise
         if self.access_controller:
             self.access_controller.record(status=response.status if response else None)
+            if response and response.status in (401, 403, 429):
+                return False
         for _ in range(self.cfg.get("challenge_reloads", 15)):
             try:
                 title = page.title()
