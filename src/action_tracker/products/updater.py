@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -120,6 +120,7 @@ def fetch_and_merge(
     access_controller=None,
     detail_evidence: list[dict] | None = None,
     detail_completed_skus: list[str] | None = None,
+    evidence_context: dict | None = None,
 ) -> tuple[list[dict], dict[str, dict]]:
     """抓取需要详情的 SKU，合并轻量/详情字段，返回 (变化列表, 更新后记录)。
 
@@ -141,10 +142,12 @@ def fetch_and_merge(
 
     for i, plan in enumerate(plans, 1):
         if access_controller and access_controller.state.value in ("COOLDOWN", "PROBE", "BLOCKED"):
-            detail_evidence.append({"sku": plan["sku"], "url": (plan.get("light") or {}).get("product_url", ""),
+            detail_evidence.append({**(evidence_context or {}), "sku": plan["sku"], "url": (plan.get("light") or {}).get("product_url", ""),
                                     "stage": "PRODUCT_DETAIL", "error_type": "DETAIL_BLOCKED",
                                     "access_state_before": access_controller.state.value,
-                                    "access_state_after": access_controller.state.value, "attempt": 0})
+                                    "access_state_after": access_controller.state.value, "attempt": 0,
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                                    "skipped_count": len(plans) - i + 1})
             break
         sku = plan["sku"]
         base = baseline.get(sku) or {}
@@ -156,7 +159,7 @@ def fetch_and_merge(
         has_detail = False
         if plan["need_detail"]:
             detail = _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries,
-                                 access_controller, detail_evidence)
+                                 access_controller, detail_evidence, evidence_context)
             if detail:
                 has_detail = True
                 detail_completed_skus.append(sku)
@@ -197,7 +200,8 @@ def fetch_and_merge(
     return changes, updated
 
 
-def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_controller=None, detail_evidence=None):
+def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_controller=None,
+                detail_evidence=None, evidence_context=None):
     cached = done.get(sku)
     if cached:
         return cached.get("detail")
@@ -205,14 +209,22 @@ def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_
     url = (plan.get("light") or {}).get("product_url") or ""
     if not url:
         return None
+    state_before = access_controller.state.value if access_controller else "UNKNOWN"
     try:
         return fetch_product_detail(browser, url, sku, max_retries=max_detail_retries)
     except Exception as e:
         if detail_evidence is not None:
-            detail_evidence.append({"sku": sku, "url": url, "stage": "PRODUCT_DETAIL",
-                                    "error_type": type(e).__name__, "access_state_before": "NORMAL",
+            events = access_controller.events if access_controller else []
+            last_event = events[-1] if events else ""
+            detail_evidence.append({**(evidence_context or {}), "sku": sku, "url": url, "stage": "PRODUCT_DETAIL",
+                                    "error_type": ("HTTP_429" if last_event == "RATE_LIMITED" else
+                                                   "HTTP_403_OR_CHALLENGE" if last_event in {"CHALLENGE_OR_403", "PROBE_BLOCKED"} else
+                                                   "DETAIL_INCOMPLETE"),
+                                    "exception_type": type(e).__name__, "http_status": 429 if last_event == "RATE_LIMITED" else None,
+                                    "challenge_detected": last_event in {"CHALLENGE_OR_403", "PROBE_BLOCKED"},
+                                    "access_state_before": state_before,
                                     "access_state_after": access_controller.state.value if access_controller else "UNKNOWN",
-                                    "attempt": max_detail_retries})
+                                    "attempt": max_detail_retries, "timestamp": datetime.now(timezone.utc).isoformat()})
         log.warning("  #%s 详情失败: %s", sku, str(e)[:120])
         return None
 

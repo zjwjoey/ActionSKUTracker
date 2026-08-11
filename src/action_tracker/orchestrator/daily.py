@@ -113,7 +113,9 @@ def run_daily(
     detail_completed_skus: list[str] = []
     site_structure = {"discovery_status": "NOT_STARTED", "fallback_used": False, "categories": []}
     access = AccessController(cooldown_seconds=cfg["browser"].get("cooldown_seconds", 60))
-    with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path"), access_controller=access) as browser:
+    # Keep the initial persistent context open so detail enrichment uses the same page.
+    with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path"), access_controller=access,
+                        keep_open=True) as browser:
         # 1. 首页建立会话
         try:
             browser.goto(site["base_url"])
@@ -179,12 +181,17 @@ def run_daily(
     updated: dict[str, dict] = {}
     # 详情抓取放回浏览器会话内
     if do_detail:
-        with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path"), access_controller=access) as browser:
+        try:
             _, updated = updater_mod.fetch_and_merge(
                 browser, [p for p in plans if p["need_detail"]], baseline, snap_dir,
                 cfg["lifecycle"]["max_detail_retries"], nuevo_skus=nuevo_skus, promo_skus=promo_skus,
                 access_controller=access, detail_evidence=detail_evidence,
-                detail_completed_skus=detail_completed_skus)
+                detail_completed_skus=detail_completed_skus,
+                evidence_context={"run_id": run_id, "observation_date": run_date, **browser.manifest()})
+        finally:
+            browser.close()
+    else:
+        browser.close()
     # 轻量合并（无论是否抓详情都执行）：light 字段必须落到最终保存的记录上，
     # 否则 fetch_and_merge 的产物（缺 cat1_es/product_url）会盖掉 light 的类目/链接。
     # 已抓详情的 SKU 跳过 raw_tags（详情页标签权威），只补 cat1_es/product_url 等。
@@ -317,6 +324,7 @@ def run_daily(
             "git_commit": git_commit_info(), "working_tree_dirty": git_commit_info().endswith("-dirty"),
             "config_hash": hashlib.sha256((cfg["project_root"] / "config" / "settings.yaml").read_bytes()).hexdigest(),
             "access_state": access.state.value,
+            **browser.manifest(),
         },
         "detail_evidence": detail_evidence,
         "product_updates": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"]} for p in plans],
@@ -437,6 +445,7 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "detail_planned": detail_planned,
         "detail_completed": detail_completed,
         "detail_incomplete": len(detail_evidence),
+        "detail_skipped_due_block": blocked.get("skipped_count", 0) if blocked else 0,
         "detail_blocked_at_sku": blocked.get("sku") if blocked else None,
         "blocked_stage": "PRODUCT_DETAIL" if blocked else None,
         "access_state": access_state,

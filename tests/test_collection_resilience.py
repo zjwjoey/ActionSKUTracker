@@ -6,6 +6,7 @@ from action_tracker.monitor.structure import discover_categories
 from action_tracker.services.access import AccessController, AccessState, CollectionBlocked
 from action_tracker.services.runtime import RunLock
 from action_tracker.products import updater
+from action_tracker.services import browser as browser_mod
 
 
 class _Page:
@@ -88,3 +89,43 @@ def test_degraded_access_still_allows_bounded_detail_attempt(tmp_path: Path, mon
                                         "light": {"product_url": "https://x/p/1001/"}}], {}, tmp_path,
                             access_controller=ctl)
     assert called == ["1001"]
+
+
+def test_persistent_browser_session_has_stable_profile_and_one_reusable_page(tmp_path: Path, monkeypatch):
+    class FakePage:
+        pass
+
+    class FakeContext:
+        def __init__(self):
+            self.pages = []
+            self.closed = False
+        def add_cookies(self, _): pass
+        def new_page(self):
+            page = FakePage()
+            self.pages.append(page)
+            return page
+        def close(self): self.closed = True
+
+    class FakeChromium:
+        def __init__(self): self.calls = []
+        def launch_persistent_context(self, **kwargs):
+            self.calls.append(kwargs)
+            return FakeContext()
+
+    chromium = FakeChromium()
+    class FakePlaywright:
+        def __init__(self): self.chromium = chromium
+        def stop(self): pass
+    class FakeStarter:
+        def start(self): return FakePlaywright()
+
+    monkeypatch.setattr(browser_mod, "sync_playwright", lambda: FakeStarter())
+    profile = tmp_path / "action_es"
+    session = browser_mod.BrowserSession({"profile_dir": profile, "headless": False})
+    session.start()
+    assert chromium.calls[0]["user_data_dir"] == str(profile.resolve())
+    assert chromium.calls[0]["headless"] is False
+    assert session.manifest()["persistent_context"] is True
+    assert session.manifest()["context_strategy"].startswith("one persistent context")
+    assert len(session._ctx.pages) == 1
+    session.close()

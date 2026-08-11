@@ -28,6 +28,11 @@ def load_settings(path: Path | str | None = None) -> dict[str, Any]:
             if not pth.is_absolute():
                 pth = _PROJECT_ROOT / pth
             cfg["paths"][key] = pth
+    if "profile_dir" in cfg.get("browser", {}):
+        profile = Path(cfg["browser"]["profile_dir"])
+        if not profile.is_absolute():
+            profile = _PROJECT_ROOT / profile
+        cfg["browser"]["profile_dir"] = profile
     cfg["project_root"] = _PROJECT_ROOT
     return cfg
 
