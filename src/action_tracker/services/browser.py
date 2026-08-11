@@ -115,10 +115,23 @@ class BrowserSession:
             if self.access_controller:
                 self.access_controller.record(error=True)
             raise
+        status = response.status if response else None
+        if status == 429:
+            if self.access_controller:
+                self.access_controller.record(status=429)
+            return False
+        if status in (401, 403):
+            try:
+                title = page.title()
+            except Exception:
+                title = ""
+            if self.access_controller:
+                # A 403 is never success.  Preserve whether it was a challenge
+                # page in the controller event, but do not retry either form.
+                self.access_controller.record(challenge=is_challenge(title), status=None if is_challenge(title) else status)
+            return False
         if self.access_controller:
-            self.access_controller.record(status=response.status if response else None)
-            if response and response.status in (401, 403, 429):
-                return False
+            self.access_controller.record(status=status)
         for _ in range(self.cfg.get("challenge_reloads", 15)):
             try:
                 title = page.title()
@@ -128,14 +141,25 @@ class BrowserSession:
                 if self.access_controller:
                     self.access_controller.record()
                 return True
-            if self.access_controller:
+            if self.access_controller and not self.access_controller.allow_challenge_retry():
                 self.access_controller.record(challenge=True)
                 return False
-            time.sleep(self.cfg.get("challenge_sleep_ms", 800) / 1000.0)
+            time.sleep((self.cfg.get("challenge_sleep_ms", 800) / 1000.0) * (2 ** _))
             try:
-                page.reload(wait_until="domcontentloaded")
+                reload_response = page.reload(wait_until="domcontentloaded")
+                reload_status = reload_response.status if reload_response else None
+                if reload_status == 429:
+                    if self.access_controller:
+                        self.access_controller.record(status=429)
+                    return False
+                if reload_status in (401, 403):
+                    if self.access_controller:
+                        self.access_controller.record(challenge=True)
+                    return False
             except Exception:
                 time.sleep(1.0)
+        if self.access_controller:
+            self.access_controller.record(challenge=True)
         return False
 
     def sleep(self):

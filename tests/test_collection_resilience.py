@@ -161,3 +161,65 @@ def test_persistent_browser_session_has_stable_profile_and_one_reusable_page(tmp
     assert session.manifest()["context_strategy"].startswith("one persistent context")
     assert len(session._ctx.pages) == 1
     session.close()
+
+
+class _Response:
+    def __init__(self, status): self.status = status
+
+
+class _ChallengePage:
+    def __init__(self, titles, statuses=None):
+        self.titles, self.statuses, self.index, self.reloads = titles, statuses or [200], 0, 0
+    def goto(self, *_args, **_kwargs): return _Response(self.statuses[0])
+    def title(self): return self.titles[min(self.index, len(self.titles) - 1)]
+    def reload(self, *_args, **_kwargs):
+        self.reloads += 1; self.index += 1
+        return _Response(self.statuses[min(self.index, len(self.statuses) - 1)])
+
+
+def _challenge_session(page, controller):
+    return browser_mod.BrowserSession({"challenge_reloads": 3, "challenge_sleep_ms": 0}, page=page, access_controller=controller)
+
+
+def test_429_never_reloads():
+    page, ctl = _ChallengePage(["normal"], [429]), AccessController(cooldown_seconds=0)
+    assert _challenge_session(page, ctl).goto("https://x") is False
+    assert page.reloads == 0 and ctl.state == AccessState.COOLDOWN
+
+
+@pytest.mark.parametrize("title", ["Un momento", "normal product page"])
+def test_403_never_reloads_regardless_of_title(title):
+    page, ctl = _ChallengePage([title], [403]), AccessController(cooldown_seconds=0)
+    assert _challenge_session(page, ctl).goto("https://x") is False
+    assert page.reloads == 0 and ctl.state == AccessState.COOLDOWN
+
+
+def test_200_challenge_reloads_then_records_only_recovered_page_as_success():
+    page, ctl = _ChallengePage(["Un momento", "normal product page"]), AccessController(cooldown_seconds=0)
+    assert _challenge_session(page, ctl).goto("https://x") is True
+    assert page.reloads == 1 and ctl.state == AccessState.NORMAL
+
+
+def test_200_challenge_exhaustion_trips_controller():
+    page, ctl = _ChallengePage(["Un momento"]), AccessController(cooldown_seconds=0)
+    assert _challenge_session(page, ctl).goto("https://x") is False
+    assert page.reloads == 3 and ctl.state == AccessState.COOLDOWN
+
+
+def test_challenge_reload_stops_when_controller_state_changes_mid_page():
+    ctl = AccessController(cooldown_seconds=0)
+    page = _ChallengePage(["Un momento"])
+    original_reload = page.reload
+    def reload_then_cooldown(*args, **kwargs):
+        result = original_reload(*args, **kwargs)
+        ctl.state = AccessState.COOLDOWN
+        return result
+    page.reload = reload_then_cooldown
+    assert _challenge_session(page, ctl).goto("https://x") is False
+    assert page.reloads == 1 and ctl.state == AccessState.COOLDOWN
+
+
+@pytest.mark.parametrize("state", [AccessState.COOLDOWN, AccessState.PROBE, AccessState.BLOCKED])
+def test_challenge_retry_permission_denies_non_normal_states(state):
+    ctl = AccessController(cooldown_seconds=0, state=state)
+    assert ctl.allow_challenge_retry() is False

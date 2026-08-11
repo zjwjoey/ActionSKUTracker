@@ -34,7 +34,7 @@ browser:
   # 固定的 Playwright profile：跨 run 自然保留正常浏览会话，不属于 staging，且由 .gitignore 排除。
   profile_dir: runtime/browser_profile/action_es
   timeout_ms: 45000
-  challenge_reloads: 15
+  challenge_reloads: 3
   challenge_sleep_ms: 800
   cooldown_seconds: 60
   degraded_recovery_successes: 3

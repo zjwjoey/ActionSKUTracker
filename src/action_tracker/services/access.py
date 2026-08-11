@@ -41,6 +41,10 @@ class AccessController:
             self.state = AccessState.BLOCKED
             raise CollectionBlocked("probe already consumed")
 
+    def allow_challenge_retry(self) -> bool:
+        """Page-scoped permission for one bounded challenge-page reload."""
+        return self.state in (AccessState.NORMAL, AccessState.DEGRADED)
+
     def record(self, *, status: int | None = None, challenge: bool = False, error: bool = False) -> None:
         if status in (403, 401) or challenge:
             self.success_streak = 0
