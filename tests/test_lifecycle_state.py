@@ -149,6 +149,9 @@ def test_t10_11_gate_blocks_dry_run_and_qa_fail(tmp_path):
     assert daily_mod._should_commit(dry_run=True, qa_passed=True) is False
     assert daily_mod._should_commit(dry_run=False, qa_passed=False) is False
     assert daily_mod._should_commit(dry_run=False, qa_passed=True) is True
+    assert daily_mod._should_commit(dry_run=False, qa_passed=True, access_state="COOLDOWN") is False
+    assert daily_mod._should_commit(dry_run=False, qa_passed=True, access_state="PROBE") is False
+    assert daily_mod._should_commit(dry_run=False, qa_passed=True, access_state="BLOCKED") is False
 
 
 def test_t10_11_transition_is_pure_no_disk_write(tmp_path):

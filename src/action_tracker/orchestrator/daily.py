@@ -274,6 +274,8 @@ def run_daily(
             # 确认下架：移出 CURRENT（进 offline_skus；下次出现时 previous_status=OFFLINE → REAPPEARED）
             today_records.pop(sku, None)
 
+    observation_complete = sitemap is not None and all(primary_coverage.values()) and access.state.value == "NORMAL"
+
     # ---- QA ----
     products_for_qa = list(today_records.values())
     counts = _counts(statuses, today_set, sitemap, listing_map, price_events, badge_events, content_events, anomalies)
@@ -292,6 +294,7 @@ def run_daily(
         blocked=browser_blocked or access.blocked,
         observation_valid=observation_complete,
         category_coverage=primary_coverage,
+        access_state=access.state.value,
     )
     log.info("QA: state=%s passed=%s", qa.state, qa.passed)
 
@@ -348,7 +351,7 @@ def run_daily(
     # ---- 正式提交（只发生在 非 dry-run 且 QA PASS；否则 Master/known_skus/offline_skus 一律不动）----
     commit_status = "DRY_RUN"
     if not dry_run:
-        if qa.passed:
+        if _should_commit(dry_run=dry_run, qa_passed=qa.passed, access_state=access.state.value):
             run_log_row = _run_log_row(run_id, run_date, start_time, counts, qa, dry_run,
                                        sitemap_count=len(sitemap_skus), listing_count=len(today_light))
             commit_status = _commit_phase(
@@ -485,9 +488,9 @@ def _build_lifecycle_events(statuses: dict, run_date: str, run_id: str) -> list[
     return events
 
 
-def _should_commit(dry_run: bool, qa_passed: bool) -> bool:
+def _should_commit(dry_run: bool, qa_passed: bool, access_state: str = "NORMAL") -> bool:
     """提交门禁：非 dry-run 且 QA PASS 才允许写 Master / known_skus / offline_skus。"""
-    return (not dry_run) and qa_passed
+    return (not dry_run) and qa_passed and access_state == "NORMAL"
 
 
 def _commit_phase(

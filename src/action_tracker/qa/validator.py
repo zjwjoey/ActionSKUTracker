@@ -47,6 +47,7 @@ def run_qa(
     blocked: bool = False,
     observation_valid: bool = True,
     category_coverage: dict[str, bool] | None = None,
+    access_state: str = "NORMAL",
 ) -> QAReport:
     q = cfg["qa"]
     checks: dict[str, tuple[bool, str]] = {}
@@ -57,6 +58,12 @@ def run_qa(
     if blocked:
         checks["fetch_not_blocked"] = (False, "网站访问异常/BLOCKED")
         return QAReport(passed=False, state="BLOCKED", checks=checks, counts=_counts(locals()), reasons=["网站访问被封锁"])
+
+    if access_state != "NORMAL":
+        message = f"global access controller ended in {access_state}"
+        checks["access_state_complete"] = (False, message)
+        return QAReport(passed=False, state="FAIL", checks=checks, counts=_counts(locals()), reasons=[message])
+    checks["access_state_complete"] = (True, "global access controller NORMAL")
 
     if not observation_valid:
         failed = [name for name, valid in (category_coverage or {}).items() if not valid]
