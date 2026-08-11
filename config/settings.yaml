@@ -37,6 +37,7 @@ browser:
   challenge_reloads: 15
   challenge_sleep_ms: 800
   cooldown_seconds: 60
+  degraded_recovery_successes: 3
   # 温和并行节奏（复刻旧脚本经验，避免被限流）
   sleep_ms: 2500
   # 会话 cookies 文件（可选，存在则加载，用于保持 consent/locale）

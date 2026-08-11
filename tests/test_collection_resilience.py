@@ -59,6 +59,38 @@ def test_probe_recovery_returns_normal():
     assert ctl.state == AccessState.NORMAL
 
 
+def test_degraded_recovers_after_configured_consecutive_successes():
+    ctl = AccessController(degraded_recovery_successes=3)
+    ctl.record(error=True)
+    ctl.record(); ctl.record()
+    assert ctl.state == AccessState.DEGRADED
+    ctl.record()
+    assert ctl.state == AccessState.NORMAL
+    assert ctl.report()["degraded_recovered"] is True
+
+
+def test_degraded_streak_resets_on_a_further_transient_error():
+    ctl = AccessController(degraded_recovery_successes=3)
+    ctl.record(error=True); ctl.record(); ctl.record(); ctl.record(error=True)
+    assert ctl.success_streak == 0 and ctl.transient_error_count == 2
+    ctl.record(); ctl.record()
+    assert ctl.state == AccessState.DEGRADED
+
+
+@pytest.mark.parametrize("issue", [{"status": 429}, {"status": 403}, {"challenge": True}])
+def test_degraded_recovery_never_overrides_rate_limit_or_access_block(issue):
+    ctl = AccessController(degraded_recovery_successes=3)
+    ctl.record(error=True); ctl.record(); ctl.record(); ctl.record(**issue)
+    assert ctl.state == AccessState.COOLDOWN
+    assert ctl.success_streak == 0
+
+
+def test_recovered_controller_can_satisfy_normal_observation_state():
+    ctl = AccessController(degraded_recovery_successes=2)
+    ctl.record(error=True); ctl.record(); ctl.record()
+    assert ctl.state == AccessState.NORMAL
+
+
 def test_single_run_lock_and_stale_reclaim(tmp_path: Path):
     first = RunLock(tmp_path, stale_minutes=1)
     first.acquire("one")

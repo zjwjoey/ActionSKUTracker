@@ -112,7 +112,8 @@ def run_daily(
     detail_evidence: list[dict] = []
     detail_completed_skus: list[str] = []
     site_structure = {"discovery_status": "NOT_STARTED", "fallback_used": False, "categories": []}
-    access = AccessController(cooldown_seconds=cfg["browser"].get("cooldown_seconds", 60))
+    access = AccessController(cooldown_seconds=cfg["browser"].get("cooldown_seconds", 60),
+                              degraded_recovery_successes=cfg["browser"].get("degraded_recovery_successes", 3))
     # Keep the initial persistent context open so detail enrichment uses the same page.
     with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path"), access_controller=access,
                         keep_open=True) as browser:
@@ -304,7 +305,7 @@ def run_daily(
                              observation_complete, primary_coverage,
                              detail_planned=len([p for p in plans if p["need_detail"]]),
                              detail_completed=len(detail_completed_skus), detail_evidence=detail_evidence,
-                             access_state=access.state.value)
+                             access_state=access.state.value, access_report=access.report())
     data = {
         "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",
         "sitemap_skus": sitemap_skus,
@@ -318,12 +319,13 @@ def run_daily(
                                  "observation_valid": s.observation_valid} for s in statuses.values()],
         "coverage": primary_coverage,
         "site_structure": {**site_structure, "run_id": run_id, "observation_date": run_date,
-                           "access_state": str(access.state), "access_events": access.events},
+                           "access_state": str(access.state), "access_events": access.events, **access.report()},
         "run_manifest": {
             "run_id": run_id, "observation_date": run_date, "started_at": start_dt.isoformat(),
             "git_commit": git_commit_info(), "working_tree_dirty": git_commit_info().endswith("-dirty"),
             "config_hash": hashlib.sha256((cfg["project_root"] / "config" / "settings.yaml").read_bytes()).hexdigest(),
             "access_state": access.state.value,
+            **access.report(),
             **browser.manifest(),
         },
         "detail_evidence": detail_evidence,
@@ -423,7 +425,8 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
                 price_events, badge_events, content_events, anomalies, qa, snap_dir,
                 observation_complete: bool, category_coverage: dict[str, bool],
                 detail_planned: int = 0, detail_completed: int = 0,
-                detail_evidence: list[dict] | None = None, access_state: str = "NORMAL") -> dict:
+                detail_evidence: list[dict] | None = None, access_state: str = "NORMAL",
+                access_report: dict | None = None) -> dict:
     from .. import __version__
     detail_evidence = detail_evidence or []
     blocked = next((x for x in detail_evidence if x.get("error_type") == "DETAIL_BLOCKED"), None)
@@ -449,6 +452,7 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "detail_blocked_at_sku": blocked.get("sku") if blocked else None,
         "blocked_stage": "PRODUCT_DETAIL" if blocked else None,
         "access_state": access_state,
+        **(access_report or {}),
         "price_up": sum(1 for e in price_events if e.get("变化类型") == "UP"),
         "price_down": sum(1 for e in price_events if e.get("变化类型") == "DOWN"),
         "promo_start": sum(1 for e in badge_events if e.get("事件类型") == "PROMO_START"),
