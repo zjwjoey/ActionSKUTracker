@@ -32,13 +32,15 @@ def is_challenge(title: str) -> bool:
 
 
 class BrowserSession:
-    def __init__(self, browser_cfg: dict, cookies_path: str | Path | None = None, page: Page | None = None):
+    def __init__(self, browser_cfg: dict, cookies_path: str | Path | None = None, page: Page | None = None,
+                 access_controller=None):
         self.cfg = browser_cfg
         self.cookies_path = Path(cookies_path) if cookies_path else None
         self._pw = None
         self._browser = None
         self._ctx = None
         self.page = page
+        self.access_controller = access_controller
 
     # ---- 生命周期 ----
     def __enter__(self):
@@ -86,14 +88,28 @@ class BrowserSession:
     def goto(self, url: str, timeout_ms: int | None = None) -> bool:
         """访问 URL，尽力通过挑战页。返回最终是否未停留在挑战页。"""
         page = self.page
-        page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms or self.cfg.get("timeout_ms", 45000))
+        if self.access_controller:
+            self.access_controller.before_navigation()
+        try:
+            response = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms or self.cfg.get("timeout_ms", 45000))
+        except Exception:
+            if self.access_controller:
+                self.access_controller.record(error=True)
+            raise
+        if self.access_controller:
+            self.access_controller.record(status=response.status if response else None)
         for _ in range(self.cfg.get("challenge_reloads", 15)):
             try:
                 title = page.title()
             except Exception:
                 title = ""
             if not is_challenge(title):
+                if self.access_controller:
+                    self.access_controller.record()
                 return True
+            if self.access_controller:
+                self.access_controller.record(challenge=True)
+                return False
             time.sleep(self.cfg.get("challenge_sleep_ms", 800) / 1000.0)
             try:
                 page.reload(wait_until="domcontentloaded")

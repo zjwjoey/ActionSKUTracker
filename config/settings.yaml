@@ -34,6 +34,7 @@ browser:
   timeout_ms: 45000
   challenge_reloads: 15
   challenge_sleep_ms: 800
+  cooldown_seconds: 60
   # 温和并行节奏（复刻旧脚本经验，避免被限流）
   sleep_ms: 2500
   # 会话 cookies 文件（可选，存在则加载，用于保持 consent/locale）
@@ -69,6 +70,7 @@ qa:
 
 # ---- 运行策略 ----
 run:
+  lock_stale_minutes: 180
   # 详情抓取后多久需要强制刷新（天）
   detail_refresh_days: 7
   # 翻译：阶段一不做（中文列用西语 fallback 占位）。

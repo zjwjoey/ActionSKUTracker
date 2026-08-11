@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import hashlib
 from dataclasses import asdict
 from datetime import date, datetime
 from pathlib import Path
@@ -21,11 +22,14 @@ from ..excel.writer import RUN_LOG_HEADERS, write_master
 from ..monitor import listing as listing_mod
 from ..monitor.sku_monitor import run_sku_monitor
 from ..monitor.sitemap import fetch_sitemap
+from ..monitor.structure import discover_categories
 from ..products import updater as updater_mod
 from ..products.badges import build_badge_state
 from ..qa.validator import run_qa
 from ..services import change as change_mod
 from ..services.browser import BrowserSession
+from ..services.access import AccessController
+from ..services.runtime import RunLock, madrid_now, observation_date
 from ..services.gitutil import git_commit_info
 from ..services.hashing import content_hash
 from ..services.review import add_review_item
@@ -71,13 +75,15 @@ def run_daily(
     max_categories: int | None = None,
     max_pages: int | None = None,
 ) -> dict:
-    start_dt = datetime.now()
-    run_date = date.today().isoformat()
+    start_dt = madrid_now()
+    run_date = observation_date()
     run_id = f"{run_date}_{start_dt.strftime('%H%M%S')}"
     start_time = start_dt.strftime("%H:%M:%S")
     do_detail = fetch_details if fetch_details is not None else cfg["run"]["dry_run_fetch_details"]
 
     paths: dict[str, Path] = cfg["paths"]
+    run_lock = RunLock(paths["state"], stale_minutes=cfg["run"].get("lock_stale_minutes", 180))
+    run_lock.acquire(run_id)
     snap_dir = paths["snapshots"] / run_date / run_id
     snap_dir.mkdir(parents=True, exist_ok=True)
 
@@ -91,7 +97,9 @@ def run_daily(
 
     # ---- 采集 ----
     site = cfg["site"]
-    categories = site["categories"]
+    configured_categories = site["categories"]
+    special_categories = {k: v for k, v in configured_categories.items() if k in listing_mod.BADGE_ENTRY_KEYS}
+    categories = {k: v for k, v in configured_categories.items() if k not in listing_mod.BADGE_ENTRY_KEYS}
     if max_categories:
         categories = dict(list(categories.items())[:max_categories])
 
@@ -101,12 +109,17 @@ def run_daily(
     nuevo_skus: set[str] = set()
     promo_skus: set[str] = set()
     browser_blocked = False
-    with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path")) as browser:
+    site_structure = {"discovery_status": "NOT_STARTED", "fallback_used": False, "categories": []}
+    access = AccessController(cooldown_seconds=cfg["browser"].get("cooldown_seconds", 60))
+    with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path"), access_controller=access) as browser:
         # 1. 首页建立会话
         try:
             browser.goto(site["base_url"])
+            categories, site_structure = discover_categories(browser, categories)
         except Exception as e:
             log.warning("首页访问异常: %s", e)
+            site_structure = {"discovery_status": "FAILED", "fallback_used": True, "categories": []}
+        categories = {**categories, **special_categories}
         # 2. sitemap
         try:
             sitemap = fetch_sitemap(browser, site["sitemap_url"])
@@ -138,7 +151,7 @@ def run_daily(
         category: valid for category, valid in category_coverage.items()
         if category not in {listing_mod.CATEGORY_LABELS["nuevo"], listing_mod.CATEGORY_LABELS["promocion-semanal"]}
     }
-    observation_complete = sitemap is not None and all(primary_coverage.values())
+    observation_complete = sitemap is not None and all(primary_coverage.values()) and access.state.value == "NORMAL"
     statuses, today_set = run_sku_monitor(
         sitemap_skus,
         today_light,
@@ -264,7 +277,7 @@ def run_daily(
         price_down=counts["price_down"],
         anomaly_count=len(anomalies),
         products=products_for_qa,
-        blocked=browser_blocked,
+        blocked=browser_blocked or access.blocked,
         observation_valid=observation_complete,
         category_coverage=primary_coverage,
     )
@@ -290,6 +303,14 @@ def run_daily(
                                  "nuevo_present": s.nuevo_present, "promotion_present": s.promotion_present,
                                  "observation_valid": s.observation_valid} for s in statuses.values()],
         "coverage": primary_coverage,
+        "site_structure": {**site_structure, "run_id": run_id, "observation_date": run_date,
+                           "access_state": str(access.state), "access_events": access.events},
+        "run_manifest": {
+            "run_id": run_id, "observation_date": run_date, "started_at": start_dt.isoformat(),
+            "git_commit": git_commit_info(), "working_tree_dirty": git_commit_info().endswith("-dirty"),
+            "config_hash": hashlib.sha256((cfg["project_root"] / "config" / "settings.yaml").read_bytes()).hexdigest(),
+            "access_state": access.state.value,
+        },
         "product_updates": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"]} for p in plans],
         "translation_updates": translation_updates,
         "qa_report": qa.to_dict(),
@@ -323,6 +344,7 @@ def run_daily(
 
     run_report["commit_status"] = commit_status
     _print_report(run_report, qa)
+    run_lock.release()
     return {"run_id": run_id, "run_report": run_report, "qa": qa.to_dict(),
             "commit_status": commit_status, "snapshot_dir": str(snap_dir)}
 

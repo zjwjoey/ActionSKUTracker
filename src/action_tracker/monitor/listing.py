@@ -273,7 +273,9 @@ def scan_all_categories(browser, categories: dict[str, str], max_pages: int | No
                 it.cat1_es = label_map.get(cat, cat)
             result[cat] = items
             # A deliberately limited scan is useful for diagnostics, never absence evidence.
-            coverage[label_map.get(cat, cat)] = complete
+            # A zero-product result after retry is not trusted as an empty category: it can
+            # also mean the card/SKU parser no longer matches the site structure.
+            coverage[label_map.get(cat, cat)] = complete and bool(items)
             log.info("  %s -> %d 商品", cat, len(items))
         except Exception as e:
             log.error("  %s 扫描失败: %s", cat, e)
