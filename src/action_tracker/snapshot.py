@@ -15,6 +15,12 @@ def _json(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False, indent=2, default=str)
 
 
+def _write_text_atomic(path: Path, text: str) -> None:
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(text, encoding="utf-8")
+    temp.replace(path)
+
+
 def _write_csv(path: Path, rows: list[dict]) -> None:
     if not rows:
         path.write_text("", encoding="utf-8-sig")
@@ -45,11 +51,11 @@ def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> 
     snap_dir.mkdir(parents=True, exist_ok=True)
 
     if data.get("sitemap_raw_xml"):
-        (snap_dir / "sitemap_raw.xml").write_text(data["sitemap_raw_xml"], encoding="utf-8")
+        _write_text_atomic(snap_dir / "sitemap_raw.xml", data["sitemap_raw_xml"])
     if data.get("sitemap_skus"):
         _write_csv(snap_dir / "sitemap_skus.csv", [{"sku": s} for s in data["sitemap_skus"]])
     if data.get("listing_raw"):
-        (snap_dir / "listing_raw.json").write_text(_json(data["listing_raw"]), encoding="utf-8")
+        _write_text_atomic(snap_dir / "listing_raw.json", _json(data["listing_raw"]))
     if data.get("listing_products"):
         _write_csv(snap_dir / "listing_products.csv", data["listing_products"])
     if data.get("products_normalized"):
@@ -59,12 +65,12 @@ def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> 
     if data.get("presence_evidence"):
         _write_csv(snap_dir / "presence_evidence.csv", data["presence_evidence"])
     if data.get("coverage") is not None:
-        (snap_dir / "coverage.json").write_text(_json(data["coverage"]), encoding="utf-8")
+        _write_text_atomic(snap_dir / "coverage.json", _json(data["coverage"]))
     if data.get("site_structure") is not None:
-        (snap_dir / "site_structure.json").write_text(_json(data["site_structure"]), encoding="utf-8")
+        _write_text_atomic(snap_dir / "site_structure.json", _json(data["site_structure"]))
         _write_csv(snap_dir / "category_structure.csv", data["site_structure"].get("categories") or [])
     if data.get("run_manifest") is not None:
-        (snap_dir / "run_manifest.json").write_text(_json(data["run_manifest"]), encoding="utf-8")
+        _write_text_atomic(snap_dir / "run_manifest.json", _json(data["run_manifest"]))
     if data.get("detail_evidence"):
         _write_csv(snap_dir / "detail_evidence.csv", data["detail_evidence"])
     if data.get("product_updates"):
@@ -72,9 +78,9 @@ def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> 
     if data.get("translation_updates"):
         _write_csv(snap_dir / "translation_updates.csv", data["translation_updates"])
     if data.get("qa_report"):
-        (snap_dir / "qa_report.json").write_text(_json(data["qa_report"]), encoding="utf-8")
+        _write_text_atomic(snap_dir / "qa_report.json", _json(data["qa_report"]))
     if data.get("run_report"):
-        (snap_dir / "run_report.json").write_text(_json(data["run_report"]), encoding="utf-8")
+        _write_text_atomic(snap_dir / "run_report.json", _json(data["run_report"]))
     return snap_dir
 
 

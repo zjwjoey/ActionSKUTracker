@@ -68,24 +68,68 @@ def _light_dict(lp) -> dict:
     return {k: d.get(k) for k in _LIGHT_FIELDS}
 
 
+def _persist_fatal_run_evidence(cfg: dict[str, Any], context: dict, error: BaseException) -> None:
+    """Best-effort evidence persistence which never masks the collection error."""
+    finished = madrid_now().isoformat()
+    report = {
+        "run_id": context["run_id"], "run_date": context["run_date"],
+        "dry_run": context["dry_run"], "started_at": context["started_at"],
+        "finished_at": finished, "run_mode": "dry-run" if context["dry_run"] else "formal",
+        "git_commit": git_commit_info(), "working_tree_dirty": git_commit_info().endswith("-dirty"),
+        "access_state": "UNKNOWN", "observation_complete": False, "qa_state": "NOT_REACHED",
+        "fatal_error": {"type": type(error).__name__, "message": str(error)},
+        "cleanup_status": "lock_release_pending", "snapshot": str(context["snap_dir"]),
+    }
+    manifest = {"run_id": context["run_id"], "observation_date": context["run_date"],
+                "started_at": context["started_at"], "finished_at": finished,
+                "run_mode": report["run_mode"], "git_commit": report["git_commit"],
+                "working_tree_dirty": report["working_tree_dirty"], "fatal_error": report["fatal_error"]}
+    try:
+        write_snapshot(cfg, context["run_date"], {"run_manifest": manifest, "run_report": report})
+    except Exception:
+        log.exception("secondary failure while persisting fatal run evidence")
+
+
+def _finalized_run(fn):
+    def wrapped(cfg: dict[str, Any], dry_run: bool = True, **kwargs):
+        start_dt = madrid_now()
+        run_date = observation_date()
+        run_id = f"{run_date}_{start_dt.strftime('%H%M%S')}"
+        paths: dict[str, Path] = cfg["paths"]
+        lock = RunLock(paths["state"], stale_minutes=cfg["run"].get("lock_stale_minutes", 180))
+        context = {"run_id": run_id, "run_date": run_date, "started_at": start_dt.isoformat(),
+                   "dry_run": dry_run, "snap_dir": paths["snapshots"] / run_date / run_id}
+        lock.acquire(run_id, command="daily-run --dry-run" if dry_run else "daily-run")
+        context["snap_dir"].mkdir(parents=True, exist_ok=True)
+        try:
+            return fn(cfg, dry_run=dry_run, _run_context=context, **kwargs)
+        except BaseException as error:
+            _persist_fatal_run_evidence(cfg, context, error)
+            raise
+        finally:
+            lock.release()
+    return wrapped
+
+
+@_finalized_run
 def run_daily(
     cfg: dict[str, Any],
     dry_run: bool = True,
     fetch_details: bool | None = None,
     max_categories: int | None = None,
     max_pages: int | None = None,
+    _run_context: dict | None = None,
 ) -> dict:
-    start_dt = madrid_now()
-    run_date = observation_date()
-    run_id = f"{run_date}_{start_dt.strftime('%H%M%S')}"
+    if _run_context is None:  # Defensive: public calls always enter through the decorator.
+        raise RuntimeError("run context is required")
+    start_dt = datetime.fromisoformat(_run_context["started_at"])
+    run_date = _run_context["run_date"]
+    run_id = _run_context["run_id"]
     start_time = start_dt.strftime("%H:%M:%S")
     do_detail = fetch_details if fetch_details is not None else cfg["run"]["dry_run_fetch_details"]
 
     paths: dict[str, Path] = cfg["paths"]
-    run_lock = RunLock(paths["state"], stale_minutes=cfg["run"].get("lock_stale_minutes", 180))
-    run_lock.acquire(run_id)
-    snap_dir = paths["snapshots"] / run_date / run_id
-    snap_dir.mkdir(parents=True, exist_ok=True)
+    snap_dir = _run_context["snap_dir"]
 
     # ---- 基线与状态 ----
     master = paths["master"]
@@ -332,7 +376,8 @@ def run_daily(
             **browser.manifest(),
         },
         "detail_evidence": detail_evidence,
-        "product_updates": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"]} for p in plans],
+        "product_updates": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"],
+                             "need_detail": p["need_detail"]} for p in plans],
         "translation_updates": translation_updates,
         "qa_report": qa.to_dict(),
         "run_report": run_report,
@@ -340,7 +385,8 @@ def run_daily(
     write_snapshot(cfg, run_date, data)
     stage_data = {
         "sku_changes": sku_delta_rows,
-        "product_changes": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"]} for p in plans],
+        "product_changes": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"],
+                            "need_detail": p["need_detail"]} for p in plans],
         "price_changes": price_events,
         "translation_changes": translation_updates,
         "event_changes": event_events,
@@ -364,8 +410,12 @@ def run_daily(
             log.error("QA 未通过（%s），禁止写 Master / known_skus / offline_skus", qa.state)
 
     run_report["commit_status"] = commit_status
+    run_report["finished_at"] = madrid_now().isoformat()
+    run_report["cleanup_status"] = "lock_release_pending"
+    # Commit status and completion time are produced after the main snapshot.
+    # Rewrite this small, atomic report independently of QA outcome.
+    write_snapshot(cfg, run_date, {"run_report": run_report})
     _print_report(run_report, qa)
-    run_lock.release()
     return {"run_id": run_id, "run_report": run_report, "qa": qa.to_dict(),
             "commit_status": commit_status, "snapshot_dir": str(snap_dir)}
 

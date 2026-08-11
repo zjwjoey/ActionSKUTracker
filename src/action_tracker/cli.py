@@ -25,6 +25,9 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--max-categories", type=int, default=None)
     d.add_argument("--max-pages", type=int, default=None)
 
+    r = sub.add_parser("detail-retry", help="仅重试已有 snapshot 中未完成的商品详情")
+    r.add_argument("--run-id", required=True, help="父 dry-run 的 run_id")
+
     b = sub.add_parser("init-baseline", help="从 runtime Master 建立初始状态文件")
     b.add_argument("--force", action="store_true", help="重建状态文件")
 
@@ -56,6 +59,11 @@ def main(argv=None) -> int:
             max_pages=args.max_pages,
         )
         print(json.dumps({"run_id": res["run_id"], "qa": res["qa"]["state"]}, ensure_ascii=False))
+        return 0
+    if args.command == "detail-retry":
+        from .orchestrator.detail_retry import run_detail_retry
+        res = run_detail_retry(cfg, args.run_id)
+        print(json.dumps(res, ensure_ascii=False))
         return 0
     if args.command == "init-baseline":
         from . import baseline
