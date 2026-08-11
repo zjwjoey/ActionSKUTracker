@@ -17,6 +17,10 @@ class _Browser:
     def __init__(self, links): self.page = _Page(links)
 
 
+class _SleepOnlyBrowser:
+    def sleep(self): pass
+
+
 def test_dynamic_category_discovery_overrides_fallback_count():
     cats, meta = discover_categories(_Browser([
         {"href": "https://www.action.com/es-es/c/hogar/", "name": "Hogar"},
@@ -73,3 +77,14 @@ def test_detail_tasks_stop_when_global_access_is_not_normal(tmp_path: Path):
         access_controller=ctl, detail_evidence=evidence)
     assert changes == [] and updated == {}
     assert evidence[0]["error_type"] == "DETAIL_BLOCKED"
+
+
+def test_degraded_access_still_allows_bounded_detail_attempt(tmp_path: Path, monkeypatch):
+    ctl = AccessController(cooldown_seconds=0)
+    ctl.record(error=True)
+    called = []
+    monkeypatch.setattr(updater, "_get_detail", lambda *args: called.append(args[2]) or None)
+    updater.fetch_and_merge(_SleepOnlyBrowser(), [{"sku": "1001", "canonical_id": "ACT0001001", "reason": "NEW", "need_detail": True,
+                                        "light": {"product_url": "https://x/p/1001/"}}], {}, tmp_path,
+                            access_controller=ctl)
+    assert called == ["1001"]

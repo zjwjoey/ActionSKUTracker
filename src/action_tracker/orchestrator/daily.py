@@ -110,6 +110,7 @@ def run_daily(
     promo_skus: set[str] = set()
     browser_blocked = False
     detail_evidence: list[dict] = []
+    detail_completed_skus: list[str] = []
     site_structure = {"discovery_status": "NOT_STARTED", "fallback_used": False, "categories": []}
     access = AccessController(cooldown_seconds=cfg["browser"].get("cooldown_seconds", 60))
     with BrowserSession(cfg["browser"], cfg["browser"].get("cookies_path"), access_controller=access) as browser:
@@ -182,7 +183,8 @@ def run_daily(
             _, updated = updater_mod.fetch_and_merge(
                 browser, [p for p in plans if p["need_detail"]], baseline, snap_dir,
                 cfg["lifecycle"]["max_detail_retries"], nuevo_skus=nuevo_skus, promo_skus=promo_skus,
-                access_controller=access, detail_evidence=detail_evidence)
+                access_controller=access, detail_evidence=detail_evidence,
+                detail_completed_skus=detail_completed_skus)
     # 轻量合并（无论是否抓详情都执行）：light 字段必须落到最终保存的记录上，
     # 否则 fetch_and_merge 的产物（缺 cat1_es/product_url）会盖掉 light 的类目/链接。
     # 已抓详情的 SKU 跳过 raw_tags（详情页标签权威），只补 cat1_es/product_url 等。
@@ -294,7 +296,7 @@ def run_daily(
                              price_events, badge_events, content_events, anomalies, qa, snap_dir,
                              observation_complete, primary_coverage,
                              detail_planned=len([p for p in plans if p["need_detail"]]),
-                             detail_completed=len(updated), detail_evidence=detail_evidence,
+                             detail_completed=len(detail_completed_skus), detail_evidence=detail_evidence,
                              access_state=access.state.value)
     data = {
         "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",

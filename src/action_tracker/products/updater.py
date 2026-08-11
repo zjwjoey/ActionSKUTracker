@@ -119,6 +119,7 @@ def fetch_and_merge(
     promo_skus: set[str] | None = None,
     access_controller=None,
     detail_evidence: list[dict] | None = None,
+    detail_completed_skus: list[str] | None = None,
 ) -> tuple[list[dict], dict[str, dict]]:
     """抓取需要详情的 SKU，合并轻量/详情字段，返回 (变化列表, 更新后记录)。
 
@@ -136,9 +137,10 @@ def fetch_and_merge(
     ckpt_file = checkpoint_dir / "detail_fetch.jsonl"
     done = _read_ckpt(ckpt_file)
     detail_evidence = detail_evidence if detail_evidence is not None else []
+    detail_completed_skus = detail_completed_skus if detail_completed_skus is not None else []
 
     for i, plan in enumerate(plans, 1):
-        if access_controller and access_controller.state.value != "NORMAL":
+        if access_controller and access_controller.state.value in ("COOLDOWN", "PROBE", "BLOCKED"):
             detail_evidence.append({"sku": plan["sku"], "url": (plan.get("light") or {}).get("product_url", ""),
                                     "stage": "PRODUCT_DETAIL", "error_type": "DETAIL_BLOCKED",
                                     "access_state_before": access_controller.state.value,
@@ -157,6 +159,7 @@ def fetch_and_merge(
                                  access_controller, detail_evidence)
             if detail:
                 has_detail = True
+                detail_completed_skus.append(sku)
                 for k, v in detail.items():
                     if v is not None and v != "":
                         rec[k] = v
