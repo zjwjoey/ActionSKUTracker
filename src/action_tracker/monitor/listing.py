@@ -191,7 +191,7 @@ def _wait_for_grid(browser, tries: int = 12) -> bool:
 
 
 def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None,
-                  goto_retries: int = 3) -> list[LightProduct]:
+                  goto_retries: int = 3, include_coverage: bool = False):
     """扫描单个类目全部分页，返回轻量商品列表。
 
     每页先确认网格真正渲染（_wait_for_grid），否则提取会读到旧 DOM/挑战页，
@@ -215,6 +215,7 @@ def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None,
             log.warning("  [%s] 首屏 goto 失败(%s)，整类目重试 %d/%d", cat, str(e)[:90], attempt, goto_retries)
         browser.sleep()
     total = _detect_max_page(browser)
+    complete = max_pages is None
     if max_pages:
         total = min(total, max_pages)
     seen: dict[str, LightProduct] = {}
@@ -222,9 +223,11 @@ def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None,
         url = cat_url if p == 1 else f"{cat_url}?page={p}"
         try:
             if not _goto_page(browser, url, cat, p, total):
+                complete = False
                 browser.sleep()
                 continue
             if not _wait_for_grid(browser):
+                complete = False
                 log.warning("  [%s] 页 %d/%d 网格未加载(疑似被拦截)，跳过", cat, p, total)
                 browser.sleep()
                 continue
@@ -244,29 +247,36 @@ def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None,
                     added += 1
             log.info("  [%s] 页 %d/%d 本页 %d 新增 %d 累计 %d", cat, p, total, len(raw_list), added, len(seen))
         except Exception as e:
+            complete = False
             log.warning("  [%s] 页 %d/%d 失败: %s", cat, p, total, e)
         browser.sleep()
-    return list(seen.values())
+    items = list(seen.values())
+    return (items, complete) if include_coverage else items
 
 
-def scan_all_categories(browser, categories: dict[str, str], max_pages: int | None = None) -> dict[str, list[LightProduct]]:
-    """扫描所有类目，返回 {cat: [LightProduct, ...]}。"""
+def scan_all_categories(browser, categories: dict[str, str], max_pages: int | None = None,
+                        include_coverage: bool = False):
+    """扫描所有类目。include_coverage=True 时另返回每类目的有效覆盖证据。"""
     result = {}
+    coverage: dict[str, bool] = {}
     label_map = {k: v for k, v in CATEGORY_LABELS.items()}
     for cat, url in categories.items():
         log.info("扫描类别: %s", cat)
         try:
-            items = scan_category(browser, cat, url, max_pages=max_pages)
+            items, complete = scan_category(browser, cat, url, max_pages=max_pages, include_coverage=True)
             if not items:
                 # 防御：一类目 0 商品几乎必为失败（实测 ERR_CONNECTION_CLOSED 整类丢），重扫一次
                 log.warning("  %s 首次 0 商品，整类重扫一次", cat)
                 browser.sleep()
-                items = scan_category(browser, cat, url, max_pages=max_pages)
+                items, complete = scan_category(browser, cat, url, max_pages=max_pages, include_coverage=True)
             for it in items:
                 it.cat1_es = label_map.get(cat, cat)
             result[cat] = items
+            # A deliberately limited scan is useful for diagnostics, never absence evidence.
+            coverage[label_map.get(cat, cat)] = complete
             log.info("  %s -> %d 商品", cat, len(items))
         except Exception as e:
             log.error("  %s 扫描失败: %s", cat, e)
             result[cat] = []
-    return result
+            coverage[label_map.get(cat, cat)] = False
+    return (result, coverage) if include_coverage else result

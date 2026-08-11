@@ -2,6 +2,11 @@
 from action_tracker.translation.service import apply_zh
 
 
+def test_translation_without_provider_is_marked_not_configured():
+    rec = {"name_es": "X", "name_zh": "\u4e2d\u6587"}
+    assert apply_zh(rec)["translation_status"] == "NOT_CONFIGURED"
+
+
 def test_t17_zh_fallback():
     rec = {
         "name_es": "Barra de cola",

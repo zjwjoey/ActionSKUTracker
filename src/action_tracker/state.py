@@ -118,7 +118,7 @@ def apply_state_transition(
     now = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     for sku, st in statuses.items():
         status = getattr(st, "status", None)
-        if status == "ABSENT":
+        if status in ("ABSENT", "UNKNOWN"):
             continue  # 从未见过不建档；已知但 ABSENT 的异常状态保持不变
         rec = new_known.get(sku)
         if rec is None:

@@ -57,3 +57,11 @@ def test_blocked_qa_fail():
                 new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0, products=[], blocked=True)
     assert qa.state == "BLOCKED"
     assert qa.passed is False
+
+
+def test_incomplete_observation_fails_qa_before_lifecycle_commit():
+    qa = run_qa(_cfg(), yesterday_total=10, today_total=10, sitemap_count=10, listing_count=10,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=_products(10), observation_valid=False, category_coverage={"Hogar": False})
+    assert qa.state == "FAIL"
+    assert qa.checks["observation_valid"][0] is False

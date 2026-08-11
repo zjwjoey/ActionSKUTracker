@@ -38,7 +38,10 @@ def _dicts_from_objs(objs: list[Any], fields: list[str]) -> list[dict]:
 
 def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> Path:
     """写入每日 snapshot 目录，返回目录路径。"""
-    snap_dir: Path = cfg["paths"]["snapshots"] / run_date
+    run_id = (data.get("run_report") or {}).get("run_id")
+    if not run_id:
+        raise ValueError("snapshot 需要 run_report.run_id，避免同日运行覆盖证据")
+    snap_dir: Path = cfg["paths"]["snapshots"] / run_date / str(run_id)
     snap_dir.mkdir(parents=True, exist_ok=True)
 
     if data.get("sitemap_raw_xml"):
@@ -53,6 +56,10 @@ def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> 
         _write_csv(snap_dir / "products_normalized.csv", data["products_normalized"])
     if data.get("sku_delta"):
         _write_csv(snap_dir / "sku_delta.csv", data["sku_delta"])
+    if data.get("presence_evidence"):
+        _write_csv(snap_dir / "presence_evidence.csv", data["presence_evidence"])
+    if data.get("coverage") is not None:
+        (snap_dir / "coverage.json").write_text(_json(data["coverage"]), encoding="utf-8")
     if data.get("product_updates"):
         _write_csv(snap_dir / "product_updates.csv", data["product_updates"])
     if data.get("translation_updates"):
@@ -74,6 +81,8 @@ def write_staging(cfg: dict[str, Any], run_id: str, data: dict[str, Any]) -> Pat
         ("price_changes.csv", data.get("price_changes")),
         ("translation_changes.csv", data.get("translation_changes")),
         ("event_changes.csv", data.get("event_changes")),
+        ("presence_evidence.csv", data.get("presence_evidence")),
+        ("lifecycle_changes.csv", data.get("lifecycle_changes")),
     ):
         if rows:
             _write_csv(stage_dir / name, rows)

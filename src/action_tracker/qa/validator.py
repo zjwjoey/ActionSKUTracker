@@ -45,6 +45,8 @@ def run_qa(
     anomaly_count: int,
     products: list[dict],
     blocked: bool = False,
+    observation_valid: bool = True,
+    category_coverage: dict[str, bool] | None = None,
 ) -> QAReport:
     q = cfg["qa"]
     checks: dict[str, tuple[bool, str]] = {}
@@ -55,6 +57,12 @@ def run_qa(
     if blocked:
         checks["fetch_not_blocked"] = (False, "网站访问异常/BLOCKED")
         return QAReport(passed=False, state="BLOCKED", checks=checks, counts=_counts(locals()), reasons=["网站访问被封锁"])
+
+    if not observation_valid:
+        failed = [name for name, valid in (category_coverage or {}).items() if not valid]
+        message = "sitemap 无有效观测" + (f"; listing 未完整类目: {', '.join(failed)}" if failed else "")
+        checks["observation_valid"] = (False, message)
+        return QAReport(passed=False, state="FAIL", checks=checks, counts=_counts(locals()), reasons=[message])
 
     # 1. 总量变化比例
     drop = _pct(max(0, yesterday_total - today_total), yesterday_total)

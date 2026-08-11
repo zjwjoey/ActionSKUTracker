@@ -78,7 +78,7 @@ def run_daily(
     do_detail = fetch_details if fetch_details is not None else cfg["run"]["dry_run_fetch_details"]
 
     paths: dict[str, Path] = cfg["paths"]
-    snap_dir = paths["snapshots"] / run_date
+    snap_dir = paths["snapshots"] / run_date / run_id
     snap_dir.mkdir(parents=True, exist_ok=True)
 
     # ---- 基线与状态 ----
@@ -115,7 +115,8 @@ def run_daily(
             log.error("sitemap 失败: %s", e)
             browser_blocked = True
         # 3. listing 轻量扫描（17 个入口：15 个类目 + Nuevo + Promoción semanal）
-        listing_map = listing_mod.scan_all_categories(browser, categories, max_pages=max_pages)
+        listing_map, category_coverage = listing_mod.scan_all_categories(
+            browser, categories, max_pages=max_pages, include_coverage=True)
         for cat, cat_items in listing_map.items():
             if cat == "nuevo":
                 # 专属徽章页：sku 在该页 = Nuevo 徽章开启（徽章检测的权威信号）
@@ -132,17 +133,25 @@ def run_daily(
         # 需要等 SKU Monitor 出计划，但 browser 会话在此；先扫描完，稍后在同一会话内补详情。
 
     # ---- SKU Monitor ----
-    if sitemap is None:
-        raise RuntimeError("sitemap 获取失败，无法继续")
+    sitemap_skus = sitemap.skus if sitemap is not None else []
+    primary_coverage = {
+        category: valid for category, valid in category_coverage.items()
+        if category not in {listing_mod.CATEGORY_LABELS["nuevo"], listing_mod.CATEGORY_LABELS["promocion-semanal"]}
+    }
+    observation_complete = sitemap is not None and all(primary_coverage.values())
     statuses, today_set = run_sku_monitor(
-        sitemap.skus,
+        sitemap_skus,
         today_light,
         baseline,
         known,
         cfg["lifecycle"]["offline_confirmation_runs"],
+        sitemap_valid=sitemap is not None,
+        category_coverage=primary_coverage,
+        nuevo_skus=nuevo_skus,
+        promo_skus=promo_skus,
     )
     log.info("SKU 状态统计: %s", {s: sum(1 for x in statuses.values() if x.status == s) for s in
-                                   {"NEW", "ACTIVE", "REAPPEARED", "MISSING_FIRST", "MISSING_CONTINUED", "OFFLINE", "ABSENT"}})
+                                   {"NEW", "ACTIVE", "REAPPEARED", "MISSING_FIRST", "MISSING_CONTINUED", "OFFLINE", "UNKNOWN", "ABSENT"}})
 
     # ---- 计划更新 ----
     plans = updater_mod.plan_updates(
@@ -247,7 +256,7 @@ def run_daily(
         cfg,
         yesterday_total=len(baseline),
         today_total=len(today_set),
-        sitemap_count=len(sitemap.skus),
+        sitemap_count=len(sitemap_skus),
         listing_count=len(today_light),
         new_count=counts["new"],
         missing_count=counts["missing"],
@@ -256,6 +265,8 @@ def run_daily(
         anomaly_count=len(anomalies),
         products=products_for_qa,
         blocked=browser_blocked,
+        observation_valid=observation_complete,
+        category_coverage=primary_coverage,
     )
     log.info("QA: state=%s passed=%s", qa.state, qa.passed)
 
@@ -265,14 +276,20 @@ def run_daily(
         "source_flag": s.source_flag, "event": s.event or "", "missing_count": s.missing_count,
     } for s in statuses.values()]
     run_report = _run_report(cfg, run_id, run_date, dry_run, len(baseline), len(today_set), statuses,
-                             price_events, badge_events, content_events, anomalies, qa, snap_dir)
+                             price_events, badge_events, content_events, anomalies, qa, snap_dir,
+                             observation_complete, primary_coverage)
     data = {
-        "sitemap_raw_xml": sitemap.raw_xml,
-        "sitemap_skus": sitemap.skus,
+        "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",
+        "sitemap_skus": sitemap_skus,
         "listing_raw": {cat: [asdict(lp) for lp in items] for cat, items in listing_map.items()},
         "listing_products": [{"sku": k, **{f: v for f, v in v.items() if f in _LIGHT_FIELDS}} for k, v in today_light.items()],
         "products_normalized": [{"sku": k, **{f: v for f, v in v.items()}} for k, v in today_records.items()],
         "sku_delta": sku_delta_rows,
+        "presence_evidence": [{"sku": s.sku, "source_flag": s.source_flag,
+                                 "sitemap_present": s.sitemap_present, "listing_present": s.listing_present,
+                                 "nuevo_present": s.nuevo_present, "promotion_present": s.promotion_present,
+                                 "observation_valid": s.observation_valid} for s in statuses.values()],
+        "coverage": primary_coverage,
         "product_updates": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"]} for p in plans],
         "translation_updates": translation_updates,
         "qa_report": qa.to_dict(),
@@ -285,6 +302,8 @@ def run_daily(
         "price_changes": price_events,
         "translation_changes": translation_updates,
         "event_changes": event_events,
+        "presence_evidence": data["presence_evidence"],
+        "lifecycle_changes": sku_delta_rows,
     }
     write_staging(cfg, run_id, stage_data)
     # ---- 正式提交（只发生在 非 dry-run 且 QA PASS；否则 Master/known_skus/offline_skus 一律不动）----
@@ -292,7 +311,7 @@ def run_daily(
     if not dry_run:
         if qa.passed:
             run_log_row = _run_log_row(run_id, run_date, start_time, counts, qa, dry_run,
-                                       sitemap_count=len(sitemap.skus), listing_count=len(today_light))
+                                       sitemap_count=len(sitemap_skus), listing_count=len(today_light))
             commit_status = _commit_phase(
                 cfg, statuses=statuses, known=known, run_date=run_date, run_id=run_id,
                 offline_runs=cfg["lifecycle"]["offline_confirmation_runs"],
@@ -318,6 +337,7 @@ def _counts(statuses, today_set, sitemap, listing_map, price_events, badge_event
         "missing_first": sum(1 for s in statuses.values() if s.status == "MISSING_FIRST"),
         "missing_continued": sum(1 for s in statuses.values() if s.status == "MISSING_CONTINUED"),
         "offline": sum(1 for s in statuses.values() if s.status == "OFFLINE"),
+        "unknown": sum(1 for s in statuses.values() if s.status == "UNKNOWN"),
         "price_up": sum(1 for e in price_events if e.get("变化类型") == "UP"),
         "price_down": sum(1 for e in price_events if e.get("变化类型") == "DOWN"),
         "promo_start": sum(1 for e in badge_events if e.get("事件类型") == "PROMO_START"),
@@ -362,7 +382,8 @@ def _run_log_row(run_id, run_date, start_time, counts: dict, qa, dry_run: bool,
 
 
 def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
-                price_events, badge_events, content_events, anomalies, qa, snap_dir) -> dict:
+                price_events, badge_events, content_events, anomalies, qa, snap_dir,
+                observation_complete: bool, category_coverage: dict[str, bool]) -> dict:
     from .. import __version__
     return {
         "run_id": run_id,
@@ -376,6 +397,9 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "missing_first": sum(1 for s in statuses.values() if s.status == "MISSING_FIRST"),
         "missing_continued": sum(1 for s in statuses.values() if s.status == "MISSING_CONTINUED"),
         "offline": sum(1 for s in statuses.values() if s.status == "OFFLINE"),
+        "unknown": sum(1 for s in statuses.values() if s.status == "UNKNOWN"),
+        "observation_complete": observation_complete,
+        "category_coverage": category_coverage,
         "price_up": sum(1 for e in price_events if e.get("变化类型") == "UP"),
         "price_down": sum(1 for e in price_events if e.get("变化类型") == "DOWN"),
         "promo_start": sum(1 for e in badge_events if e.get("事件类型") == "PROMO_START"),
