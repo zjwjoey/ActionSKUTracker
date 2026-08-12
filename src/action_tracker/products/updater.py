@@ -141,7 +141,7 @@ def fetch_and_merge(
     detail_completed_skus = detail_completed_skus if detail_completed_skus is not None else []
 
     for i, plan in enumerate(plans, 1):
-        if access_controller and access_controller.state.value in ("COOLDOWN", "PROBE", "BLOCKED"):
+        if access_controller and access_controller.state.value in ("PROBE", "BLOCKED"):
             detail_evidence.append({**(evidence_context or {}), "sku": plan["sku"], "url": (plan.get("light") or {}).get("product_url", ""),
                                     "stage": "PRODUCT_DETAIL", "error_type": "DETAIL_BLOCKED",
                                     "access_state_before": access_controller.state.value,
@@ -210,9 +210,22 @@ def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_
     if not url:
         return None
     state_before = access_controller.state.value if access_controller else "UNKNOWN"
+    cooldown_probe_attempted = False
     try:
         return fetch_product_detail(browser, url, sku, max_retries=max_detail_retries)
     except Exception as e:
+        # A first 401/403/429/challenge moves the controller to COOLDOWN.
+        # Let BrowserSession.before_navigation perform the configured wait and
+        # exactly one cautious PROBE of the same SKU.  A second restriction
+        # transitions PROBE -> BLOCKED and stops all remaining Detail work.
+        if access_controller and access_controller.state.value == "COOLDOWN":
+            cooldown_probe_attempted = True
+            log.warning("  #%s 详情访问受限；冷却 %.0f 秒后单次探测", sku,
+                        access_controller.cooldown_seconds)
+            try:
+                return fetch_product_detail(browser, url, sku, max_retries=max_detail_retries)
+            except Exception as probe_error:
+                e = probe_error
         if detail_evidence is not None:
             events = access_controller.events if access_controller else []
             last_event = events[-1] if events else ""
@@ -224,6 +237,8 @@ def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_
                                     "challenge_detected": last_event in {"CHALLENGE_OR_403", "PROBE_BLOCKED"},
                                     "access_state_before": state_before,
                                     "access_state_after": access_controller.state.value if access_controller else "UNKNOWN",
+                                    "cooldown_probe_attempted": cooldown_probe_attempted,
+                                    "cooldown_seconds": access_controller.cooldown_seconds if cooldown_probe_attempted else 0,
                                     "attempt": max_detail_retries, "timestamp": datetime.now(timezone.utc).isoformat()})
         log.warning("  #%s 详情失败: %s", sku, str(e)[:120])
         return None

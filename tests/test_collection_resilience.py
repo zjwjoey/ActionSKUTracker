@@ -100,9 +100,9 @@ def test_single_run_lock_and_stale_reclaim(tmp_path: Path):
     RunLock(tmp_path, stale_minutes=1).acquire("two")
 
 
-def test_detail_tasks_stop_when_global_access_is_not_normal(tmp_path: Path):
+def test_detail_tasks_stop_when_global_access_is_blocked(tmp_path: Path):
     ctl = AccessController(cooldown_seconds=0)
-    ctl.record(status=429)
+    ctl.state = AccessState.BLOCKED
     evidence = []
     changes, updated = updater.fetch_and_merge(
         object(), [{"sku": "1001", "canonical_id": "ACT0001001", "reason": "NEW", "need_detail": True,
@@ -110,6 +110,58 @@ def test_detail_tasks_stop_when_global_access_is_not_normal(tmp_path: Path):
         access_controller=ctl, detail_evidence=evidence)
     assert changes == [] and updated == {}
     assert evidence[0]["error_type"] == "DETAIL_BLOCKED"
+
+
+def test_detail_cooldown_waits_and_probes_same_sku_once(tmp_path: Path, monkeypatch):
+    ctl = AccessController(cooldown_seconds=0)
+    calls = []
+
+    def fake_fetch(_browser, _url, _sku, max_retries=5):
+        calls.append(ctl.state.value)
+        if len(calls) == 1:
+            ctl.record(status=403)
+            raise CollectionBlocked("first challenge")
+        ctl.before_navigation()
+        ctl.record()
+        return {"sku": "1001", "name_es": "Recovered"}
+
+    monkeypatch.setattr("action_tracker.products.parser.fetch_product_detail", fake_fetch)
+    completed, evidence = [], []
+    updater.fetch_and_merge(
+        _SleepOnlyBrowser(), [{"sku": "1001", "canonical_id": "ACT0001001", "reason": "NEW",
+                               "need_detail": True, "light": {"product_url": "https://x/p/1001/"}}],
+        {}, tmp_path, access_controller=ctl, detail_evidence=evidence, detail_completed_skus=completed)
+    assert calls == ["NORMAL", "COOLDOWN"]
+    assert completed == ["1001"] and evidence == []
+    assert ctl.state == AccessState.NORMAL
+
+
+def test_detail_second_challenge_after_cooldown_blocks_remaining_queue(tmp_path: Path, monkeypatch):
+    ctl = AccessController(cooldown_seconds=0)
+    calls = []
+
+    def fake_fetch(_browser, _url, _sku, max_retries=5):
+        calls.append(ctl.state.value)
+        if len(calls) == 1:
+            ctl.record(status=403)
+        else:
+            ctl.before_navigation()
+            ctl.record(challenge=True)
+        raise CollectionBlocked("challenge")
+
+    monkeypatch.setattr("action_tracker.products.parser.fetch_product_detail", fake_fetch)
+    evidence = []
+    updater.fetch_and_merge(
+        _SleepOnlyBrowser(), [
+            {"sku": "1001", "canonical_id": "ACT0001001", "reason": "NEW", "need_detail": True,
+             "light": {"product_url": "https://x/p/1001/"}},
+            {"sku": "1002", "canonical_id": "ACT0001002", "reason": "NEW", "need_detail": True,
+             "light": {"product_url": "https://x/p/1002/"}},
+        ], {}, tmp_path, access_controller=ctl, detail_evidence=evidence)
+    assert calls == ["NORMAL", "COOLDOWN"]
+    assert ctl.state == AccessState.BLOCKED
+    assert evidence[0]["cooldown_probe_attempted"] is True
+    assert evidence[1]["error_type"] == "DETAIL_BLOCKED"
 
 
 def test_degraded_access_still_allows_bounded_detail_attempt(tmp_path: Path, monkeypatch):
