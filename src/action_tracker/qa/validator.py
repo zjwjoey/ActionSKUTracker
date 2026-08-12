@@ -134,22 +134,40 @@ def run_qa(
         passed = False
         reasons.append("存在重复 SKU/Canonical_ID")
 
-    # 9. 空值检查
-    null_link = sum(1 for p in products if not p.get("product_url"))
-    null_price = sum(1 for p in products if p.get("current_price") is None)
-    null_cat = sum(1 for p in products if not (p.get("cat1_es") or p.get("cat2_es")))
-    checks["null_values"] = (null_link == 0 and null_price == 0 and null_cat == 0,
-                             f"空链接{null_link} 空价格{null_price} 空类目{null_cat}")
+    # 9. Listing-backed records must have the authoritative lightweight
+    # fields. Sitemap-only products are valid Presence evidence and may remain
+    # explicitly pending until Detail retry/enrichment supplies those fields.
+    has_provenance = any("listing_fields_source" in p for p in products)
+    listing_products = ([p for p in products if p.get("listing_fields_source") == "LISTING_CURRENT_RUN"]
+                        if has_provenance else products)
+    pending_products = ([p for p in products if p.get("listing_fields_source") != "LISTING_CURRENT_RUN" and
+                         (not p.get("product_url") or p.get("current_price") is None or
+                          not (p.get("cat1_es") or p.get("cat2_es")))] if has_provenance else [])
+    null_link = sum(1 for p in listing_products if not p.get("product_url"))
+    null_price = sum(1 for p in listing_products if p.get("current_price") is None)
+    null_cat = sum(1 for p in listing_products if not (p.get("cat1_es") or p.get("cat2_es")))
+    ok = null_link == 0 and null_price == 0 and null_cat == 0
+    checks["listing_field_completeness"] = (
+        ok, f"listing空链接{null_link} 空价格{null_price} 空类目{null_cat}; 待补充{len(pending_products)}")
+    if not ok:
+        passed = False
+        reasons.append("Listing 已观测商品存在关键字段缺失")
 
     # 10. 价格合法范围
     bad_price = sum(1 for p in products if p.get("current_price") is not None and not (q["price_min"] <= p["current_price"] <= q["price_max"]))
     checks["price_range"] = (bad_price == 0, f"超范围价格{bad_price}")
+    if bad_price:
+        passed = False
+        reasons.append(f"超范围价格{bad_price}")
 
     # 11. 标签解析率（以产品原始标签为单位）
     tagged = sum(1 for p in products if p.get("raw_tags"))
     parsed = sum(1 for p in products if p.get("raw_tags") and _tags_parsed(p.get("raw_tags")))
     rate = (parsed / tagged * 100.0) if tagged else 100.0
     checks["tag_parse_rate"] = (rate >= 90, f"解析率{rate:.1f}%")
+    if rate < 90:
+        passed = False
+        reasons.append(f"标签解析率{rate:.1f}%<90%")
 
     counts = {
         "yesterday_total": yesterday_total, "today_total": today_total,

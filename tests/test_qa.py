@@ -83,3 +83,29 @@ def test_detail_access_state_does_not_invalidate_complete_presence(detail_state)
                 products=_products(10), access_state="NORMAL", detail_access_state=detail_state)
     assert qa.passed is True and qa.state == "PASS"
     assert detail_state in qa.checks["detail_access_non_authoritative"][1]
+
+
+def test_sitemap_only_pending_fields_do_not_fail_presence_qa():
+    products = _products(99)
+    for product in products:
+        product["listing_fields_source"] = "LISTING_CURRENT_RUN"
+    products.append({"sku": "100", "canonical_id": "ACT0000100", "listing_fields_source": "BASELINE",
+                     "presence_source": "SITEMAP_ONLY", "detail_status": "ACCESS_INTERRUPTED"})
+    qa = run_qa(_cfg(), yesterday_total=100, today_total=100, sitemap_count=100, listing_count=99,
+                new_count=1, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=products, access_state="NORMAL", detail_access_state="COOLDOWN")
+    assert qa.passed is True
+    assert qa.checks["listing_field_completeness"][0] is True
+    assert "待补充1" in qa.checks["listing_field_completeness"][1]
+
+
+def test_missing_fields_on_listing_observation_fail_qa():
+    products = _products(10)
+    for product in products:
+        product["listing_fields_source"] = "LISTING_CURRENT_RUN"
+    products[0]["current_price"] = None
+    qa = run_qa(_cfg(), yesterday_total=10, today_total=10, sitemap_count=10, listing_count=10,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=products)
+    assert qa.passed is False
+    assert qa.checks["listing_field_completeness"][0] is False
