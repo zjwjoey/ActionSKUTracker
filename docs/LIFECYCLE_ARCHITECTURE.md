@@ -1,6 +1,6 @@
 # Action SKU Presence and Lifecycle Architecture
 
-Updated: 2026-08-11
+Updated: 2026-08-12
 
 ## Scope
 
@@ -29,9 +29,12 @@ Daily SKU totals are QA anomaly signals only. They are not lifecycle rules and n
 
 ## QA and write gate
 
-- Any blocked fetch or incomplete primary observation fails QA.
+- The Presence gate is frozen after sitemap and all primary category listings, before Detail enrichment starts.
+- Any blocked fetch, non-NORMAL access state, invalid sitemap, or incomplete primary category coverage during Presence collection fails QA.
+- Detail is non-authoritative enrichment. A later Detail restriction is recorded as `DETAIL_ACCESS_INTERRUPTED`/`ACCESS_INTERRUPTED`; it does not invalidate already-complete Presence evidence and never changes lifecycle by itself.
+- Snapshot product rows explicitly record `presence_source`, `listing_fields_source`, `detail_fields_source`, and `detail_status` so carried-forward or pending Detail data is not presented as freshly collected.
 - QA failure and dry-run may save evidence, staging, and reports, but must not update Master, `known_skus.csv`, or `offline_skus.csv`.
-- A non-dry run can commit only after QA PASS.
+- A non-dry run can commit only after the authoritative Presence QA passes. Detail completion is reported independently and can be continued with `detail-retry`.
 
 ## Evidence layout
 

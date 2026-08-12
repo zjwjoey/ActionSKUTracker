@@ -210,7 +210,11 @@ def run_daily(
         category: valid for category, valid in category_coverage.items()
         if category not in {listing_mod.CATEGORY_LABELS["nuevo"], listing_mod.CATEGORY_LABELS["promocion-semanal"]}
     }
-    observation_complete = sitemap is not None and all(primary_coverage.values()) and access.state.value == "NORMAL"
+    # Freeze the authoritative Presence gate before Detail starts.  Detail is
+    # enrichment and must never retroactively invalidate a complete listing.
+    presence_access_state = access.state.value
+    presence_blocked = browser_blocked or access.blocked
+    observation_complete = sitemap is not None and all(primary_coverage.values()) and presence_access_state == "NORMAL"
     statuses, today_set = run_sku_monitor(
         sitemap_skus,
         today_light,
@@ -328,7 +332,25 @@ def run_daily(
             # 确认下架：移出 CURRENT（进 offline_skus；下次出现时 previous_status=OFFLINE → REAPPEARED）
             today_records.pop(sku, None)
 
-    observation_complete = sitemap is not None and all(primary_coverage.values()) and access.state.value == "NORMAL"
+    # Snapshot-level field provenance. Partial Detail is explicit and never
+    # presented as freshly collected data.
+    detail_plan_skus = {p["sku"] for p in plans if p["need_detail"]}
+    completed_detail_set = set(detail_completed_skus)
+    for sku, rec in today_records.items():
+        stat = statuses.get(sku)
+        rec["presence_source"] = getattr(stat, "source_flag", "BASELINE") if stat else "BASELINE"
+        rec["listing_fields_source"] = "LISTING_CURRENT_RUN" if sku in today_light else "BASELINE"
+        if sku in completed_detail_set:
+            rec["detail_status"] = "COMPLETE"
+            rec["detail_fields_source"] = "DETAIL_CURRENT_RUN"
+        elif sku in detail_plan_skus:
+            old = baseline.get(sku) or {}
+            has_old_detail = bool(old.get("desc_es") or old.get("details_es") or old.get("spec_es"))
+            rec["detail_status"] = "ACCESS_INTERRUPTED" if access.state.value != "NORMAL" else "PENDING"
+            rec["detail_fields_source"] = "BASELINE" if has_old_detail else "PENDING"
+        else:
+            rec["detail_status"] = "NOT_REQUIRED"
+            rec["detail_fields_source"] = "BASELINE"
 
     # ---- QA ----
     products_for_qa = list(today_records.values())
@@ -345,10 +367,11 @@ def run_daily(
         price_down=counts["price_down"],
         anomaly_count=len(anomalies),
         products=products_for_qa,
-        blocked=browser_blocked or access.blocked,
+        blocked=presence_blocked,
         observation_valid=observation_complete,
         category_coverage=primary_coverage,
-        access_state=access.state.value,
+        access_state=presence_access_state,
+        detail_access_state=access.state.value,
     )
     log.info("QA: state=%s passed=%s", qa.state, qa.passed)
 
@@ -362,7 +385,12 @@ def run_daily(
                              observation_complete, primary_coverage,
                              detail_planned=len([p for p in plans if p["need_detail"]]),
                              detail_completed=len(detail_completed_skus), detail_evidence=detail_evidence,
-                             access_state=access.state.value, access_report=access.report())
+                             access_state=access.state.value, access_report=access.report(),
+                             presence_access_state=presence_access_state,
+                             sitemap_count=len(sitemap_skus), listing_count=len(today_light),
+                             sitemap_only=len(set(sitemap_skus) - set(today_light)),
+                             listing_only=len(set(today_light) - set(sitemap_skus)),
+                             both_sources=len(set(sitemap_skus) & set(today_light)))
     data = {
         "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",
         "sitemap_skus": sitemap_skus,
@@ -381,6 +409,8 @@ def run_daily(
             "run_id": run_id, "observation_date": run_date, "started_at": start_dt.isoformat(),
             "git_commit": git_commit_info(), "working_tree_dirty": git_commit_info().endswith("-dirty"),
             "config_hash": hashlib.sha256((cfg["project_root"] / "config" / "settings.yaml").read_bytes()).hexdigest(),
+            "presence_access_state": presence_access_state,
+            "detail_access_state": access.state.value,
             "access_state": access.state.value,
             **access.report(),
             **browser.manifest(),
@@ -407,7 +437,7 @@ def run_daily(
     # ---- 正式提交（只发生在 非 dry-run 且 QA PASS；否则 Master/known_skus/offline_skus 一律不动）----
     commit_status = "DRY_RUN"
     if not dry_run:
-        if _should_commit(dry_run=dry_run, qa_passed=qa.passed, access_state=access.state.value):
+        if _should_commit(dry_run=dry_run, qa_passed=qa.passed, access_state=presence_access_state):
             run_log_row = _run_log_row(run_id, run_date, start_time, counts, qa, dry_run,
                                        sitemap_count=len(sitemap_skus), listing_count=len(today_light))
             commit_status = _commit_phase(
@@ -489,10 +519,20 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
                 observation_complete: bool, category_coverage: dict[str, bool],
                 detail_planned: int = 0, detail_completed: int = 0,
                 detail_evidence: list[dict] | None = None, access_state: str = "NORMAL",
-                access_report: dict | None = None) -> dict:
+                access_report: dict | None = None, presence_access_state: str = "NORMAL",
+                sitemap_count: int = 0, listing_count: int = 0,
+                sitemap_only: int = 0, listing_only: int = 0, both_sources: int = 0) -> dict:
     from .. import __version__
     detail_evidence = detail_evidence or []
     blocked = next((x for x in detail_evidence if x.get("error_type") == "DETAIL_BLOCKED"), None)
+    if detail_planned == 0:
+        detail_status = "NOT_REQUIRED"
+    elif detail_completed == detail_planned and access_state == "NORMAL":
+        detail_status = "COMPLETE"
+    elif access_state != "NORMAL":
+        detail_status = "ACCESS_INTERRUPTED"
+    else:
+        detail_status = "INCOMPLETE"
     return {
         "run_id": run_id,
         "run_date": run_date,
@@ -500,6 +540,12 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "version": __version__,
         "yesterday_current": yesterday,
         "today_sku": today,
+        "sitemap_sku_count": sitemap_count,
+        "listing_sku_count": listing_count,
+        "union_present_sku_count": today,
+        "sitemap_only_count": sitemap_only,
+        "listing_only_count": listing_only,
+        "both_sources_count": both_sources,
         "new": sum(1 for s in statuses.values() if s.status == "NEW"),
         "reappeared": sum(1 for s in statuses.values() if s.status == "REAPPEARED"),
         "missing_first": sum(1 for s in statuses.values() if s.status == "MISSING_FIRST"),
@@ -510,10 +556,13 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "category_coverage": category_coverage,
         "detail_planned": detail_planned,
         "detail_completed": detail_completed,
-        "detail_incomplete": len(detail_evidence),
+        "detail_incomplete": max(0, detail_planned - detail_completed),
+        "detail_status": detail_status,
         "detail_skipped_due_block": blocked.get("skipped_count", 0) if blocked else 0,
         "detail_blocked_at_sku": blocked.get("sku") if blocked else None,
         "blocked_stage": "PRODUCT_DETAIL" if blocked else None,
+        "presence_access_state": presence_access_state,
+        "detail_access_state": access_state,
         "access_state": access_state,
         **(access_report or {}),
         "price_up": sum(1 for e in price_events if e.get("变化类型") == "UP"),

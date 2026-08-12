@@ -74,3 +74,12 @@ def test_non_normal_access_state_fails_even_with_complete_coverage(access_state)
                 products=_products(10), access_state=access_state)
     assert qa.passed is False and qa.state == "FAIL"
     assert qa.checks["access_state_complete"][0] is False
+
+
+@pytest.mark.parametrize("detail_state", ["COOLDOWN", "PROBE", "BLOCKED", "DEGRADED"])
+def test_detail_access_state_does_not_invalidate_complete_presence(detail_state):
+    qa = run_qa(_cfg(), yesterday_total=10, today_total=10, sitemap_count=10, listing_count=10,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=_products(10), access_state="NORMAL", detail_access_state=detail_state)
+    assert qa.passed is True and qa.state == "PASS"
+    assert detail_state in qa.checks["detail_access_non_authoritative"][1]

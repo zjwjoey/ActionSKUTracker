@@ -48,6 +48,7 @@ def run_qa(
     observation_valid: bool = True,
     category_coverage: dict[str, bool] | None = None,
     access_state: str = "NORMAL",
+    detail_access_state: str = "NORMAL",
 ) -> QAReport:
     q = cfg["qa"]
     checks: dict[str, tuple[bool, str]] = {}
@@ -64,6 +65,12 @@ def run_qa(
         checks["access_state_complete"] = (False, message)
         return QAReport(passed=False, state="FAIL", checks=checks, counts=_counts(locals()), reasons=[message])
     checks["access_state_complete"] = (True, "global access controller NORMAL")
+
+    # Detail is enrichment only.  Once complete Presence evidence has been
+    # frozen, a later Detail restriction is reported but cannot invalidate the
+    # daily SKU observation or advance/undo lifecycle state.
+    checks["detail_access_non_authoritative"] = (
+        True, f"detail enrichment ended in {detail_access_state}; presence gate is authoritative")
 
     if not observation_valid:
         failed = [name for name, valid in (category_coverage or {}).items() if not valid]

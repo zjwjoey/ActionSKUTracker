@@ -7,6 +7,7 @@ import pytest
 from action_tracker.orchestrator import daily
 from action_tracker.orchestrator import detail_retry
 from action_tracker.services.runtime import RunLock
+from action_tracker.qa.validator import QAReport
 
 
 def _cfg(tmp_path):
@@ -83,3 +84,22 @@ def test_detail_retry_only_attempts_parent_pending_items(tmp_path, monkeypatch):
     assert seen == ["2"] and report["planned"] == 1 and report["completed"] == 1
     assert report["detail_retry_pass"] is True
     assert not (cfg["paths"]["state"] / "daily-run.lock").exists()
+
+
+def test_run_report_separates_presence_counts_and_interrupted_detail(tmp_path):
+    cfg = {"paths": {"master": tmp_path / "master.xlsx"}}
+    qa = QAReport(passed=True, state="PASS")
+    report = daily._run_report(
+        cfg, "run-1", "2026-08-12", True, 5541, 5541, {}, [], [], [], [], qa,
+        tmp_path / "snapshot", True, {"Hogar": True}, detail_planned=33,
+        detail_completed=0, detail_evidence=[], access_state="COOLDOWN",
+        presence_access_state="NORMAL", sitemap_count=5536, listing_count=5500,
+        sitemap_only=41, listing_only=5, both_sources=5495)
+    assert report["observation_complete"] is True
+    assert report["detail_status"] == "ACCESS_INTERRUPTED"
+    assert report["detail_incomplete"] == 33
+    assert report["sitemap_sku_count"] == 5536
+    assert report["listing_sku_count"] == 5500
+    assert report["union_present_sku_count"] == 5541
+    assert report["presence_access_state"] == "NORMAL"
+    assert report["detail_access_state"] == "COOLDOWN"
