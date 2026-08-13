@@ -32,6 +32,14 @@ PRICE_HISTORY_HEADERS = ["Canonical_ID", "SKU", "日期", "旧售价 (€)", "�
 EVENT_HISTORY_HEADERS = ["Canonical_ID", "SKU", "日期", "事件类型", "旧值", "新值", "来源文件", "备注"]
 
 
+APRIL_ARCHIVE_HEADERS = [
+    "四月归档ID", "正式SKU", "观测日期", "一级类目（中文）", "一级类目（西语）",
+    "中文品名", "西班牙语品名", "历史售价 (€)", "规格（中文）", "规格（西语）",
+    "单价（中文）", "单价（西语）", "促销（中文）", "促销（西语）",
+    "字段有效范围", "匹配状态", "西语来源文件", "中文来源文件", "来源Sheet", "备注",
+]
+
+
 def _backup(master: Path, backups_dir: Path) -> Path:
     backups_dir.mkdir(parents=True, exist_ok=True)
     stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -246,12 +254,35 @@ def write_master(
     return commit_master(tmp, cfg["paths"]["master"])
 
 
+def _validate_april_archive(ws) -> None:
+    """Protect the April archive from being treated as official lifecycle SKUs."""
+    headers = [cell.value for cell in ws[1]]
+    if headers != APRIL_ARCHIVE_HEADERS:
+        raise RuntimeError("07_APRIL_ARCHIVE header mismatch")
+    seen: set[str] = set()
+    for row_no, row in enumerate(ws.iter_rows(min_row=2, values_only=True), 2):
+        archive_id = str(row[0] or "").strip()
+        if not archive_id:
+            continue
+        if archive_id in seen:
+            raise RuntimeError(f"07_APRIL_ARCHIVE duplicate archive ID at row {row_no}: {archive_id}")
+        seen.add(archive_id)
+        if row[1] not in (None, ""):
+            raise RuntimeError(f"07_APRIL_ARCHIVE official SKU must remain blank at row {row_no}")
+        if not isinstance(row[2], (dt.date, dt.datetime)):
+            raise RuntimeError(f"07_APRIL_ARCHIVE observation date is not typed at row {row_no}")
+        if not isinstance(row[7], (int, float)):
+            raise RuntimeError(f"07_APRIL_ARCHIVE historical price is not numeric at row {row_no}")
+
+
 def _validate(path: Path) -> None:
     """重开文件验证可读、各表存在、无空数据区错误。失败抛异常以保护原文件。"""
     wb = openpyxl.load_workbook(path, read_only=True)
     required = {"01_SKU_ZH_CURRENT", "02_SKU_ES_CURRENT", "03_PRICE_HISTORY", "04_EVENT_HISTORY",
                 "05_RUN_LOG", "06_REVIEW_QUEUE"}
     missing = required - set(wb.sheetnames)
+    if not missing and "07_APRIL_ARCHIVE" in wb.sheetnames:
+        _validate_april_archive(wb["07_APRIL_ARCHIVE"])
     wb.close()
     if missing:
         raise RuntimeError(f"验证失败，缺少 Sheet: {missing}")
