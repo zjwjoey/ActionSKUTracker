@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import openpyxl
+from openpyxl.utils import get_column_letter
 
 from ..services.review import REVIEW_HEADERS
 from .reader import ES_MAP, ZH_MAP
@@ -103,6 +104,16 @@ def _append_rows(wb, title: str, rows: list[dict], headers: list[str]) -> None:
     ws = wb[title]
     for r in rows:
         ws.append([_cell(r.get(h)) for h in headers])
+    _resize_tables(ws)
+
+
+def _resize_tables(ws, header_row: int = 1) -> None:
+    """Extend existing Excel table filters through the current used rows."""
+    if ws.max_row < header_row or ws.max_column < 1:
+        return
+    ref = f"A{header_row}:{get_column_letter(ws.max_column)}{ws.max_row}"
+    for table in ws.tables.values():
+        table.ref = ref
 
 
 def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict[str, dict], internal_keys: set[str]) -> int:
@@ -148,6 +159,7 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
         new_row = [_cell(rec.get(colmap[h])) for h in header]
         ws.append(new_row)
         updated += 1
+    _resize_tables(ws)
     return updated
 
 
@@ -225,6 +237,7 @@ def _refresh_long_term_catalog(wb) -> None:
     catalog["D4"] = len(current_skus)
     catalog["H4"] = pending_count
     catalog["B5"] = len(catalog_rows) + pending_count
+    _resize_tables(catalog, header_row=7)
 
 
 def _migrate_legacy_sheets(wb, cfg: dict[str, Any]) -> None:
