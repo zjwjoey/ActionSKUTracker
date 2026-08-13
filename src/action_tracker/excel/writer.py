@@ -39,6 +39,22 @@ APRIL_ARCHIVE_HEADERS = [
     "字段有效范围", "匹配状态", "西语来源文件", "中文来源文件", "来源Sheet", "备注",
 ]
 
+LONG_TERM_MASTER_HEADERS = [
+    "实体ID", "正式SKU", "四月归档ID", "身份类型", "匹配状态", "匹配置信度", "当前状态",
+    "中文品名", "西班牙语品名", "一级类目（中文）", "一级类目（西语）", "规格（中文）", "规格（西语）",
+    "当前售价 (€)", "历史最低价 (€)", "历史最高价 (€)", "首次观察日期", "最后观察日期",
+    "四月原始记录数", "四月归档ID集合", "来源数", "来源工作表", "商品链接", "核对备注",
+]
+APRIL_MATCH_AUDIT_HEADERS = [
+    "四月归档ID", "正式SKU", "匹配状态", "匹配方法", "置信度", "候选SKU", "证据说明",
+    "观察日期", "一级类目（中文）", "一级类目（西语）", "中文品名", "西班牙语品名",
+    "历史售价 (€)", "规格（中文）", "规格（西语）", "单价（中文）", "单价（西语）",
+    "促销（中文）", "促销（西语）", "来源行号", "西语来源文件", "中文来源文件",
+]
+SOURCE_SCHEMA_HEADERS = [
+    "日期", "文件名", "Sheet", "Raw 行数", "Raw 列数", "真实 Raw Schema", "来源作用", "数据状态", "备注",
+]
+
 
 def _backup(master: Path, backups_dir: Path) -> Path:
     backups_dir.mkdir(parents=True, exist_ok=True)
@@ -135,6 +151,82 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
     return updated
 
 
+def _refresh_long_term_catalog(wb) -> None:
+    """Refresh current fields without deleting historical long-term entities."""
+    if "08_LONG_TERM_MASTER" not in wb.sheetnames:
+        return
+    catalog = wb["08_LONG_TERM_MASTER"]
+    header = [cell.value for cell in catalog[7]]
+    if header[:len(LONG_TERM_MASTER_HEADERS)] != LONG_TERM_MASTER_HEADERS:
+        raise RuntimeError("08_LONG_TERM_MASTER header mismatch")
+    idx = {name: i + 1 for i, name in enumerate(header)}
+
+    def current_records(sheet_name: str) -> dict[str, dict[str, Any]]:
+        ws = wb[sheet_name]
+        headers = [cell.value for cell in ws[1]]
+        records: dict[str, dict[str, Any]] = {}
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            rec = {headers[i]: row[i] for i in range(min(len(headers), len(row)))}
+            sku = str(rec.get("SKU") or "").strip()
+            if sku:
+                records[sku] = rec
+        return records
+
+    zh = current_records("01_SKU_ZH_CURRENT")
+    es = current_records("02_SKU_ES_CURRENT")
+    current_skus = set(zh) | set(es)
+    catalog_rows: dict[str, int] = {}
+    for row_no in range(8, catalog.max_row + 1):
+        if str(catalog.cell(row_no, idx["身份类型"]).value or "").strip() != "OFFICIAL_SKU":
+            continue
+        sku = str(catalog.cell(row_no, idx["正式SKU"]).value or "").strip()
+        if sku:
+            catalog_rows[sku] = row_no
+
+    def set_if_present(row_no: int, column: str, value: Any) -> None:
+        if value not in (None, ""):
+            catalog.cell(row_no, idx[column]).value = _cell(value)
+
+    for sku, row_no in catalog_rows.items():
+        catalog.cell(row_no, idx["当前状态"]).value = "CURRENT" if sku in current_skus else "HISTORICAL"
+        if sku not in current_skus:
+            catalog.cell(row_no, idx["当前售价 (€)"]).value = None
+
+    for sku in sorted(current_skus):
+        zr, er = zh.get(sku, {}), es.get(sku, {})
+        row_no = catalog_rows.get(sku)
+        if row_no is None:
+            row_no = catalog.max_row + 1
+            canonical = er.get("Canonical_ID") or zr.get("Canonical_ID")
+            catalog.cell(row_no, idx["实体ID"]).value = canonical or f"SKU:{sku}"
+            catalog.cell(row_no, idx["正式SKU"]).value = sku
+            catalog.cell(row_no, idx["身份类型"]).value = "OFFICIAL_SKU"
+            catalog.cell(row_no, idx["匹配状态"]).value = "OFFICIAL_IDENTITY"
+            catalog.cell(row_no, idx["匹配置信度"]).value = 1.0
+            catalog.cell(row_no, idx["四月原始记录数"]).value = 0
+            catalog_rows[sku] = row_no
+        catalog.cell(row_no, idx["当前状态"]).value = "CURRENT"
+        set_if_present(row_no, "中文品名", zr.get("中文品名"))
+        set_if_present(row_no, "西班牙语品名", er.get("西班牙语品名") or zr.get("西班牙语品名"))
+        set_if_present(row_no, "一级类目（中文）", zr.get("一级类目（中文）"))
+        set_if_present(row_no, "一级类目（西语）", er.get("一级类目（西语）") or zr.get("一级类目（西语）"))
+        set_if_present(row_no, "规格（中文）", zr.get("规格（中文）"))
+        set_if_present(row_no, "规格（西语）", er.get("规格（西语）") or zr.get("规格（西语）"))
+        set_if_present(row_no, "当前售价 (€)", er.get("当前售价 (€)") or zr.get("当前售价 (€)"))
+        set_if_present(row_no, "首次观察日期", er.get("首次发现日期") or zr.get("首次发现日期"))
+        set_if_present(row_no, "最后观察日期", er.get("最后确认存在日期") or zr.get("最后确认存在日期"))
+        set_if_present(row_no, "商品链接", er.get("商品链接") or zr.get("商品链接"))
+
+    pending_count = sum(
+        1 for row_no in range(8, catalog.max_row + 1)
+        if str(catalog.cell(row_no, idx["身份类型"]).value or "").strip() == "APRIL_ARCHIVE_PENDING"
+    )
+    catalog["B4"] = len(catalog_rows)
+    catalog["D4"] = len(current_skus)
+    catalog["H4"] = pending_count
+    catalog["B5"] = len(catalog_rows) + pending_count
+
+
 def _migrate_legacy_sheets(wb, cfg: dict[str, Any]) -> None:
     """归档并删除旧版 05_MAPPING_REVIEW / 06_SOURCE_SUMMARY（幂等，行数不符即中止）。
 
@@ -208,6 +300,7 @@ def stage_master(
     n_zh = _update_or_append_current(wb, "01_SKU_ZH_CURRENT", ZH_MAP, updated_records, set(ZH_MAP.values()))
     n_es = _update_or_append_current(wb, "02_SKU_ES_CURRENT", ES_MAP, updated_records, set(ES_MAP.values()))
     log.info("01 更新 %d 行, 02 更新 %d 行", n_zh, n_es)
+    _refresh_long_term_catalog(wb)
 
     # 03 / 04 追加（表头用常量，行 dict 的 key 与之对齐）
     _append_rows(wb, "03_PRICE_HISTORY", price_events, PRICE_HISTORY_HEADERS)
@@ -275,6 +368,79 @@ def _validate_april_archive(ws) -> None:
             raise RuntimeError(f"07_APRIL_ARCHIVE historical price is not numeric at row {row_no}")
 
 
+def _validate_long_term_sheets(wb) -> None:
+    """Protect the long-lived catalog and its April identity audit."""
+    required = {
+        "08_LONG_TERM_MASTER": LONG_TERM_MASTER_HEADERS,
+        "09_APRIL_MATCH_AUDIT": APRIL_MATCH_AUDIT_HEADERS,
+        "10_SOURCE_SCHEMA": SOURCE_SCHEMA_HEADERS,
+    }
+    present = set(required) & set(wb.sheetnames)
+    if present and present != set(required):
+        missing = set(required) - present
+        raise RuntimeError(f"long-term workbook sheets are incomplete: {sorted(missing)}")
+    if not present:
+        return
+    for name, expected_headers in required.items():
+        ws = wb[name]
+        header_row = 7 if name == "08_LONG_TERM_MASTER" else 1
+        headers = [cell.value for cell in ws[header_row]][:len(expected_headers)]
+        if headers != expected_headers:
+            raise RuntimeError(f"{name} header mismatch")
+
+    catalog = wb["08_LONG_TERM_MASTER"]
+    entity_ids: set[str] = set()
+    official_skus: set[str] = set()
+    current_count = 0
+    for row_no, row in enumerate(catalog.iter_rows(min_row=8, values_only=True), 8):
+        entity_id = str(row[0] or "").strip()
+        if not entity_id:
+            continue
+        if entity_id in entity_ids:
+            raise RuntimeError(f"08_LONG_TERM_MASTER duplicate entity ID at row {row_no}: {entity_id}")
+        entity_ids.add(entity_id)
+        identity_type = str(row[3] or "").strip()
+        sku = str(row[1] or "").strip()
+        if identity_type == "OFFICIAL_SKU":
+            if not sku:
+                raise RuntimeError(f"08_LONG_TERM_MASTER official entity without SKU at row {row_no}")
+            if sku in official_skus:
+                raise RuntimeError(f"08_LONG_TERM_MASTER duplicate official SKU at row {row_no}: {sku}")
+            official_skus.add(sku)
+        elif identity_type == "APRIL_ARCHIVE_PENDING" and sku:
+            raise RuntimeError(f"08_LONG_TERM_MASTER pending April entity must not have official SKU at row {row_no}")
+        if str(row[6] or "").strip() == "CURRENT":
+            current_count += 1
+
+    current_sheet_skus = {
+        str(row[1] or "").strip()
+        for row in wb["02_SKU_ES_CURRENT"].iter_rows(min_row=2, values_only=True)
+        if row[1]
+    }
+    if current_count != len(current_sheet_skus):
+        raise RuntimeError(
+            "08_LONG_TERM_MASTER CURRENT count mismatch: "
+            f"catalog={current_count} current_sheet={len(current_sheet_skus)}"
+        )
+
+    audit = wb["09_APRIL_MATCH_AUDIT"]
+    archive_ids: set[str] = set()
+    for row_no, row in enumerate(audit.iter_rows(min_row=2, values_only=True), 2):
+        archive_id = str(row[0] or "").strip()
+        if not archive_id:
+            continue
+        if archive_id in archive_ids:
+            raise RuntimeError(f"09_APRIL_MATCH_AUDIT duplicate archive ID at row {row_no}: {archive_id}")
+        archive_ids.add(archive_id)
+    raw_archive_ids = {
+        str(row[0] or "").strip()
+        for row in wb["07_APRIL_ARCHIVE"].iter_rows(min_row=2, values_only=True)
+        if row[0]
+    }
+    if archive_ids != raw_archive_ids:
+        raise RuntimeError("09_APRIL_MATCH_AUDIT archive ID set does not match 07_APRIL_ARCHIVE")
+
+
 def _validate(path: Path) -> None:
     """重开文件验证可读、各表存在、无空数据区错误。失败抛异常以保护原文件。"""
     wb = openpyxl.load_workbook(path, read_only=True)
@@ -283,6 +449,8 @@ def _validate(path: Path) -> None:
     missing = required - set(wb.sheetnames)
     if not missing and "07_APRIL_ARCHIVE" in wb.sheetnames:
         _validate_april_archive(wb["07_APRIL_ARCHIVE"])
+    if not missing:
+        _validate_long_term_sheets(wb)
     wb.close()
     if missing:
         raise RuntimeError(f"验证失败，缺少 Sheet: {missing}")
