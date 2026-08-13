@@ -92,6 +92,18 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
         k = colmap.get(h)
         if k:
             idx[k] = i
+    # CURRENT is not a history table. Rows absent from the authoritative
+    # Presence dataset are removed; lifecycle evidence remains in state CSVs.
+    wanted_skus = {str(key) for key in key_to_records}
+    wanted_cids = {
+        str(rec.get("canonical_id")) for rec in key_to_records.values()
+        if rec.get("canonical_id")
+    }
+    for row_no in range(ws.max_row, 1, -1):
+        sku = str(ws.cell(row=row_no, column=2).value or "")
+        cid = str(ws.cell(row=row_no, column=1).value or "")
+        if sku not in wanted_skus and cid not in wanted_cids:
+            ws.delete_rows(row_no, 1)
     # 更新既有行
     updated = 0
     for row in ws.iter_rows(min_row=2):

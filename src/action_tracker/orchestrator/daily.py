@@ -265,6 +265,8 @@ def run_daily(
         if plan.get("light"):
             _merge_light(rec, plan["light"], skip_raw_tags=(sku in detail_handled),
                          in_nuevo=(sku in nuevo_skus), in_promo=(sku in promo_skus))
+        rec["status"] = "CURRENT"
+        rec["last_seen"] = run_date
         updated[sku] = rec
 
     # ---- 变化事件 ----
@@ -317,21 +319,12 @@ def run_daily(
             translation_updates.append({"sku": sku, "canonical_id": rec.get("canonical_id"),
                                         "translation_status": rec.get("translation_status"), "date": run_date})
 
-    # ---- 今日全部记录（含 MISSING 保留）----
-    today_records: dict[str, dict] = {}
-    for sku, rec in baseline.items():
-        today_records[sku] = dict(rec)
-    for sku, rec in updated.items():
-        today_records[sku] = rec
-    for sku, stat in statuses.items():
-        if stat.status in ("MISSING_FIRST", "MISSING_CONTINUED") and sku in today_records:
-            today_records[sku]["status"] = stat.status
-            today_records[sku]["missing_count"] = stat.missing_count
-            today_records[sku]["last_seen"] = today_records[sku].get("last_seen") or run_date
-        if stat.status == "OFFLINE":
-            # 确认下架：移出 CURRENT（进 offline_skus；下次出现时 previous_status=OFFLINE → REAPPEARED）
-            today_records.pop(sku, None)
-
+    # ---- 今日 CURRENT 记录（仅本轮 Presence）----
+    # CURRENT is an authoritative Presence product: only SKUs observed in
+    # this run belong here. Missing candidates remain in known_skus.csv until
+    # the offline threshold is reached, but are not mixed into CURRENT.
+    today_records = _build_current_records(
+        baseline, updated, statuses, today_set, run_date)
     # Snapshot-level field provenance. Partial Detail is explicit and never
     # presented as freshly collected data.
     detail_plan_skus = {p["sku"] for p in plans if p["need_detail"]}
@@ -458,6 +451,32 @@ def run_daily(
     _print_report(run_report, qa)
     return {"run_id": run_id, "run_report": run_report, "qa": qa.to_dict(),
             "commit_status": commit_status, "snapshot_dir": str(snap_dir)}
+
+
+def _build_current_records(
+    baseline: dict[str, dict],
+    updated: dict[str, dict],
+    statuses: dict,
+    today_set: set[str],
+    run_date: str,
+) -> dict[str, dict]:
+    """Build the authoritative CURRENT dataset from today's Presence set."""
+    current: dict[str, dict] = {
+        sku: dict(rec) for sku, rec in baseline.items() if sku in today_set
+    }
+    for sku, rec in updated.items():
+        if sku in today_set:
+            current[sku] = dict(rec)
+    for sku in sorted(today_set):
+        stat = statuses.get(sku)
+        rec = current.setdefault(sku, {
+            "sku": sku,
+            "canonical_id": getattr(stat, "canonical_id", f"ACT{sku.zfill(7)}"),
+        })
+        rec["status"] = "CURRENT"
+        rec["last_seen"] = run_date
+        rec["missing_count"] = 0
+    return current
 
 
 def _counts(statuses, today_set, sitemap, listing_map, price_events, badge_events, content_events, anomalies) -> dict:

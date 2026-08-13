@@ -153,8 +153,10 @@ def fetch_and_merge(
         base = baseline.get(sku) or {}
         rec = dict(base)
         rec.update({"sku": sku, "canonical_id": plan["canonical_id"], "last_seen": _today()})
-        if rec.get("status") not in (None, "MISSING_FIRST", "MISSING_CONTINUED"):
-            rec["status"] = "CURRENT"
+        # Every plan handled here has authoritative Presence evidence for the
+        # current run. A brand-new record has no prior status, but it must
+        # still be written to the CURRENT sheets as CURRENT.
+        rec["status"] = "CURRENT"
 
         has_detail = False
         if plan["need_detail"]:
