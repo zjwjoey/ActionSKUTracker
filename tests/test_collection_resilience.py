@@ -136,6 +136,28 @@ def test_detail_cooldown_waits_and_probes_same_sku_once(tmp_path: Path, monkeypa
     assert ctl.state == AccessState.NORMAL
 
 
+def test_successful_probe_allows_one_probe_in_a_later_cooldown_cycle():
+    ctl = AccessController(cooldown_seconds=0)
+    ctl.record(status=403)
+    ctl.before_navigation()
+    ctl.record()
+    assert ctl.state == AccessState.NORMAL and ctl._probe_used is True
+
+    ctl.record(status=403)
+    assert ctl.state == AccessState.COOLDOWN and ctl._probe_used is False
+    ctl.before_navigation()
+    assert ctl.state == AccessState.PROBE
+
+
+def test_429_during_probe_blocks_instead_of_starting_another_cooldown():
+    ctl = AccessController(cooldown_seconds=0)
+    ctl.record(status=403)
+    ctl.before_navigation()
+    ctl.record(status=429)
+    assert ctl.state == AccessState.BLOCKED
+    assert ctl.events[-1] == "PROBE_BLOCKED"
+
+
 def test_detail_second_challenge_after_cooldown_blocks_remaining_queue(tmp_path: Path, monkeypatch):
     ctl = AccessController(cooldown_seconds=0)
     calls = []

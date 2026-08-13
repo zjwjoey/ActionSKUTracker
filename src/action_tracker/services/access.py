@@ -52,13 +52,21 @@ class AccessController:
                 self.state = AccessState.BLOCKED
                 self.events.append("PROBE_BLOCKED")
             else:
+                # A restriction after an earlier successful probe starts a
+                # genuinely new cooldown cycle with one fresh probe permit.
+                self._probe_used = False
                 self.state = AccessState.COOLDOWN
                 self.events.append("CHALLENGE_OR_403")
             return
         if status == 429:
             self.success_streak = 0
-            self.state = AccessState.COOLDOWN
-            self.events.append("RATE_LIMITED")
+            if self.state == AccessState.PROBE:
+                self.state = AccessState.BLOCKED
+                self.events.append("PROBE_BLOCKED")
+            else:
+                self._probe_used = False
+                self.state = AccessState.COOLDOWN
+                self.events.append("RATE_LIMITED")
             return
         # A response alone is not a reliable success signal; BrowserSession reports
         # success only after the title/challenge check has passed.
