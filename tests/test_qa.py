@@ -99,6 +99,26 @@ def test_sitemap_only_pending_fields_do_not_fail_presence_qa():
     assert "待补充1" in qa.checks["listing_field_completeness"][1]
 
 
+def test_valid_sitemap_can_commit_presence_when_listing_is_restricted():
+    qa = run_qa(_cfg(), yesterday_total=100, today_total=100, sitemap_count=100, listing_count=40,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=_products(100), blocked=False, observation_valid=True,
+                category_coverage={"Hogar": False}, access_state="BLOCKED",
+                presence_mode="SITEMAP_FALLBACK")
+    assert qa.passed is True
+    assert qa.state == "PASS_PRESENCE_ONLY"
+    assert qa.checks["sitemap_listing_gap"][0] is True
+
+
+def test_sitemap_fallback_still_rejects_anomalous_presence_data():
+    qa = run_qa(_cfg(), yesterday_total=100, today_total=10, sitemap_count=10, listing_count=0,
+                new_count=0, missing_count=90, price_up=0, price_down=0, anomaly_count=0,
+                products=_products(10), observation_valid=True, access_state="COOLDOWN",
+                presence_mode="SITEMAP_FALLBACK")
+    assert qa.passed is False
+    assert qa.state == "FAIL"
+
+
 def test_missing_fields_on_listing_observation_fail_qa():
     products = _products(10)
     for product in products:

@@ -61,6 +61,9 @@ lifecycle:
 
 # ---- QA 阈值（规范 §42）----
 qa:
+  # Sitemap 已完整保存、但 Listing 后续不完整时，允许降级提交 Presence；
+  # 不把该轮伪装为完整 Listing 扫描。
+  allow_sitemap_presence_fallback: true
   max_active_drop_percent: 15
   max_active_increase_percent: 20
   max_new_sku_percent: 5

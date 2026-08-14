@@ -12,7 +12,7 @@ from typing import Any
 @dataclass
 class QAReport:
     passed: bool
-    state: str                       # PASS / FAIL / QUARANTINED / BLOCKED
+    state: str                       # PASS / PASS_PRESENCE_ONLY / FAIL / QUARANTINED / BLOCKED
     checks: dict[str, tuple[bool, str]] = field(default_factory=dict)
     counts: dict[str, Any] = field(default_factory=dict)
     reasons: list[str] = field(default_factory=list)
@@ -49,22 +49,33 @@ def run_qa(
     category_coverage: dict[str, bool] | None = None,
     access_state: str = "NORMAL",
     detail_access_state: str = "NORMAL",
+    presence_mode: str = "FULL",
 ) -> QAReport:
     q = cfg["qa"]
     checks: dict[str, tuple[bool, str]] = {}
     reasons: list[str] = []
     passed = True
 
-    # 封锁（§62）：抓取被 CF 挡 -> 直接 FAIL
-    if blocked:
+    sitemap_fallback = presence_mode == "SITEMAP_FALLBACK"
+
+    # A successfully parsed sitemap is authoritative Presence evidence.  If a
+    # later listing request is restricted, the already-frozen sitemap must not
+    # be discarded.  The run is explicitly downgraded below rather than being
+    # presented as a fully observed listing run.
+    if blocked and not sitemap_fallback:
         checks["fetch_not_blocked"] = (False, "网站访问异常/BLOCKED")
         return QAReport(passed=False, state="BLOCKED", checks=checks, counts=_counts(locals()), reasons=["网站访问被封锁"])
+    if blocked:
+        checks["fetch_not_blocked"] = (True, "listing 访问受限；已冻结有效 Sitemap Presence 证据")
 
     if access_state != "NORMAL":
         message = f"global access controller ended in {access_state}"
-        checks["access_state_complete"] = (False, message)
-        return QAReport(passed=False, state="FAIL", checks=checks, counts=_counts(locals()), reasons=[message])
-    checks["access_state_complete"] = (True, "global access controller NORMAL")
+        if not sitemap_fallback:
+            checks["access_state_complete"] = (False, message)
+            return QAReport(passed=False, state="FAIL", checks=checks, counts=_counts(locals()), reasons=[message])
+        checks["access_state_complete"] = (True, f"{message}; 使用已冻结 Sitemap Presence 证据")
+    else:
+        checks["access_state_complete"] = (True, "global access controller NORMAL")
 
     # Detail is enrichment only.  Once complete Presence evidence has been
     # frozen, a later Detail restriction is reported but cannot invalidate the
@@ -87,13 +98,17 @@ def run_qa(
         passed = False
         reasons.append(f"总量变化超阈值(降{drop:.1f}%>max {q['max_active_drop_percent']}% 或升{rise:.1f}%>{q['max_active_increase_percent']}%)")
 
-    # 2/3. Sitemap / Listing 差异
+    # 2/3. Sitemap / Listing 差异。Listing 已知不完整时，该差异不能用于
+    # 否定完整 Sitemap 的 Presence 结果；状态会被降级为 PASS_PRESENCE_ONLY。
     gap = _pct(abs(sitemap_count - listing_count), max(sitemap_count, listing_count))
-    ok = gap <= q["max_sitemap_listing_gap_percent"]
-    checks["sitemap_listing_gap"] = (ok, f"sitemap{sitemap_count} listing{listing_count} gap{gap:.1f}%")
-    if not ok:
-        passed = False
-        reasons.append(f"sitemap/listing 差异{gap:.1f}%>max {q['max_sitemap_listing_gap_percent']}%")
+    if sitemap_fallback:
+        checks["sitemap_listing_gap"] = (True, f"listing 不完整，gap {gap:.1f}% 不作为 Presence 否决条件")
+    else:
+        ok = gap <= q["max_sitemap_listing_gap_percent"]
+        checks["sitemap_listing_gap"] = (ok, f"sitemap{sitemap_count} listing{listing_count} gap{gap:.1f}%")
+        if not ok:
+            passed = False
+            reasons.append(f"sitemap/listing 差异{gap:.1f}%>max {q['max_sitemap_listing_gap_percent']}%")
 
     # 4. 新增比例
     npct = _pct(new_count, max(today_total, 1))
@@ -175,7 +190,10 @@ def run_qa(
         "new": new_count, "missing": missing_count, "price_up": price_up, "price_down": price_down,
         "anomaly_count": anomaly_count,
     }
-    return QAReport(passed=passed, state="PASS" if passed else "FAIL", checks=checks, counts=counts, reasons=reasons)
+    state = "PASS_PRESENCE_ONLY" if passed and sitemap_fallback else ("PASS" if passed else "FAIL")
+    if sitemap_fallback:
+        reasons.append("Sitemap 完整；Listing 不完整，类目轻量字段仅按已观测记录更新")
+    return QAReport(passed=passed, state=state, checks=checks, counts=counts, reasons=reasons)
 
 
 def _tags_parsed(raw: str) -> bool:

@@ -28,6 +28,12 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("detail-retry", help="仅重试已有 snapshot 中未完成的商品详情")
     r.add_argument("--run-id", required=True, help="父 dry-run 的 run_id")
 
+    a = sub.add_parser("detail-apply", help="将完整且通过 QA 的详情重试结果写回 Master")
+    a.add_argument("--run-id", required=True, help="已正式提交的父 observation run_id")
+
+    h = sub.add_parser("detail-backfill", help="用已验证的历史详情证据填补 CURRENT 空字段")
+    h.add_argument("--run-id", required=True, help="详情已完整的历史 source run_id")
+
     b = sub.add_parser("init-baseline", help="从 runtime Master 建立初始状态文件")
     b.add_argument("--force", action="store_true", help="重建状态文件")
 
@@ -63,6 +69,16 @@ def main(argv=None) -> int:
     if args.command == "detail-retry":
         from .orchestrator.detail_retry import run_detail_retry
         res = run_detail_retry(cfg, args.run_id)
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if args.command == "detail-apply":
+        from .orchestrator.detail_retry import apply_detail_retry
+        res = apply_detail_retry(cfg, args.run_id)
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if args.command == "detail-backfill":
+        from .orchestrator.detail_retry import backfill_missing_details
+        res = backfill_missing_details(cfg, args.run_id)
         print(json.dumps(res, ensure_ascii=False))
         return 0
     if args.command == "init-baseline":

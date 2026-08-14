@@ -213,8 +213,18 @@ def run_daily(
     # Freeze the authoritative Presence gate before Detail starts.  Detail is
     # enrichment and must never retroactively invalidate a complete listing.
     presence_access_state = access.state.value
-    presence_blocked = browser_blocked or access.blocked
-    observation_complete = sitemap is not None and all(primary_coverage.values()) and presence_access_state == "NORMAL"
+    listing_complete = all(primary_coverage.values())
+    # Sitemap is a complete product universe.  A later incomplete Listing scan
+    # must not throw away an already valid Presence observation, but the run is
+    # visibly downgraded and cannot claim fresh Listing fields for every SKU.
+    if sitemap is not None and listing_complete and presence_access_state == "NORMAL":
+        presence_mode = "FULL"
+    elif sitemap is not None and cfg["qa"].get("allow_sitemap_presence_fallback", True):
+        presence_mode = "SITEMAP_FALLBACK"
+    else:
+        presence_mode = "INCOMPLETE"
+    presence_blocked = browser_blocked and presence_mode == "INCOMPLETE"
+    observation_complete = presence_mode != "INCOMPLETE"
     statuses, today_set = run_sku_monitor(
         sitemap_skus,
         today_light,
@@ -365,6 +375,7 @@ def run_daily(
         category_coverage=primary_coverage,
         access_state=presence_access_state,
         detail_access_state=access.state.value,
+        presence_mode=presence_mode,
     )
     log.info("QA: state=%s passed=%s", qa.state, qa.passed)
 
@@ -380,6 +391,7 @@ def run_daily(
                              detail_completed=len(detail_completed_skus), detail_evidence=detail_evidence,
                              access_state=access.state.value, access_report=access.report(),
                              presence_access_state=presence_access_state,
+                             presence_mode=presence_mode,
                              sitemap_count=len(sitemap_skus), listing_count=len(today_light),
                              sitemap_only=len(set(sitemap_skus) - set(today_light)),
                              listing_only=len(set(today_light) - set(sitemap_skus)),
@@ -430,7 +442,8 @@ def run_daily(
     # ---- 正式提交（只发生在 非 dry-run 且 QA PASS；否则 Master/known_skus/offline_skus 一律不动）----
     commit_status = "DRY_RUN"
     if not dry_run:
-        if _should_commit(dry_run=dry_run, qa_passed=qa.passed, access_state=presence_access_state):
+        if _should_commit(dry_run=dry_run, qa_passed=qa.passed, access_state=presence_access_state,
+                          qa_state=qa.state):
             run_log_row = _run_log_row(run_id, run_date, start_time, counts, qa, dry_run,
                                        sitemap_count=len(sitemap_skus), listing_count=len(today_light))
             commit_status = _commit_phase(
@@ -539,6 +552,7 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
                 detail_planned: int = 0, detail_completed: int = 0,
                 detail_evidence: list[dict] | None = None, access_state: str = "NORMAL",
                 access_report: dict | None = None, presence_access_state: str = "NORMAL",
+                presence_mode: str = "FULL",
                 sitemap_count: int = 0, listing_count: int = 0,
                 sitemap_only: int = 0, listing_only: int = 0, both_sources: int = 0) -> dict:
     from .. import __version__
@@ -572,6 +586,7 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "offline": sum(1 for s in statuses.values() if s.status == "OFFLINE"),
         "unknown": sum(1 for s in statuses.values() if s.status == "UNKNOWN"),
         "observation_complete": observation_complete,
+        "presence_mode": presence_mode,
         "category_coverage": category_coverage,
         "detail_planned": detail_planned,
         "detail_completed": detail_completed,
@@ -616,9 +631,10 @@ def _build_lifecycle_events(statuses: dict, run_date: str, run_id: str) -> list[
     return events
 
 
-def _should_commit(dry_run: bool, qa_passed: bool, access_state: str = "NORMAL") -> bool:
-    """提交门禁：非 dry-run 且 QA PASS 才允许写 Master / known_skus / offline_skus。"""
-    return (not dry_run) and qa_passed and access_state == "NORMAL"
+def _should_commit(dry_run: bool, qa_passed: bool, access_state: str = "NORMAL", qa_state: str = "PASS") -> bool:
+    """提交门禁：完整 QA 或受控 Sitemap Presence 回退才可正式提交。"""
+    access_ok = access_state == "NORMAL" or qa_state == "PASS_PRESENCE_ONLY"
+    return (not dry_run) and qa_passed and access_ok
 
 
 def _commit_phase(
