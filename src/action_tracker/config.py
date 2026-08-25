@@ -21,7 +21,7 @@ def load_settings(path: Path | str | None = None) -> dict[str, Any]:
     with p.open("r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f) or {}
     # 解析绝对路径（相对路径基于项目根）
-    for key in ("master", "snapshots", "staging", "state", "images", "exports", "logs", "backups", "temp"):
+    for key in ("master", "snapshots", "staging", "state", "dictionary", "dictionary_baseline", "images", "exports", "logs", "backups", "temp"):
         if key in cfg.get("paths", {}):
             raw = cfg["paths"][key]
             pth = Path(raw)

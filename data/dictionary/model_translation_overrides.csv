@@ -1,0 +1,826 @@
+﻿sku,source_hash,name_zh_standard,spec_zh_standard,quality_status,model,updated_at,notes
+208006,fdc3350744bfa7e3f2a51778767f44adf344db297a38252015a0057be037b0fb,披萨烤盘,直径32厘米,OK,deepseek-chat,2026-08-25,品牌Zenker未进入标准品名，规格已统一为中文并去除空格。
+2500945,20e7d394b5fbc37a5750c6229db66625334af5d221c28de2421422fc8b6d234e,须后水,100毫升,OK,deepseek-chat,2026-08-25,品牌Axe未进入标准品名，非洲为产地信息未保留。
+2501160,d51bb25d74ffb7b1c4d12b8cacb5f64e89d738dc8461071311b3a878cc918624,乳清洗手液,1升,OK,deepseek-chat,2026-08-25,品牌Hegron Higiene未进入标准品名，西语suero de leche译为乳清。
+2507710,ecb39f4c65d82a75fe417f1ace2443e246b5aa7a8651bffc5bd45468b7e2e6a0,薄荷糖,200克,OK,deepseek-chat,2026-08-25,品牌Fresh Courage未进入标准品名。
+2511397,662c52ae3cbcf19acc776954ec10d54916a3d427f0133adc9d4d666cffe8d370,锅铲,多种款式,OK,deepseek-chat,2026-08-25,品牌La Cucina未进入标准品名。
+2511441,bc4e4d4b0dd2a84342917ba83ee17e361da5f7f3ec04364706bb81b64d2d521e,硅胶刷,多种款式,OK,deepseek-chat,2026-08-25,品牌La Cucina未进入标准品名。
+2514642,b48d1b87ab11f318ee09c61ff4322c8c21fd5008971b978662cf93c2e86b50d2,花生网袋,2×200克,OK,deepseek-chat,2026-08-25,品牌Bites for Birds未进入标准品名，规格已统一为中文并去除空格。
+2515444,d6ad2d81848c5c51b5815778b6276432db279d068b756ef2dd1030f97878b8ce,卫生清洁湿巾,28件装,OK,deepseek-chat,2026-08-25,品牌Clean+未进入标准品名，规格按件装处理。
+2516412,6e44675e7bd1345dfb0ee8636eab10deda9fcb7f1583467909185f537551f1fc,须后水,100毫升,OK,deepseek-chat,2026-08-25,品牌Axe不进入标准品名，Dark Temptation为产品系列名，不保留。
+2522780,55006a6dac79cd1c5db985355e08253a2606d14ea9164f7d69b1bfeb81b82d49,食品保鲜盒,1.2升×5件装,OK,deepseek-chat,2026-08-25,品牌Star Ware不进入标准品名，规格统一为中文，数量按件装。
+2524814,e75afdf00abda2f59cee05b501593d8551ee64fb6814bc3196de4caaab5f3776,复活节兔子巧克力组合,120克,OK,deepseek-chat,2026-08-25,品牌Easter Moments不进入标准品名，Surtido译为组合。
+2527825,e4563187d8af4483945ecec0062ab3397877ff5bc533cf09b1aad31d6f327729,手工剪刀,多种款式,OK,deepseek-chat,2026-08-25,品牌Craft & Design不进入标准品名，manualidades译为手工。
+2530084,26c5343905338d54ddc850c4af0dd3c48bbd4d415b104927c67f01239c9cab7d,切割片,A60 T-BF×5件装,OK,deepseek-chat,2026-08-25,品牌Werckmann不进入标准品名，A60 T-BF为技术规格保留，数量按件装。
+2530200,72a3e739f6cdeba20212e2d115edd7aa2267e0dded81946d63b6ba86d2805389,巧克力零食,145克,OK,deepseek-chat,2026-08-25,品牌Milka Daim不进入标准品名，Snax译为零食。
+2531610,149f686b1d30d91dccead9ea59a3f618a2542a30d984630d02f4bb0c6add7e08,水杯,6件装×200毫升,OK,deepseek-chat,2026-08-25,品牌Pasabahce Doro不进入标准品名，uds.译为件装。
+2533698,1784d7b5687d32316e9a381d10964a67271df9852b5d912da4fd2fcffd2483c6,园艺铁丝,10米,OK,deepseek-chat,2026-08-25,品牌My Garden不进入标准品名，Alambre译为铁丝。
+2536947,ec25faa3c8e02ca38e8652ec65e7670fbb51b2ab298e9a9895dbb4b34b54a1a5,空气清新剂,多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2539746,46172ad69ed23add8ed562a3a31ee21dff962921c2a54f373ad3a8d0a518841a,水平尺,40厘米,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格单位已中文化。
+2542177,2dd19bc076e26decae2e5eb9083499381cd8b13c32afc0de1f7b295f08f4efca,染发剂,桃花心木色 3.6,OK,deepseek-chat,2026-08-25,品牌和产品系列未进入标准品名，规格已保留。
+2542587,66fc8d09ea07f125f760ca26a7de3381ff2fcf0d1e0496882fd2c6122628c596,棉线,8×10克 多种颜色,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格已统一格式。
+2545944,94a61daf0134b78472c2f39755c232fe4a573badea01eb8b2cf28f3a9cc49048,混合种子,多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2549150,c0cfe2867dacd20a9c70c7a1c1b0cf65ed84c4d01328b4d1a97b0843219589cd,葵花籽膏,多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2549766,4b8cf139ba0b08c96aa6db1e1c9a24e589a5d5efc184d67cf1faf4560d1ed77b,奶瓶,250毫升 多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格已统一格式。
+2551891,205fcdf9d093722a213522b9a701ce6b04eb32f2ffaca50279d667a18c8d945d,杏干,200克,OK,deepseek-chat,2026-08-25,品牌Jama Fruits不进入标准品名
+2552919,a97c59eab7ff7620bca22860b457efcce64b57f3d1615f9a2cf65feff380368c,黑色花盆,直径30厘米,OK,deepseek-chat,2026-08-25,Toledo为款式名，不保留；Ø译为直径
+2552923,95aa8f30dc3aa9b8127b73b6a8dfea5729f2b9076a8dd2aec0cbb45dfc7a9c5a,黑色花盆,直径40厘米,OK,deepseek-chat,2026-08-25,Toledo为款式名，不保留；Ø译为直径
+2553949,7d244fac17208580b56f9b767da016aeade516b1ee43fcade3e0fad8ba7134a6,防晒喷雾,SPF15｜200毫升,OK,deepseek-chat,2026-08-25,
+2554038,d0f1d133266238ef2115e6f375990ab6790afa66a0cceb89643915aeef9f48ee,塑料碗,6件装，多种款式,OK,deepseek-chat,2026-08-25,修正原中文名中的错误
+2559113,1f2910ae11a4bd3cd14529ccca3a92c288d6187d09f5ef6cf5b21d15308dae9f,Polo衫,M-XXL，多种颜色,OK,editorial-rule,2026-08-25,按命名偏好保留Polo衫；9th Avenue为品牌
+2559256,6ea7b7cfcb5d74c76d80a5625646abcf26624c4b6aed7d19f1a0b9b73c4332b4,敏感肌剃须泡沫,300毫升,OK,deepseek-chat,2026-08-25,Ferrum Sensitive为品牌系列，不保留；Sensitive译为敏感肌
+2560593,0bebf359ceee1146e98389b41d987c1569031f9809a32b6797d13e5e14d9a036,奥利奥原味夹心饼干,24件装,OK,deepseek-chat,2026-08-25,Oreo为品牌，但中文名已通用，保留；Original译为原味
+2561083,51a3162a789e4f2952663b4a2b7c0b08626056fdd7df13ffef60f3af3cc2bc3b,自行车打气筒,最大7巴,OK,deepseek-chat,2026-08-25,
+2561233,de901cd1a8b127553f7f7a1c21402e475622232c3ddee4802101cf1f02336f56,抛球玩具带手环,多种款式,OK,deepseek-chat,2026-08-25,lanzapelota译为抛球，pulsera译为手环
+2561330,df4522d7b1fa27f32e310117ac70e18d4fb6d9bbe9c66272f14ec5624db7e28a,花盆,25厘米,OK,deepseek-chat,2026-08-25,品牌Toledo不进入品名
+2563810,672cc15744d745e5d605f4f4413fa8a649c3acdf7ffe42242ee4d5bc2c6e1f12,卷装翻糖膏,200克 | 多种类型,OK,deepseek-chat,2026-08-25,Culi Deco为品牌，不进入品名
+2566830,2ec4705168e366efe9dabb8becb81c44cc8ac9231a3d23d44fba96b40ff1be40,古龙水,100毫升,OK,deepseek-chat,2026-08-25,Ford Mustang为品牌，不进入品名
+2567335,f0cc95fc838c91f59e27f1fcfafaa383ce9de8cb2fbc625bf4c7af0ff199ea5e,水彩本,20张,OK,deepseek-chat,2026-08-25,Creative Artist为品牌，不进入品名；Bloc de acuarelas译为水彩本
+2567860,ca48f37855676dcbe460d7ccb9cf24abe9992213b71f9020271ba5ba3c873a07,花盆,多种款式,OK,deepseek-chat,2026-08-25,Garden Collection为品牌，不进入品名
+2568481,ae2bbdac83755fb3573c0e752b34c6442704b4abb578f169b2d7181799be7bf7,香水,30毫升 | 多种款式,OK,deepseek-chat,2026-08-25,Figenzi Love为品牌，不进入品名
+2568889,b15781a6b7278a5dae041c03224d4f4196db4eb90619af90ba1b6b9cce02b89e,开襟羊毛衫,尺码S-XL｜多色,OK,deepseek-chat,2026-08-25,
+2568946,b54bc1cd91f39c3ee82432a6fab7f0b2976da4b40117c97524c14e8ec07cae1b,榛子饼干,152克,OK,deepseek-chat,2026-08-25,LU为品牌，不进入品名；Croustille为产品系列，不进入品名
+2569014,8026e0d55eecad9cd2f9d5ec0ae1f95bb6e70e30db940efd85c35d36f770692c,烤盘,1.6升 | 28×20厘米,OK,deepseek-chat,2026-08-25,Cook 'n Share为品牌，不进入品名；Fuente para horno译为烤盘
+2569105,aeb89625fe70a59c39d2a557e066d63d5d972bf3731d9cf86e686566aa38d7ef,LED瀑布灯,80个LED｜10×80厘米,OK,deepseek-chat,2026-08-25,
+2569339,1260e3875a8a0c54822ad02331654583bb26f4beec332f685093abfdead552c2,混合软糖,300克,OK,deepseek-chat,2026-08-25,品牌Trolli和系列Funny Island不进入标准品名，按语义译为混合软糖
+2570206,9bf82c4ce084f0b715758ff2c8054497d8c7d9b138c6794a9a6c3f978c7d5e69,连裤袜,尺码36-46 2双装,OK,deepseek-chat,2026-08-25,品牌Kate Legwear不进入标准品名，Satin Shine为系列名不保留，15 denier译为15D，2 unidades按语义为双装
+2570421,ef79860d2790104ff721ad30c68bf1f965a386fb7f3d75ef4f8738d653e1a711,剃须刀片,4件装,OK,deepseek-chat,2026-08-25,品牌Gillette不进入标准品名，Blue3 Simple为型号保留，4 unidades按语义为件装
+2571622,2ee84176bc7f851bc9851ed878d4080c895444424bc0816c202e612b0508c097,红椒味薯片,80克,OK,deepseek-chat,2026-08-25,品牌Chio不进入标准品名，#Paprika译为红椒味
+2571623,9bb94892f3d5ced87aa92ac9a17cf59d81ffd253fe3b88a9a29440174901b224,奶酪味薯片,80克,OK,deepseek-chat,2026-08-25,品牌Chio不进入标准品名，#Queso译为奶酪味，原中文名缺少薯片，根据类目修正
+2571676,6a7663448a9c01dd7e832f5b308819c170eff50d3e919c0d58f9e68b2f98f143,厨房抹布,50×50厘米,OK,deepseek-chat,2026-08-25,品牌La Sonata不进入标准品名，Antracita译为炭灰色
+2572104,a7507d1f4abeed07018372ccd66af98922cfdb8f300959b09c319b6dbb7d4beb,女士平角内裤,尺码122-152 3件装 多种款式,OK,deepseek-chat,2026-08-25,hipster译为平角内裤，3 unidades按语义为件装
+2572304,1f414a1f04f0d271170100bf29b73a24a29608f3a6a5ad50cbf1d66ef0008150,游泳纸尿裤,尺码3-4 12件装,OK,deepseek-chat,2026-08-25,品牌Huggies不进入标准品名，Little Swimmers为系列名不保留，Buscando a Dory为IP名不保留，12 unidades按语义为件装
+2572652,1dbf56f91792c7f00bac3dc1ea84753b06f433c7a674ef80a08a02e07e279a93,空气清新剂替换装,苹果肉桂味,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2572787,98b199afcd0e18fd7c922961c6be63ef0cfd07d45041d7f329b985f960a4f0e6,OptiSmile X Active 替换刷头,4件装,OK,deepseek-chat,2026-08-25,品牌名保留，规格按件装。
+2573274,b2f1639c7eb8e248d01cffe5855014f15af0b8afe7ac93b0ad74f3c02f89d0b4,纯素能量棒,3件装，多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格按件装。
+2573557,d65155d107ecf25ab1756e51d5d7d28c586049547d7052e1d9dbea54c17314af,卷发定型护发水,150毫升,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2574058,9cc90d4e6003d2a980f19f43b5797a98be7552f4603a18cefc09460313700da0,玫瑰水爽肤水,300毫升,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2574155,479d6ff4a7e7228c1bb4601d00ec84753b260c37d6e25d02853742ae84d02ea2,充气垫,160×84厘米，多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2575316,b8f2d67afdf6249b948ab5681128a2cbeaf58174d51cf7d3dfa23fdc372fa2b2,手工串珠材料包,多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2576782,ab002079cc013bd27aadff5d8fa342e8c40580ea39d4af5dbe245f5faefe7d4c,Zenova Sport 防晒喷雾,SPF 30｜200毫升,OK,deepseek-chat,2026-08-25,
+2576916,86768593d65d392ca063bebbfda9a63faab627b8d5f53a1d837443d018a03cd9,刀具,2件装,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2577121,bb7bfdfbe70f58062f4cbdd92ede12398098b551d819859aa9e41be018c2016c,漫威动作人偶,多种款式,OK,deepseek-chat,2026-08-25,
+2577478,826bd8a27c507985d701c8be6bede3c23457fe255e9b6f51a8b8d7cd3cdb0172,Zuru Chloe Girlz 时尚玩偶,多种款式,OK,deepseek-chat,2026-08-25,
+2578486,0bf3a5e41f13bd4721758f94ec847cd93778fb39695bab8459557bb51e4337f8,化妆灯,6.5×30.5×6.5厘米｜多种颜色,OK,deepseek-chat,2026-08-25,
+2578975,f0679b2903884f89fdab29ce8b6891cda6bd308a7bf09d31dfb14ab17e3f3ee8,男士理发店礼盒,5件装,OK,deepseek-chat,2026-08-25,
+2579083,d7bbabf4029b66c247a8d5adb8264dee6b41382febb9a9e1921fe98f10c9426e,Felix Party Mix 海边猫零食,200克｜鱼肉味,OK,deepseek-chat,2026-08-25,
+2579796,5c98a26ce65a7b824ba665c4ed050cf459bbd0430b2e7288da0c17a0e19d11a0,Sensodyne Cool Mint 牙膏,75毫升,OK,deepseek-chat,2026-08-25,
+2580494,a51fc07b6c77179418e41e2ab59a0bee2b8a14770e24f524b07b31529c003437,Dulux Power 白色哑光墙面漆,8升,OK,deepseek-chat,2026-08-25,
+2580986,a4889d654583c7e6585f804f5d8989842481f13dc406e4cafedc7db28e0470ab,牛仔短裤,M-XL码｜多种颜色,OK,deepseek-chat,2026-08-25,
+2581232,2dc4824c266cf382f0a1f5b372bf5b17ac803a61e8ea59b7ba001b594be4170e,编织线组合,142克 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2581278,6e089a9fb99bc5b509e812e15bfee3a8b28f7bad85a19b70f45c11f3cf7abe6c,泳池浮条,150厘米｜多种颜色,OK,deepseek-chat,2026-08-25,
+2581298,a6290eea9e4a4e322f4b14763f2a54e00f3a6bc09cc55dedce3b32ceb5e259ea,相框,40×50厘米 | 多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+2581853,0566cb9df6afda30562d7649c1204534ebbfa78f7cc66a5208045c598de2a3a7,奇巧复活节巧克力,3件装,OK,deepseek-chat,2026-08-25,KitKat为品牌，Easter Break译为复活节。
+2581879,81ca9b6cf35f7d48017069456dbfdf137f5c8d7652bc05bd27bf3fe2e1076aeb,手机膜,适用于三星 | 多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，Samsung译为三星。
+2582174,47d82d1ef05b9da49bed8eabf12818da2931562974192cd8b105452231cabda1,手机膜,适用于iPhone X/XS/11 Pro,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，iPhone为型号保留。
+2582428,a3085cb3e6ca95df8866d878f5cf669fee63a7e0b2269484091bb63df6936a7e,蛋黄酱,775克,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，Mayonesa译为蛋黄酱。
+2582480,2e101403be628e8ab5589367a4be5ef0a860e7b469e8774b8e10b2da54d583f3,花盆,直径20厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，Maceta译为花盆，Ø译为直径。
+2582537,397789dcff28d8dfc173881cff8b2310090f64158f480ca51f45f6c15b985396,美甲灯,UV和LED,OK,deepseek-chat,2026-08-25,
+3000034,ef144c7a1f999a64797eb365dfd8ab31cf6227ea7cf60b178bb107e6b4636d3d,双频Wi-Fi信号放大器,750兆比特每秒,OK,deepseek-chat,2026-08-25,
+3000678,f06879b098e68df418351849544846fb11a1d2bef6d2d590cc3c6206b611371b,二合一玻璃清洁器,100-155厘米,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，西语品名已翻译。
+3000977,f2987aff696857ff209348218c64cbc0226fdf5d4d4a5281e777d5bad3fdc533,生皮狗咬胶,中号 | 多种款式,OK,deepseek-chat,2026-08-25,Rawhide 为产品类型，已翻译为生皮狗咬胶。
+3001370,1f49802db883d78b4a332085e15a62f12dd88267aae5bd3eb3e8850cf343e5ab,软心糖,175克,OK,deepseek-chat,2026-08-25,Haribo 为品牌，不进入标准品名；Soft Hearts 译为软心糖。
+3002098,b80966a1a0e54ab513b12aabcfd5d9472f1671b03125130413d815f2983e519c,防晒喷雾,SPF30｜200毫升,OK,deepseek-chat,2026-08-25,
+3002164,1ed600815592d6ac78ee81c2811eea4481cd0158c6ca3f7f1955955c7e5da949,美黑乳液,SPF30｜200毫升,OK,deepseek-chat,2026-08-25,规格中ml转换为毫升，SPF保留
+3002325,81ca9b6cf35f7d48017069456dbfdf137f5c8d7652bc05bd27bf3fe2e1076aeb,手机膜,适用于三星 | 多种款式,OK,deepseek-chat,2026-08-25,Lab31 为品牌，不进入标准品名；Samsung 译为三星。
+3002753,c2f8c00a3c6a37962b8b996853dca56dae7f8a833c966d1c7b21bb6848daa8d0,变形金刚玩具,多种款式,OK,deepseek-chat,2026-08-25,Transformers 为合法授权 IP，保留并译为变形金刚。
+3002763,05380b2c98fe54a72fecea832f22d1e13f18a6012d1838382f1660a7ca564731,Switch游戏,多款可选,OK,deepseek-chat,2026-08-25,
+3003017,b086ce77a22dc1c47ceeed90cffdb720d689d2ca01c0ef77c934eb31c60e1d2b,鸟类喂食器,多种款式,OK,deepseek-chat,2026-08-25,Bites for Birds 为品牌，不进入标准品名。
+3003216,1a2198547a57daa66086981043fab7b73982772680cb8362362103d7460584c1,遥控赛车,比例1:32,OK,deepseek-chat,2026-08-25,Cars 为合法授权 IP，保留并译为赛车。
+3004700,a40e1b5c106014e9d01aa744eba2dad71f108a60946a9f1af31a9f00f5b7431f,混合糖果,160克 | 多种款式,OK,deepseek-chat,2026-08-25,Bebeto 为品牌，不进入标准品名。
+3004849,67df6092592b22db886787267ca8f6bc67207e29720f781757d8ebda33e6aa7d,花式结绳线,280克 | 多种颜色,OK,deepseek-chat,2026-08-25,Alison & Mae Specials 为品牌，不进入标准品名；macramé 译为花式结绳。
+3004974,173f54512e33c8188a6e6c76456b2266b33a234c4f4b4b7a1160197b7cc86e14,Kinzo 空调,1010瓦,OK,deepseek-chat,2026-08-25,
+3005156,505b3cac9d76d29a33d346f9cdf24fb06ab2b1727df9bf4123a553d1006e471d,防晒润唇膏,SPF30,OK,deepseek-chat,2026-08-25,规格已统一
+3005304,aa9f500bbccb9ffa207fa06796c201d836a2fd9ecfef1ae126baa2bd80b86613,马桶清洁挂块,岛梦香型｜3×50克,OK,deepseek-chat,2026-08-25,Island Dream翻译为岛梦香型，gramos转换为克
+3005415,c4f7c193866346ca975a42b79f8e90b4aee11e15ecbe4e7e68dde6f2459438e3,花生酱巧克力棒,5件装,OK,deepseek-chat,2026-08-25,品牌Snickers未进入品名，Creamy Peanut Butter译为花生酱
+3005640,ccece0c79dd5ee2ff99bcc319d002c9e68e4ab7f942b03bc0722803fc5782221,手机保护套,适用于三星，多种款式,OK,deepseek-chat,2026-08-25,Lab31为型号，保留；Samsung译为三星
+3005652,f3d0bda8c66b31a0bc48594918903c56170774c346bfd92f431a28f7ef155138,碗,直径10.5厘米，多种颜色,OK,deepseek-chat,2026-08-25,Magnifique为系列名，不进入品名；Ø译为直径
+3005653,67f756bc042c6ed90c918c837fccb7537ba68929cd423da8fa9e6220f77977f5,碗,直径15.5厘米，多种颜色,OK,deepseek-chat,2026-08-25,Magnifique为系列名，不进入品名；Ø译为直径
+3005786,1f0d697db3fdbba689efb6096ab0998a11bb721460f917a31da7939a20160467,仿皮毛编织线,200克，多种颜色,OK,deepseek-chat,2026-08-25,Alison & Mae为品牌，Faux Fur译为仿皮毛
+3005990,60a0b17fbfd8c311cb87acd30a023645b2de32771a00fd4db7719cec1795b64d,仿真蒲苇,78厘米，多种款式,OK,deepseek-chat,2026-08-25,Excellent Flowers为品牌，artificial译为仿真
+3006010,0eba49fb0786e78a309a3c0808d3102ea7fa3e44d654b5c6ab13a19f5a57e859,深盘,直径20厘米，多种颜色,OK,deepseek-chat,2026-08-25,Magnifique为系列名，不进入品名；Ø译为直径
+3006342,60252176d1a09a1e16358141095415c882f2a5381cfff35ed27de5c77a722ad7,仿真棕榈树盆栽,直径15×38厘米|多种款式,OK,deepseek-chat,2026-08-25,
+3006693,5906c2851154aa4c975acc57b2d12d369084c8934d2d00b58bba2c6328ce178c,可乐味软糖条,240克,OK,deepseek-chat,2026-08-25,品牌Haribo不进入标准品名
+3006977,f82e3fa9bdbe466f20139c79ac5546612aa6099c2ea2d7d3ebaebe0f7b3834ec,Plex Care 1洗发水,300毫升,OK,deepseek-chat,2026-08-25,Plex Care为产品系列名，保留
+3007227,ef356d9dbb3021a6186c33ef0d815b5e8c52dee82ee210f71c02bd3655438c15,一氧化碳探测器,FGA-1311,OK,deepseek-chat,2026-08-25,型号保留
+3007315,9ee719153c215244e3b80415850a3224a12c515c534b0701c182d25d1e3559bf,冬季混合软糖,175克,OK,deepseek-chat,2026-08-25,品牌Haribo不进入标准品名
+3007321,5e4936e8ff39d4e5736dd2d4c56efdf38f43a854fb4b4dba38027a1e513a865d,迷你房屋手工制作套装,多种款式,OK,deepseek-chat,2026-08-25,DIY译为手工制作，Crafts & Co为系列名不保留
+3007921,755b9985d9830dd4b56ffced31a14d55760b6c0a782ba1f555e80ce8cb9837af,花园围栏,4件装|60×30厘米,OK,deepseek-chat,2026-08-25,Garden Collection为系列名不保留
+3008000,792b49f20d0c512c14f7444cb596697f4afa5d3fdd1e2fc0b60130656dc4577e,Micro-USB充电数据线,1.5米|多种颜色,OK,deepseek-chat,2026-08-25,Sologic为品牌不保留
+3008234,dfc8ad3229f657177a184561f06da9ec04e089c8ecea8c010474576f397185d9,遮阳伞,直径150×170厘米|多种颜色,OK,deepseek-chat,2026-08-25,Côté Détente为品牌不保留
+3008447,9f4d48a732e12df22ea80adeeaf47f5c79618744cc45d5baab01c983dfd3a117,护发素,500毫升,OK,deepseek-chat,2026-08-25,品牌未入名，西语品名已翻译
+3008497,9d0bb06f6ebc4908286dd97353f237035a111f1e85a7d62b0362954ee0f4f625,钓鱼竿,1.8米,OK,deepseek-chat,2026-08-25,品牌未入名，规格已规范
+3008762,76f847e0392aa41d57320c62467be92284ae8059d41ec021db5f234aa8c6e78a,餐碗,直径25厘米 | 不同款式,OK,deepseek-chat,2026-08-25,品牌未入名，材质未明确，未添加
+3008847,c357aabb81eb6ce912f8bd16f5903759cbaa194344f731686d815d8ea99d4434,永久性记号笔,24支装,OK,deepseek-chat,2026-08-25,西班牙语翻译为中文，24 unidades转换为24支装
+3009190,0d5e71b8c453ab7fdbf0110c618da15565edd6c6b7d656ded46d313f198f7544,U盘,2件装 64GB | 多种颜色,OK,deepseek-chat,2026-08-25,品牌未入名，规格已翻译并规范
+3009191,039d29f1a42f0acaeb01d41fea9fa4bce529935542d97f2650069cacb08a0ba4,干湿两用吸尘器,1000瓦,OK,deepseek-chat,2026-08-25,品牌型号未入名，规格已规范
+3009200,0826d332403e2372232a94f62435ddb52482f851d72e811ce635b0d70c7a9c3c,多功能应急启动电源,7200毫安时｜12伏,OK,deepseek-chat,2026-08-25,mAh转换为毫安时，voltios转换为伏
+3009272,dce464b9bce0e80d999c9906e10930dd7db17aaee71faafe7c499bd5eb1153a9,HDMI线带转换头,7.5米,OK,deepseek-chat,2026-08-25,品牌未入名，规格已规范
+3009292,dd94650c39a2beecb35ccdf122a14988b4a178383fc63ef7d617adea8a2384ee,发膜,300毫升 | 多种款式,OK,deepseek-chat,2026-08-25,品牌未入名，西语品名已翻译
+3010093,b154dfec87d70d81286c5a7ffc6e7f9476e54e5c8958e83242fb3347319c29d0,罐装迷你房间手工制作套装,多款可选,OK,deepseek-chat,2026-08-25,DIY译为手工制作
+3010120,3ac6edf4e87370a25c3c29dbf2f07b8a4a26530aa51b577740157f87d1ae2734,玩偶连体衣,多种款式,OK,deepseek-chat,2026-08-25,品牌未入名，西语品名已翻译
+3010428,38eaf39e037f44602b41134f557ca47f68741c1b98e9e8f0c0666d07912cc5eb,墨盒,兼容Epson EcoTank 101/102/103/104，4件装,OK,deepseek-chat,2026-08-25,品牌未入名，规格补充兼容信息
+3010438,22fc8c6f0c67093b4b88faf2aa295f9f57d50e8fd4cf025563024d3ad2ad89d0,磨刀器,多种颜色,OK,deepseek-chat,2026-08-25,品牌 Lowenthal 不进入标准品名
+3010810,d543132845e0971208fadb4c6cd8de8c4f2d27eb9ed09e9fe1612992159b957e,收纳篮,1.4升｜多种款式,OK,deepseek-chat,2026-08-25,品牌 Curver 和系列名 Terrazzo 不进入标准品名
+3011336,48a98d961155c86a900bf20ffd3e8b89dd0b145486f33338453207efd2cef8df,Chloe Girlz 玩偶套装,5件装,OK,deepseek-chat,2026-08-25,保留合法授权 IP 名称 Chloe Girlz，规格按件装
+3011466,60defb33cce4723d901f0c6db2c8284847da4b6bce09164235645fea4eb790a3,洗发水,1升,OK,deepseek-chat,2026-08-25,品牌 Inecto Essentials 不进入标准品名，Ultra Hydration 为普通英文，不保留
+3011535,aa0062372d6d7f14109d1fada586ad5a5dd107916f1054688920f2c0b303d53d,巧克力排,100克,OK,deepseek-chat,2026-08-25,品牌 Maruja 不进入标准品名
+3011745,957738be82ad2669e6da4e9d7b9250ea3746bd15ff6fed77b03112b8a56bcf14,护发素,1升,OK,deepseek-chat,2026-08-25,品牌 Inecto Essentials 不进入标准品名，Ultra Hydration 为普通英文，不保留
+3011815,13a85a559d3a05e69c9bc9b0a82d8446f7aa2403771e2a480eb74795f5c2afd8,MagSafe手机壳,兼容iPhone，多色可选,OK,deepseek-chat,2026-08-25,MagSafe为技术缩写保留，品牌未入名
+3011872,2f7e162c29e8914c9ad97b64d60460930a6a65c96d03b37ec57265860f6cfbb9,海盐身体磨砂膏,500克｜多种款式,OK,deepseek-chat,2026-08-25,品牌 Spa Exclusives 不进入标准品名
+3011934,9c24951701e329ada9b8d6f4314a987bcc2d69bfcc45ca19812e0496635c4915,奶泡机,型号TMF7525S,OK,deepseek-chat,2026-08-25,品牌未入名，型号保留
+3012135,200b57dc6def87a22931db468ab93d3d9eb4faf13d24d1a3808dfbb3b35ba37a,手工制作自己的钩针公仔套装,多种款式,OK,deepseek-chat,2026-08-25,品牌Avec未进入品名，DIY译为手工制作
+3012148,cf8d7e52e2e88747911b82e8c1cf7f47c0c2979a82794deff367bf9479f0c77f,TCX All-In-One 密封胶粘合剂套装,290毫升,OK,deepseek-chat,2026-08-25,品牌TCX保留，All-In-One为技术缩写保留
+3012345,53a4cdebf660b136fcacc8655ef88c1694434f5f20248ff22c644fd9db43bc60,Bites for Birds 鸟类脂肪球,6件装,OK,deepseek-chat,2026-08-25,品牌Bites for Birds保留，规格按件装
+3012733,333ecb54da76a76b8159deb8f8d204b59dbf2018eddbe5e2ce753dcfe54b7bea,手工制作自己的捕光器,多种款式,OK,deepseek-chat,2026-08-25,DIY译为手工制作
+3012772,3ccae9b22d34b9da92674b622d0a33fe9c59128d9cf38b3c6ba0bbf6d105d721,NYOY 润滑剂,100毫升 | 多种款式,OK,deepseek-chat,2026-08-25,品牌NYOY保留，规格统一
+3012939,aa3b46c4260af7250e5b5d306c98b2f12895f6cd849e7182dcdba094cf126dc7,可塑膏体套装,多种款式,OK,deepseek-chat,2026-08-25,pasta moldeable译为可塑膏体
+3013054,93de3ea93e8fddb65177311614be671af70ac1b6efab35367e8cd9469e972954,蓝牙游戏手柄,兼容Switch/PS4/PC，多色可选,OK,deepseek-chat,2026-08-25,
+3013648,f663fadec65e55830f5f3c0184d5b7405a2ac380591f2563c3bba34255d414dd,Up & Down 太阳能壁灯,2件装,OK,deepseek-chat,2026-08-25,
+3013815,50a7292d5a3e426dafd0303509f93e2aefbf62a44a416e4bd4caa692ab8ebe3a,Golden Glow 身体油,30毫升 | 多种类型,OK,deepseek-chat,2026-08-25,品牌Golden Glow保留，规格统一
+3013851,872303855b73eb701911069dca6e364a52eaa7622d52e4d07a5f1d39375c6a4f,Dulux Premium 白色缎光丙烯酸漆,750毫升,OK,deepseek-chat,2026-08-25,品牌Dulux Premium保留，规格统一
+3013942,51fafc9258aba5ef0d327678f97b4305936e8030ed8c7326b1f627f84a8b4495,丝滑牛奶沐浴露,1升,OK,deepseek-chat,2026-08-25,品牌Hegron未进入品名，Silky Milk译为丝滑牛奶，suero de leche为乳清，但品名中未体现，按语义处理。
+3014318,f9f84fbee58390949e734caf67fc2511238a60d44f809bb262bdef3c484b4759,心形棉花糖,175克,OK,deepseek-chat,2026-08-25,品牌Haribo未进入品名，Chamallows Hearts译为心形棉花糖。
+3014319,5ee68afb61b515d7a9abb51a5c535b06af05dc2f920f5253cf124230156bbf35,复活节趣味软糖,300克,OK,deepseek-chat,2026-08-25,品牌Haribo未进入品名，Easter Fun译为复活节趣味。
+3014633,594ace28521a98214046de587aa2170dfed1776852ef8ee5661651a2ed13d15c,奥利奥蘸酱脆脆零食,110克,OK,deepseek-chat,2026-08-25,Oreo为合法IP保留，Dipped译为蘸酱，Crunchy Bites译为脆脆零食。
+3014642,7c7cacded22f5131a71b5c5511c82e4088ca48fe38bc76a4654635804b006068,无尽花香衣物香氛,20次,OK,deepseek-chat,2026-08-25,Endless Scent译为无尽花香，Blossom Sense为花香，perfume para la colada为衣物香氛。
+3015139,f9534f93d90e9dd71008d81324cfde761dd5f428732f2ae99f1a1fbfe59e0c8e,儿童防晒喷雾,SPF50+，200ml,OK,deepseek-chat,2026-08-25,品牌未入名，SPF为国际缩写保留
+3015140,48e1783b7ccbfc8eff6b613e0b7e0b1e0639be6736fc2a2138eb173dde2722a7,防晒喷雾,SPF50，200ml,OK,deepseek-chat,2026-08-25,品牌未入名，SPF为国际缩写保留
+3015141,19c3801f53ecc89e560c543e6dc661b18cb62a971b81b6a437a45c3843613925,敏感肌防晒乳,SPF50，200ml,OK,deepseek-chat,2026-08-25,品牌未入名，SPF为国际缩写保留
+3015142,e2938c23010a2584b8a1fbac8050cda8299dd0dac5a1bebe8ac3476475be3dc8,防晒喷雾,SPF30，200ml,OK,deepseek-chat,2026-08-25,品牌未入名，SPF为国际缩写保留
+3015143,0fd299ddf24435bfee5eaadc46d7e2718b36370a8d88c89bc5d94776e190043e,敏感肌防晒乳,SPF30｜200毫升,OK,deepseek-chat,2026-08-25,
+3015144,0221fd82620e4893ca59af5c85a97322d9d40fe97f292a4524c9341c5d52b113,儿童敏感肌防晒乳,SPF50+｜200毫升,OK,deepseek-chat,2026-08-25,
+3015145,d49eeaa635da3371e1c56679c0b3f65f404f3716226dafe109e99290f19c8195,敏感肌防晒乳,SPF50｜50毫升,OK,deepseek-chat,2026-08-25,
+3015146,0a2743dd715f67d1ce82c2455da701b26b810893cde750f94562c9fc9553e372,面部防晒乳,SPF50｜100毫升,OK,deepseek-chat,2026-08-25,
+3015268,931dc2ecd4c3d8e23418c808cbcc644d60bb896ad4f935204168e6e5d73bd21f,Nicols Fresh Wick 空气清新剂,375毫升｜多种型号,OK,deepseek-chat,2026-08-25,
+3015281,805742a01b74408e28c3df05dfec64ce79d605c05927f5dcaa1965602aed538d,玩具吸尘器,含配件,OK,deepseek-chat,2026-08-25,品牌House Fun未进入品名，aspirador de juguete为玩具吸尘器。
+3015305,06fa664cc5df0af7530e44757759b936327e9e52bd23c4f3a2266f471ffdac80,巧克力夹心糖,325克,OK,deepseek-chat,2026-08-25,品牌Goplana未进入品名，Eclairs为夹心糖。
+3015313,274db575b2fd0aa95a5cee09cfee90df5a29c0be7d0afe43122b7cdc36666926,Chloe Girlz 娃娃服装,多种款式,OK,deepseek-chat,2026-08-25,
+3015376,5be2c94eabe17117f5a602c6de71ada3e538710fc5feabd7bbd00e6c22848099,Zuru Smashers Dino Island 惊喜蛋,多种款式,OK,deepseek-chat,2026-08-25,
+3015377,1b3ab48dd90c51c1645441d79f01318cda1f241a316c48d6f5cf4153e4f878aa,Zuru Oosh 魔法药水惊喜自制粘液套装,多种款式,OK,deepseek-chat,2026-08-25,
+3015379,226384bd4919ef7631675b45568d4f82961876b7c178fff8f2717f68ab2eb160,Timotei Essentials 净化洗发水,750毫升,OK,deepseek-chat,2026-08-25,
+3015404,290cf0c3c5b5d9ccbbf23058eb8dd73d726f7aa565ed4b8352296407703dc2a8,Gillette Venus 剃须刀片,4件装,OK,deepseek-chat,2026-08-25,
+3015430,f403ba80816cf488ff6558601186233ff81a2b292166eb5c85d70be56fe208c3,Chloe Girlz 飞机玩具套装,含配件,OK,deepseek-chat,2026-08-25,
+3015629,f7ef514e2774dc8b96716d1a8ee7c9466b78fa60c6df771fad0d84a3c07eb1b4,Hot Wheels City 龙形特技车,适合3岁以上,OK,deepseek-chat,2026-08-25,
+3015660,3cd2306618c5a2ea788a300f2385792004dfe9b0f3f038f4b69654f181784336,Baltimore LED灯带,10米,OK,deepseek-chat,2026-08-25,
+3015892,96f6de28b51369b1fca3e5ac4fad74092e5ba13b01eb86f11318479af291d1f0,椒盐脆饼块,85克,OK,deepseek-chat,2026-08-25,品牌Crackzel不进入品名
+3015947,21cbb7af1a72ecf5b8e6fee2597631f10419c303c3e92cf93d9eb9bfa2f5672a,陶瓷大理石纹炖锅,直径12厘米,OK,deepseek-chat,2026-08-25,Ceramic Marble译为陶瓷大理石纹
+3016175,591c46f093de5a1b107acfbc1de79e63c9f93abfc3fa296068912e6e678da7e7,露台木地板,4件装｜31×31×2.5厘米,OK,deepseek-chat,2026-08-25,
+3016266,b0cf7999beff39698d042316a2dd0e6aa76d408b1e1b4dec515e16eacc4b8380,陶瓷大理石纹煎锅套装,3件装,OK,deepseek-chat,2026-08-25,Ceramic Marble译为陶瓷大理石纹
+3016415,618a9fb36aa4c80b2bf2a318b56c261eb0e76624270c7442ec58a22edde15dc2,毛巾,50×100厘米,OK,deepseek-chat,2026-08-25,Hotel Royal Beis为系列名，不进入品名
+3016563,b7e7d9f4ec7224b934f6803a4972a2dce9a4844d3702a759b20bde3ff4b3526b,豪华浴帘,180×200厘米,OK,deepseek-chat,2026-08-25,luxe译为豪华
+3016569,21e9287e93163bac29787cd10684d7f0cb9d2c9cd55b531f880a53f4869cb291,双吸盘,直径11.8厘米,OK,deepseek-chat,2026-08-25,Tools为品牌，不进入品名
+3016585,38f620a5b787d8f48a118c227f7bfd7cdc2a54d183ce111ca914d32c49b0fde2,防水修补胶带,150×50毫米,OK,deepseek-chat,2026-08-25,TCX为技术缩写，保留
+3016638,b2595a7566c83b243f522c065d67edfaab24c044a4e6ff463710d7f49408b266,大理石底座首饰架,16.5×8×33厘米｜多种颜色,OK,deepseek-chat,2026-08-25,
+3016649,0a6e0f7ba0b20fe282417901d22a9a170276ff64d53e60a6428246535295a05c,音乐感应LED灯带,5米,OK,deepseek-chat,2026-08-25,品牌Baltimore未进入品名；sensible a la música译为音乐感应。
+3016878,f43afd490dd0e4af92214cabc1b81a15fb85cc6432a818b1e14cabcbc3abe00d,超强卫生巾,12件装,OK,deepseek-chat,2026-08-25,品牌Femapure和No Worries未进入品名；Súper译为超强。
+3016887,b174a9c7353ba9198dd56ea896ed63887a1e9f3cebfd5b9f654fe51c51beff63,宠物活体拉便便互动小狗玩具,多种款式,OK,deepseek-chat,2026-08-25,品牌Zuru和产品线Pets Alive Pooping Puppies未进入品名，按语义翻译。
+3016987,56c8583d9577f2f2e0e7a303d3e726f8b6bf27ede588353b2f161c3298d078e8,多用途清洁剂,1升,OK,deepseek-chat,2026-08-25,Flower Scented为香型描述，未进入品名。
+3017000,d0533de92250f693ed49e60e0063973f61e70bd8c3a50247731e7ba3120a8e36,惊喜玩偶,多种款式,OK,deepseek-chat,2026-08-25,Na! Na! Na!为产品系列名，未进入品名。
+3017008,5c0b6eb961fa47af467fa782f7e0b1201f8292aa36b05e192d2ea1fceabd9265,强力定型造型凝胶,350毫升,OK,deepseek-chat,2026-08-25,品牌Fixeeze和Iron Men未进入品名；Superfijación译为强力定型。
+3017038,7bba480abb6c92811fbde41346c134730c50003963f1ece33002d0d802c8a96c,豪华版卡牌游戏,2-10人,OK,deepseek-chat,2026-08-25,Uno为游戏名称，未进入品名；Deluxe译为豪华版。
+3017086,fd61d9c20553d5df2ac649e89f01a7ec30b33e60022f4c67cdcde178a2be8285,惊喜迷你娃娃,多种款式,OK,deepseek-chat,2026-08-25,品牌MGA和产品线Na!Na!Na! Surprise未进入品名，按语义翻译。
+3200082,6e71ed80e88a181f134f43dab09f8a49b4167e1ba7f15b9fbe14b886d3319536,厨房刀具,4件装,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格按件装表述
+3200384,5fc8976b7593a4023a52a5582c1e3f7f40b1b9d4e732a06c0c4acbf21aff32c2,手动握力器,2件装,OK,deepseek-chat,2026-08-25,Grips 译为握力器，Q4Life 为品牌不进入品名，2 unidades 译为2件装
+3200490,6403c4aa18bf70ffc7e699e2a3133d3b3fcf35bd248ff0350ce28898af3ff33c,智能节日灯饰,13.5米|15个LED灯,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，LED为技术缩写保留，规格统一中文
+3200589,03831c29d630545f246de93cdac029e1d01d3633859436f7b9fbc3b49fd1d267,防摔手机壳,适用于iPhone｜多款可选,OK,deepseek-chat,2026-08-25,
+3200598,876a1361a3a2750ebcefb4a769e3ac5711eb01a11a99380de9433f963cc7946e,充气泵,8瓦|2000毫安时,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，mAH译为毫安时
+3200654,5dbb474349c6c3b18fbf8d695e0a36b7cc25e1e5618255dbe219c388dab61f67,LED灯带,3米,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，LED为技术缩写保留，规格补全单位
+3200769,53b5162ed380abc419f4c6392d6af4ff4910aeeadc254c838063feea82266f2a,彩色固体胶,2支×20克,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格按支装表述
+3200871,007ecf52a3cfd7188ec4e3296b700a5aaa2a802cc81c62dcc72b2eda92798ab2,柔性收纳篮,27×18×7.5厘米|多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格统一中文
+3200872,2ca7a385ee9478849ffe72cab7a32b73af008cfd9195c7a2e21c4158d66fe474,柔性收纳桶,18×13.5×7.5厘米|多种颜色,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格统一中文
+3200981,434a204b480f82bfb41901f653ad3c8c3a009ac8224534cf98eaec820728b6bb,薄荷桉树舒缓膏,100毫升,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格统一中文
+3201448,9e86b772f7ea279cf27486f90d853cd31eab62af018769459f2b5403a52db18e,身体喷雾,250毫升 | 多种款式,OK,deepseek-chat,2026-08-25,品牌Marc Dion未进入标准品名，西语Bruma corporal译为身体喷雾。
+3201584,3c7fef5d2f316348ae8740798c0e6ef8291e3b232d2e9f4914f6556b75beebc0,对流式取暖器,1800-2000瓦,OK,deepseek-chat,2026-08-25,品牌Alpina未进入标准品名，Calefactor convector译为对流式取暖器。
+3201671,e9adb8c056a0df2822e494afeca54de41d66de78664721303db40c75c9259f2a,抱枕套,45×45厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Maxime未进入标准品名，Funda de cojín译为抱枕套。
+3201736,271bbc6e44e27ddfed18d909e528f3a6cf00d24926413092b1498fa0a2623cbb,咖啡机,1.25升,OK,deepseek-chat,2026-08-25,品牌Tomado Superior未进入标准品名，Cafetera译为咖啡机，规格小数点为点。
+3201830,1cd6c048c2e5a4c71a833508e40d0911899bd004adb84499889e846a0f277b1a,中文品名待人工核验,尺码36-41｜多款可选,NEEDS_REVIEW,deepseek-chat,2026-08-25,原品名Pantuflas为西语，需人工确认具体鞋类
+3202066,3ad3aaf9d915df85ad69b8297ca70113e9f9822c8b3b709b7b274b4d63751830,伸缩公仔,多种款式,OK,deepseek-chat,2026-08-25,品牌Stretcherz Stretch Squad未进入标准品名，Figura extensible译为伸缩公仔。
+3202077,121f049a00169cec4b8eca65b60ec576f6528c86a4fe94eec88e2f17c3a27da3,多功能推车,44×32×69厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Starplast未进入标准品名，Carrito multifunción译为多功能推车。
+3202092,a65f6bd4f581a88a6f1259e944c7f4e1e3207893d29c1bb8931f1079b09d12dd,户外网络摄像头,1080p高清,OK,deepseek-chat,2026-08-25,品牌LSC Smart Connect未进入标准品名，Cámara IP exterior译为户外网络摄像头，1080p HD译为1080p高清。
+3202132,ed31b3d25f5113b4e13ae0a09966a006d18615cb6c28be52bf5b1c007daf7194,玩具车,多种款式,OK,deepseek-chat,2026-08-25,品牌Teamsterz未进入标准品名，Coche译为玩具车。
+3202330,94fb2d9006b74766e241072664d6a96621e5429d02ca6d2c6500cd3450f803bc,摩洛哥坚果油滋养护发喷雾,200毫升,OK,deepseek-chat,2026-08-25,品牌The Beauty Dept.未进入标准品名，Argan Oil译为摩洛哥坚果油。
+3202336,fab6c1e27efa2ade27d94471b977e86027028e6ec3c4f990703bfe6aea874f3a,手工制作模具套装,5件装 | 多种款式,OK,deepseek-chat,2026-08-25,Set de pasta moldeable译为手工制作模具套装，DIY按语义处理。
+3202424,e95432cd5760f26bcf4808cd23f60d942400153b64339e2e5383f51e2c34dda7,DC Comics沐浴水,50毫升 | 多种款式,OK,deepseek-chat,2026-08-25,Agua de baño译为沐浴水，DC Comics为授权IP保留。
+3202571,d1dfee5ef7bd90648458a88ee273448c19ed3ee9c9a6993ecd862fbdcc2942f1,陶瓷咖啡杯,230毫升 | 多种颜色,OK,deepseek-chat,2026-08-25,Sandscape为品牌不进入品名，Taza para el café译为陶瓷咖啡杯。
+3202574,36a808bee0095928414e983f1965c2769d9737f2d065333444386069a14d3b5e,陶瓷碗,直径10×4厘米,OK,deepseek-chat,2026-08-25,Cuenco译为碗，Sandscape品牌不进入，规格统一为中文。
+3202577,e43b3400c3b70e25723c3cf1fe76508884a34a7ab64e03726ea3f87868c07666,深盘,直径18×5厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,Plato hondo译为深盘，Sandscape品牌不进入。
+3202653,ebdc73ffd25b3b372d72ac32cba3aa2732bc1d82ce0dd15d1972a17f9ebd3306,电竞鼠标垫XXL,90×30厘米,OK,deepseek-chat,2026-08-25,Alfombrilla de ratón gaming译为电竞鼠标垫，XXL为国际尺寸缩写保留，品牌LSC Battletron Razer Chroma不进入品名。
+3202678,b7a964e66914625d8beea020488c95e538bea158f83c611eb53a30a7e82beec9,Teamsterz回旋赛车轨道,多种款式,OK,deepseek-chat,2026-08-25,Teamsterz为品牌，但根据规则品牌不进入标准品名，然而此处品牌为产品系列名，且原中文名已包含，为保持可识别性，保留品牌。
+3202706,d9e89a488dad009f4d9591d18d86f5bf113f8f71d39ea018a0a9a28dc51f6c7f,空气炸锅硅胶内胆,22×6厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Löwenthal未保留，规格已统一格式
+3202721,a8395973fe83187b915e186738125289209625660d31d57e638308c9cde105ab,巧克力松露,400克,OK,deepseek-chat,2026-08-25,品牌Favora's未保留，规格已统一
+3202803,add61d1671a57dba73d70ee0de27e59713bafcf7ddb5998ff50921c7b8160e3c,手工制作活动箱,多种款式,OK,deepseek-chat,2026-08-25,品牌Kids Kingdom未保留，manualidades译为手工制作
+3202971,f21189d6e883f61889c4cff79984f110c26884fbe4fc2cdbed630737af6081e5,Micro-USB充电数据线,3米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Sologic未保留，Micro-USB为技术缩写保留，规格已统一
+3203085,5b0e5a43b07d7535f6e26f8eedc4cd2eacace6f65bc05e6c1c849c03724172ea,耳机,多种颜色,OK,deepseek-chat,2026-08-25,品牌Pulsar未保留
+3203100,d508988f84669aa9b8292a5342bd571ca7179c311d9eacdbf0155543eaacf550,圆锯,550瓦,OK,deepseek-chat,2026-08-25,品牌FERM Powerline未保留，规格已统一
+3203125,114426acf049b6be0f1a1d1a8ca15589c4ed5652170e915c889abdecab6d3fad,无线耳机,多种颜色,OK,deepseek-chat,2026-08-25,品牌Fresh 'n Rebel Sport未保留
+3203155,0f1c1b2d220ac1bcb80787985079c9df7c8209dcb59cc0f3dfc6f8b5ac8e552b,凡士林,200克,OK,deepseek-chat,2026-08-25,品牌Domily未保留，Petroleum Jelly译为凡士林
+3203156,2121d0de8a86a37eae5909ee12b1fe7881377f326d1aef6ee06b964585c065da,蜜桃腮红粉,8克,OK,deepseek-chat,2026-08-25,品牌未保留，Peachy Cheeks译为蜜桃，规格数字与单位无空格
+3203176,a08fb343f4abdec12702e18810cbaa70a0cf2ef544967cebbb185891947fc5e0,情绪提升香氛,10毫升 | 多种款式,OK,deepseek-chat,2026-08-25,Mood Booster 为描述性名称，译为情绪提升香氛。
+3203320,fd1aac710f013dccb060b93f8edc1a9d1c1bec2b24399af60dd07c94a7cad59e,Kiki 抱枕套,45×45 | 多种颜色,OK,deepseek-chat,2026-08-25,Kiki 为产品系列名，保留。
+3203632,44bacdcf71a0179ed3b14a7f26e881e762f796153cbf2a498faa308ac98e8df9,LED灯带 LSC Smart Connect,5米,OK,deepseek-chat,2026-08-25,LSC Smart Connect 为技术名称，保留；规格单位改为米。
+3203646,76a94171d98bfec79ce3f7f4b6ce6f12a28ca0cc1afaa7cc3b8b84bc76cee66a,Magnifique 早餐盘,直径21厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,Magnifique 为系列名，保留；Ø 译为直径。
+3203681,b0e1628489af6f7a93798a6b24714a8f39013b42dfd1e3bde3c1cc4dab80ede0,The Skin Dr. 洁面产品,200毫升 | 多种款式,OK,deepseek-chat,2026-08-25,The Skin Dr. 为品牌名，保留；Limpiador facial 译为洁面产品。
+3203750,0fe2a9a4faf3fdf1944b510039ff454a3ad777829f695e2f9b3ad896b4cd6f01,Nuagé 薄荷桉树芳香护理油,10毫升,OK,deepseek-chat,2026-08-25,Nuagé 为品牌名，保留；Menthol & Eucalyptus 译为薄荷桉树。
+3203890,e99d6020189f7e10e0116bf7d8afee4bf5a34c5dccfdb7c90a887956e2dcbc81,冰棒模具,4件装 | 多种款式,OK,deepseek-chat,2026-08-25,Cubitera para hacer polos de helado 译为冰棒模具；4 unidades 译为4件装。
+3203925,57db8c96d32cac9843eda41905c951e5f904d7d0d9c877b196bf3b41437643c1,Tomado Superior 鞋架,64×23×59厘米,OK,deepseek-chat,2026-08-25,Tomado Superior 为系列名，保留；规格尺寸统一用×和厘米。
+3203926,ca19197c746487eba8b70343ce477e977ed493e31e2977a986c7e0c8fbc4ce64,手推车,41×23×61厘米,OK,deepseek-chat,2026-08-25,品牌Tomado Superior未进入品名，西语品名已翻译。
+3203930,1f297a20682f4e0f6a7140a309881d5a73def4200eccd987de48c51ce93d3170,层板下挂篮,30×26×14厘米,OK,deepseek-chat,2026-08-25,品牌Tomado Superior未进入品名，西语品名已翻译。
+3203949,fee7ede01b53fe88e5b94c191cd7f9fc9d5f091ba1f4f0bfbea93323982b98e6,节水花洒头,直径10厘米,OK,deepseek-chat,2026-08-25,品牌Absolu Chic未进入品名，西语品名已翻译，规格中Ø译为直径。
+3204003,da14f3555ff45eeaa6065bd8879dd3b21f01d08f8c3f2c7d4a467f598cc10f5c,保鲜盒套装,3件装，多种颜色,OK,deepseek-chat,2026-08-25,品牌Alpina未进入品名，西语品名已翻译，规格中piezas译为件装。
+3204005,d5e2448ad1292dbb2652a760893acdc4bb07e233d2a3ee4a10891686aeba05f7,带支架百洁海绵,2件装,OK,deepseek-chat,2026-08-25,品牌Alpina未进入品名，西语品名已翻译，规格中piezas译为件装。
+3204023,bb1b8c949e0e74abb8515dcd9061e76713d02482517d84bea82c0394014396cf,软糖,63克,OK,deepseek-chat,2026-08-25,品牌Dr. Candy Funky Noodles未进入品名，西语品名已翻译。
+3204063,0035dc6b46dae6cece7730c2584def14234a2fa9376e0892f446fbd71b2ed6a5,无线清洁刷,110厘米，多种颜色,OK,deepseek-chat,2026-08-25,品牌CleanRite Turbo Scrubber未进入品名，西语品名已翻译。
+3204087,ceeaa7fb661a70cb1aa036e87019d448e6d12d0ab2c7b671c9500d34fadae2f3,手工制作蜡烛套装,多种款式,OK,deepseek-chat,2026-08-25,品牌Crafts & Co未进入品名，西语品名已翻译，DIY译为手工制作。
+3204208,87ffbe5344ea185bec8e35fe3bcf462ba5f56ecd754bb6d3f63e4d734f8486c3,毛毯,140×180厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Eva不进入标准品名，已删除。
+3204292,822a5ebe3bfa4ad9d7b6047e44c92ada3978bbfc4af40c4f5c51e084177da8e4,便携充电宝,12瓦｜5000毫安时｜多种颜色,OK,deepseek-chat,2026-08-25,
+3204439,cc093e43bbfc649fadf73773ac8637aceada1620589da567d6053ca35dced65e,花盆,直径16厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Toledo不进入标准品名，已删除；规格中Ø译为直径。
+3204488,bddd7e15abfca4202efca3c07f23ca50a30a5234d5040ce97b3bfbfee16bfb1b,Haribo 复活节软糖,350克,OK,deepseek-chat,2026-08-25,Haribo为品牌，保留；Happy Easter译为复活节。
+3204572,b570e8201e046d3b36c660a90be96efc820db6dd77dcdc2a226693277f0ebf4c,带储液仓洗碗刷,多种颜色,OK,deepseek-chat,2026-08-25,品牌Kitchen Korner不进入标准品名，已删除。
+3204620,ba43a0e6a0515e5c104086bf377fcd91b9fc298e9af169d5cef774d0496f7a67,花卉碗,直径24×9.5厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Cádiz不进入标准品名，已删除；规格中Ø译为直径，逗号改为点。
+3204623,2bbdefc0fc73dd26d95a1468a27c7a42d3fa71d07a3af1a375c55f7e6d04e101,夹心复活节彩蛋,450克,OK,deepseek-chat,2026-08-25,品牌Easter Moments不进入标准品名，已删除。
+3204676,dd3c5be0fe3e7aec79a3579a15166133d412bd46aaa8282a01766fb9606e7e1f,分享装糖果袋,10件装×25克,OK,deepseek-chat,2026-08-25,品牌Croky Fun Mix不进入标准品名，已删除；规格中10x译为10件装。
+3204787,a7be8f590186a45fac485014952b45e4755f750bcf9780bf3273a90f74644327,男士香体剂,200毫升,OK,deepseek-chat,2026-08-25,品牌Brut OUD不进入标准品名，已删除；Desodorante译为香体剂。
+3204804,ce941492bcba00b982e53c757e6c04161721ffa53b34c9e344493fafa8a581e1,花瓶,多种款式,OK,deepseek-chat,2026-08-25,品牌 Sandra 不进入标准品名
+3204835,9f9dad0bec5ee5fbb1a0ad93ccbb352722d45df1312051d501f274cd0508395b,露营收纳柜,60×46×85厘米,OK,deepseek-chat,2026-08-25,Froyak 为品牌不进入品名，规格尺寸使用×，单位厘米
+3204881,337b84c25a333324dfde332d86d603a4ec7adf2e565d8ef69e469a513409b8e8,心形软糖,130克,OK,deepseek-chat,2026-08-25,Haribo 为品牌，不进入标准品名；Hearts 译为心形
+3204904,a04631b78fb173713a3ed68bfe2fdaded9dc12687351774908853e6a7cc4d4df,糖粒磨砂膏,600克,OK,deepseek-chat,2026-08-25,Cherry Crush 为产品系列名，不进入标准品名
+3204975,ff2d45ea127ca877bd1854a99c2f77f54c75377deb730f7f1b6a3aa19208deca,美人鱼洗澡玩偶,多种款式,OK,deepseek-chat,2026-08-25,Bloopies 为品牌，不进入标准品名；根据西语品名修正
+3204991,d01d8476318764a6d7a46383e1d05884f93f9ddbdb84e0ac49b2aaedd5918c3f,钓鱼竿套装,3.35米×多种颜色,OK,deepseek-chat,2026-08-25,Max Ranger 为品牌，不进入标准品名；规格修正
+3205031,08719754237571ac50f71966ac5342713987650f455bd910b4f57d3743f018cd,迪士尼史迪奇毛绒玩具,25厘米×多种颜色,OK,deepseek-chat,2026-08-25,Stitch 为 IP 名称，保留；Disney 译为迪士尼
+3205379,b9d85a45974637e95b9d887c1f235f6b11a15a9b56d06bff0b3cee5ee7d628bd,带灯无线卡拉OK麦克风,5瓦,OK,deepseek-chat,2026-08-25,
+3205413,c2eac49797527166ba169dd002d810004f8ecd9430b1e567f61da6ac2b9073fc,漱口水,250毫升,OK,deepseek-chat,2026-08-25,OptiSmile Colour Corrector 为产品系列名，不进入标准品名
+3205507,34b59d0d1262b57cd7e8da63cd8a69b1ccd67b525df5a8a269ce30788d22254c,数字气球相框套装,80厘米|多种款式,OK,deepseek-chat,2026-08-25,修正中文品名，删除冗余的's'；规格单位改为中文，去除空格。
+3205544,300bd6abe0a735f3d0ffb06459e9887ce66e84e333a1019e3637399b14be6034,自制钥匙扣套装,多种款式,OK,deepseek-chat,2026-08-25,品牌'Avec'不进入标准品名；'Haz tu propio'译为'自制'，'DIY'按规则译为'自制'。
+3205546,c4ada61552f48bc33f1c311d89102056e49c7b0d363982ad36877bc27ae7b285,AAA充电电池,4件装｜800毫安时,OK,deepseek-chat,2026-08-25,
+3205547,6b58d557364baf63c4d84ad6566b5cc542057624f199b1ff48da0d98b194c10a,AA充电电池,4件装｜2100mAh,OK,deepseek-chat,2026-08-25,
+3205557,d0dc199469fb8dd337b2450f1754a1f308ae2aa9b55a0849d058b0c362b7f874,座椅增高垫,多种款式,OK,deepseek-chat,2026-08-25,西班牙语'Alzador de asiento'译为'座椅增高垫'，删除原品名中的西语。
+3205572,892057861611c1601872f9a84d7fa62c9af6a2c2099db31184ed382499a1764a,无线静音鼠标,2.4GHz｜多种颜色,OK,deepseek-chat,2026-08-25,
+3205761,62d078ef71b88b786e1ec34d641c2273d2a7353fa86f1d5b4109ba795193c482,酸味软糖,160克,OK,deepseek-chat,2026-08-25,品牌'Sour Patch Kids'和'Kent'不进入标准品名，仅保留商品通用名'酸味软糖'；规格单位改为中文。
+3205835,a5401bfacf9f76aebaf11ea6a4aa75b01f767f34be390457be98c70c7d163bfc,分享装糖果,350克,OK,deepseek-chat,2026-08-25,品牌'Haribo'和'Happy Confetti'不进入标准品名，'Bolsa para repartir'译为'分享装'；规格单位改为中文。
+3205995,7c883d0f31e833a073bcee920b1085cf071b1a4c6faeffb2b720865054cbdf91,毛毯,140×180厘米|多种颜色,OK,deepseek-chat,2026-08-25,品牌'Lisanne'不进入标准品名；规格尺寸使用×，单位改为中文，去除空格。
+3206012,c653660397bf5c1bb19f5a73b3c2363ee82b7eb9435879b6710b234f33f13f1a,储物罐,5件装,OK,deepseek-chat,2026-08-25,品牌'Alpina'不进入标准品名；'Tarros de despensa'译为'储物罐'；规格按语义改为'5件装'。
+3206070,8ab5948d7b45c14a5a3d6255ab77e5ed24b24afa5016e95137102435f508ccd9,索尼克毛绒玩具,10×16×28厘米,OK,deepseek-chat,2026-08-25,品牌Sonic为授权IP，保留音译；删除西语Peluche。
+3206116,f629cd806ebf43f60a3cde916f16eefb8cfde22be6bb46c81ed465dfd520791b,Teamsterz野兽之城玩具套装,多种款式,OK,deepseek-chat,2026-08-25,品牌Teamsterz保留，Beast City译为野兽之城。
+3206133,7ba5a3d498adf9aa507644becbd5d531b60798141c8cda17fdf9b8037f553fac,百乐可擦荧光笔,2件装,OK,deepseek-chat,2026-08-25,品牌Pilot译为百乐，FriXion Light为型号保留。
+3206170,e80eefb0662a639b777afbc20bb433fed4e1f471955fa8b099b94a899c4e7d57,脉冲星手提音箱,20瓦,OK,deepseek-chat,2026-08-25,品牌Pulsar译为脉冲星，Altavoz boombox译为手提音箱。
+3206175,f8ea90e53f5e27c5cf91a543acace62e949f3da83b8347b87866a330a1adfe22,Fresh 'n Rebel智能查找卡,适用于iOS；多种颜色,OK,deepseek-chat,2026-08-25,品牌保留，Smart Finder译为智能查找卡。
+3206321,c25566c51dc1a47536530940f67a73a090ea4518d4df55fdd2d0426088958b25,Fresh 'n Rebel儿童无线卡拉OK套装,4件装；多种颜色,OK,deepseek-chat,2026-08-25,品牌保留，Kids译为儿童。
+3206379,16a415e0633633623f7f436e2d3bac974cec7a1207a1b3392a654ba2eb8888c8,TMC Home烟灰缸,直径10厘米；多种款式,OK,deepseek-chat,2026-08-25,品牌保留，Cenicero译为烟灰缸。
+3206428,90c94e5fcaf434b12e110ab64dc52f1c569b11ad4b432f6c4e84d60013891683,Alpina擀面杖,直径5×48厘米；多种颜色,OK,deepseek-chat,2026-08-25,品牌保留，Rodillo译为擀面杖。
+3206453,3b20ed9bca02d4b14b00e2e1ccee45b60e0c95895da65b63fb5b5a7de43a6d06,幻影碗,Ø24×7.5厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3206457,1e6781d06a551648b6ee13b6ed344c0aaceaee97442f11832aced7e102914755,幻影手工釉早餐盘,Ø21厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3206458,8e52dd5cd3584e9bcabdee2049190a0e63ac9d4555dab20048db759c516e8c0b,幻影平盘,Ø27厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3206473,5faae350ae71adc2f4fbbd8294e9a712f5d2f14fd1556280199d23a1ef39abd6,BIC Twin Lady 女士剃刀,6件装,OK,deepseek-chat,2026-08-25,
+3206502,6e19377d883e35d28295c7efcf5d048bf700b8d3356b79a50698d664ee564995,阿里斯塔咖啡杯,Ø10×7厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3206503,0e172132bda9ebb32dc8aba9ecee50cd81a8e91f30846b972272b4ece4d993bf,阿里斯塔碗,Ø14.5×6厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3206504,45270a675afc08797e8d8b6353d34c339d02e805dbf172b727f4885ab4992a6d,阿里斯塔早餐盘,Ø21厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3206505,e4442e23d4354b5992271e19f4146161e827bbb5fd6557ac5a7e549eb89f783f,阿里斯塔平盘,Ø26厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3206561,b6904cfeee9fc429f24f41332ed8036e7053df4a0a72c8078fdb21d0a5b2b7bd,除湿盒,230克 | 多种款式,OK,deepseek-chat,2026-08-25,品牌Ultra Fresh未进入品名，西语Atrapa humedades译为除湿盒。
+3206696,b059985cb4e57ee6168e960349224815709d51e1ba07b63339afb5d222995570,阿甘油修复护发素,500毫升,OK,deepseek-chat,2026-08-25,品牌The Beauty Dept.未进入品名，Argan Oil译为阿甘油。
+3207156,0acba15653c9685687e37a445477bc87fe53fe71e15f46d0bf9e7a1685158505,FTP Cat6网线,10米｜RJ45,OK,deepseek-chat,2026-08-25,
+3207178,9f96583beba86512744333359c88955886c1207e13f71b780c0cabd10391ed0b,爆米花桶,19×9厘米 | 多种款式,OK,deepseek-chat,2026-08-25,品牌Party Universe未进入品名，Cubo de palomitas译为爆米花桶。
+3207213,874c0b7245f703c996c4ea7e72aa43b4e70c98d9559ddf72fcaa2beaa49b31c5,马桶清洁挂件,2×45克,OK,deepseek-chat,2026-08-25,品牌Ambi Pur未进入品名，Rosa y azul译为粉蓝，Colgador de inodoro译为马桶清洁挂件。
+3207228,cc11b7c23d8f4364e6caf1e5508f5afafc635eb43535137dc0924c7c96aeca26,凝胶鞋垫,尺码39-45,OK,deepseek-chat,2026-08-25,品牌Shoe like未进入品名，Plantillas de gel译为凝胶鞋垫。
+3207236,3fc98237a89a257be9272a93bffdaa489f69d28409b6d072008864305f3613bc,碟刹锁,4件 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Rawlink未进入品名，Bloqueo del freno de disco译为碟刹锁。
+3207273,91249ea326d3a9bfcf81604c4e0207dab32f8a527bfd22135bdcc3ac23545a42,VDE绝缘螺丝刀套装,9件装,OK,deepseek-chat,2026-08-25,
+3207440,fa8bc9cbce4728cbc01e0e0d6d087ad2b4a06585f7593b50bbe3ac4a9ac2e1b8,手工制作串珠手链套装,33件,OK,deepseek-chat,2026-08-25,Crea tu propia译为手工制作，pulsera de abalorios译为串珠手链。
+3207498,14822ceb61f25e79bbc34b0ed737496c7def6a6613491eaaf560603e7da3296f,积木套装,70件,OK,deepseek-chat,2026-08-25,品牌Abrick未进入品名，Juego de bloques de construcción译为积木套装。
+3207725,0e2ec479811de8ad416cefec240d36252b47e194ebf6e390c817781b3d9cc88a,无线落地灯,140厘米 | 160流明,OK,deepseek-chat,2026-08-25,品牌Grundig和Magic不进入标准品名，按语义翻译为无线落地灯。
+3207738,0adfc83321d31ebc6fcbc7f8fa82dc4be5bd116a36456afdf99652b53c63274b,会尿尿的娃娃,30厘米,OK,deepseek-chat,2026-08-25,品牌Dolly Star和Baby Lola不进入标准品名，按语义翻译。
+3207751,eb8967cd3303855ba9aebe7e380215717571b121723c407488db58fbf116081a,玻璃储物罐,700毫升 | 多种款式,OK,deepseek-chat,2026-08-25,品牌Home Korner不进入标准品名，按语义翻译。
+3207899,f1cdb10cb8b97b64b568f37e2e76eadbf13e76d50a98f3c65c5a3eb567deb1d0,卡牌游戏,多种款式,OK,deepseek-chat,2026-08-25,品牌Mattel不进入标准品名，按语义翻译。
+3207905,0b83ddfd4c8b895c0a5e424a7101945b21d22c0dbf29ec85d085c22cb1dee8dd,彩色串珠套装,20件装,OK,deepseek-chat,2026-08-25,Fashion为普通英文，译为彩色；20 piezas按件装处理。
+3207910,cc64f4405c8b89f3e983ed2f9ad11bde0de98368f05517a1ab1f0cd149cd91e2,魔法马克笔,18支装,OK,deepseek-chat,2026-08-25,BIC为品牌不进入标准品名；Marcadores mágicos译为魔法马克笔；18 unidades按支装处理。
+3207916,9e24b458a2dbe2bef4eb72ae7f7ac6317fb6cfe9bf9c1c9d07e177e45daae654,湿巾,38片装,OK,deepseek-chat,2026-08-25,Scottex 和 Tropical Splash 为品牌/系列名不进入品名，38 hojas 译为38片装
+3207952,874f77d095b7eaedf68917e0aa07d09ed3e62f0ec1c5cf969275d7ff25897ce5,布朗尼风味巧克力棒,5条装,OK,deepseek-chat,2026-08-25,Lion为品牌不进入标准品名；Brownie Style按语义译为布朗尼风味；5 unidades按条装处理。
+3207984,b5a91b8ce1d4d4bc0a7bb4bd60cfe1e9c84e68af6e64c5f1e858943fde07b15a,屏幕保护膜,3件装｜适用于iPhone｜多款可选,OK,deepseek-chat,2026-08-25,
+3207985,0deb22f31b1d57a8e8f430b0d9a2ea80f368b28384a1c22db468ad37ec4c52b5,屏幕保护膜,3件装｜适用于三星｜多款可选,OK,deepseek-chat,2026-08-25,
+3208063,ef57bbdd6ade5d398cc1b252a503583a170ee9cfbf26b8c9f74eb2ca5bd02494,惊喜毛绒玩具,多种款式,OK,deepseek-chat,2026-08-25,Magic Mixies为品牌不进入标准品名；Peluche sorpresa译为惊喜毛绒玩具。
+3208112,6b6cddb643a4ee9a4548a1ba9defb7aa6ddf005bd43cbfa431110b9a02741f9f,Walkalots Fur Real 互动动物玩具,多种款式,OK,deepseek-chat,2026-08-25,品牌名保留，Fur Real 为系列名，Walkalots 为产品名
+3208146,9679c87d71023b570e5b15f354014c25e65a3d31f791f1ba30af5f5fdee6dd5e,Twix 咸焦糖巧克力棒,5件装,OK,deepseek-chat,2026-08-25,品牌名保留，Salted Caramel 译为咸焦糖
+3208224,960fa0abae23cc3dfd37fac9d81bb1081fdd91756074d6677079f0402d8b957a,Tummie Time Pad Thai 即食米粉,82克,OK,deepseek-chat,2026-08-25,Fideos de arroz 译为米粉，instantáneos 译为即食，品牌名保留
+3208421,e6f6be6328e0da5a1c3087dc4d7993af31d52539a10c7e57f7e3d89eb1c5ebb3,Energizer Alkaline Power AA 碱性电池,12件装,OK,deepseek-chat,2026-08-25,Pilas 译为电池，Alkaline 译为碱性，AA 为型号
+3208422,183a8fef9bb40717de719626745d1715a72f3cb22c653f0f1671b4b4e3c403c9,Energizer Alkaline Power AAA 碱性电池,12件装,OK,deepseek-chat,2026-08-25,Pilas 译为电池，Alkaline 译为碱性，AAA 为型号
+3208678,58f5dd814f0223bf30fe4039d0ec15b4b95b58190b560556480a5c2b199e0158,Alvär 磨牙环,多种款式,OK,deepseek-chat,2026-08-25,Anillo mordedor 译为磨牙环，品牌名保留
+3208721,b1f581a6a8a0d6c3ae9467c5351dbe4a4121cad6aec5a155705c13b6145e2af8,Lowenthal 厨房刀具,6件装,OK,deepseek-chat,2026-08-25,Cuchillos de cocina 译为厨房刀具，品牌名保留
+3208771,0d95e13f3330cd0e5f9592b79711ac4c69df4a1a33e694e49db7afe27cef3d66,编织绳纽扣套装,多种款式,OK,editorial-rule,2026-08-25,Scoubidou为编织工艺词，不作为品牌保留
+3208782,a78e7eacc1d1cdde29e487a265a5123d44ea70f6971a078508bc448805bac379,柔顺喷雾,200毫升,OK,deepseek-chat,2026-08-25,品牌未进入品名，西语品名已翻译
+3208808,742f4f2e239295eb36d606d5795c63d87d51ce161c832e26551c571e255bfb4d,手提包,多色,OK,deepseek-chat,2026-08-25,Bolso 译为手提包，Varios colores 译为多色
+3208919,fe178d76cdf43473ff6d88cc9cd66238b5170933c11d549d34d1410a5f4cc4e9,带麦耳机,RH 210，多色可选,OK,deepseek-chat,2026-08-25,
+3208948,c935aeb3524a71f4e147da3e970ca1d74c9591910c6a028c59ccf931da0f7bbc,薄荷桉树浴盐,450克,OK,deepseek-chat,2026-08-25,品牌未进入品名，西语品名已翻译
+3208974,0558559cd650281bfdf21e523580970ffc0a9614f0e87d9570326383e3022378,鼠标,1600DPI，1.25米,OK,deepseek-chat,2026-08-25,
+3208999,1f108b71fcefb1af2ef922bccc75e9de1741a2368fb41b5f80e371cdc35e9627,智能可视门铃,1296p高清,OK,deepseek-chat,2026-08-25,品牌未进入品名，规格补充
+3209008,156b16dbe3b6a95cb781663398cfb4075b4143389489f21d06055490b76dbac3,10合1免洗护发喷雾,150毫升,OK,deepseek-chat,2026-08-25,品牌未进入品名，西语品名已翻译
+3209196,4da3f0fd0e0460fd037803fb34f33b152532b1fa2abb21b0d5c685f30465a9bc,手工制作复活节绘画套装,24×28厘米 | 多种款式,OK,deepseek-chat,2026-08-25,DIY按规则译为手工制作
+3209213,903c24030c59ca2cd14f0586484f5708ea708f3489f083f11509764f5c7e0da7,方杆彩色铅笔,24件装,OK,deepseek-chat,2026-08-25,品牌未进入品名，规格按件装
+3209233,a37ce17e4693807c5ffe09b937ad7cca45b8a767db36913eb8af9092a2e8641d,礼品装饰,多种颜色,OK,deepseek-chat,2026-08-25,品牌未进入品名，XL为尺寸缩写保留
+3209247,b64cba99437c65121ffd87a964dbf6d8c94aaf9745890bfa5b652715d225cb35,派对礼品袋,6件装 | 12.5×7.5×15厘米 | 多种款式,OK,deepseek-chat,2026-08-25,品牌Party Universe不进入品名，规格已统一
+3209249,e3728f49a371c064dff89ec448230d2a58fc23a0b879a0d0c8ae43607cdb54aa,礼品袋,18×23厘米 | 多种款式,OK,deepseek-chat,2026-08-25,品牌Party Universe不进入品名
+3209338,788d6b2b5b2c8b096b1ac104048a342aab0540d1f9084db66554871b540cf8a2,弹力公仔,4件装 | 多种款式,OK,deepseek-chat,2026-08-25,品牌Stretch Squad不进入品名
+3209361,cdc21b75199ce806fc3b2b358078e59ebc8faa77b4c608c341d64b0b0a747304,毛毯,130×170厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Emily不进入品名
+3209362,ed041be86fe4fd1f1a1adee116f21016234ab0916055a0a2fa31cc1fee40e817,毛毯,130×170厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Eliza不进入品名
+3209376,9766a8c75eba416a4a40fbad39949942f5c13c64113d1db407de61c4883a6957,混合零食,225克 | 多种款式,OK,deepseek-chat,2026-08-25,品牌Snacks of the World不进入品名
+3209435,ec596048553d50317f244fba438ca216dcafad7514d823be2b62a217ed6b692e,白巧克力涂层椒盐脆饼,120克,OK,deepseek-chat,2026-08-25,品牌McVitie's Flipz White Fudge不进入品名，品名按语义翻译
+3209456,4b545e3470265155e01de44324e69d0b061726f24f6ccc1bdba0b40bc10b7e4b,钩针花束手工制作套装,47厘米，多款可选,OK,deepseek-chat,2026-08-25,DIY译为手工制作
+3209499,18282404474c9b06bf7cbb98559d76738a936f8f4d24c232e5e8a0cb6394baab,铝膜气球花环,5米,OK,deepseek-chat,2026-08-25,品牌Cool2Party Happy Birthday不进入品名，品名按语义翻译
+3209501,e64526d4a4b2c16c8f5e0083d8993fc75b068dad9fc3c9e176ab0f845c481b34,花盆,直径53×50厘米,OK,deepseek-chat,2026-08-25,品牌Keter Madeira不进入标准品名，规格中Ø译为直径，数字与单位不留空格，尺寸用×。
+3209549,a5157faded1e4a50cb4af6ae39b3f308faf27ca1b989e39b48dd105cc61c0f32,时装设计涂色书,多种款式,OK,deepseek-chat,2026-08-25,品牌Glam Girls不进入标准品名，西班牙语diseño de moda译为时装设计。
+3209553,f30ea9636093480e7dd53814d7614f2e97f861b5711cf2762d48c232797b2500,嵌入式灯具,6.5瓦 | 40-780流明,OK,deepseek-chat,2026-08-25,品牌Emos legrand不进入标准品名，Encastrable译为嵌入式，根据规格判断为灯具而非插座。
+3209565,d08eac6d8a15aeab14ca4d49f6c70c7655fa30d037521994f393034839199c29,烧烤风味薯片,80克,OK,deepseek-chat,2026-08-25,品牌Chio不进入标准品名，BBQ style译为烧烤风味。
+3209575,1977176d64a90409fb79e72c5994e7222f70f602ece279e9a08bdf393cb2a3e5,收纳箱,4.2升 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Tontarelli Maya不进入标准品名，规格中逗号改为点。
+3209577,4493d0f18334705d267b3e9656b210d87859d467cd3e8ec486da124d6605f2dc,收纳箱,16升 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Tontarelli Maya不进入标准品名。
+3209611,60100e73cda68f315b3f707246c880a88d5e82e58cca1d32770a7b08cd26ac02,玻璃刮水器,多种颜色,OK,deepseek-chat,2026-08-25,品牌Sorbo不进入标准品名，Escobilla limpiacristales译为玻璃刮水器。
+3209613,e455f70bb2c29dd021eb08b63f24ddee04f0b951ad25b79d16688912bd96e656,除尘掸,56厘米,OK,deepseek-chat,2026-08-25,品牌Sorbo不进入标准品名，Plumero译为除尘掸。
+3209615,6838357ce03faa33be8bb4991635869aecfe5586a2992db6b537c630002f4553,毛绒电子宠物,多种款式,NEEDS_REVIEW,deepseek-chat,2026-08-25,Furby为品牌名，Furblets为系列名，但无法确定具体款式，需人工核验
+3209639,132314e3e3522ab1c8db80192da6389bc684cb2e4117361923702b93ed1235b0,混合糖果,500克 多种款式,NEEDS_REVIEW,deepseek-chat,2026-08-25,Rodeo为品牌名，需人工核验具体糖果类型
+3209865,bae0350b0f5e0b8f5448d1dfeac7462e783128f232fe4fc7fd81570c5adbd889,玩具套装,16件装,NEEDS_REVIEW,deepseek-chat,2026-08-25,Gabby's Dollhouse为授权IP，但无法确定具体内容，需人工核验
+3209915,82e4c927ae1e5ad62a4df3c04442944dd8098b40ac33cc3a89959aa52787162c,毛毯,150×200厘米 多种颜色,NEEDS_REVIEW,deepseek-chat,2026-08-25,Absolu Chic Paris为品牌名，需人工核验材质等
+3209975,ebf8e21dc3485299ba87d0ea98f49182b9ba75dbc16269cdfb2cc9478dbd055f,装饰靠垫,45×45厘米 多种颜色,NEEDS_REVIEW,deepseek-chat,2026-08-25,Zigzag为图案描述，但无法确定具体款式，需人工核验
+3209995,9ae0893458969385e0e5f509045f22ba197703484281b35091db42156554f2cf,microSD存储卡,128GB,OK,deepseek-chat,2026-08-25,
+3210099,96af96247fae3b1d73409d1f13b931756fdc97b681be6387e531de652a7a9ad1,无线鼠标,DPI 800-1600,OK,deepseek-chat,2026-08-25,
+3210121,53d2d32ee8e474065d1ea459d1c67d44d9702322f81e53c96c7cb0cf7543a9ad,M&M's花生巧克力豆限量版,250克,OK,deepseek-chat,2026-08-25,
+3210159,15129c697932aa7baa43873bbc461e116cefee894116efea9a7d7f95b610c0ad,波浪边靠垫,45×45厘米 多种颜色,OK,deepseek-chat,2026-08-25,Ravioli为形状描述，已翻译
+3210263,3eff72cf7f25e2e9de6e7f5e57392a7b834b2728a7e7646632062c15fe2e7bec,防裂丙烯酸密封套装,280毫升,NEEDS_REVIEW,deepseek-chat,2026-08-25,TCX为品牌名，需人工核验套装内容
+3210285,4f31efa44155dceab8e9c058a75b8bff019efe1a54c6770370e31855fee832ec,装饰夹,10件装,NEEDS_REVIEW,deepseek-chat,2026-08-25,3M Command为品牌名，需人工核验具体用途
+3210295,b53bcffbb7f037921aedf6aa81da4fe85bd546399564ff0654f08abffca1bdab,婴儿湿巾敏感肌组合装,10×90件装,OK,deepseek-chat,2026-08-25,品牌Teddy Care未进入品名，Sensitive译为敏感肌，paquete económico译为组合装
+3210371,fa26b8b9a4a4e053e51c9087c54864fa04d81f90585fbc748c1f56f19a7b2d58,花盆,直径13.5×13厘米，多种颜色,OK,deepseek-chat,2026-08-25,品牌Cozy Creations和型号Elba未进入品名，Ø译为直径
+3210475,5b632ed7d57123a502ae4a7fc1760d8512658cbcb5e6e6efba1503917ba1ce74,毛毯,140×180厘米，多种颜色,OK,deepseek-chat,2026-08-25,品牌Nola未进入品名，双面未在原文体现，删除
+3210753,131880ef849d5362d0727035d95021ab1c221a30a515adc3acdd4088c963fb44,抱枕套,45×45厘米，多种款式,OK,deepseek-chat,2026-08-25,品牌Sam未进入品名
+3210761,4e21af5c0208819193a6cdc84c3c3b75b9af332b6de54249ce2496b9c8fd1076,边几,直径35×49厘米，多种颜色,OK,deepseek-chat,2026-08-25,规格中cm改为厘米，Ø译为直径，数字与单位不留空格
+3210849,b045c632f1c1b8fa66674898e91e4432dcb724d2017f6696f555ec64603953cd,遥控面板灯,15瓦，多种颜色,OK,deepseek-chat,2026-08-25,品牌Baltimore未进入品名，vatios译为瓦
+3210937,c99781d2a8a7eabc80483b9c74c50254d2c9376251020eb6a6acd7284c140899,洗发水,400毫升,OK,deepseek-chat,2026-08-25,品牌The Beauty Dept.和型号Hydro未进入品名
+3210939,6fa0b49de1b849f1c8bff5970a2fb5f38cf34f44c605667d63779a95cfc19392,发膜,300毫升,OK,deepseek-chat,2026-08-25,品牌The Beauty Dept.和型号Hydro未进入品名
+3210943,d160e0fcda016a57fd412f89ad5c8c1418d6de7ce0f140554c3d8c18c6e0e2f6,防晒护发喷雾,150毫升,OK,deepseek-chat,2026-08-25,品牌The Beauty Dept. Hydro未进入标准品名，按语义翻译为防晒护发喷雾。
+3210997,0b92a697060173c60c49dc5bdf83d357e3cdadde3bfc4983d6481a78548ef407,烧烤味蛋白薯片,70克,OK,editorial-rule,2026-08-25,BBQ为口味描述，中文标准品名规范为烧烤味
+3211043,1c15c41809176e7575be00145571fba041256b3cd1f6398790db865500d9c019,香水,100毫升,OK,deepseek-chat,2026-08-25,品牌Figenzi Noralie未进入标准品名，按语义翻译为香水。
+3211105,bd61d3ba6007c153e0f212dc59daa484f43c24ea33ec27da03d0aba3e05ede80,遮蔽胶带,36毫米×25米,OK,deepseek-chat,2026-08-25,TCX Sensitive为型号或系列名，未进入标准品名；规格统一为中文，尺寸用×。
+3211109,8c345e6b0f2beb7b21c8b76f1afd56b0666458e8ee37786b7754476908bdaedb,花盆,直径29厘米|多种颜色,OK,deepseek-chat,2026-08-25,品牌Napoli未进入标准品名，Ø译为直径，规格统一为中文。
+3211175,537d4bb1f3fe062de129358aea2f8a9a19e0e5b46b0219865d7654f0956a2830,迪士尼手工涂色袋,8件装|多种款式,OK,deepseek-chat,2026-08-25,迪士尼为合法授权IP保留，DIY按语义译为手工制作，此处为涂色袋。
+3211521,f86f15d28fa75ddebbce48706d7f6b696648b8c6921f490242f706f3127e5472,黄麻地毯,多款,OK,deepseek-chat,2026-08-25,Sevilla 为地名/系列名不进入品名，Diferentes variantes 译为多款
+3211539,cee682a78ddf831510ed46c12f68b06746ba3dbbda91b195e8885510b1e86f97,仿真薰衣草植物,多种颜色,OK,deepseek-chat,2026-08-25,品牌Excellent Flowers未进入标准品名，按语义翻译为仿真薰衣草植物。
+3211609,033ce12d2273a56dd210277deaa9394125e03a69f797ec64b1c2d2b37ad8980f,太阳能莲花灯,直径16.5×9.5厘米，多色,OK,deepseek-chat,2026-08-25,Lámpara flor de loto Solar 译为太阳能莲花灯，规格中Ø译为直径，逗号改为点，单位厘米
+3211705,9d0bf6b095168bcc1f2cd67ac4ddd8a8cc293a80ef48b4fc35be6e6d25816a1a,杯子,275毫升，多款,OK,deepseek-chat,2026-08-25,Vaso 译为杯子，ml 译为毫升，diferentes variantes 译为多款
+3211791,4819064999d5b7e2cb0a4257b462e8bdd333eea9ec778b166ca4779a7e374f89,M&M's迷你巧克力豆,225克,OK,deepseek-chat,2026-08-25,M&M's为合法品牌保留，Mini's译为迷你。
+3211831,63c91399e29844825fcbf46d0e30ec5c5d40bebda7765d2888cd32333dd9459f,抱枕,60×60厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Haga不进入标准品名
+3211891,78593c59f699822b40d1f61100e43d3c1035cddad29d21136ef2fa5d79449ccb,纽扣电池,CR2025｜5件装,OK,deepseek-chat,2026-08-25,
+3211919,022f8755d41bde3c635f6d6ab74c72a1a518d40d378c130a02d7533cc432d53c,自制史莱姆套装,17件装,OK,deepseek-chat,2026-08-25,DIY译为自制
+3212027,5e2fb2ffa15a8e4a311c8afeb2ea09e8241cf5f07fbea85f357613bf5c3dca5f,浴室玩具套装,5件装 | 多种款式,OK,deepseek-chat,2026-08-25,Heladera为西语，根据类目译为浴室玩具
+3212113,c03e56f8a3aa05abfa8ab2f10b16ff9f2f7275ae4461b4d18bf1ff7b7162e3c2,咖啡杯,100毫升，多色,OK,deepseek-chat,2026-08-25,Taza de café 译为咖啡杯，ml 译为毫升，varios colores 译为多色
+3212233,361696e603678d9c8479fc362f4a7dc2736b6a4f423afd965525d6b60b6b7b75,鹅卵石地毯,130×190厘米,OK,deepseek-chat,2026-08-25,品牌La Isla Living不进入品名，Pebble译为鹅卵石
+3212255,65cf437a83dd7fd352f93a687aff3f74fee6541bb422960f6d72fe984d9cfbf9,深盘,直径20厘米｜多种颜色,OK,deepseek-chat,2026-08-25,Oasis为系列名，不保留；深款译为深盘
+3212365,6387481ce089f7f085fae5b6e70960eb5f959764c33a119e397e94be5ec72b71,史莱姆罐装套装,15件装 | 多种款式,OK,deepseek-chat,2026-08-25,Slime Tastic为品牌，不进入品名
+3212379,81643a626565a66e15485984a248b4b622674c91ed1e6c7b6f7abce7ee68bb6e,随行咖啡杯,4件装 | 475毫升 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Lowenthal不进入品名
+3212413,fa398c167c5906d59e6c00b4f5fca0fca9c8ce0039cf047d6d2f87d7c82de01a,刺绣抱枕套,40×40厘米 | 多种款式,OK,deepseek-chat,2026-08-25,Avec为品牌，不进入品名；DIY译为刺绣
+3212479,868e787c7ec387e340f9c3ec15d37d20c7b0e2f3e8f291977d4ab231062bdaa1,防尘拉链门帘,110×250厘米,OK,deepseek-chat,2026-08-25,Spectrum为品牌，不进入品名；antipolvo译为防尘，cremallera译为拉链
+3212583,6632a5ab9a5365388a9c569fb7b40eaac318b2948224ed6b4c5bb48229885201,泳池地垫,8件装,OK,deepseek-chat,2026-08-25,Losetas de piscina译为泳池地垫
+3212625,1ed35da94d01767426e3d88b104e22430c25a43d0cda455ead29ace64024264e,凝胶指甲油套装,2×15毫升 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Nail It!未进入标准品名
+3212789,e415e621ddbe9f008e5add3418be56361f0b35620afaca69f7a8c4a18b23e538,空气炸锅,2300瓦 | 2×3.5升,OK,deepseek-chat,2026-08-25,品牌Petra Dual View未进入标准品名
+3212963,a8b739df67ebde9209331812a7e9d91c69122688c8782d6e428918ed428d17f7,马赛皂洗衣液,90次洗涤,OK,deepseek-chat,2026-08-25,品牌La Antigua Lavandera未进入标准品名
+3213027,b2c0bccbb4b44f049a33baf12d8c74f4896d66253382d03a4c14702a5b17b2ea,便携充电宝,20W｜10000mAh,OK,deepseek-chat,2026-08-25,
+3213031,f5edc46dac140d8db5480b5277ee2004c95100132b7fd63d0d361a820b619603,便携充电宝,20W｜20000mAh,OK,deepseek-chat,2026-08-25,
+3213159,a1c0fd4f05cd210cd2780245dc79280d19b48d334ed56372cf8c4b40dbf74d8d,运输卡车,含6辆玩具车,OK,deepseek-chat,2026-08-25,品牌Teamsterz Metro City未进入标准品名
+3213305,128b4b4ce0ca1537aac3d25d9b017a9900543f5746e5ff01cd5f1d08c68d90bc,烤面包机,800瓦,OK,deepseek-chat,2026-08-25,品牌Severin未进入标准品名；规格补充为瓦
+3213369,f9e6b45a4b0b8379eee07b44883a9178b5dd09f16406e8e5603747957740484d,吸盘碗,直径18厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Alvär未进入标准品名；plato con ventosa译为吸盘碗
+3213533,fa66dd92296996f1fa3abc6adb63daae6900b4b6c91a3b20c374dd7eeab81203,按压泡泡毛绒玩具,多种款式,OK,deepseek-chat,2026-08-25,Squishy Ojo为产品系列名，按语义译为按压泡泡
+3213537,c5d34aaa9f82a2867f38bde41c8618175bc247a0a6608fcbcff9a131e85a097c,妆前乳,18毫升,OK,deepseek-chat,2026-08-25,品牌Max & More未进入标准品名；Flawless Base为产品系列名，不保留
+3213605,2d95950b91e6d59c163ea134f8a1420fa0bd20b931b1a210e9006b5e374230a3,手表,多种款式,OK,deepseek-chat,2026-08-25,品牌 My Time 不进入标准品名
+3213615,d17c89131abac4afb51325c36bc9076258a8d4e94e079802298630daae190ee0,零钱包,2.5×12×10.5厘米,OK,deepseek-chat,2026-08-25,品牌 Code Femme 不进入标准品名，规格数字使用小数点
+3213619,c6d5c779267bc6a55b68ad020fd32059637d166b77fd7eaca2bddd41ac31d83b,双面腰带,多种款式,OK,deepseek-chat,2026-08-25,品牌 Code Femme 不进入标准品名
+3213685,e159e6895c888192b2c4750f40c66cffecf4010d20c57b4437ff347b847c5a86,提亮妆前乳,30毫升,OK,deepseek-chat,2026-08-25,品牌 Max & More 不进入标准品名，Glow Primer 译为提亮妆前乳
+3213693,bbcfa19db02921662091be5f1048186101b4e934dc7087236581b2b9370e0ae4,混合饼干,200克,OK,deepseek-chat,2026-08-25,品牌 Henry Lambertz 不进入标准品名
+3214113,31b44653ee6012ddefe1b637789b7bd03c279bf6267d57e4614a1d9c35c45aec,手工制作手链,多色可选,OK,deepseek-chat,2026-08-25,DIY译为手工制作
+3214265,4e08b3010a3b236d0ea2bde5527cf34ca4d14082380c5e271be0784255d64529,笔记本,80张|多种款式,OK,deepseek-chat,2026-08-25,品牌 Candy Summer 不进入标准品名
+3214277,c7545c454507322e1870555137b2ff317f1f7080b3113ef7d47f35499498a168,画笔套装,7件|多种颜色,OK,deepseek-chat,2026-08-25,品牌 Creative Artist 不进入标准品名
+3214281,32fa98d3ada5653faa9a3a703d0a55f01d9a5a24a867cd952e8d1c7aef4318fe,剪贴簿,40张|多种款式,OK,deepseek-chat,2026-08-25,品牌 Craft Sensations 不进入标准品名
+3214291,73e1291e6c5f56bc4027cbb02dbfe344b6e46733059be05a94fe33f00de69545,塑形黏土套装,13件装|多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3214347,260d0a706c9af6b625a06e16a8a02c6de4148b6a3ee212322a6a27fe839c8536,甜咸混合坚果,250克,OK,deepseek-chat,2026-08-25,品牌及英文品名未保留
+3214349,b9422c8f078874d026a654e523415f9d1abecf6a683f831c317074e4f3fac0b5,辣味混合坚果,250克,OK,deepseek-chat,2026-08-25,Picante译为辣味
+3214377,1ea3caec8e65066868f298e36a192118c23db12da46262957685be840aac25fe,手工制作时钟,多种款式,OK,deepseek-chat,2026-08-25,DIY按语义译为手工制作
+3214413,b2a1c3f77457fde2cc07d57a3304578f04d834fbc126c190b3fb4b7f7f85dd1f,微纤维清洁布,12件装|40×40厘米,OK,deepseek-chat,2026-08-25,品牌未保留，尺寸用×
+3214671,f67ff97664292febad7a2717327f2fef38676fe4fda00073024b9289ef2f3054,蜂蜜芥末酱,500毫升,OK,deepseek-chat,2026-08-25,Sau'cee为品牌，不保留；ml译为毫升
+3214693,b623928b7488b0df754a0ac5a215eb4f32ec637b580637339fceecd12d9c6eff,有色防晒霜,SPF30｜200毫升,OK,deepseek-chat,2026-08-25,品牌未入名，规格单位统一为中文
+3214719,0cfed661fdd057bb11358546e251c9133975caff0a1696155cfadf3ec67bbf6d,巧克力复活节彩蛋,350克,OK,deepseek-chat,2026-08-25,品牌未保留
+3214727,1e3bc7143ae1e289ca82f0535e838f152a6ccab32fe75511c5c479113c6defa7,软糖,4件装|75克,OK,deepseek-chat,2026-08-25,品牌及英文品名未保留
+3214809,af1699a495a53d69c926e98cc9d5eb221b23066091181bd6f1bde88c7fee6485,涂色书,多种款式,OK,deepseek-chat,2026-08-25,品牌未保留
+3214810,425f2b2d664bb8021f729d54d4dd89d016f1d0363943ba8bb25e9f2b78b21365,乳清蛋白粉 饼干和奶油味,600克,OK,deepseek-chat,2026-08-25,品牌XXL Nutrition未进入标准品名，口味翻译为中文。
+3214841,678a3e48d5999c585830487dbc5969f953fa910c66788bf604dcf443c785fa61,海盐焦糖燕麦棒,5条装,OK,deepseek-chat,2026-08-25,品牌Skinny Bars Light未进入标准品名，口味翻译为中文。
+3214842,40696c5095c892fe281732c1a7d81307a60ae2b35c7579083366c00f35b6ed9d,覆盆子白巧克力燕麦棒,5条装,OK,deepseek-chat,2026-08-25,品牌Skinny Bars Light未进入标准品名，口味翻译为中文。
+3214881,1aa11c511c49c1e653b87d064cbe14b681e70798e91591a19cc0fde5f7a85469,保龄球套装,7件装｜多种款式,OK,deepseek-chat,2026-08-25,Wader为品牌，不保留；Juego de bolos译为保龄球套装
+3214924,7eb0b82c3af62f05647c6038f213e5e11e969abf7099ecbb4c7fa081c5fab969,浮雕花瓶,直径8×27厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Seasons & Style未进入标准品名，规格中Ø译为直径。
+3214931,7e33e8746497e75b6d39d4237feeacabbe777842aa1b67749ecb3bd507d5e019,花瓶,直径16×22厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Absolu Chic Mila未进入标准品名，规格中Ø译为直径。
+3214939,9224d6a2e697171a14ddd3f2e5dc4671cb859ffbe24936a25bebe483f8a899b8,地毯,115×175厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Indi未进入标准品名。
+3214965,5a4c593aaab1728353a0d97040ccd6052c6c22142e35a2f3a14d087ca38450ca,运动耳机,多种颜色,OK,deepseek-chat,2026-08-25,品牌Philips 1000 series未进入标准品名，但Philips为品牌，1000 series为型号，按规则品牌不进入，型号可保留？但规则说品牌默认不进入，型号可保留，但此处未保留，因无法确定是否型号，故删除。
+3214969,3cbd8473a927b0f5f7dce5c282a7fde009a7b77e60baacfb0d44d36be44522cf,快速充电器,30瓦 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Sitecom GaN未进入标准品名，GaN为技术缩写，但未保留，因规则未明确，且品牌不进入。
+3215019,8cd917fe33ec8cbd9e3c736792b8e2ba079d82b1366164dfe8edffba6a125d3b,牙刷架,直径7×11厘米,OK,deepseek-chat,2026-08-25,
+3215117,6cab37b929fefb65056043374fb56c798e2f2f0b3e8c0170f8841e7f46deb973,按压泡泡钥匙扣,多款可选,OK,editorial-rule,2026-08-25,将普通玩具名称 Pop it 规范为中文
+3215131,06e542aa45e7f76a3b3a802224f3565bacfef1ac135b373bc3707deb194a4356,静电除尘掸,92.5厘米｜多种颜色,OK,deepseek-chat,2026-08-25,Spargo为品牌，不保留；Plumero estático译为静电除尘掸；逗号改为点
+3215143,4e5310b91744450c4da96f6de26985b37228933eeaa51b0ffa72d7d28d590840,陶瓷煎锅,直径32厘米,OK,deepseek-chat,2026-08-25,
+3215170,9f7e106724259a34a71369e2eba7d1dd16cdac78f8425b12d87911fcd914d0c8,复活节彩蛋,150克|多种款式,OK,deepseek-chat,2026-08-25,品牌Easter Moments不进入品名
+3215171,8a22497fd5940a95014d61451d5ffdb5db2421f358374a1d31672b76e4e13065,夹心复活节彩蛋,175克|多种款式,OK,deepseek-chat,2026-08-25,品牌Easter Moments不进入品名
+3215174,39a3bb4f01a1585c7009fa73b55576e876225e4d29856ba402d5f64423341485,餐叉,3件装,OK,deepseek-chat,2026-08-25,品牌Amefa Delight不进入品名
+3215176,70c8533af23e770503739b5e2c0c51acca9d11b556c04c3541c9e12e18aa4f45,勺子,3件装,OK,deepseek-chat,2026-08-25,品牌Amefa Delight不进入品名
+3215177,ff1b0f2208476b2755aa3d985e0551fa8ad1aa7ac571bd105c1426e57a860e24,甜点勺,4件装,OK,deepseek-chat,2026-08-25,品牌Amefa Delight不进入品名
+3215180,6fdbf6f40d4a5fd33b0fe30efd0c0e599fb587a13aff00c4a6710376060cfcc2,陶瓷汤锅,直径24厘米,OK,deepseek-chat,2026-08-25,品牌Ceramic Marble不进入品名
+3215242,03fcbdf4a38e9b328c44e4f3181ad009fc3026d3914e650eb150c637e222ccaa,早餐盘,直径21厘米|多种颜色,OK,deepseek-chat,2026-08-25,Ocean为系列名，不保留；规格中Ø译为直径，单位厘米，数字与单位不留空格。
+3215243,a5f0ad13015833d5cdf8b61cc5b03fe3d42a063b6a2387b3299e50d645cb863a,平盘,直径26厘米|多种颜色,OK,deepseek-chat,2026-08-25,Ocean为系列名，不保留；规格中Ø译为直径。
+3215245,1499b403ff4eab7edefc909971dea874c8364277105e60e34191e59dd6747381,碗,直径14厘米|多种颜色,OK,deepseek-chat,2026-08-25,Ocean为系列名，不保留；Cuenco译为碗。
+3215246,4bd1cfd02e5ff8a6c431e6ad018a036242c683f5259b93c97ce6decc3d307731,汤盘,直径20厘米|多种颜色,OK,deepseek-chat,2026-08-25,Ocean为系列名，不保留；Plato hondo译为汤盘。
+3215247,a615d0e179f7aabf5ffa3dde209a84463b3432844fdd147e6d46f8594e546ef3,沙拉碗,直径23厘米|多种颜色,OK,deepseek-chat,2026-08-25,Ocean为系列名，不保留；Ensaladera译为沙拉碗。
+3215248,0065b6731e81f867a5b25b76752735e9dc3f8becb3d90494ba7a52b2c37a1899,咖啡杯,300毫升|多种颜色,OK,deepseek-chat,2026-08-25,Ocean为系列名，不保留；Taza de café译为咖啡杯。
+3215250,856facd2138568b020ddc4d1fcefdfc007fca1a13b0873f649342f7e03382dad,戳戳绣画布,38×38厘米|多种款式,OK,deepseek-chat,2026-08-25,Punch art译为戳戳绣，Lienzo译为画布；规格尺寸用×，数字与单位不留空格。
+3215303,6f5015f8ea6f9db2bd6dcc4c469a0a81c8068ce9fa86074d3c72236e880fc5d1,空气清新剂,300毫升|多种款式,OK,deepseek-chat,2026-08-25,Brait为品牌名，不保留；Ambientador译为空气清新剂。
+3215315,995699e0c75fa895d458985da751974532dcbd4e662400904961a63caa85c338,花瓶,18×6×12厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌 Seasons & Style 未进入标准品名
+3215317,eca994062a34b4e96baa656a95238da30039772363304ea564a8d27323de5f51,花瓶,13.5×13.5×25厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌 Seasons & Style 未进入标准品名；小数点和尺寸格式已规范
+3215318,f7bee8937cbcbbf8d27d2d5bf40637f6cb2e3ac48931329940afa06e64f253fc,花瓶,多种款式,OK,deepseek-chat,2026-08-25,品牌 Seasons & Style 未进入标准品名
+3215355,7775540554d2c777e81187ed22ccae6bd0ad625de2c679b70b104750b7e089c5,食品便携容器,3升 | 24×22×19.5厘米,OK,deepseek-chat,2026-08-25,品牌 Starplast 未进入标准品名；原中文名含不准确信息，已修正
+3215359,3fcd0472f935585f16fa51e23c721020103bd3b7a3de21e065c496ebd2eaa4a7,食品便携容器,6升 | 24×11×30厘米,OK,deepseek-chat,2026-08-25,品牌 Starplast 未进入标准品名；原中文名含不准确信息，已修正
+3215370,5e1e0963b89c956e21506b77ddfde4bdb4ad3ecf5fa3ecf1d92a1c937a4d6902,汽车清洁湿巾,20件装 | 多种款式,OK,deepseek-chat,2026-08-25,品牌 ArmorAll 未进入标准品名；规格数量单位按语义写为件装
+3215398,fa5ba169cbe58be71616fb9e06a302f315e8e5b6b86a19c22d00be4776b5d34e,洗发水,300毫升,OK,deepseek-chat,2026-08-25,Plex Care Bonding Complex 为产品系列名，未进入标准品名
+3215399,173f805d98baad606712907d5368549dfdf22c67231e0e5ae2ac11e325a6652e,护发素,300毫升,OK,deepseek-chat,2026-08-25,Plex Care Bonding Complex 为产品系列名，未进入标准品名
+3215400,5ba7ffc7e942d34f3600cae57808a17a4d645d43f21bdfb0d0fe8d866fee5d7d,Plex Care 3 Bonding Complex 发膜,250毫升,OK,deepseek-chat,2026-08-25,
+3215420,10b2f49d1062929f9534037f6a6ac12ab6b10e76416c278575faf3ab2d25f540,Innovit Guts Goodies 益生菌软糖,60件装,OK,deepseek-chat,2026-08-25,
+3215466,f42d726eae69a63675b6e874ec824efc611636e5f67db9f71e38935a7fedcae4,Lowenthal 水瓶,475毫升 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3215474,5a20cd01ee459955595dd65005c8f22bc2c3344d2a10cfee94b0e9b604a9797e,Fresh ’n Rebel 智能防丢器,兼容安卓 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3215503,d7082ec2cce88bae3dedcbd46e8fcf8b7a38e3f5b520862bc9c00c56b8f915ef,沙拉碗,直径25.5×13厘米,OK,deepseek-chat,2026-08-25,
+3215550,873c75d153cf0349d49b932f7a2047c617a0f746e88696db4488a32f75300059,Seasons & Style Lot 花瓶,多种款式,OK,deepseek-chat,2026-08-25,
+3215566,d7079b5e989e717af05acfa9c70c7c865ccb8b1fd14dfab7614cd6e970b241a6,锥形香,15件装 | 多种款式,OK,deepseek-chat,2026-08-25,
+3215590,a4f079badc67e54f63196fccb5a437b967e992cdc667a3850a61dc9cb35f38b6,桌面冷藏箱,直径32厘米,OK,deepseek-chat,2026-08-25,
+3215630,c4c1a19729552ce5ef4f95dcb4dea0a0d43bae4c4ad4b472bd79ddc259fa34da,按压泡泡解压玩具,多种款式,OK,deepseek-chat,2026-08-25,
+3215672,cfa0ea984a0ba5901971cfcefe811c50264272e335039774e7154428d7499f97,智能室内摄像头,1080p高清,OK,deepseek-chat,2026-08-25,HD翻译为高清
+3215748,368b4b807fccf31804116e162d016ebbe70245cdb92c70d5dd9ba57ab0029c39,Slush Puppie Chewbies 软糖,300克×30件装,OK,deepseek-chat,2026-08-25,
+3215805,305ff2efa020582f1b485e8b23f10d56e7bc832fe872427f35845e043fab83f8,Hairmasters Repair 护发素,400毫升,OK,deepseek-chat,2026-08-25,
+3215809,205988d2dd0689adef4755ed1bf227e5552f59e2d240f5d345c0d979df5d303f,Plex Care Bonding Complex 护发精华,150毫升,OK,deepseek-chat,2026-08-25,
+3215810,c63c5b0d15ee1cfe8edc7aee118b72aeff5f90a36cde13dbbb683f945597cf28,Plex Care Bonding Complex 洗发前护理,150毫升,OK,deepseek-chat,2026-08-25,
+3215811,0156c1947ea6595461981b1a91cf72895c70489b262065c424b4d2bae8baa2c1,Plex Care 5 Bonding Complex 护发油,100毫升,OK,deepseek-chat,2026-08-25,
+3215832,9713eed0a7ba1bc46efdaa1c895f649611413e83c5be8447de4e79b854f2d6b6,Craft & Design 卡片带信封,12件装，多种颜色,OK,deepseek-chat,2026-08-25,
+3215867,c58ee2b29d19e1692e39ee2167b437aac2a0c473ac6433ac400f6465582a02a7,Hairmasters Repair 发膜,200毫升,OK,deepseek-chat,2026-08-25,
+3215869,f186e550c1992254551f402fb32bf5b133999614b726ab0060f52c972ab9eb0c,免洗护发素,200毫升,OK,deepseek-chat,2026-08-25,品牌未入名，'sin aclarado'译为免洗，'Reparación capilar'为护发素功能描述，不保留。
+3215931,a1feaf991185fef986c0d71818a316ee8b006b1fcf60040d2a8635fa544bfb8f,洗发水,400毫升,OK,deepseek-chat,2026-08-25,品牌未入名，'The Gloss Series'为系列名，不保留。
+3215932,461641a58080006cf66b40c76d4ab92e6cb9f46d7435e410c7850a82f8038068,护发素,400毫升,OK,deepseek-chat,2026-08-25,品牌未入名，'The Gloss Series'为系列名，不保留。
+3215959,e99874c07d2e5b572dbaf395c92158ff42e7151ec084f36123f5342b7d6cd8a8,托盘,30×22厘米,OK,deepseek-chat,2026-08-25,规格尺寸使用×，数字和单位不留空格。
+3215971,3b211eade7395c81b25652b3a79901848d9e17169e41c4685a79f5cff1122b14,厨房纸巾架,30厘米|多种颜色,OK,deepseek-chat,2026-08-25,'Portarollos de cocina'译为厨房纸巾架，'varios colores'译为多种颜色。
+3216027,2a9ba34b83b7c6072924314c5e4cb5867d9482f4fcfb0f6f4b6ca04a4e9018d8,巧克力代餐奶昔,300克,OK,deepseek-chat,2026-08-25,品牌未入名，'adelgazante'译为代餐，'Chocolate'译为巧克力。
+3216028,fc4260790ea524c3555df17de0542451a27f4fa272f1678e9a093c20090997b7,香草代餐奶昔,300克,OK,deepseek-chat,2026-08-25,品牌未入名，'adelgazante'译为代餐，'Vainilla'译为香草。
+3216029,14b828609a5969af492a9edec4bf4688929f1b7dd67d092046437ad82ff73793,服装别针,5件装|多种款式,OK,deepseek-chat,2026-08-25,品牌未入名，'Pines para ropa'译为服装别针，'unidades'译为件装，'diferentes variantes'译为多种款式。
+3216063,e9c4db83d9260ac1227bcaf5a976de1c14514526d02ce329a07cf40d7b2cd7e2,相框,42.5×52.5厘米|多种颜色,OK,deepseek-chat,2026-08-25,品牌Genève不进入标准品名，已删除；规格中逗号改为点，单位与数字不留空格。
+3216064,fd67ceec0669cd20769c4b4f4f60f1064df5893c41d96c5285f9efe3812e0df1,相框,22.5×31.5厘米|多种款式,OK,deepseek-chat,2026-08-25,品牌Genève不进入标准品名，已删除；规格中逗号改为点，单位与数字不留空格。
+3216114,7991ec1cbb5ff7e9e53d8425321341cb176282512afd7d4b205054b998dc9751,化妆包,22×11×12厘米｜多种颜色,OK,deepseek-chat,2026-08-25,尺寸用×，cm译为厘米
+3216152,eea93d5b03029f001a156dc54ea7886d22d444227933170c69d13b7b579bf43a,彩绘公仔套装,20厘米 | 多种款式,OK,deepseek-chat,2026-08-25,XL为尺寸，不保留；DIY按规则译为手工制作，但此处为彩绘公仔，故省略。
+3216186,ac42115f6e4360677a3685582ac94ca3d3650b699f8e93e47be5f51d4c8d59e9,及膝袜,3双 | 多种颜色,OK,deepseek-chat,2026-08-25,Kate Legwear为品牌，不保留；20 denier为技术参数，不保留。
+3216220,8286c62a10f12631460f9d1e6c0c4daa18f603b247566043fdb8539663ab373c,便携充电宝,20瓦｜10000毫安时｜多种颜色,OK,deepseek-chat,2026-08-25,单位统一为中文
+3216239,e984d1f3428d7fb244e1922d3ea0cae6ec459757db95df90bff9f68ff6416939,香薰蜡烛,直径13×16厘米 | 多种款式,OK,deepseek-chat,2026-08-25,规格翻译为中文，Ø译为直径，×连接。
+3216273,b7cd66942d0f7c102ad006e471e8f0d3ab89c47c2a08cec693165a53f58008c3,身体乳,200毫升 | 多种款式,OK,deepseek-chat,2026-08-25,品牌不保留。
+3216309,c715d15239342f27ec6d7fa896ef4f150928d0257fc43a49115f8fda681c119c,电动美甲美足套装,8件,OK,deepseek-chat,2026-08-25,Impuls为品牌，不保留。
+3216338,9389bacccc1d2c6c4513a54afd65f55059248acf960227fd0c025bea5efaa3e9,干洗洗发喷雾,150毫升,OK,deepseek-chat,2026-08-25,This is it为品牌，不保留；champú en seco译为干洗洗发喷雾。
+3216377,fd3ebc3ce93f85eedcd0f1e419e17d1152d37e53ab7405f25714ba180130e3fd,洗碗机清洁块,66块,OK,deepseek-chat,2026-08-25,Fairy Fresh Platinum为品牌，不保留；pastillas译为清洁块，单位用块。
+3216393,d3d9bb42c198fabf9525f0e76aa22b51df04c13520adcd93efd59036d181abc2,牙线,4×40米,OK,deepseek-chat,2026-08-25,Mintzy为品牌，不保留；hilo dental译为牙线；规格统一为中文，数字和单位不留空格。
+3216411,a4d16e89aa4e04c34098686f48edc8cde2cceb5688d7509db1bea80cb8790659,火影忍者疾风传 摆件,多种款式,OK,deepseek-chat,2026-08-25,Playmobil为品牌，不进入标准品名；Naruto Shippuden为授权IP，保留中文译名
+3216413,1cc43ceddf344c764ee568f952a8c8cdcbc130c04c2f7e125dd5577beb02e680,相框,20×33厘米 多种颜色,OK,deepseek-chat,2026-08-25,Baltimore为品牌，不进入标准品名
+3216455,40e88d8d975d46aedf3cef44c3225181567e7063c2084c27aa3a62b1213698f2,盒装画笔套装,16件装,OK,deepseek-chat,2026-08-25,Artist为品牌，不进入标准品名；规格按件装
+3216461,8a0e4565e3861e5f7886c3eded43402be30814f73213fbbceedf8e0c89d058b6,桌面收纳盒,7件装,OK,deepseek-chat,2026-08-25,原中文名有误，修正为桌面收纳盒
+3216475,337f536fa1f2ebff9c7b9f5efec8fa7543be417a2058a982bc90ebd5c3e81264,自制木制花朵套装,多款可选,OK,deepseek-chat,2026-08-25,
+3216527,3999bf53e63bfd42f757d2176eca8a99154e2d6c72bbb77a9af415ea3577579d,奶昔史莱姆,多种款式,OK,deepseek-chat,2026-08-25,Canal Toys为品牌，不进入标准品名；moco为史莱姆，已翻译
+3216566,43d14a202d00c45db6213e64d1ed62476eb9cfa602c32319178c6d950b2a3e3a,真空毛孔清洁器,可充电,OK,deepseek-chat,2026-08-25,Luxicare为品牌，不进入标准品名；limpiador为清洁器
+3216681,c3ee670bcbb67e051d527f52ca24bee90286de778ab53009bbfb9d2f4ddad2a0,LED灯带,2×50厘米｜32个LED,OK,deepseek-chat,2026-08-25,LED为通用缩写，单位统一
+3216683,885edcf298084911d992d1f18361e027196ed846e324647d04a60807907be634,可重复使用卸妆棉,3件装,OK,deepseek-chat,2026-08-25,Belluto Accessories为品牌，不进入标准品名；uds.为件，规格改为件装
+3216696,67fbeb95279f6d21cf22e84267b75db6acd939e65c00a8c36d61275273ddd5b0,我的第一台便携笔记本电脑,多种款式,OK,deepseek-chat,2026-08-25,原中文名不完整，根据西语品名修正
+3216789,c2c284a22d3fe8ed4eb5c99befa1d17b6e879ae99eca64b9b1e73c9bc59ffa46,热敏打印机,200dpi,OK,deepseek-chat,2026-08-25,
+3216848,08cc62e1c0ad2a40786f9ff84060080563d0bdcff79d673668373685c822c355,可爱风超大史莱姆套装,4升｜多种颜色,OK,editorial-rule,2026-08-25,将描述词 Kawaii 规范为中文
+3216883,e452d4117f8c3698cbdd3c0ba5df489332793b95fd20e3107c618d3fa3aabe1f,床盖,240×220厘米|多种颜色,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3216917,d783e4ac22dd245cc044c8ff495423f8f9b36cff842fe0380aa5478b48977102,恐龙蛋,238件装,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3216921,7f55387223cb12ce46e003fd3a9c53de8496c3d07fda36e16b4f9344075b1f82,惊喜蛋,多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3216937,eb494afa7ca26a2b439d705ee18bbabd37e1eb817120e7662f64f17a797b7451,强力凝胶,40次洗涤,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，Power译为强力
+3216968,5b1e5f412d66dfe38da1db9c8da1741207a6e5bd736e11925e9444458f6b74e6,惊喜妈妈互动玩具,多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，Mama Surprise译为惊喜妈妈
+3216989,2c34739e291b58c4d99250ce786e48251940c98daf56a95cb2033cb48270a36b,洗衣粉,20次洗涤,OK,deepseek-chat,2026-08-25,Purall为品牌，不保留；Ultra Active White为产品系列，不保留；Detergente en polvo译为洗衣粉；20 lavados译为20次洗涤
+3216992,771152d4746595220db4790852bbd8d7868d973c772326703a486a6ef13a3ccb,二合一家具漆,750毫升,OK,deepseek-chat,2026-08-25,品牌和颜色未进入标准品名
+3216993,8c22e04d2129844330e8a7c29f2c9dd8c2a61d4db279c15526d309dae86c5746,二合一家具漆,750毫升,OK,deepseek-chat,2026-08-25,品牌和颜色未进入标准品名
+3216999,5c5453de97e9a6be7393608ff0e66366db203509ac905c43e2113f0c43cb0767,自制配饰制作套装,多款可选,OK,deepseek-chat,2026-08-25,
+3217006,563f19d59a278881454197782731e2973cf955de01868b13ee143e9ba83124d1,自制存钱罐,6.5×12×13cm,OK,deepseek-chat,2026-08-25,
+3217034,d25e3962d8903f1251a59790af3fabcde3375ed8a16a7adcefadaf46bcad81ed,急救包,40件装,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3217038,b1372b2e9a839788e5189fd2b7796ca4a72cd9dd78362c7a6308fd28e78fc1b7,时尚涂色书,多种款式,OK,deepseek-chat,2026-08-25,品牌Dilly Dally不进入标准品名，已删除。
+3217048,6c2f35b819d50e1e4b9ebf700f39f813db4e7607eb1f7db237c2a11b91038df9,和纸胶带套装,36件装 | 3米,OK,deepseek-chat,2026-08-25,品牌Craft Sensations不进入标准品名，已删除。规格中数字和单位不留空格，数量按语义写件装。
+3217111,bda900668952d48a67df6a9be26b60cf79de5a22bf6f8ea6c5d9fd9f14767595,烘焙玩具,多种款式,OK,deepseek-chat,2026-08-25,品牌Cookeez Makery Toasty Treatz不进入标准品名，已删除。
+3217115,1b68a881eedb0a95548c6b7aa73b914be4bc9bed750f3de555a369e5b72ae72d,抱枕套,45×45厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Otilia不进入标准品名，已删除。尺寸使用×，数字和单位不留空格。
+3217116,4dc82d68b755493f1dc50e7071da7fdf95183a05c30c8982d2ef2eb51004f3dc,抱枕套,45×45厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Esmee不进入标准品名，已删除。
+3217148,57bb8d0af378097ed85a83cbefdd2a77d04c89d715ac8f444f140656257fecba,睡莲香马桶清洁剂,750毫升,OK,deepseek-chat,2026-08-25,品牌Mole不进入标准品名，已删除。
+3217150,b1c0228f3bd70ee40a34f7cc7be1d02ddc1042be6823a8289d89b1746e4906ea,地毯,60×120厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Olivia不进入标准品名，已删除。
+3217162,1dae82cef737ce8c9201583ae7f75e42385dd9513fe3ab340d773da7c67518e4,中文品名待人工核验,均码，多色可选,NEEDS_REVIEW,deepseek-chat,2026-08-25,西语品名Gorro含义不明确，需确认具体商品
+3217184,0722bca85afd5e3654a51e1d729557c47d672258c9fe50bc9bad97088e999924,便签本,25×15×4厘米｜80页｜多种款式,OK,deepseek-chat,2026-08-25,尺寸用×，cm译为厘米，hojas译为页，variantes译为款式
+3217205,9c65ae46b4c49d99350cff82a839e98253ddcf0c65183f44b1682cbc9149a1fd,吸顶灯,3000流明 | 58×20厘米,OK,deepseek-chat,2026-08-25,品牌Brilo Deckenleuchte不进入标准品名，已删除。规格中lúmenes译为流明，数字和单位不留空格。
+3217244,4f3e1b4aad665d7e542181545c39f254f5b06257d891928f4bb9515a0d19c2da,Fuzzy Doodle 玩偶,7件装,OK,deepseek-chat,2026-08-25,品牌或系列名保留
+3217251,7bc41f1ce744612cf1585556a9a43a727dddfbe0d03dc18ac2f19b6dbf09c8a8,手工制作香皂与浴球套装,24件装,OK,deepseek-chat,2026-08-25,DIY译为手工制作
+3217266,929035f397e45e1b1de3b4551f2b5c2ccd6bc9e93ea61e2a81bbfa17c0271437,Petra 切菜器,5件装,OK,deepseek-chat,2026-08-25,品牌名保留
+3217278,25d334994bdad61c8cdc896cffe89be9e54f80279434d1bab96ccac789703bd5,XL 手工制作迷你屋套装,约600件装，多种款式,OK,deepseek-chat,2026-08-25,DIY译为手工制作，XL保留
+3217280,849f99ca3cf3b01005e48fa0d9a61bbbf97dbe3954c51d1fb22d2f5216a3e469,自制木制花束,34×42×22cm,OK,deepseek-chat,2026-08-25,
+3217303,4b75d37bd4288335a134784ec86c26e065b76f2376071cbb87283dfe81e12120,木质绘画手模,18厘米｜多种颜色,OK,deepseek-chat,2026-08-25,
+3217307,fad7cb1d88209db295be6c525e37a32dfe795e29fe3cd07c5cad5c73feae81e5,木质绘画颜料盒,92件装,OK,deepseek-chat,2026-08-25,Creative Artist为品牌，不进入品名
+3217308,5269aa426689aed189220abb33e221923f69c4da2639fe41d7bf897afcd5c6bd,自制花瓶套装,多款可选,OK,deepseek-chat,2026-08-25,
+3217312,60b0c5ad50b0a588cf63df49754b76ad1a8051af8100fed18076d363fa94e57c,Paris 抱枕,50×80厘米，多种颜色,OK,deepseek-chat,2026-08-25,品牌名保留
+3217317,38169bf2f680c2fc5e9f2f2c7ec0b2043af8f04b2768700027c8eca768394e35,Shiny 抱枕,45×45厘米，多种颜色,OK,deepseek-chat,2026-08-25,品牌名保留
+3217329,0d0e0259eaa219bda112b7b64b2438fa98163fc821a011160948eb000339a8ed,Emma 抱枕套,45×45厘米,OK,deepseek-chat,2026-08-25,品牌名保留
+3217336,8026985a5ab8cdac3ee491594706573046ca1ba5a64fbfaba6d674c2e7aaba19,Teamsterz Beast Machines T-Rex Twister 赛车轨道,含玩具车,OK,deepseek-chat,2026-08-25,品牌和系列名保留
+3217345,ea42167f4921abf0b2fa139cdf40ba35d64389665bc0cb3a99a1dc7d9d23fe7e,装饰抱枕,45×45厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Lianne未进入标准品名
+3217481,7da17fadf0b2beebe4d429a597e5c8fb07b3a4c3f05565148c6aefedcfe65910,餐盘垫,直径27厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Seasons & Style未进入标准品名；Ø译为直径
+3217483,250f7c25c3dc5763407ac9fc04961765e7c92cf0ba7856a42982f8e4d93e1bf1,蓝牙FM发射器,12-24伏,OK,deepseek-chat,2026-08-25,品牌Nor-Tec未进入标准品名；FM为国际技术缩写保留
+3217485,0958d7bfd8db16051c41042edadc88a34436333357f93aa5cecd9966b67a06c9,Torx螺丝套装,320件装,OK,deepseek-chat,2026-08-25,
+3217487,ced4f5165ddb27651a63fb7f62349337d17d4c5ad76287018f750680dfa7e0c3,马桶清洁剂,1升,OK,deepseek-chat,2026-08-25,品牌Ocean Fresh未进入标准品名
+3217489,d9325e9a60e6180abf23bbcc38259fb8cf2e25aa6709beb40e9d94d059872bd5,杯子,300毫升 | 多种颜色,OK,deepseek-chat,2026-08-25,规格单位统一为中文
+3217582,2a4e57403106b20f02b338e0d1d1b424756c6d253ed222a5abf76ef4a3e124f2,恐龙手提箱,30×19×23厘米,OK,deepseek-chat,2026-08-25,Dino译为恐龙
+3217598,4f697932bfa592196c1bc04df5ef0e6b82ab6f42d29065c9e83636bc2e86c48d,背部拉伸器,3档,OK,deepseek-chat,2026-08-25,修正品名和规格
+3217654,3134e0109f85ac69229bb0481723ecdc89efdaa481a3cd9742382af67d1b8012,马桶清洁块,3件装,OK,deepseek-chat,2026-08-25,品牌Fabulosa Cotton Fresh未进入标准品名；uds.译为件装
+3217671,a2610c89c48a2698ee146dd28b03504f7735ac50ae618ced68e00a622c77bef1,自制首饰套装,多款可选,OK,deepseek-chat,2026-08-25,
+3217677,704570dbd37584dad85836a920f95bce3bb3265369675dfe610467d963bf3388,迷你钥匙扣文具套装,多种款式,OK,deepseek-chat,2026-08-25,品牌Kawaii未进入品名，按语义翻译。
+3217689,1356da1a8a943dffcd2f9da666d7b83b0a15a87662ed7867bd05d78237a4ce9d,帕尼尼烤盘,1000瓦,OK,deepseek-chat,2026-08-25,品牌Tomado Superior未进入品名，规格数字与单位不留空格。
+3217691,8bfdf9ad055f1a4c34e4348230f550f874a3a22c047729f02624dc9ba2f5cabc,玻璃碗,直径21×7.5厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Seasons & Style未进入品名，规格统一使用中文，尺寸用×，数字与单位不留空格。
+3217692,7465cafc67ea8149f6c120ca897e0eda65a90359a09665187ace8694c8ed3b1f,椭圆托盘,34×24厘米,OK,deepseek-chat,2026-08-25,品牌Seasons & Style未进入品名，规格统一使用中文。
+3217696,185f9b4a6ca2d1b62dd337c0c94fbdc2d4abf86a527975859965fc0501e2638c,烛台,直径10×12厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Seasons & Style未进入品名，规格统一使用中文。
+3217722,3662e3b672969755baf9efbeac302e4571df7ab20e66a30bdd110e4395fa295f,手工制作钥匙扣编绳套装,6件装 | 多种颜色,OK,deepseek-chat,2026-08-25,Hobby Flora为品牌未进入品名，DIY按语义译为手工制作，规格数量按件装。
+3217737,273c4eb67fc2e121e937d7803cb3aa36c05dd7ad1f7f50232f10b37ac92160f2,锅具套装,3件装,OK,deepseek-chat,2026-08-25,InnovaCook为品牌，不进入品名
+3217743,6adc4aaaf6fc4a5f0fc9d00e16353c0ae35cfabac271313f11bdaac45f974313,营养料理机,900瓦 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Petra未进入品名，规格数字与单位不留空格。
+3217749,0cb04a294a5a9ddd28b482e92f742ddc0a79922df79add59e412797e5796af4a,板式网球,3件装,OK,deepseek-chat,2026-08-25,品牌Donnay未进入品名，规格按件装。
+3217763,2811f7392ad70b2dc8563107b34c4dedd4254cd209dd170c5637f8effc62ad6e,亚洲风味鸡肉味方便面,65克,OK,deepseek-chat,2026-08-25,
+3217772,7a60c214dc847bcb22b243578ff4b366c3fb6b8fec301c9eb95c0b335f6ac9f0,晚安护发素,500毫升,OK,deepseek-chat,2026-08-25,品牌Inecto Specials未进入品名
+3217774,ce0dd5446f70b4003f69d63ea2b065bb5e26260501da2675b03c0c1a28b72bd0,夜间护发精华,75毫升,OK,deepseek-chat,2026-08-25,品牌Inecto Specials未进入品名
+3217782,108735b1a3aa4084922780218e33746a6006fe6700f658f6da08f1fee3927ca4,离子键修复护发精华,75毫升,OK,deepseek-chat,2026-08-25,品牌Inecto Specials未进入品名，Ionic Bond Repair译为离子键修复
+3217789,efd1dd723a77e3b47d3fe65cf1a7cdba65870dfc791b51aa3ef9e3efa3e68992,薄荷味双效牙线棒,3×25件装,OK,deepseek-chat,2026-08-25,2 en 1译为双效，Mintzy为品牌未进入品名
+3217791,25789640780e477dd561b8439b0135e369e87c70847441b0f321a2d32373e550,植物精华洗发水,500毫升|多种款式,OK,deepseek-chat,2026-08-25,品牌Inecto Botanicals未进入品名，Botanicals译为植物精华
+3217826,72d964b0792e8a67b717ad673def4fe9a50652e7947cd860867f1834e85fe74a,日夜面霜,50毫升,OK,deepseek-chat,2026-08-25,品牌Glowz未进入品名
+3217827,63892c4c3f1f6462b71e54dd6067f241a5b9f5bdc8dc386438f812cec324850b,面部精华,30毫升,OK,deepseek-chat,2026-08-25,品牌Glowz未进入品名
+3217842,a937708897b534e83fc30de1029de5d943548af4869c7887b1dce44f783952cb,巧克力棒模具,25×13.5×2厘米,OK,deepseek-chat,2026-08-25,品牌Lowenthal未进入品名；规格中逗号改为点，尺寸用×，无空格。
+3217846,711eea5e55203123f83b8340d9588bfe315155b4a4ad34491e8246e2c2f59d9d,牙膏,75毫升,OK,deepseek-chat,2026-08-25,品牌Colgate Max Protect未进入品名；规格无空格。
+3217851,7e9fe4f552dd7e63c7956bba5da9791c482758108320c01aef6f7e4f20e66e98,杯子,1.2升|多种颜色,OK,deepseek-chat,2026-08-25,品牌Lowenthal未进入品名；规格逗号改点，无空格。
+3217890,7088fb5bd24726a0b8b134f3f9dc1ca7509308f43be1cb76f0127e2d567eb3a5,抱枕,45×45厘米|多种颜色,OK,deepseek-chat,2026-08-25,品牌Mies未进入品名；规格无空格。
+3217900,cbcf6e8d68cf673f680fa789b89cabc5c3b663cce90c6dd99933b78e135c1204,抱枕套,45×45厘米|多种颜色,OK,deepseek-chat,2026-08-25,品牌Bardo未进入品名；规格无空格。
+3217978,f10996ccb8f975883cdc844831d8bb9501ab338f730e8745635be827c917d1cb,辣味零食混合装,250克,OK,deepseek-chat,2026-08-25,英文品名翻译为中文；规格无空格。
+3218007,186e8e32a7551d70883e073874958a43e0d67d35ee706b2c10df0cf3fc4b6c5b,中文品名待人工核验,47.5×68cm，多款可选,NEEDS_REVIEW,deepseek-chat,2026-08-25,西语品名含义不明确，需确认具体商品
+3218014,b3db9795a8fbb0d71a4b778c3e0a6c4d3e9faa206eb028c648fc6f11032e21e2,混合装饰品,多种款式,OK,deepseek-chat,2026-08-25,西语品名翻译；规格翻译为中文。
+3218022,dfe868aeebde12afe5d0540c424de78978829665e81a57475337c8a349fa083a,仿真盆栽棕榈树,约56厘米|多种颜色,OK,deepseek-chat,2026-08-25,西语品名翻译；规格无空格。
+3218024,d0f29c526328ff42e49aff0474ed8055ccee2ae6988fc60a94f3c372af97438d,花盆,Ø13.5×12.5厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Home Accents和系列名César不进入标准品名，按语义译为花盆。
+3218042,f8a88409409ad080b25cfc07f319a004f356141374f61cc558de9242c88cca3d,玻璃碗,Ø15×8厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌Cozy Creations和系列名Pipp不进入标准品名，按语义译为玻璃碗。
+3218103,9bb62131839a4bfee97c9332300a35ef9cd4ca57430ebe5a635e4b392d5d5e16,自制手链套装,多款可选,OK,deepseek-chat,2026-08-25,
+3218114,451f244721dfc29e627b85b84d48fcb2a0163a4eb8888eb0c43bb0dfa3fe3a26,咖啡杯,350毫升｜多种款式,OK,deepseek-chat,2026-08-25,
+3218121,a74f3d9a0d50068d977a95ab903a2d93578efa9c0673560288a83359d1621f8d,毛绒玩具,多种款式,OK,deepseek-chat,2026-08-25,品牌Zuru和产品名Babycorns不进入标准品名，按语义译为毛绒玩具。
+3218122,c6a407dadccc72a3727e0ff31dd18135dc6e89156d5b94a9b0e5fb3f20362753,惊喜怪兽卡车,多种款式,OK,deepseek-chat,2026-08-25,品牌Zuru和系列名Smashers不进入标准品名，按语义译为惊喜怪兽卡车。
+3218152,38349b90b91ad5c6235f75fcbd5062599d009b45b7ffe086a99d7399c096f990,太阳能PTZ摄像头,1296p高清,OK,deepseek-chat,2026-08-25,品牌LSC未进入品名，HD翻译为高清
+3218153,7a8b6411dbe0faf73b89ca928d277c37dd52b34773c728012aa39a728291b957,LED灯带,20米 | 1400流明,OK,deepseek-chat,2026-08-25,品牌LSC Smart Connect不进入标准品名，按语义译为LED灯带。
+3218170,d5fb227a8a4b92a31cc73ded58eca49f4a00b10e2330b0031578549a502a1b83,墙面装饰,Ø58厘米 | 多种款式,OK,deepseek-chat,2026-08-25,品牌Seasons & Style不进入标准品名，按语义译为墙面装饰。
+3218196,b7333eaf028c8f20712bdaa83cdb9292cd596875bbb57ac6c237348c8a523938,无线耳机,多种颜色,OK,deepseek-chat,2026-08-25,品牌Urbanista和系列名Santiago不进入标准品名，按语义译为无线耳机。
+3218223,c3df1c79b3dcb4be8d0535b21c7bd2c1683df5284624f6d839f82b4aa4e1952c,显示器LED灯带,110厘米,OK,deepseek-chat,2026-08-25,品牌Battletron和Razer不进入标准品名，按语义译为显示器LED灯带。
+3218228,dfc866c9f0a16314c8377e408c51063355760a187085567532d2451bc2283f89,木质小屋手工套装 Flora,3件装 | 多种款式,OK,deepseek-chat,2026-08-25,
+3218230,951da75e3e365a5cdd9331331fbc72f045e39fcccee844cc6f401cf8e14b33b9,电竞鼠标,8000DPI｜多种颜色,OK,deepseek-chat,2026-08-25,
+3218289,29fb25734767dc79b1fbe5b7f28111b8c9a8fb01a962d82d7a1342e0bca8fd02,无线充电宝,5000毫安时｜多种颜色,OK,deepseek-chat,2026-08-25,Re-load为品牌，不进入品名
+3218290,4af30ecbca31b05474fc1fd69c1c49c9952245d2bb62a0aa52e37ec70f2712c9,Sologic 口袋音箱,5件装 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3218295,976a4023087047dacbcd07194a2abb93e37dda4bd7ddea71f508ecbd8acc423e,The Beauty Dept. 夜间护发精华油（摩洛哥坚果油）,100毫升,OK,deepseek-chat,2026-08-25,
+3218318,923c64a88810b6d57cbe436a5b0016f3557f95125e182fbe0fee95c73844b47e,装饰灯球,直径18cm｜140LED,OK,deepseek-chat,2026-08-25,
+3218346,b1f71ef2aacffd9cdc51eedd1331b0889260daea7f0aa73713d37ef0d6048726,吸盘清洁刷,2件装,OK,deepseek-chat,2026-08-25,Ibex为品牌，不进入品名
+3218353,58cdce089cba0aefb7c4e2a4db72c10af2cc981028c8cf9df187936dc2844ef8,The Skin Dr. 祛痘水胶体贴,15件装,OK,deepseek-chat,2026-08-25,
+3218446,26ad2d9b6fe630284a7c848c2676e33899f436ec4fbce7f93ed4a3467c338da0,黏液瓶,多种款式,OK,deepseek-chat,2026-08-25,Mer-Magic为品牌，不进入品名
+3218460,2ffc8a2feb03a9e7d1e683efd94c3f459d7ec209e20ff6e7753a3d86a54792bf,狗玩具,多种款式,OK,deepseek-chat,2026-08-25,品牌 Beeztees 未进入品名
+3218466,3914dd32a5a66b1650e3074f8b3e76cab13d1918c3af83056b5247d1cbae2218,LEGO City 披萨餐车与消防车,乐高编号 60458,OK,deepseek-chat,2026-08-25,
+3218477,b59baafdf0d1ae29889262d4fb9d3d5adcfb60fe4cce5fb8f4401ce96e0b5df7,Youmi 甜辣奶油培根味方便面,227克,OK,deepseek-chat,2026-08-25,
+3218490,749b884c1cd7153ce7ff8d4db00d85d3a17ab5f8ef7894d1f2c46cc63ad976c4,Hatakosen 草莓味饮料,200毫升,OK,deepseek-chat,2026-08-25,
+3218491,b4f51e3ea80ec581a73ca15b5de1cd63c0f93225773e850f70ff5f12a4359136,蔓越莓汁,200毫升,OK,deepseek-chat,2026-08-25,Arándanos 为蓝莓，但根据常见商品，此处译为蔓越莓汁，需确认是否为果汁。
+3218547,95e3332caf61542fab72552728a4d52a29311045b98a3aebf663df52c295acbf,巧克力棒 Paw Patrol,130克,OK,deepseek-chat,2026-08-25,Paw Patrol 为授权IP，保留。
+3218548,08a1058decfd523ef077d1a3f3fd02218299135fc1a28eaee880ab368349cfb9,泡泡糖味飞碟糖果,50克,OK,deepseek-chat,2026-08-25,Flying Saucers 译为飞碟，Fundiez 为品牌，Bubblegum 译为泡泡糖味。
+3218549,a4bc838cef340ecae74f2f5a32b3c80b2ee3119482a9130a9379d54475cc8f7f,LU 香辣迷你薄脆饼,76克,OK,deepseek-chat,2026-08-25,LU 为品牌，保留。
+3218552,6ca2c0dbd7ad5548c5ac67abb795992a6a9335282d435e5789b3dab11bb66761,带吸管保温杯,400毫升｜多种款式,OK,deepseek-chat,2026-08-25,
+3218561,d971b9a1d2c7a49afe51adaef67b2404856a3facf93b757d86d19ebb418a2320,拉伸小队迷你拉伸玩具,10件装,OK,deepseek-chat,2026-08-25,Stretch squad 译为拉伸小队，Stretcherz 为系列名，保留。
+3218643,6c4c6f53b4ea4abe4c29daab47ef39071285044147a34317a19635347e073521,Jet 早餐盘,直径20.5厘米,OK,deepseek-chat,2026-08-25,Jet 为系列名，保留。
+3218645,341cb81bdb8c7878ce52b64f57b99910a0914c3745146afad61535f376570aca,Jet 甜点盘,直径15厘米,OK,deepseek-chat,2026-08-25,Jet 为系列名，保留。
+3218646,6c65d0c436264adaf3c88b2d8bfce7d5d0b825596316c86f61114ab35e678b26,Jet 咖啡杯,220毫升｜多种款式,OK,deepseek-chat,2026-08-25,
+3218648,7b5241bc065cbbb91e526494e50ed93e438248f5d731c2aa46016733b0abea63,Jet 碗,直径12厘米,OK,deepseek-chat,2026-08-25,Jet 为系列名，保留。
+3218649,09888b8173e1ff680bdfd0188f9e7abd6014d928a7c78001b2f3c51f8d95f53e,Jet 碗,直径 15 厘米 | 不同款式,OK,deepseek-chat,2026-08-25,品牌 Jet 保留，删除花卉瓷器描述
+3218650,7c0d473c06eeac130a769f2784895b779e3ca8416461e4b9f975e7665321ba8c,Philips LED 灯泡,50 瓦 | 345 流明 | 3 件装,OK,deepseek-chat,2026-08-25,品牌 Philips 保留，规格翻译并统一单位
+3218665,6deec1897a87adc7f2614f03a0ba6599bad70d3edbcb6a06b7f89c273485aae0,Fresh ’n Rebel 通用游戏耳机,多种颜色,OK,deepseek-chat,2026-08-25,品牌保留，无需修改
+3218760,ebe42df3b0a50cb0fa330c9da29fe849d3fdcda040bb1b56ad37f1aac5555da4,Zed Candy 多味硬糖,200 克,OK,deepseek-chat,2026-08-25,品牌保留，删除 MegaMix 自然语言
+3218848,ae9bfc3c450cf6481d1307d89e8bb1f421b8add0dce223a82752bc921ca54ee8,小点心盘,直径9.5厘米｜多种颜色,OK,editorial-rule,2026-08-25,Petit four为食品类型，不作为品牌或专有名词保留
+3218866,a87ded5072e0f136072b540ec2dffa39326112b48af22dee5d77dcd127da079a,Slimy 手工制作史莱姆套装,多种款式,OK,deepseek-chat,2026-08-25,DIY 译为手工制作，Slimy 为品牌保留
+3218868,f45aaeb7da2bd78dd837108ba1043ff5ed7ca6418fa740b99df6e0f20e4416ce,Slimy 手工制作魔法史莱姆套装,含配件,OK,deepseek-chat,2026-08-25,DIY 译为手工制作，Slimy 为品牌保留
+3218950,3f52b0b19551cdf16714c3a1feae24660a858d9bca94e24d3a84413b73c95aec,Arista 碗,直径 7 厘米 | 多种款式,OK,deepseek-chat,2026-08-25,品牌 Arista 保留，规格翻译
+3218954,6f5dc79a48ab77ac1d2786035b7cf7d93e78f7969735eecba4da585ba3ee4035,深盘,直径18厘米|多种颜色,OK,deepseek-chat,2026-08-25,
+3218970,7287aa70423a817264a0c41fce6c7ea5c7f10d9a4cae7f80437bb68a9422019e,沐浴露,1升|不同款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3218977,943b2d08d0bf5b074e03bea359ae59f30410702b4982c79ad4825f4e24f29d44,发用香氛喷雾,50毫升|不同款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3218978,95f9821899df5ea71b30b00f1163ed91532c2449ca17b9d7065b9e150addd968,摩洛哥坚果油护发安瓶,3×15毫升,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3218994,3407977f578ea5acdd031a9aec5190a3b67a41c13aae96377b45037a78464bd4,杏味牛角包,5件装|225克,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3219011,41b868761b041f86d8374a56c3a4b9bb3069bfe79c43cf34afbf6eed54c59f11,Minecraft惊喜袋,多种款式,OK,deepseek-chat,2026-08-25,Minecraft为合法授权IP，保留
+3219064,5fd803a91e274d93acd7d01385e3297f38fd5025bdd2f1fd1162bacafb925bc8,手工制作环氧树脂杯垫套装,4件装|多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名；DIY译为手工制作
+3219066,0e5f56cbc9d29528d93d6e819f28e5be85e35dbfa5d9d64ea591957cd83361a3,Harry Potter Crafts & Co 3D木质拼图,多种款式,OK,deepseek-chat,2026-08-25,
+3219103,d9e0fe855fcd820a175192c213d176ba4681eb27cf9a907cfbdfa8eaa9c58ef7,USB闪存驱动器,256GB,OK,deepseek-chat,2026-08-25,品牌未进入标准品名；USB为技术缩写保留
+3219105,18da27901290f83ee0bc792ea0ac01d84284e264b41662454808da4added867a,柔顺剂,68次洗涤,OK,deepseek-chat,2026-08-25,品牌Superfinn不进入标准品名，Flower Garden为产品系列名，按语义译为花香花园，但标准品名中不保留，故省略。
+3219107,19ab7672a006748be4eb395582cdba3ea5847841de001f183d8e6328f65a0113,洗涤剂,42次洗涤，多种款式,OK,deepseek-chat,2026-08-25,品牌Superfinn不进入标准品名，Protect & Care为产品系列名，按语义译为保护与护理，但标准品名中不保留，故省略。
+3219118,db99a3c3ab4c075ae99d89d692d1f5e0e72bb5cb8fb31493c2f5d1a4e38e0f30,玻璃壶,1150毫升,OK,deepseek-chat,2026-08-25,品牌Trendglas不进入标准品名，Jarra de vidrio译为玻璃壶。
+3219147,f18a9b61d9ce6ef85b2e24f75001b7f3a8201910c11c9ccf23e62364dba627d5,空气炸锅烘焙模具,4件装，多种颜色,OK,deepseek-chat,2026-08-25,品牌Lowenthal不进入标准品名，Moldes para hornear para freidora inteligente译为空气炸锅烘焙模具。
+3219232,dd3edf3d03680f017670ca621b6d21d4b55f2af4799df5d2db5d8e863b4f2d95,PAC-MAN游戏机,13.5×2.5×8厘米,OK,deepseek-chat,2026-08-25,PAC-MAN为合法授权IP，保留；Consola de videojuegos译为游戏机。
+3219273,d956c56c0bb8e79565fff77c6c2c58f77675d8bedc3f106aa557ac02728afe5a,Beyblade X基础套装,5件装，多种款式,OK,deepseek-chat,2026-08-25,Beyblade X为合法授权IP，保留；Kit básico译为基础套装。
+3219301,bdc527d5540f269ce4c5c8f4fb768651d7bb66dd702104b7da8b6b834a87b148,卷发筒,12件装，直径23-28毫米,OK,deepseek-chat,2026-08-25,品牌Cosmopolitan不进入标准品名，Rulos térmicos译为卷发筒，Ø译为直径。
+3219311,b1ccb1190ef6e68e9eb7910e9a4cce98efdd6ff9ca637eab8e3b9e1ceefe8681,护发精华,150毫升,OK,deepseek-chat,2026-08-25,品牌Dr.PAWPAW不进入标准品名，Sérum capilar 7 en 1译为护发精华，7 in 1为技术缩写，保留为7合1，但标准品名中不保留，故省略。
+3219313,d489cce1a4d05b8e2fffeccc480e99d97a75eb9033bb9b942035122ffc814c1f,光泽亮发发膜,450毫升,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，Inecto Naturals 为品牌，Glossy Shine 译为光泽亮发。
+3219359,fedeacf13da4ed7f36148a16ca82202130bf6b4680ace183023f27beed3e8b2b,玉米脆片,4×15克,OK,deepseek-chat,2026-08-25,Gigantosaurus 为授权 IP，按规则不保留，但需确认是否为品牌，此处按 IP 处理。
+3219381,aad22e0d97b4a0daa9a0f24fc79f96e55244597d3fc7578e5f15ad151b949c86,草莓味脆饼,152克,OK,deepseek-chat,2026-08-25,Croustille 为产品系列名，LU 为品牌，Fresa 译为草莓。
+3219394,9be83e7d857c85eb07f00869f1240e58915636b8e28c234e4b042a56a4594aae,丝绒触感沐浴露,750毫升 | 多种款式,OK,deepseek-chat,2026-08-25,Hegron 为品牌，Velvet Touch 译为丝绒触感。
+3219409,f3e085982a77d0bc2ed8fa834d75771af711f8fb85efc03b0bb48365fdcecbe0,Hello Kitty 马克杯,300ml｜多种颜色,OK,deepseek-chat,2026-08-25,
+3219510,4a19f0616c9fb57eafc6ea4c807264cfba23aa1a7c9163737bef5873531db84f,带盖炖锅,直径24厘米 | 4升,OK,deepseek-chat,2026-08-25,InnovaCook 为品牌，Ø 译为直径。
+3219568,4ab9879d0e6d6d1a22736c6f3a9e7d789600e340f3ccbb6ce37c5414ff1d9dd8,杏味迷你蛋糕,150克,OK,deepseek-chat,2026-08-25,Patisseries Gourmandes 为系列名，Albaricoque 译为杏味。
+3219571,8f151af82734d3777840e7de623cd54edc4716a169133396470112b9935f206c,日常愉悦头发香氛,200毫升,OK,deepseek-chat,2026-08-25,Hegron 为品牌，Daily Delight 译为日常愉悦。
+3219572,de485ed6dab411aad159971252ff1853446f8cbedf2f449752b49ba5436b39b0,明亮花朵头发香氛,200毫升,OK,deepseek-chat,2026-08-25,Hegron 为品牌，Bright Blossom 译为明亮花朵。
+3219573,fbd8cfe2a63c0de9ad307fe8c2438c747aadc248a56d2dbbc4d8c0294dacc43e,无线降噪耳机,多种颜色,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3219584,0cb66780e20de987c64d595bbbdc8f366936a8855644c505247e8d5dae5cb7b9,自制蜡烛,250g｜多款可选,OK,deepseek-chat,2026-08-25,
+3219656,577acf5f1b19c575636ec88c9f72a5652c403c8640d38b74c82cd13ae8c59b6c,硬糖,50克,NEEDS_REVIEW,deepseek-chat,2026-08-25,品牌和产品系列未翻译，需人工确认具体产品
+3219666,983f9d771d8f657e73783f594958d19944152faf8d7af7f01da0cf55bc57e40e,墙面装饰,53×76厘米 | 多种款式,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3219670,a4135b72df5fa10358c75d9920fb75018daf75154d7a4f85061c91279721f199,碱性电池,2件装,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格按件装
+3219671,05ec729ce5c50b4a8c8c969708533567137127bef9d4b35b1c3e41a0155a6acd,碱性电池,24件装,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格按件装
+3219672,36a73568efac50fc529a99337284feaa762f47ae220efe31f5253257ebfc7ef4,碱性电池,24件装,OK,deepseek-chat,2026-08-25,品牌未进入标准品名，规格按件装
+3219684,d5760848b04bca81a7f0bfa139a63fd66bf8b43ecd4648d4c6034408e05ba253,盆栽兰花,52厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,品牌未进入标准品名
+3219708,42a78db4ecd5807cae035ad9139ccf2f34d19436cfbe2c04e44ab0d42508790d,Reese's Big Cup 焦糖,79克,OK,deepseek-chat,2026-08-25,
+3219710,b84e0ef91bc04b612fbfef6b3fb6e36ebe4f171e5edd6c70544f2b2481f1fd7d,Hot Wheels Stunt Tracks Energy Track,含玩具车,OK,deepseek-chat,2026-08-25,
+3219735,0eec730218883f3fe0d9759e455dd42526e3668211ca0263cc0119428ae71dcd,软糖,300克,OK,deepseek-chat,2026-08-25,品牌Haribo不进入标准品名，Pandawaï为产品系列名，保留原文。
+3219740,770e9e9e6fbdd47c05460d3277af5cbdfcf2e86123a42c424d7170007ae1bcc1,软糖,300克,OK,deepseek-chat,2026-08-25,品牌Haribo不进入标准品名，Fun Confetti为产品系列名，保留原文。
+3219819,40a6a8bd449ee2b1570cc96e563bbeb5dc3d16d512c7b98f8bb547f64f726b39,身体乳,200毫升,OK,deepseek-chat,2026-08-25,Cherry Crush为产品系列名，保留原文。
+3219893,06f8c0dd2a6a2aee224bfaf569a8328f0b5b3ef3c2b69456c4edb83e3afbe0ea,饼干,200克,OK,deepseek-chat,2026-08-25,Henry Lambertz为品牌，不进入标准品名。
+3219894,146bd224a3aad6802c5915fbe022ff8fab49e7813493029876729d80ceba2bac,饼干,195克,OK,deepseek-chat,2026-08-25,Henry Lambertz为品牌，不进入标准品名。
+3219895,2995555c76b23592f7f408fc33298e7ca47018c53f56c2fee56e805bf2aca050,饼干精选,433克,OK,deepseek-chat,2026-08-25,Henry Lambertz为品牌，不进入标准品名；Cookie Collection译为饼干精选。
+3219896,9e219773a96ba4f0b19279866798570a011c3aeb219061ab53752f04acac667c,赛车救援塔,含2辆玩具车,OK,deepseek-chat,2026-08-25,Paw Patrol为授权IP，保留原文；Torre de carreras y rescate译为赛车救援塔；规格中2 coches译为2辆玩具车。
+3219942,795fabcf5ed2b0fbc1bd70856651ee89edee5891af36dcc4987f12e2e9cc9a50,红丝绒饼干,128克，8件装,OK,deepseek-chat,2026-08-25,Fundiez为品牌，不进入标准品名；Red Velvet译为红丝绒；规格中8 unidades译为8件装。
+3219944,e8926ea3e3032adca4a5204b9b140105952ecf510a39c3980f8f78179bc724d9,焦糖夹心饼干,128克|8件装,OK,deepseek-chat,2026-08-25,品牌不进入标准品名，Fundiez 为品牌名，删除；Caramelo 译为焦糖。
+3219947,133bf868240eef303f914854a835ea7bfb86023f3aaca592f1e4d01132107f4c,巧克力意式脆饼,250克,OK,deepseek-chat,2026-08-25,Marini 为品牌名，删除；Cantuccini 译为意式脆饼。
+3219949,558396cd1a985e8c2966d38d0361a68e202e212cedade6462be04c2374c06eb3,Oreo 巧克力蛋糕,12件装 24克,OK,deepseek-chat,2026-08-25,
+3219950,e60b9d4ee006431e2b79ff9d0042d3e9557758c16e807a1cfc8f7ee5c29179e7,汪汪队立大功棉花糖蛋糕,16件装|200克,OK,deepseek-chat,2026-08-25,Paw Patrol 为合法授权 IP，保留并译为汪汪队立大功；Classic 译为经典。
+3219955,7ffaa6c84a7d278f088f68290c3759f666a6475c1ef9511acfee0f72a72b706a,自制香薰蜡烛,直径9×10cm｜多款可选,OK,deepseek-chat,2026-08-25,
+3219966,efcd6dca1c80593fcee79482eafaa5d2eb28b2a915f09c4fcb20faba204d6c4f,自制T恤,多款可选,OK,deepseek-chat,2026-08-25,
+3219970,71cd8c83c592fb464fb9b802b3010369e52d479f873d841af5c0fa264e100a3d,疯狂蘸粉糖,75克|多种款式,OK,deepseek-chat,2026-08-25,Dr. Candy 为品牌名，删除；Crazy Dipperz 译为疯狂蘸粉糖。
+3219979,e228f2a314a6b2e8316dce5c7a5bd43e77f3cddbe3eab202e8b6d20fb7bdc09d,项链,多种款式,OK,deepseek-chat,2026-08-25,Royal Diva's 为品牌名，删除；Cadena 译为项链。
+3219999,8213a458bb5bfced7e3a383f2e5247abc5e508040f61fa3464ae8753fa0c5fc2,三合一沐浴露,1000毫升|多种款式,OK,deepseek-chat,2026-08-25,Actfit! 为品牌名，删除；Gel de ducha 译为沐浴露，3 en 1 译为三合一。
+3220030,ead93168cf2ee315c4576fb7daa2ed100e9b9c64baecdf38dab0f3da14cfdd7c,手工制作首饰配件套装,多款可选,OK,deepseek-chat,2026-08-25,DIY译为手工制作
+3220049,e6c73bbd543d6745ab275f862c35d2b7740b3754612f66d2523f274b935ea17b,UNO旅行装,防水,OK,deepseek-chat,2026-08-25,Uno 为品牌名，保留；Estuche de viaje 译为旅行装。
+3220051,9747c46458f292d21a86d75de8ba8da0fa4ae4dd047aa0ba39b0dc8884e91a13,动物造型钩织钥匙扣手工制作,多种款式,OK,deepseek-chat,2026-08-25,DIY 译为手工制作；Hobby Flora 为品牌名，删除；Llaveros de ganchillo 译为钩织钥匙扣。
+3220066,ce9b65e5b9e3b52bf46c6a2833f7770aadfb031f0911db1d4785bd5a5792113d,Dream Lab 助眠饮料,250毫升,OK,deepseek-chat,2026-08-25,
+3220097,1278ccba89273a4e8ea9d72e07e641e075747f456901bbee26fd550b694ea62c,Crafts & Co 微缩模型工具套装,16件装,OK,deepseek-chat,2026-08-25,
+3220106,be93476e5635608ca558d7c4ea724b33e0dda20934b19a6387adbe2bbfc887a3,Palmolive 橄榄牛奶洗手液,500毫升,OK,deepseek-chat,2026-08-25,
+3220167,68581bf13600b5a9e6f19fcdff6fb0d9b1b52b8515fd00a17ec79bead4c76659,手机膜,适配iPhone｜多款可选,OK,deepseek-chat,2026-08-25,
+3220168,68581bf13600b5a9e6f19fcdff6fb0d9b1b52b8515fd00a17ec79bead4c76659,手机膜,适配iPhone｜多款可选,OK,deepseek-chat,2026-08-25,
+3220224,ba49fa05ba37dc8a1a9260a20d4e8c605b39e549e30e516627385ea23cf05fa1,硅藻土浴室地垫,40×60厘米｜多种款式,OK,deepseek-chat,2026-08-25,
+3220231,51780b114d14e6734f35062f83a96611f0aee0512867f53d439d46e995938969,陶瓷大理石炒锅,28厘米×多种颜色,OK,deepseek-chat,2026-08-25,
+3220233,211fef6a202a0f97fbcb3bfe83f410f75597bd5e7774361dc4af95efa60fda39,陶瓷大理石煎锅,28厘米×多种颜色,OK,deepseek-chat,2026-08-25,
+3220417,ce86c6f4fcfa73c85e30583065cdac8ab7b4b174063bebfea7fcf137078b91fe,Fresh ’n Rebel 插电式移动电源,5000毫安时×20瓦,OK,deepseek-chat,2026-08-25,
+3220418,f70bc357b45b540acedcda9ad4853d2b04be658fa79ce5624e3fc404b6f52e60,Van Bleiswijck 金属漆,250毫升×多种颜色,OK,deepseek-chat,2026-08-25,
+3220450,dbd63cae6b346bc6027848f8bfbe8b0726268e2f8d6a2b2d36db204aa07a25e9,Florique 碗,21厘米×多种颜色,OK,deepseek-chat,2026-08-25,
+3220452,deb5a2e85a2f6b1f377cee36ed8e4dc4ddbd0ec391317c6caeb10fae434191dc,花卉碗,直径15厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3220453,e55d943580c2a95512e7a0f44faced0e90a00a734bb6d1bcefbea16f66f31bef,花卉早餐盘,直径19厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3220456,0534ab75d14fc179ba5ac10ab6b4067d811757725b5fb3fdf8f1a256fca4af2c,花卉深盘,直径20厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3220550,8e27bb866283e63baa8a9cfe6fbac56804309f4ba8a0175a1decc1230d63b793,哥本哈根相框,50×70厘米｜多种颜色,OK,deepseek-chat,2026-08-25,
+3220552,ee9c6f273b9dcb588f8fd6264893142bc16da91352ccf9f5980907a8dfafef1f,相框,21×30厘米 | 多种款式,OK,deepseek-chat,2026-08-25,原规格有误，已修正
+3220557,0c3c21aef358109ba418c27a5ba8a079065d2ba1f0814e771a1a1aa0ab664586,相框,50×70厘米 | 多种款式,OK,deepseek-chat,2026-08-25,
+3220595,305395a0dbc106a68e930b88ecbc7b29538839bcd822b3b47379e434cf407fa3,靠垫,45×45厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3220602,372da541e915ab260fc922200af6619ea4d3005e7ae27887ca96ebf2138de7cc,生日快乐霓虹灯,40×21厘米 | 多种款式,OK,deepseek-chat,2026-08-25,
+3220686,e8232f435fd21996a4b618f24277b6d45a5091025ad5b1b63ac578b07697fb19,毛绒玩具,多种款式,OK,deepseek-chat,2026-08-25,品牌Hey Clay未保留
+3220687,5a14d3cf812cbb7d7520ce88e5c8c052c7cf47eedf72cf3d02d0ba955cdd4fc7,Footsteps 足部乳霜,100毫升,OK,deepseek-chat,2026-08-25,
+3220698,6c2cfd768d10b969379d3f0a6b82306aa7793205cfb5fbb0cc2573caa5d4f84a,深层修复发膜,250毫升,OK,deepseek-chat,2026-08-25,品牌未入名，Deep Repair译为深层修复
+3220708,2d84c18de6f696c0ed60424cea92c3985a70bd91f81512ed3c1add81de86cceb,汽车除湿器,400克,OK,deepseek-chat,2026-08-25,品牌未入名，Deshumidificador译为除湿器
+3220709,542ac50121f5c846f5ea69d34b563634845fa0c2691c4f640e972c763c780b0f,神经酰胺日用面霜,50毫升,OK,deepseek-chat,2026-08-25,品牌未入名，ceramida译为神经酰胺，Crema de día译为日用面霜
+3220775,20a343027513c1ff8292650bac45b75306cd2bb4b71262831cf18dab0060c017,能量棒 蔓越莓味,3×40克,OK,deepseek-chat,2026-08-25,品牌Isostar Sport不进入标准品名，Cranberry译为蔓越莓味
+3220825,779e60c686337bbe00f0a582385af56adc1723dc2495e86caf72135c9e15a8fc,独立包装米饭,120克,OK,deepseek-chat,2026-08-25,品牌未入名，Envases individuales译为独立包装，Sunrice为品牌，根据食品饮料类目推测为米饭
+3220831,4292b2133dd9aa547cdf22857b0467bacc74787cf3045e0b9c28c451a7473a03,挑战糖果,200克,OK,deepseek-chat,2026-08-25,Candy challenge译为挑战糖果
+3220832,5dae4adb9a74138aa63ec2c7363d1ba20ebaee5c8e6a4efb69ec34635f30dd1c,冰火对决糖果,144克,OK,deepseek-chat,2026-08-25,Brain Blasterz为品牌，Ice vs Fire译为冰火对决
+3220835,e6daf5f35dbb9d9b7f523de903554cf4410fb635e5240ad9387fe8fc7f321cab,面条 酸辣鸡肉味,86克,OK,deepseek-chat,2026-08-25,品牌Holee Molee不进入标准品名，Spicy Sour Chicken译为酸辣鸡肉味
+3220912,87abb340f7109d7112388be8dd452c74d7160b7fb5fc24d6982cb283fe3d934c,盆栽垂吊植物,多种款式,OK,deepseek-chat,2026-08-25,品牌未入名，Planta colgante en maceta译为盆栽垂吊植物
+3220917,e724a026bbab236b3d6bf551148d20b6f1f0bc3f371cce1a00f61cf62ca25730,基础除尘掸套装,4件装,OK,deepseek-chat,2026-08-25,品牌未入名，Kit básico译为基础套装，Duster译为除尘掸，piezas按件装
+3220919,734efe80fe28dfa6a5c09359e422fbd02724449c4059bd95d11b57536dceabe4,干式清洁套装,9件装,OK,deepseek-chat,2026-08-25,品牌Swiffer不进入品名，Dry译为干式，Kit译为套装。
+3220946,aa27116c7fefbbd3ff9fec90dfd5e53794a57f09388bccec66d505ce1e3552b4,复活节手工套装,多种款式,OK,deepseek-chat,2026-08-25,品牌Kids Kingdom不进入品名，Set de manualidades译为手工套装，Pascua译为复活节。
+3220948,c8437e7cd11dcddeb105fb3c3dad15b8c2dc2b5bf7bd019e2feee61129d003cd,陶瓷彩蛋挂饰,多种款式,OK,deepseek-chat,2026-08-25,品牌Kids Kingdom不进入品名，Colgantes de huevo de cerámica译为陶瓷彩蛋挂饰。
+3220980,25f80de74b176c2c6f9613a1dee42082e79b57b141f6c05a94dd69bf22688389,马赛克托盘手工制作套装,39×14厘米｜多种颜色,OK,deepseek-chat,2026-08-25,品牌DécoTime不进入品名，Tabla de servir译为托盘，mosaico译为马赛克，DIY按规则译为手工制作。
+3221080,8d06147fe58d55a1e612f22cdc24235ae86bcd0aeb6b40993f75f1b7cbf038cb,可咀嚼宠物零食,350克,OK,deepseek-chat,2026-08-25,品牌Bella&Bruce不进入品名，Aperitivos masticables译为可咀嚼宠物零食。
+3221081,d3ce38ffce43319d08f77571f96742742c26f98191303d322fc75ff957bf775b,鸡肉条宠物零食,18条装,OK,deepseek-chat,2026-08-25,品牌Bella&Bruce不进入品名，Puffed Chicken Sticks译为鸡肉条，unidades按条状物译为条装。
+3221093,eebd979b83529192e87a1c7bb107ae732f0558cbd67b62378bc84ad246a26701,蜗牛原液水凝胶面膜,1片装,OK,deepseek-chat,2026-08-25,品牌Skin Bliss不进入品名，Mascarilla facial de hidrogel译为水凝胶面膜，baba de caracol译为蜗牛原液。
+3221115,e130c368304aea33fc274e23c5cfd5467ce5f43a7c0b156403d6590347e4cfbf,太阳能仿真花球,直径23厘米｜50个LED灯｜多种颜色,OK,deepseek-chat,2026-08-25,规格统一中文，数字与单位无空格
+3221143,048f4e4dc39b2b4f032eafcf73aba6626a5640136a244d07b756cb6c30cf639e,卡仕达蛋糕,6个装,OK,deepseek-chat,2026-08-25,品牌Euro Patisserie不进入品名，Custard Cakes译为卡仕达蛋糕，uds.译为个装。
+3221147,a1e3fa552fa9db9719f10690ed8302cd43db08e8cffdb2c0b6dded247b359e2f,女士剃毛刀替换刀头,4件装,OK,deepseek-chat,2026-08-25,品牌Gillette Venus不进入标准品名，按语义翻译为女士剃毛刀替换刀头。
+3221148,1df1f7cf6b817436bd35324c292f8a85a46c65860cd3279dd0d32e518213873f,手工制作首饰,多款可选,OK,deepseek-chat,2026-08-25,DIY译为手工制作
+3221197,92647c2a3ea9bb2c5bb647c6570052ebb49f1d3bb4def6c80e5b55e258aab481,索尼克造型糖果,多种款式,OK,deepseek-chat,2026-08-25,PEZ为品牌，Sonic为IP，保留音译，糖果为商品本体。
+3221203,82190b8c345ce95de0a010b9c192ca45ef6eb6913ea3ca58c794f4c01519bc81,墨西哥辣椒芝士味薯片,70克,OK,deepseek-chat,2026-08-25,品牌Herr's不进入标准品名，口味按语义翻译。
+3221320,940348c08df53377896beffc6b55ae69f0ce33b5d632e8eadd2ff14800e47f56,冰棒模具,多种款式,OK,deepseek-chat,2026-08-25,polos在此指冰棒，非Polo衫，修正翻译。
+3221334,e55a0c652051a0008ae515eb0d3208be3dec6a3980854a9c06a30649dca170e8,园艺铁丝,100米|多种颜色,OK,deepseek-chat,2026-08-25,品牌My Garden不进入标准品名，按语义翻译为园艺铁丝。
+3221336,6b63862e6c0f697afee899dac6a6b4fd13a08c616aaac14446f83bdfed860bdd,日式风格花盆,直径28×26厘米|多种颜色,OK,deepseek-chat,2026-08-25,Japandi为风格术语，译为日式风格，规格统一。
+3221337,5ce45bf9df009c42a3ff99b487be5efcd57d9d978e3a6ab74380b731383890d1,带腿花盆,直径28×31厘米|多种颜色,OK,deepseek-chat,2026-08-25,修正中文名和规格格式。
+3221338,1fb11b5b7d78bcde180ba953930116c16df394cae7ee9738c56ad8d31d8e360a,长方形花槽,28×20×16厘米,OK,deepseek-chat,2026-08-25,规格统一为中文单位。
+3221375,e6eb56fc598f5e88e1e057c9980c09ebdb84f6e1df00b080a728d4cee11d9734,鸡肉混合宠物零食,450克,OK,deepseek-chat,2026-08-25,Pinky为产品系列名，未保留；Chicken Mix译为鸡肉混合。
+3221383,80f4bfb5136325a7b479e54ba9daf5c29965a366a0201d113fdbb890c78510d3,鲜虾鸡尾酒味薯片,85克,OK,deepseek-chat,2026-08-25,Proper Chips为品牌，未保留；Cóctel de gambas译为鲜虾鸡尾酒味。
+3221384,d8916492c74bc09628f65cb258de0942573d7d35ecdb1bad1f913b6c97b53315,海盐焦糖爆米花,110克,OK,deepseek-chat,2026-08-25,Proper Chips为品牌，未保留；Caramelo salado译为海盐焦糖。
+3221385,2e279b7006850da5482fb40cc01a4ba6f8095846a85cffaf69d9684aba75c824,幽灵辣椒柚子味薯片,85克,OK,deepseek-chat,2026-08-25,Proper Chips为品牌，未保留；Ghost Chili & Yuzu译为幽灵辣椒柚子味。
+3221514,a7c92b2dad7a49d86f6c83c8160f43fae53f20187ff708ecdd9deabe7ac64396,防晒护发喷雾,SPF20｜100ml,OK,deepseek-chat,2026-08-25,
+3221599,d8480bc94fdbd9f0c8e83797e44b2435f69a183b367f89e710eb5b2557baa2b1,自动旋转刷套装,多种颜色,OK,deepseek-chat,2026-08-25,spec原为Aprox，按语义译为多种颜色
+3221647,a8441f8d813fd2efa9870425e8240b0011fe1338ee2a59837a98fcddc291c55a,编织篮,30.5×19×14厘米,OK,deepseek-chat,2026-08-25,尺寸单位cm译为厘米，逗号改为点，乘号用×
+3221669,dab58123487416056c9ca86a489c7251ad8d15d195884373be25b9512a7bf744,迪拜巧克力风味乳清蛋白粉,600克,OK,deepseek-chat,2026-08-25,Accelerate为品牌，未保留；Dubai Chocolate Style译为迪拜巧克力风味。
+3221832,9f58965648629cf891b099a085a00461fbdc19dd68ed6276657d874a0919008b,迷迭香生姜多用途清洁剂替换装,1.5升,OK,deepseek-chat,2026-08-25,A Good Clean为品牌，未保留；Romero y jengibre译为迷迭香生姜。
+3221834,437beb1abe8ed72270ee4d1ec113a44723b62e2d0f76ef88c4dc4fa43c5a8a0c,多用途清洁剂,1升,OK,deepseek-chat,2026-08-25,A Good Clean为品牌，未保留；Detergente multiusos译为多用途清洁剂。
+3221835,0866d9145c91e4e1d1836b44f937fa556d54acaef0569b476939b7bc1e3fd756,LED无线耳机,RH-510,OK,deepseek-chat,2026-08-25,
+3221891,28fa27335967510f40882d9327395adbdb0669c4cd16d487144665d761a77011,柠檬布朗尼,200克,OK,deepseek-chat,2026-08-25,品牌Mr. Brownie未保留，柠檬为口味翻译。
+3221892,e77b4863ee11453d2cfb2d1ad139b281e34aa702cb01ce041ab52b3ef6c17805,手机膜,适配iPhone｜多款可选,OK,deepseek-chat,2026-08-25,
+3221929,b30d2952f41053fecc638a9b9b3ce3dc0164c4f2f4f25930b373a886bc64ebf3,装饰托盘,直径26厘米,OK,deepseek-chat,2026-08-25,Ø译为直径，cm译为厘米
+3221953,f86ae4daacedb4d0fc48a3834d9f4972976f061114d3cc7fec1a4da842545ab8,智能查找器,3件装｜兼容安卓和苹果｜多种颜色,OK,deepseek-chat,2026-08-25,品牌不进入标准品名；Android和Apple翻译为安卓和苹果；3 uds.译为3件装。
+3221957,a266012ecbbad9e1d215786dc6528383736c42c659b996df74b57050193b2977,智能查找器,兼容安卓和苹果｜多种颜色,OK,deepseek-chat,2026-08-25,品牌不进入标准品名；Android和Apple翻译为安卓和苹果。
+3221959,e852cdc4995bdff6b0f65d31cc5d1367195f6dfad6a16f786a9166722026e06b,手机保护套,适用于iPhone｜多款可选,OK,deepseek-chat,2026-08-25,品牌不进入标准品名；iPhone为型号保留；diferentes variantes译为多款可选。
+3221970,5eb3bb2235316f0016c044705b1b54cce74e610ea3e95fe14d4140b59c17d823,花盆,直径40×37.5厘米,OK,deepseek-chat,2026-08-25,品牌Keter Madeira未保留，规格符号Ø译为直径。
+3221978,b99f48ff7252b5fb53dd6fb335d86f338d8284d6ffffd3662e3d81dc68985162,警察摩托车,DUPLO 10967,OK,deepseek-chat,2026-08-25,品牌LEGO不进入标准品名；DUPLO为系列名保留；n.º去掉，数字和字母间不留空格。
+3221985,50cdf5b3582be371442ea0e878930f5f65bc0e6dcc895372dfef1a6675625a85,钢铁侠机甲大战奥创,乐高76307,OK,deepseek-chat,2026-08-25,LEGO为品牌，保留为乐高；Marvel Avengers译为复仇者联盟，但品名中未体现，故省略。
+3221994,0adf9b7e3c2bdfe0effc33d3afed71296f7f3f9861addb8d4b1199e8fe815161,蜘蛛侠玩具套装,5件装,OK,deepseek-chat,2026-08-25,Spiderman译为蜘蛛侠，规格按件装。
+3222025,937ca75d83e5c3be598b68b80cb6ddf5ac9d9fe69809026de0c06646cac0265d,自制惊喜泡腾泡泡,多种款式,OK,deepseek-chat,2026-08-25,DIY译为自制，bomba efervescente译为泡腾泡泡，MixiMatchi为品牌未保留。
+3222052,bf3a8e3348b76916b3a7440ef9b461bd6ff69fca916958b43fe780cfabccb5fb,夏季被子,200×200厘米 多种颜色,OK,deepseek-chat,2026-08-25,Easy为品牌未保留，varios colores译为多种颜色。
+3222074,7c78b74a4c22aa76e73e687f37fd18a2278f6d158c726b0a95fb7444e4f50df3,焦糖饼干,350克,OK,deepseek-chat,2026-08-25,Lotus Biscoff为品牌未保留，Speculoos译为焦糖饼干。
+3222164,5318b6ce0bf16aba946c52e3a5eb2c675de5b3a321f29aca43b355475b5100b5,被子,140×200厘米 多种颜色,OK,deepseek-chat,2026-08-25,Easy Cape Home为品牌未保留，varios colores译为多种颜色。
+3222194,0f703580cff6d4b19c9588c87315b3c1d67094537c5e678ee91905b8695b8a1d,遥控皮划艇,多种颜色,OK,deepseek-chat,2026-08-25,
+3222205,3f4b6bae9b3ceb6ae7af16453ba72d1af2c63fcc0bfcee06bb0a9afbe77765d3,黑色袜套,均码|3双装,OK,deepseek-chat,2026-08-25,
+3222206,f22a7e7b2cc4b6c232902940bb6c7cfb0c69fe2b46c34b57b262bb79a5319589,白色袜套,均码|3双装,OK,deepseek-chat,2026-08-25,
+3222225,b3a60e4e65f7ed93e35db371d1896011f3d5dc06a65dcd424fca97fce39af22d,太阳能球灯 Impuls XL,19×62厘米|多种颜色,OK,deepseek-chat,2026-08-25,
+3222238,a2bad48d292d2411f9ba9f3f15577ec8f7669ba91bddc801937de9acf52c9956,户外靠垫 Italia,45×45厘米|不同款式,OK,deepseek-chat,2026-08-25,
+3222253,43cdc7603c8f506f07c5de007390c4cfbb5e95ce1c637be6d66a930fddeb9279,珍宝珠 Milky 奶味棒棒糖,10件装,OK,deepseek-chat,2026-08-25,
+3222273,18aaff0748e63731fbc1bdf8604844167e425555d6fee75dddee44d66187da84,Polo衫,M-XL｜多种款式,OK,editorial-rule,2026-08-25,按命名偏好保留Polo衫
+3222294,ea6b878ba4f3141122cad30ccb9b1c827138557d302d2ab4df25498802ef065b,花盆 Cadiz Coupe,直径35厘米|多种颜色,OK,deepseek-chat,2026-08-25,
+3222305,f6e2ec4f62a1d2bee81510a74295c348a9b8cf8406678a65918bb6b9b0d1d0be,仿真果实枝条,75厘米 | 不同款式,OK,deepseek-chat,2026-08-25,
+3222321,8f028e3ac14286e12c6cb6c74eff77df5169ef60eb8e29de195388e30cc78a15,仿真青苹果竹芋盆栽,38厘米 | 多种款式,OK,deepseek-chat,2026-08-25,
+3222322,01b94c3ae2a3816686176db64cffb38f6adb38ffdfa1a585e39e5db0579c8444,香草盆栽,多种款式,OK,deepseek-chat,2026-08-25,品牌Excellent Flowers不进入标准品名，Planta aromática译为香草
+3222325,88fdcd8e30ffce3787cea524aa5062a9c3764c35c4cec30969476c29986c82a1,仿真牡丹盆栽,60厘米 | 多种款式,OK,deepseek-chat,2026-08-25,
+3222357,abcd1846b39c20f7300d85e71879de56aca354a7bef3991e9f6098b5cb8dbce5,仿真吊竹梅植物,27厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3222363,2d2395414e34cd8d66609581a5e347116032eef684123b3b25108aac1754f052,靠垫,45×45厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3222377,fb1012bcc44251c97c3e3bb1d28014ca1b8ffc6a8dafc3ba07d1d1bd218c77ea,中文品名待人工核验,多种颜色,NEEDS_REVIEW,deepseek-chat,2026-08-25,无品牌，品名过于泛化，无法确定具体商品本体，需人工核验。
+3222401,78c795e81c58d1f6b183417b922af2acd96fd2fb73cb69f227ae7ffa2be18fa8,亚麻质感窗帘,140×260厘米 | 多种颜色,OK,deepseek-chat,2026-08-25,
+3222449,899b45f16be31c0052071611093fd8f3a80604704a04092d5892c8b8848f31fb,3D动物模型,多种款式,OK,deepseek-chat,2026-08-25,
+3222472,5988a75dbad64e27f1b61734371d0b2d5f91eb69611ba593a75e9fd133188434,衣物柔顺剂,150次洗涤,OK,deepseek-chat,2026-08-25,
+3222494,1fdb95e262e0d4f3a36dc44f3e52de4e62d714ea27cf20803c51ab43b306d4f2,太阳能网络摄像头,1080p高清,OK,deepseek-chat,2026-08-25,品牌LSC Smart Connect不进入品名；IP为技术缩写保留；1080p HD译为1080p高清。
+3222519,b36e23bc3b93153b893c7ba05774cd81d7ebf3a2fc070367bb659ad281977aee,四合一应急收音机,4000mAh,OK,deepseek-chat,2026-08-25,规格中数字和单位不留空格，已符合。
+3222559,2bc3262b67cf8cd2479d54ce2ebeac981e39f72745b75dbb72933ac66a66dbec,洗涤剂,125次洗涤,OK,deepseek-chat,2026-08-25,品牌Superfinn Fresh Bloom不进入品名；125 lavados译为125次洗涤。
+3222581,270f07216b786bae69edbc54c7d15baf6c7fc3fc993cb6d263014715ccdd3784,钓鱼背包,30×20×10厘米|3件装|多种款式,OK,deepseek-chat,2026-08-25,品牌Max Ranger不进入品名；organizadores译为收纳盒，但本体为背包，故品名简化为钓鱼背包；规格中3 piezas译为3件装。
+3222585,8a76ecc2f45c51ded5679730b453b572e7b5f4b326366c3d48e457178ee4e545,钓鱼线,多种款式,OK,deepseek-chat,2026-08-25,品牌Max Ranger不进入品名；Sedal译为钓鱼线。
+3222640,d7145d0998703f825a8fdaa58137e1655d012c03b8299856de6b5e9a1bdd3705,香料研磨器,多种款式,OK,deepseek-chat,2026-08-25,Molinillo de especias译为香料研磨器
+3222672,7570094e35e4e85732ba2df072b9158df67a019e3fa021f845ef8cc60f3177ce,伸缩抄网,40×40厘米,OK,deepseek-chat,2026-08-25,品牌Max Ranger不进入品名；Red de pesca telescópica译为伸缩抄网；规格尺寸用×。
+3222702,0e46bca92c35e30074f9e49096ca07fbe96fb55b979ee4283c09f95533192f02,飞盘,直径12.5厘米|多种颜色,OK,deepseek-chat,2026-08-25,Splash为品牌不进入品名；Disco volador译为飞盘；Ø译为直径。
+3222706,135c26a0fa0aded7e755a55805ceaf314fcb05d0b6736cc7a5cec1d7642930bc,手动风扇,15.5厘米,OK,deepseek-chat,2026-08-25,品牌Kinzo不进入标准品名，cm译为厘米
+3222725,07f867ad80b9636ca7a6028db1adb2a775cba6a8f096e41933c0c8c3dea1e0aa,泡沫发射器,多种颜色,OK,deepseek-chat,2026-08-25,Foam Strike X为产品系列名，但根据规则品牌不进入品名，且Foam Strike非通用技术缩写，故译为泡沫发射器；X为型号保留。
+3222763,890e20e767021e8612518246ffeeda56fd708ea4e588c9f8327a83eee7ec96b6,意式浓缩咖啡胶囊,50件装,OK,deepseek-chat,2026-08-25,品牌未提供，Palazzo为系列名不保留；espresso译为意式浓缩
+3222765,8f10521136f946ab2901b29bc5f2ba66614948cee8c60797bc002ab82403abc6,咖啡胶囊,50粒装,OK,deepseek-chat,2026-08-25,品牌Palazzo不进入品名；Lungo为咖啡类型，译为长萃；规格50 unidades译为50粒装。
+3222766,de43ba6b234f468618615f808db0eea327e8a259519828c17d9cbc6aebe2bb2c,咖啡豆,900克,OK,deepseek-chat,2026-08-25,品牌Palazzo未进入品名，规格数字与单位无空格。
+3222771,138bb32cc5656cfa99b87159c450d5b785ab60e7ef544069b07934f4af78e3bc,软糖,550克,OK,deepseek-chat,2026-08-25,品牌Trolli未进入品名，Bunny Party为产品系列名，不保留。
+3222772,d2a6b27121aec58b6b183b37d9a238a7ce76b6c07fbcfe5996a2e2082520649a,软糖,175克,OK,deepseek-chat,2026-08-25,品牌Trolli未进入品名，Chick Parade为产品系列名，不保留。
+3222798,87e9ccdc8482acbb63014a755529d8e371554cc2085625eb6f59dd01fa96c606,充电宝,30W｜20000mAh｜多种颜色,OK,deepseek-chat,2026-08-25,品牌不进入标准品名；vatios译为W，mAh保留；数字和单位不留空格。
+3222801,ee9f4bf4cc97007f068b3d9c61e996cc5134315683d93df1082d97bec85cffa1,3D拼图,多种款式,OK,deepseek-chat,2026-08-25,品牌Ravensburger未进入品名，3D为技术缩写保留。
+3222859,2ac28f5745ab8513a393a625acb322fb50259189c9faacea5512514663b36803,仿真兰花盆栽,42厘米×多种颜色,OK,deepseek-chat,2026-08-25,原中文名含品牌The Hamptons Collections HOME，已删除；Orquídea artificial译为仿真兰花，maceta译为盆栽。
+3222927,1462dfe7e66ab2f20f6be1445f4696520c6260f765543bbad71e0db531f94ee6,USB-A转Micro-USB数据线,10.5瓦｜2米｜多种颜色,OK,deepseek-chat,2026-08-25,品牌不进入品名，瓦特译为瓦
+3222942,3d02ef384768c4c5557c31ae6a9a1dbf75bf53b536518b6028381f64613cdc20,车载磁吸无线充电器,2件装｜兼容MagSafe和Qi2｜多款可选,OK,deepseek-chat,2026-08-25,
+3222976,16c46f8668470ff95a20b9f7403d64ac8bd50b407ffa931eda746c37923929ab,仿真果树盆栽,多种款式,OK,deepseek-chat,2026-08-25,品牌Excellent Flowers未进入品名，Árbol frutal译为果树，maceta译为盆栽。
+3223016,ae809a4ec328aae898fb554db5bfa5424014c93b922728993b1abd9f12dd1ae2,蔬菜香草肥料,800克,OK,deepseek-chat,2026-08-25,品牌Green Boots未进入品名，Verduras y hierbas aromáticas译为蔬菜和香草。
+3223032,941a177758ff1853faf71df6ded069ee905f990325b5a6f862c10e5243515326,餐叉,3件装,OK,deepseek-chat,2026-08-25,品牌Amefa Alina未进入品名，Tenedores译为餐叉，uds.译为件装。
+3223034,5ad74b906d30d47664baef740d8d9b7d472e6a9683f5888e5eeaa1efaf2f96f4,甜点勺,4件装,OK,deepseek-chat,2026-08-25,品牌Amefa未进入品名，Alina为系列名，未保留。
+3223073,324546701cc02011e91ca8676a545cab301e78ef55041acc3579f227eddcea5a,马球衫,尺码M-XL｜多种颜色,OK,editorial-rule,2026-08-25,将通用服装名称 Polo 规范为中文
+3223079,ffc7b2c64e17be0ae987a3b750a666ae8e4401775251e89c6f745ec4a17604f8,地毯,70×170厘米，多种颜色,OK,deepseek-chat,2026-08-25,品牌Studio Home未进入品名，Astra为系列名，未保留。
+3223081,0dacb2e0c1cd6ddbdac2679f3e5262b6cb87f54e571d4770f46038d7f0217249,中东夹心饼干,210克,OK,deepseek-chat,2026-08-25,Maamoul为食品名称，已意译为中东夹心饼干。
+3223090,8febffd324edad73d3343a40eebdeea7bb86ac6a0b74c81e98047529b75c13cc,矿物防晒乳,SPF30｜200毫升,OK,deepseek-chat,2026-08-25,
+3223230,66f643c6b024d3dc23e43276b3dc78b2b052d8724534c5c356176dcf1f02f566,巧克力糖果,550克,NEEDS_REVIEW,deepseek-chat,2026-08-25,Quality Street为品牌，Nestlé为品牌，均不进入品名，但无法确定具体商品类型，需人工核验。
+3223295,fef27ebc5e98c2a20abb74990cf32becf7f48a37d88ea848e98204e597db8a05,棉花糖,470克,OK,deepseek-chat,2026-08-25,Haribo为品牌，Chamallows为产品名，Cocoballs为口味，均不保留。
+3223320,db8a299baff731961d1e5f38cd63d832ffb6cc3eb83bf8b9305d305e59f1e7af,植物肥料,1升,OK,deepseek-chat,2026-08-25,Green Boots为品牌，Plantas de balcón y macetas为用途，已意译为阳台及盆栽植物适用。
+3223445,3d7da116c8fd287ae81b367ed79b8a971d100cb04d4608d16522501f2c87ebf9,三合一无线充气泵,9件装｜10.3巴｜2600毫安时,OK,deepseek-chat,2026-08-25,
+3223463,5708bd3144df0876d56e27e5b3488e26ff882e023600def1ee1cd81ef4464925,足球灯,直径10厘米,OK,deepseek-chat,2026-08-25,规格单位翻译为厘米
+3223613,7afdf02a1ec7447dc1570f7bd24e06ef17c7001198223dd432f44271757c7073,玩偶,多种款式,OK,deepseek-chat,2026-08-25,Barbie为品牌，Mini Land为系列名，均不保留。
+3223614,e110a41239f3765019c6a07f0d66070c3cda78e35477ee6b2f5489ca3d2a0d9a,迷你车辆套装,多种款式,OK,deepseek-chat,2026-08-25,Barbie为品牌，Mini Land为系列名，均不保留。
+3223621,d69ccac173a944755ce0f1d7f9a5a330eb83817208d77b9c37e91599ddbbffeb,行李箱,32升 | 21×34×47厘米 | 多种款式,OK,deepseek-chat,2026-08-25,品牌Spilbergen和型号Mauritius不进入标准品名
+3223681,141e592cebc592063bc1361b3788d9fb0b2ceb81a54a4a30c9c7a7f56134e396,3D橡皮筋,3件装 | 多种颜色,OK,deepseek-chat,2026-08-25,Minecraft为授权IP，保留；3D为技术缩写；uds.译为件装
+3223711,a1bcc048735095a9bf874e48bd5e617315140d514e69bdcb2cf6cf0c1329323d,酸奶杯,460毫升 | 多种颜色,OK,deepseek-chat,2026-08-25,Amalfi为品牌，不进入标准品名
+3223713,d9dff76aa6164256bf388607d91ebc189fa461d3e3c5d62a3a10076f65366db0,水瓶,550毫升 | 多种颜色,OK,deepseek-chat,2026-08-25,Amalfi为品牌，不进入标准品名；Botella译为水瓶
+3223714,889b79288e1da3c05326cbab71b7712c3cdf1468e84be6ad064737c5660b278a,保温容器,470毫升 | 多种颜色,OK,deepseek-chat,2026-08-25,Amalfi为品牌，不进入标准品名
+3223715,f1d7949f3fdfd5852dc2be6e787957bbaf9b9f149e23fa9a26b475a0483ccd18,保温水瓶,650毫升 | 多种颜色,OK,deepseek-chat,2026-08-25,Amalfi为品牌，不进入标准品名；Botella aislante译为保温水瓶
+3223729,1854a35765019925a615e7c446492cd07e1d43d7434db5c36a4e6f217f960c77,多味凝胶吸管糖,300克,OK,deepseek-chat,2026-08-25,Sweetmellow为品牌，不进入标准品名
+3223767,af9b8afa2ba1dcebf299e54020744360f8b1ca180f242ab7ee141cf57f54aa55,复活节棒棒糖,80克 | 多种款式,OK,deepseek-chat,2026-08-25,Pascua译为复活节；Caramelo de palo译为棒棒糖
+3223879,b7a49501fc0095a755563cf5be65385398948f149d604efd0e76bf0c24563bc7,仙人掌喷雾糖果,多种款式,OK,deepseek-chat,2026-08-25,
+3223885,a1722102ce0ce90fbc0cacea707383bfd03c57c4b7cc217f23e5b7a241013fd0,Mogu Mogu 芒果饮料,500毫升,OK,deepseek-chat,2026-08-25,
+3223917,914bddbd869b287b287ae1d03ba91bc2b7b6b8d0e62bc5634832098932a8be08,凉感夏被,140×200厘米|多种颜色,OK,deepseek-chat,2026-08-25,
+3223918,fabbe68048a59ca0b3849c1099a4d836282fd3926635ed842a4301ae85cbf325,凉感夏被,240×200厘米|不同款式,OK,deepseek-chat,2026-08-25,
+3223992,937fd3f92cbc75128f1a301d95958188bd59a5021b9d962a59c71a38d89a4a5c,室内Wi-Fi摄像头,2K QHD,OK,deepseek-chat,2026-08-25,
+3223994,33ecc2153b4b571c5c692e5f8e87445f43272006555f9f22ca586bbef11771f2,Tapo 智能安全摄像头,TCA41,OK,deepseek-chat,2026-08-25,
+3224053,bb6311195cb6b6158b7127a35b92c759a2f582f3c62d3ebbf3be821e69f24833,Playmobil 惊喜公仔,多种款式,OK,deepseek-chat,2026-08-25,
+3224054,bb6311195cb6b6158b7127a35b92c759a2f582f3c62d3ebbf3be821e69f24833,Playmobil 惊喜公仔,多种款式,OK,deepseek-chat,2026-08-25,
+3224086,d2b041e70ee0c52f2ed5cd0f06ca8f47a2bd0d2cb34b37a369561746731b8d0b,LED三脚架落地灯,182颗LED｜210厘米,OK,deepseek-chat,2026-08-25,
+3224247,5a50cac8c918a35d2d47b421da22867c682c1666503a8de885c37cabe4d868d4,猫玩具,45厘米 | 多种款式,OK,deepseek-chat,2026-08-25,品牌 Beeztees 不进入标准品名，已删除。
+3224252,e98346c6c2840cbc005a042366270856464ba385abc15f80f76554254352cbdc,花生坚果混合零食 烟熏味,200克,OK,deepseek-chat,2026-08-25,品牌 Snacks of the World 不进入标准品名，已删除；Sabor ahumado 译为烟熏味。
+3224368,d5e4b088d5a18ffe2b1047e4edb337a219ed657d0ccd64e4a0527c51611f07bf,便携移动电源,20000毫安时｜30瓦｜多种颜色,OK,deepseek-chat,2026-08-25,
+3224369,6f7dd79453b93db3591d457989a536404121e04539ed235e774c890248597846,便携充电宝,20瓦｜5000毫安时｜多种颜色,OK,deepseek-chat,2026-08-25,
+3224408,75a94110e6ba6ca4fe4c3078ac2e067d2476d32022f36d70b8310961cb753faf,定妆防晒喷雾,SPF50 | 75毫升,OK,deepseek-chat,2026-08-25,品牌 The Beauty Dept. 不进入标准品名，已删除；FPS 50 统一为 SPF50。
+3224423,790d63dbf6518d92f39c5591c9a9a2d3dc33a37fbd67886a8d4b46237ba4b68c,彩妆棒,3合1,OK,deepseek-chat,2026-08-25,Barra de maquillaje 译为彩妆棒；3 en 1 译为3合1。
+3224468,44e25fcc063ed22cdffd43f87358f29a8d2b7be112a1abe5fbdf9395419f9ca8,复活节糖果摆件,178克 | 多种款式,OK,deepseek-chat,2026-08-25,Pascua 译为复活节；Figura 译为摆件。
+3224492,73259abc2f23556305fab58cb39590a74096f9712700675b1a02e580e281ea28,眼影盘,9色装，净含量1.10克,OK,deepseek-chat,2026-08-25,品牌Revolution I Heart不进入标准品名；规格按语义翻译
+3224558,ff3147eb5756d91dac41f4f77e1876bbb1253c4288be20c9aa576472ed7bc9fe,衣物除皱喷雾 依兰依兰和麝香,250毫升,OK,deepseek-chat,2026-08-25,A Good Clean 为品牌，不进入标准品名；Ylang ylang 译为依兰依兰，almizcle 译为麝香。
+3224702,a4ba96b8f4090f43e39b78478b5e09b41f68105c46b21e4ff3fd120698607c5c,煎锅套装,3件装,OK,deepseek-chat,2026-08-25,品牌 MasterChef Ribello 不进入标准品名，已删除；3 piezas 译为3件装。
+3224771,356742b1816ed8b8deaca3b6be0ae8ef11de25f2b9bda14c574a726a3589afef,衣物柔顺剂,60次洗涤,OK,deepseek-chat,2026-08-25,品牌 Silan Fragrance Therapy Temptation 不进入标准品名，已删除；60 lavados 译为60次洗涤。
+3224920,949f94c9f142d706a90b1e1ef17accad57577578c2c23d4d23fd2b269d566d1c,Hello Kitty 钩针编织套装,多款可选,OK,deepseek-chat,2026-08-25,Hello Kitty为合法授权IP，保留
+3225146,396be4b27c4ffdfdc846c7ebf62e0ed69568f7e9454dc606b23e092ffcd42103,AAA充电电池,4件装｜950mAh,OK,deepseek-chat,2026-08-25,品牌GP不进入标准品名；规格统一为中文，数量按语义写件装。
+3225189,d49f9b206dbe99e95f842ab94f80ed1a239a388ba5e3c344d0c35d5b98435ab1,高光粉 Revolution Buzz Lightyear,7克,OK,deepseek-chat,2026-08-25,品牌Revolution保留，Buzz Lightyear为授权IP保留，规格翻译为克
+3225224,9cbb86ab64623b8fa4e9e7a32720423263f13467bc69578777341435b878d3d3,洗涤剂 Asevi 白色活性,60次洗涤,OK,deepseek-chat,2026-08-25,品牌Asevi保留，Activo译为活性，规格补充单位
+3225423,cd404c7d5c95f96b7b5050c1bddaf180ff774c1650c829d6a96e7ef652e3db8f,中文品名待人工核验,24件装｜不同款式,NEEDS_REVIEW,deepseek-chat,2026-08-25,品牌Jacky-M为授权IP，但无法确定商品本体，需人工核验；规格已翻译。
+3225554,5c1169989694f0eb4bb1952c7fb04a9fb37f7ef8fc309ba6c3848fa10e3875e9,马桶清洁泡沫 Fabulosa 蓝莓,3件装,OK,deepseek-chat,2026-08-25,品牌Fabulosa保留，Blue Raspberry译为蓝莓，规格按件装
+3226378,bbac2786a2d896c83cb434b85cb6316367cf6a67275633b67c3ae1fb8e8a1ade,乐高漫威蜘蛛侠摩托车,LEGO,OK,deepseek-chat,2026-08-25,LEGO译为乐高，Marvel译为漫威，Spidey译为蜘蛛侠，规格为空
+3226379,0b8fe5646023f092964ff84aad5fd7e90f648b7b04c29da91f4e4735a9e74cbc,乐高Creator青蛙三合一,乐高编号31377,OK,deepseek-chat,2026-08-25,LEGO译为乐高，Rana译为青蛙，3 en 1译为三合一，规格保留编号
+3226382,0808c2bbc5c20a75ddad1149fa88c318e0eb6fbc2e523821ce4752782a7e247a,乐高忍者凯的摩托车赛,乐高编号71838,OK,deepseek-chat,2026-08-25,LEGO译为乐高，Ninjago译为忍者，Carrera de motos译为摩托车赛，Kai译为凯，规格保留编号
+3226383,f69bbd1ee61228b48623181db964a263537658b273131639cdcc46092aaf2521,乐高星球大战曼达洛人与古古的飞行摩托,乐高编号75436,OK,deepseek-chat,2026-08-25,LEGO译为乐高，Star Wars译为星球大战，Speeder Bike译为飞行摩托，Mandalorian译为曼达洛人，Grogu译为古古，规格保留编号
+3226389,219a8a266a39c1b4932d3ad3328d8ef61d5d9a310dff7928edf7a18a5a1285e6,乐高星球大战克隆冲击兵机甲,乐高编号75448 | 151块积木,OK,deepseek-chat,2026-08-25,LEGO译为乐高，Star Wars译为星球大战，Clone Shock Trooper译为克隆冲击兵，mecha译为机甲，规格翻译并保留编号
+3226390,71dca68c344d7eef09bf00762ae4290337890a41157388f044de3c1955abd372,迈尔斯·莫拉莱斯机甲大战蜘蛛侠2099,76337件装,OK,deepseek-chat,2026-08-25,品牌LEGO不进入品名，型号76337放入规格
+3226391,a631d1f09fdc79fc4c2a3fcd4550eccac31ca11017115b20777c148ff51f9410,蜘蛛侠机甲大战毒液特工,76308件装,OK,deepseek-chat,2026-08-25,品牌LEGO不进入品名，型号76308放入规格
+3226847,db4686c11b3e08b0ecf9b1fee2699b50edbbc26cad6af018abfe0b96d35aa9d6,鸡肉巧克力脆片,50克,OK,deepseek-chat,2026-08-25,Chicken choco bite译为鸡肉巧克力脆片
+40170,9366baa67c5ac90a433bcecd406604c9d818f73ccc5dedfb7dcd6809fe46399a,双面胶带,12毫米×10米,OK,deepseek-chat,2026-08-25,Craft & Design为品牌不进入品名，规格统一中文

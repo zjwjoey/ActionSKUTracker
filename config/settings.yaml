@@ -48,11 +48,22 @@ paths:
   snapshots: runtime/snapshots
   staging: runtime/staging
   state: runtime/state
+  dictionary: runtime/dictionary
+  dictionary_baseline: data/dictionary
   images: runtime/images
   exports: runtime/exports
   logs: runtime/logs
   backups: runtime/backups
   temp: runtime/temp
+
+# 字典构建的只读辅助证据；缺失时构建继续，但会在 manifest 中明确记录。
+dictionary_sources:
+  standardized_seed: runtime/exports/Action_Today_On_Sale_2026-08-24_中文标准化全量.xlsx
+  historical_spanish_reference: runtime/temp/longterm_master_20260813/numeric_reference.csv
+  historical_spanish_repair_reference: runtime/temp/longterm_master_20260813/numeric_reference_repaired.csv
+  historical_spanish_raw_root: F:/按日期整理
+  brand_reference: D:/Users/Administrator/Downloads/Action_2026-08-24_品牌识别清单.xlsx
+  term_seed: config/dictionary_terms.yaml
 
 # ---- 生命周期（规范 §17）----
 lifecycle:

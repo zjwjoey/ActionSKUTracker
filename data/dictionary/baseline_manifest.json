@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "published_at": "2026-08-25T16:17:47+08:00",
+  "source_directory": "runtime/dictionary",
+  "files": {
+    "product_dictionary.csv": {
+      "rows": 8617,
+      "sha256": "eccaf9c1f7c8dd616dd9524a55e9b1d508f7cce6554bbd477877a781d996de37"
+    },
+    "brand_dictionary.csv": {
+      "rows": 509,
+      "sha256": "1a2709cd6b76a228bcb2ef9acd18c0d62f57d44db8e4d5a7ea12a4266369700f"
+    },
+    "category_dictionary.csv": {
+      "rows": 185,
+      "sha256": "47190ab85a41be152a12320c14acfb419b34bb8922a1020be3072e3640e1b8b3"
+    },
+    "term_dictionary.csv": {
+      "rows": 33,
+      "sha256": "3bcb498602ccc20edaf22df3ce7cf0feefe8321fa933a67e9135f6fe120a8671"
+    },
+    "manual_overrides.csv": {
+      "rows": 30,
+      "sha256": "6aea8f7c2f3d44d9f84685bf40b0268e40b607444848e439b73fdb6a71f680cb"
+    },
+    "model_translation_overrides.csv": {
+      "rows": 825,
+      "sha256": "26111defc8d55efab1c5147d8fbcb3b1175f8d0042670473bae28706edf2c3ef"
+    },
+    "source_damage_report.csv": {
+      "rows": 131,
+      "sha256": "c8531a5fbd7c4f57a29307d589ea8cf08b7c0ce0350635242e5ab163e013653c"
+    }
+  }
+}

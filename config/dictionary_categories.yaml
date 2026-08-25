@@ -1,0 +1,138 @@
+# Action 西班牙站一级类目固定中文映射。
+# 键按重音不敏感方式匹配当前 Master 的 cat1_es。
+cat1_mappings:
+  bricolaje:
+    cat1_code: C01
+    cat1_zh: DIY五金
+  oficina y papeleria:
+    cat1_code: C02
+    cat1_zh: 办公文具
+  mascotas:
+    cat1_code: C03
+    cat1_zh: 宠物用品
+  cocina:
+    cat1_code: C04
+    cat1_zh: 厨房餐具
+  moda:
+    cat1_code: C05
+    cat1_zh: 服饰鞋包
+  cuidado personal:
+    cat1_code: C06
+    cat1_zh: 个人美容
+  vivienda:
+    cat1_code: C07
+    cat1_zh: 家居布置
+  hogar:
+    cat1_code: C08
+    cat1_zh: 家务清洁
+  viajes:
+    cat1_code: C09
+    cat1_zh: 旅行用品
+  comer y beber:
+    cat1_code: C10
+    cat1_zh: 食品饮料
+  multimedia:
+    cat1_code: C11
+    cat1_zh: 数码影音
+  juguetes:
+    cat1_code: C12
+    cat1_zh: 玩具
+  hobby:
+    cat1_code: C13
+    cat1_zh: 兴趣手作
+  jardin:
+    cat1_code: C14
+    cat1_zh: 园艺户外
+  articulos deportivos:
+    cat1_code: C15
+    cat1_zh: 运动用品
+
+  # 历史 Excel 使用过的中文一级类目别名。仅用于将历史事实归并到右侧
+  # 固定的 15 类；不会把别名作为新的输出类目。
+  个人护理:
+    cat1_code: C06
+    cat1_zh: 个人美容
+  个人美容:
+    cat1_code: C06
+    cat1_zh: 个人美容
+  时尚:
+    cat1_code: C05
+    cat1_zh: 服饰鞋包
+  服饰:
+    cat1_code: C05
+    cat1_zh: 服饰鞋包
+  服饰时尚:
+    cat1_code: C05
+    cat1_zh: 服饰鞋包
+  厨房:
+    cat1_code: C04
+    cat1_zh: 厨房餐具
+  厨房用品:
+    cat1_code: C04
+    cat1_zh: 厨房餐具
+  家居:
+    cat1_code: C07
+    cat1_zh: 家居布置
+  家居生活:
+    cat1_code: C07
+    cat1_zh: 家居布置
+  家庭日用:
+    cat1_code: C08
+    cat1_zh: 家务清洁
+  清洁家务:
+    cat1_code: C08
+    cat1_zh: 家务清洁
+  家居维修:
+    cat1_code: C01
+    cat1_zh: DIY五金
+  五金工具:
+    cat1_code: C01
+    cat1_zh: DIY五金
+  五金工具与DIY:
+    cat1_code: C01
+    cat1_zh: DIY五金
+  办公文具:
+    cat1_code: C02
+    cat1_zh: 办公文具
+  宠物:
+    cat1_code: C03
+    cat1_zh: 宠物用品
+  食品饮料:
+    cat1_code: C10
+    cat1_zh: 食品饮料
+  数码多媒体:
+    cat1_code: C11
+    cat1_zh: 数码影音
+  数码电子:
+    cat1_code: C11
+    cat1_zh: 数码影音
+  玩具:
+    cat1_code: C12
+    cat1_zh: 玩具
+  兴趣爱好:
+    cat1_code: C13
+    cat1_zh: 兴趣手作
+  兴趣手工:
+    cat1_code: C13
+    cat1_zh: 兴趣手作
+  园艺:
+    cat1_code: C14
+    cat1_zh: 园艺户外
+  花园用品:
+    cat1_code: C14
+    cat1_zh: 园艺户外
+  花园户外:
+    cat1_code: C14
+    cat1_zh: 园艺户外
+  旅行:
+    cat1_code: C09
+    cat1_zh: 旅行用品
+  旅行用品:
+    cat1_code: C09
+    cat1_zh: 旅行用品
+  运动用品:
+    cat1_code: C15
+    cat1_zh: 运动用品
+  体育用品:
+    cat1_code: C15
+    cat1_zh: 运动用品

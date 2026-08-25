@@ -103,6 +103,13 @@ def parse_date(text: Any) -> dt.date | None:
         except Exception:
             return None
     s = str(text).strip()
+    # Master 及 snapshot 会写入 ISO datetime，例如 2026-08-25T00:00:00。
+    # 先走 fromisoformat，避免把真实最后观测日期解析为空。
+    iso = s[:-1] + "+00:00" if s.endswith("Z") else s
+    try:
+        return dt.datetime.fromisoformat(iso).date()
+    except ValueError:
+        pass
     for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d-%m-%Y", "%d/%m/%Y"):
         try:
             return dt.datetime.strptime(s, fmt).date()
@@ -115,6 +122,8 @@ def fmt_date(d: dt.date | str | None) -> str | None:
     """统一输出 "YYYY-MM-DD"。"""
     if d is None:
         return None
+    if isinstance(d, dt.datetime):
+        return d.date().isoformat()
     if isinstance(d, dt.date):
         return d.isoformat()
     p = parse_date(d)

@@ -85,6 +85,25 @@ ES_MAP = {
     "匹配状态": "match_status",
 }
 
+# 08_LONG_TERM_MASTER（第 7 行表头）-> 内部键。
+# 该表保留所有官方 SKU，是长期字典的事实来源；CURRENT Sheet 仅代表当日在售。
+LONG_TERM_MAP = {
+    "实体ID": "canonical_id",
+    "正式SKU": "sku",
+    "身份类型": "identity_type",
+    "当前状态": "status",
+    "中文品名": "name_zh",
+    "西班牙语品名": "name_es",
+    "一级类目（中文）": "cat1_zh",
+    "一级类目（西语）": "cat1_es",
+    "规格（中文）": "spec_zh",
+    "规格（西语）": "spec_es",
+    "首次观察日期": "first_seen",
+    "最后观察日期": "last_seen",
+    "商品链接": "product_url",
+    "核对备注": "notes",
+}
+
 
 def _sheet_rows(path: Path, sheet: str):
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
@@ -149,6 +168,32 @@ def load_current(path: Path) -> dict[str, dict]:
     for sku, rec in merged.items():
         rec.setdefault("canonical_id", canonical_id(sku))
     return merged
+
+
+def load_long_term_official(path: Path) -> dict[str, dict]:
+    """读取 08_LONG_TERM_MASTER 中所有官方 SKU（含历史/下架）。
+
+    四月待匹配归档实体没有官方 SKU，绝不猜测或混入商品字典。
+    """
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    try:
+        if "08_LONG_TERM_MASTER" not in wb.sheetnames:
+            raise ValueError("LONG_TERM_MASTER_MISSING")
+        ws = wb["08_LONG_TERM_MASTER"]
+        header = [cell.value for cell in ws[7]]
+        numeric: set[str] = set()
+        result: dict[str, dict] = {}
+        for row in ws.iter_rows(min_row=8, values_only=True):
+            rec = _map_row(row, header, LONG_TERM_MAP, numeric)
+            sku = str(rec.get("sku") or "").strip()
+            if not sku or rec.get("identity_type") != "OFFICIAL_SKU":
+                continue
+            if sku in result:
+                raise ValueError(f"LONG_TERM_OFFICIAL_SKU_DUPLICATE: {sku}")
+            result[sku] = rec
+        return result
+    finally:
+        wb.close()
 
 
 def read_price_history(path: Path) -> list[dict]:

@@ -4,6 +4,7 @@ import openpyxl
 import pytest
 
 from action_tracker.excel import writer
+from action_tracker.excel.reader import load_long_term_official
 
 
 def _base_workbook(path):
@@ -119,3 +120,15 @@ def test_refresh_long_term_catalog_keeps_history_and_adds_new_sku(tmp_path):
     assert catalog["D4"].value == 2
     assert catalog["H4"].value == 1
     wb.close()
+
+
+def test_reader_uses_only_official_skus_from_long_term_sheet(tmp_path):
+    path = tmp_path / "master.xlsx"
+    wb = _base_workbook(path)
+    _add_long_term_sheets(wb)
+    wb.save(path)
+    wb.close()
+    records = load_long_term_official(path)
+    assert set(records) == {"1001"}
+    assert records["1001"]["first_seen"] == "2026-01-09"
+    assert records["1001"]["last_seen"] == "2026-08-13"

@@ -1,0 +1,186 @@
+﻿cat1_es,cat2_es,cat1_code,cat1_zh,cat2_zh,review_status,notes
+Artículos deportivos,,C15,运动用品,,CAT1_CONFIRMED,15 类固定映射
+Artículos deportivos,Accesorios y equipamiento deportivo,C15,运动用品,,HUMAN_REVIEWED,15 类固定映射
+Artículos deportivos,Alimentación y cuidado en el deporte,C15,运动用品,,HUMAN_REVIEWED,15 类固定映射
+Artículos deportivos,Bicicleta,C15,运动用品,,HUMAN_REVIEWED,15 类固定映射
+Artículos deportivos,Cuidado corporal,C15,运动用品,,HUMAN_REVIEWED,15 类固定映射
+Artículos deportivos,Herramientas,C15,运动用品,,HUMAN_REVIEWED,15 类固定映射
+Artículos deportivos,Juguetes de exterior,C15,运动用品,,HUMAN_REVIEWED,15 类固定映射
+Artículos deportivos,Ropa,C15,运动用品,,HUMAN_REVIEWED,15 类固定映射
+Artículos deportivos,Ropa de deporte,C15,运动用品,,HUMAN_REVIEWED,15 类固定映射
+Artículos deportivos,Salud,C15,运动用品,,HUMAN_REVIEWED,15 类固定映射
+Artículos deportivos,Textil parte inferior,C15,运动用品,,HUMAN_REVIEWED,15 类固定映射
+Bricolaje,,C01,DIY五金,,CAT1_CONFIRMED,15 类固定映射
+Bricolaje,Alargadores,C01,DIY五金,,HUMAN_REVIEWED,15 类固定映射
+Bricolaje,Bicicleta,C01,DIY五金,,HUMAN_REVIEWED,15 类固定映射
+Bricolaje,Coche,C01,DIY五金,,HUMAN_REVIEWED,15 类固定映射
+Bricolaje,Complementos de pintura,C01,DIY五金,,HUMAN_REVIEWED,15 类固定映射
+Bricolaje,Herramientas,C01,DIY五金,,HUMAN_REVIEWED,15 类固定映射
+Bricolaje,Iluminación,C01,DIY五金,,HUMAN_REVIEWED,15 类固定映射
+Bricolaje,Lubricantes y aceite,C01,DIY五金,,HUMAN_REVIEWED,15 类固定映射
+Bricolaje,Papel pintado,C01,DIY五金,,HUMAN_REVIEWED,15 类固定映射
+Bricolaje,Pintura para pared,C01,DIY五金,,HUMAN_REVIEWED,15 类固定映射
+Cocina,,C04,厨房餐具,,CAT1_CONFIRMED,15 类固定映射
+Cocina,Aparatos de cocina,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Artículos de fiesta,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Cubiertos,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Cuidados para el bebé,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Decoración,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Menaje de cocina,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Organizadores de despensa,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Platos de horno y bandejas para hornear,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Sartenes,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Textil de la cocina,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Vajillas,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Cocina,Vasos,C04,厨房餐具,,HUMAN_REVIEWED,15 类固定映射
+Comer y beber,,C10,食品饮料,,CAT1_CONFIRMED,15 类固定映射
+Comer y beber,Alimentación,C10,食品饮料,,HUMAN_REVIEWED,15 类固定映射
+Comer y beber,Bebidas,C10,食品饮料,,HUMAN_REVIEWED,15 类固定映射
+Comer y beber,Caramelos,C10,食品饮料,,HUMAN_REVIEWED,15 类固定映射
+Comer y beber,Chocolate,C10,食品饮料,,HUMAN_REVIEWED,15 类固定映射
+Comer y beber,Frutos secos y aperitivos,C10,食品饮料,,HUMAN_REVIEWED,15 类固定映射
+Comer y beber,Galletas,C10,食品饮料,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,,C06,个人美容,,CAT1_CONFIRMED,15 类固定映射
+Cuidado personal,Artículos de baño y ducha,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Cuidado bucal,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Cuidado corporal,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Cuidado del cabello,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Cuidado facial,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Cuidados para el bebé,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Depilación y afeitado,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Gafas y lentes,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Maquillaje,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Muebles,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Perfume,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Quemaduras solares y aftersun,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Salud,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Cuidado personal,Uñas,C06,个人美容,,HUMAN_REVIEWED,15 类固定映射
+Hobby,,C13,兴趣手作,,CAT1_CONFIRMED,15 类固定映射
+Hobby,Alimentación,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Artículos de fiesta,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Colorear y dibujar,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Cuidado corporal,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Herramientas,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Iluminación,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Manualidades,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Maquillaje,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Material escolar,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Papelería,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Pintura,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Punto y ganchillo,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Salud,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hobby,Textil parte inferior,C13,兴趣手作,,HUMAN_REVIEWED,15 类固定映射
+Hogar,,C08,家务清洁,,CAT1_CONFIRMED,15 类固定映射
+Hogar,Accesorios de baño,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Almacenaje,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Artículos de limpieza,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Decoración,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Detergentes y lavavajillas,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Herramientas,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Muebles,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Papel higiénico y papel de cocina,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Pequeños electrodomésticos,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Productos de limpieza,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Ventiladores,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Hogar,Zapatos,C08,家务清洁,,HUMAN_REVIEWED,15 类固定映射
+Jardín,,C14,园艺户外,,CAT1_CONFIRMED,15 类固定映射
+Jardín,Artículos de acampada,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Barbacoa y accesorios,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Control de plagas,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Decoración para el jardín,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Herramientas de jardinería,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Iluminación exterior,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Macetas,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Mangueras de jardín y aspersores,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Muebles del jardín,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Piscinas,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Salud,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Siembra y plantación,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Jardín,Sombrillas,C14,园艺户外,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,,C12,玩具,,CAT1_CONFIRMED,15 类固定映射
+Juguetes,Artículos de papel,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Coches de juguete,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Colorear y dibujar,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Decoración,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Juegos,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Juegos simbólicos y de construcción,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Juguetes de exterior,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Juguetes para bebés,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Manualidades,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Manualidades para niños,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Material escolar,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Papelería,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Peluches y muñecas,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Juguetes,Puzles,C12,玩具,,HUMAN_REVIEWED,15 类固定映射
+Mascotas,,C03,宠物用品,,CAT1_CONFIRMED,15 类固定映射
+Mascotas,Alimentación para animales,C03,宠物用品,,HUMAN_REVIEWED,15 类固定映射
+Mascotas,Gato,C03,宠物用品,,HUMAN_REVIEWED,15 类固定映射
+Mascotas,Juguetes para mascotas,C03,宠物用品,,HUMAN_REVIEWED,15 类固定映射
+Mascotas,Necesidades de los animales,C03,宠物用品,,HUMAN_REVIEWED,15 类固定映射
+Mascotas,Perro,C03,宠物用品,,HUMAN_REVIEWED,15 类固定映射
+Moda,,C05,服饰鞋包,,CAT1_CONFIRMED,15 类固定映射
+Moda,Accesorios,C05,服饰鞋包,,HUMAN_REVIEWED,15 类固定映射
+Moda,Accesorios para el cabello,C05,服饰鞋包,,HUMAN_REVIEWED,15 类固定映射
+Moda,Relojes y joyas,C05,服饰鞋包,,HUMAN_REVIEWED,15 类固定映射
+Moda,Ropa,C05,服饰鞋包,,HUMAN_REVIEWED,15 类固定映射
+Moda,Ropa interior,C05,服饰鞋包,,HUMAN_REVIEWED,15 类固定映射
+Moda,Textil parte inferior,C05,服饰鞋包,,HUMAN_REVIEWED,15 类固定映射
+Moda,Zapatos,C05,服饰鞋包,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,,C11,数码影音,,CAT1_CONFIRMED,15 类固定映射
+Multimedia,Accesorios multimedia,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,Audio,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,Baterías externas y cargadores,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,Cables y divisores,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,Cascos de teléfono,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,Coche,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,Iluminación,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,Pilas,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,Ropa,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,Tarjetas de memoria,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Multimedia,Videojuegos,C11,数码影音,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,Accesorios,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,Accesorios de oficina,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,Artículos de papel,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,Cartuchos de tinta,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,Colorear y dibujar,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,Maletas,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,Manualidades,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,Material escolar,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,Organizadores de despensa,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Oficina y papelería,Papelería,C02,办公文具,,HUMAN_REVIEWED,15 类固定映射
+Viajes,,C09,旅行用品,,CAT1_CONFIRMED,15 类固定映射
+Viajes,Accesorios,C09,旅行用品,,HUMAN_REVIEWED,15 类固定映射
+Viajes,Accesorios de viaje,C09,旅行用品,,HUMAN_REVIEWED,15 类固定映射
+Viajes,Artículos de acampada,C09,旅行用品,,HUMAN_REVIEWED,15 类固定映射
+Viajes,Iluminación,C09,旅行用品,,HUMAN_REVIEWED,15 类固定映射
+Viajes,Juegos,C09,旅行用品,,HUMAN_REVIEWED,15 类固定映射
+Viajes,Maletas,C09,旅行用品,,HUMAN_REVIEWED,15 类固定映射
+Viajes,Material escolar,C09,旅行用品,,HUMAN_REVIEWED,15 类固定映射
+Viajes,Ropa para la lluvia,C09,旅行用品,,HUMAN_REVIEWED,15 类固定映射
+Viajes,Salud,C09,旅行用品,,HUMAN_REVIEWED,15 类固定映射
+Viajes,Textil parte inferior,C09,旅行用品,,HUMAN_REVIEWED,15 类固定映射
+Vivienda,,C07,家居布置,,HUMAN_REVIEWED,15 类固定映射
+Vivienda,Accesorios de baño,C07,家居布置,,HUMAN_REVIEWED,15 类固定映射
+Vivienda,Accesorios de cama,C07,家居布置,,HUMAN_REVIEWED,15 类固定映射
+Vivienda,Cojines,C07,家居布置,,HUMAN_REVIEWED,15 类固定映射
+Vivienda,Decoración,C07,家居布置,,HUMAN_REVIEWED,15 类固定映射
+Vivienda,Lámparas,C07,家居布置,,HUMAN_REVIEWED,15 类固定映射
+Vivienda,Mantas de viaje y mantas,C07,家居布置,,HUMAN_REVIEWED,15 类固定映射
+Vivienda,Muebles,C07,家居布置,,HUMAN_REVIEWED,15 类固定映射
+Vivienda,Textil de baño,C07,家居布置,,HUMAN_REVIEWED,15 类固定映射
+个人护理,,C06,个人美容,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+兴趣爱好,,C13,兴趣手作,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+办公文具,,C02,办公文具,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+厨房,,C04,厨房餐具,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+园艺,,C14,园艺户外,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+宠物,,C03,宠物用品,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+家居,,C07,家居布置,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+家居维修,,C01,DIY五金,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+家庭日用,,C08,家务清洁,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+数码多媒体,,C11,数码影音,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+旅行,,C09,旅行用品,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+时尚,,C05,服饰鞋包,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+玩具,,C12,玩具,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+运动用品,,C15,运动用品,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认
+食品饮料,,C10,食品饮料,,UNREVIEWED,首次由 Master 事实记录发现；等待分类字典确认

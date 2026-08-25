@@ -1,0 +1,36 @@
+# Action 西语术语字典的高置信度初始种子。
+# 这里只收录可独立审查的规格、单位和材质词；有商品语义歧义的词不自动写入。
+terms:
+  - {term_es: colores, term_zh: 颜色, term_type: spec, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "规格颜色"}
+  - {term_es: variantes, term_zh: 变体, term_type: spec, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "规格变体"}
+  - {term_es: diferentes, term_zh: 不同款式, term_type: spec, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "规格描述"}
+  - {term_es: varios, term_zh: 多种, term_type: spec, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "规格描述"}
+  - {term_es: varias, term_zh: 多种, term_type: spec, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "规格描述"}
+  - {term_es: unidades, term_zh: 件, term_type: quantity, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "数量；按商品语义复核"}
+  - {term_es: piezas, term_zh: 件, term_type: quantity, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "数量；按商品语义复核"}
+  - {term_es: gramos, term_zh: 克, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "重量单位"}
+  - {term_es: gramo, term_zh: 克, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "重量单位"}
+  - {term_es: litros, term_zh: 升, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "容量单位"}
+  - {term_es: litro, term_zh: 升, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "容量单位"}
+  - {term_es: metros, term_zh: 米, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "长度单位"}
+  - {term_es: metro, term_zh: 米, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "长度单位"}
+  - {term_es: vatios, term_zh: 瓦, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "功率单位"}
+  - {term_es: voltios, term_zh: 伏, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "电压单位"}
+  - {term_es: lúmenes, term_zh: 流明, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "光通量单位"}
+  - {term_es: pulgadas, term_zh: 英寸, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "长度单位"}
+  - {term_es: pares, term_zh: 双, term_type: quantity, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "数量单位"}
+  - {term_es: hojas, term_zh: 张, term_type: quantity, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "纸张数量"}
+  - {term_es: rollos, term_zh: 卷, term_type: quantity, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "卷状商品数量"}
+  - {term_es: tallas, term_zh: 尺码, term_type: apparel, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "服装规格"}
+  - {term_es: talla, term_zh: 尺码, term_type: apparel, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "服装规格"}
+  - {term_es: microfibra, term_zh: 超细纤维, term_type: material, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "材质"}
+  - {term_es: plástico, term_zh: 塑料, term_type: material, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "材质"}
+  - {term_es: madera, term_zh: 木质, term_type: material, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "材质"}
+  - {term_es: bambú, term_zh: 竹制, term_type: material, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "材质"}
+  - {term_es: vidrio, term_zh: 玻璃, term_type: material, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "材质"}
+  - {term_es: transparente, term_zh: 透明, term_type: attribute, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "外观属性"}
+  - {term_es: suave, term_zh: 柔软, term_type: attribute, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "触感属性"}
+  - {term_es: recargable, term_zh: 可充电, term_type: attribute, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "功能属性"}
+  - {term_es: compatible, term_zh: 兼容, term_type: attribute, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "兼容性属性"}
+  - {term_es: incluye, term_zh: 包含, term_type: attribute, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "规格描述"}
+  - {term_es: incluidos, term_zh: 包含, term_type: attribute, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "规格描述"}

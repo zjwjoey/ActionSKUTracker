@@ -1,7 +1,7 @@
 """规范 §60 测试 8-13：价格。"""
 from action_tracker.services.price import compare_price, is_price_anomaly, update_hist_min_max
 from action_tracker.services.change import compute_changes
-from action_tracker.services.normalization import parse_price
+from action_tracker.services.normalization import fmt_date, parse_price
 
 
 def _rec(**kw):
@@ -69,3 +69,8 @@ def test_price_parsing():
     assert parse_price("") is None
     assert parse_price("N/A") is None
     assert parse_price("1.234,56 €") == 1234.56
+
+
+def test_fmt_date_parses_iso_datetime_from_master():
+    assert fmt_date("2026-08-25T00:00:00") == "2026-08-25"
+    assert fmt_date("2026-08-25T00:00:00+02:00") == "2026-08-25"
