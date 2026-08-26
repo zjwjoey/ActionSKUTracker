@@ -1,0 +1,180 @@
+# Action SKU Tracker 路线图
+
+更新日期：2026-08-26
+
+## 1. 总原则
+
+- 不重写已经稳定的采集、Presence、生命周期和 QA 主链；
+- 新字典和 Export 通过独立模块接入；
+- 先冻结数据契约，再实现，再 dry-run，最后正式发布；
+- SQLite 和图片下载主链继续冻结；
+- 每一步都区分“本地已实现”“已提交”“已发布”。
+
+## 2. 已完成阶段
+
+### STEP 0：冻结稳定主链
+
+- 已确认采集、生命周期和 QA 边界；
+- 未重写 monitor/lifecycle 核心判断；
+- 建立功能分支；
+- 完整测试基线已保留。
+
+### STEP 1：定义 Export Profile
+
+- 定义字段所有权、正式来源、14 列结构和 manifest；
+- 当前需求已升级为 Template 1 三表工作簿；
+- 文档契约已冻结，机器配置仍待同步升级。
+
+### STEP 2：ES 无图最小导出
+
+- 本地工作区已实现；
+- 只读取正式来源；
+- 包含 SKU、价格、URL、来源和只读校验；
+- 尚待单独代码提交和远端发布。
+
+### STEP 3：ZH 无图字典 Join
+
+- 本地工作区已实现；
+- 字段级优先级、source hash 和 fallback 已覆盖；
+- 与 ES SKU 集合对账；
+- 尚待单独代码提交和远端发布。
+
+### STEP 4：新 SKU 增量标准化
+
+- 本地实现 `dictionary-enrich --run-id`；
+- 只处理 NEW、source hash changed、NEEDS_REVIEW；
+- 不访问官网、不调用模型、不全量重翻；
+- 尚待单独代码提交。
+
+### STEP 5：统一 Review Queue
+
+- 本地实现 build/decide、稳定 review_id 和状态闭环；
+- 已定义品牌、名称、类目、术语、源损坏和冲突类型；
+- 尚待单独代码提交。
+
+### STEP 6：术语候选成长管线
+
+- 本地实现增量候选提取；
+- 候选不自动晋升；
+- 人工批准后才进入正式术语字典；
+- 尚待单独代码提交。
+
+## 3. 当前阶段：STEP 7 + Template 1
+
+### 3.1 历史 Presence 服务
+
+需要实现：
+
+1. 读取 `config/history_sources.yaml`；
+2. 校验每个来源文件、工作表和 SKU 列；
+3. 每批次按 SKU 去重；
+4. 建立长期 SKU union；
+5. 写日期 0/1；
+6. 保存原始行数、唯一 SKU 数、重复数和来源 hash；
+7. 为 Template 1 和独立 `export-history` 提供同一服务。
+
+### 3.2 Template 1
+
+需要实现一个工作簿三张表：
+
+- 商品上下架明细；
+- 今日西班牙语清单；
+- 今日中文清单。
+
+重点：
+
+- 当日日期列 `1` 的数量等于 CURRENT_VALID；
+- 新 SKU 加入 union，历史为 0、当日为 1；
+- ES/ZH SKU 集合和事实字段一致；
+- 只有中文表嵌入本地 250×250 白底图片；
+- 缺中文、详情或图片不能删除 SKU；
+- 更新 `config/export_profiles.yaml`，使机器配置与文档一致。
+
+## 4. STEP 8：整合、回归与上线
+
+### 4.1 文档
+
+- README、AGENTS、CURRENT_STATE、ARCHITECTURE、DATA_MODEL、QA_RULES、ROADMAP；
+- 字典、生命周期和 Export 专题文档；
+- 文档不得把本地未提交功能写成远端已发布功能。
+
+### 4.2 CLI
+
+目标入口：
+
+```text
+export-template --template action_full_template_1 --date YYYY-MM-DD [--run-id]
+export-history [...]
+dictionary-enrich --run-id ...
+review-queue build/decide
+term-candidates --run-id ...
+```
+
+最终命令名在实现时冻结；旧的 `export --lang es|zh --no-images` 可保留兼容期，但不能与 Template 1 状态混淆。
+
+### 4.3 必须测试
+
+- Export Profile 工作表和字段；
+- 同日期幂等；
+- ES/ZH SKU 集合一致；
+- 人工覆盖优先级；
+- source hash 失效；
+- Review Queue 去重和闭环；
+- 术语候选不得自动晋升；
+- 历史 Presence 正确性和重复行对账；
+- Sitemap-only 排除；
+- QA FAIL 禁止正式 Export；
+- 仅中文表插图和缺图不丢 SKU；
+- 导出来源保持只读。
+
+### 4.4 上线顺序
+
+1. 使用历史文件执行只读 dry-run；
+2. 生成 Template 1 preview；
+3. 对账三张表、manifest 和图片统计；
+4. 执行一次真实完整 daily dry-run；
+5. QA PASS 后执行正式 observation；
+6. 再次生成 export preview；
+7. 人工确认后才标记正式可用并提交代码/配置/测试。
+
+## 5. 发布前需要先处理的版本工作
+
+当前本地工作区包含多个阶段的未提交代码。下一步应按功能拆分审查和提交：
+
+1. Export ES/ZH 无图基础；
+2. Dictionary Enrichment；
+3. Review Queue；
+4. Term Candidates；
+5. 历史 Presence；
+6. Template 1；
+7. 字典基线数据更新。
+
+每组提交必须只含对应代码、配置、测试和文档，不使用 `git add .`。
+
+## 6. 暂缓事项
+
+### SQLite
+
+继续冻结。当前正式 daily-run 仍以 Excel/CSV 为主链。本路线不包含数据库迁移。
+
+### 图片下载
+
+下载和处理保持独立任务。Template 1 只读取本地图片；不因为导出自动启动下载。
+
+### 全量翻译
+
+不启用每日全量模型翻译。只允许增量任务、缓存和人工 Review 闭环。
+
+## 7. Definition of Done
+
+Template 1 和字典闭环只有同时满足以下条件才算完成：
+
+- 代码、配置、文档一致；
+- 全部测试通过；
+- 历史 Presence 对账通过；
+- 三张表 SKU 和数量关系通过；
+- 中文和图片缺失不丢 SKU；
+- manifest 可追溯到唯一正式 run；
+- dry-run 和真实 preview 均通过；
+- 只提交应进入 Git 的文件；
+- 用户确认输出模板符合实际交付需求。

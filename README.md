@@ -1,38 +1,86 @@
-# Action 西班牙站商品每日监测程序
+# Action SKU Tracker
 
-长期监测 Action 西班牙官网（`action.com/es-es`）的商品变化，并维护一套可审计的本地商品字典：新品、下架、重新上架、价格变化、促销起止、Nuevo 标签、可持续标识和内容变化。
+Action 西班牙站商品每日监测、生命周期管理、中文标准化和 Excel 导出项目。
 
-项目采用本地文件型存储（Excel / CSV / JSON），不依赖数据库、云端或 Web 后台。阈值和路径集中在 `config/settings.yaml`。
+项目以 Action ES 官网西班牙语内容为事实，以 Listing/Sitemap Presence 判断商品是否被观察到，以本地 Excel、CSV 和 JSON 保存可审计证据。中文名称、品牌、类目和术语属于派生数据，不能反向改写官网事实。
 
-## 架构
+## 当前能力
+
+- Sitemap、15 个主类目、Nuevo 和 Promoción semanal 入口采集；
+- NEW、ACTIVE、MISSING、OFFLINE、REAPPEARED 生命周期；
+- Presence 在 Detail 前冻结，详情访问受限不会把商品误判下架；
+- QA 门禁、Snapshot、Staging 和原子更新 Master；
+- 商品、品牌、类目、术语、人工覆盖和模型结果字典；
+- 增量字典标准化、统一 Review Queue、术语候选管线；
+- 已有 ES/ZH 两个独立无图导出的本地实现；
+- Template 1 三表工作簿已经冻结需求，尚未完成代码实现。
+
+当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
+
+## 核心数据流
 
 ```text
-daily.py
-  ├── Listing / Sitemap  → Presence 事实、SKU、价格、标签
-  ├── Detail Enrichment  → 仅补充变化或待补详情的商品
-  ├── Lifecycle          → NEW / ACTIVE / MISSING / REAPPEARED / OFFLINE
-  ├── QA Gate            → 不完整观测或质量失败时阻断正式写入
-  ├── Excel Writer       → 原子更新本地 Master
-  └── Dictionary Layer   → 标准品名、品牌、分类、术语、人工覆盖
-         ├── runtime/dictionary/  本机运行区
-         └── data/dictionary/     Git 追踪的正式字典基线
+Action ES
+  ↓
+Sitemap / Listing / Nuevo / Promoción
+  ↓
+Presence 冻结 → Lifecycle → QA
+  ↓                    ↓
+Snapshot / Staging   QA FAIL：只留证据
+  ↓ QA PASS
+Master / State
+  ├─ Dictionary / Review
+  └─ Export
 ```
 
-核心原则（详见 `AGENTS.md`）：
+架构和规则详见：
 
-- 西语官网信息是事实数据，中文是派生数据。
-- 不每天重抓全部商品详情，先发现变化、只处理变化的 SKU。
-- 历史文件（`F:\按日期整理`）与原始 Master（`F:\Action_Master\Action_Master.xlsx`）永远只读。
-- 不绕过 CAPTCHA / Cloudflare 安全机制。
-- QA 失败时保留证据，但不覆盖正式 Master。
+- [整体架构](docs/ARCHITECTURE.md)
+- [数据模型](docs/DATA_MODEL.md)
+- [QA 规则](docs/QA_RULES.md)
+- [开发路线图](docs/ROADMAP.md)
+- [生命周期专题](docs/LIFECYCLE_ARCHITECTURE.md)
+- [字典专题](docs/DICTIONARY_ARCHITECTURE.md)
+- [导出模块](docs/EXPORT_ARCHITECTURE.md)
+- [Template 1](docs/EXPORT_PROFILE.md)
 
-## 字典与 Git 基线
+## 快速使用
 
-`runtime/dictionary/` 是本机运行目录，包含每日构建结果、审计报告、备份和临时复核文件，不进入 Git。
+在 `F:\ActionSKUTracker` 中运行：
 
-`data/dictionary/` 是经过审计后发布到 Git 的稳定基线，当前包括商品、品牌、分类、术语、人工覆盖、模型译文、源数据损坏报告，以及带 SHA-256 校验值的 `baseline_manifest.json`。
+```powershell
+$env:PYTHONPATH = "src"
 
-新工作区首次构建时，如 `runtime/dictionary/` 不存在，程序会从 `data/dictionary/` 基线读取已有字典结果。发布前会重新执行审计；任何 `FAIL` 都会阻断发布。
+# 查看状态
+python -m action_tracker status
+
+# 从正式 Master 建立初始状态
+python -m action_tracker init-baseline
+
+# 默认 dry-run：采集并生成证据，不写正式 Master
+python -m action_tracker daily-run --dry-run
+
+# 正式运行：只有 QA 允许时才提交
+python -m action_tracker daily-run --no-dry-run
+
+# 基于最近 snapshot 重跑 QA
+python -m action_tracker qa
+
+# 完整回归测试
+python -m pytest -q
+```
+
+详情阶段与 Presence 分离：
+
+```powershell
+python -m action_tracker detail-retry --run-id <run_id>
+python -m action_tracker detail-apply --run-id <run_id>
+python -m action_tracker detail-backfill --run-id <run_id>
+```
+
+## 字典
+
+Git 中的正式基线位于 `data/dictionary/`；本机运行区位于 `runtime/dictionary/`。运行区包含构建结果、备份、审计和临时审核文件，不进入 Git。
 
 ```powershell
 $env:PYTHONPATH = "src"
@@ -41,36 +89,48 @@ python scripts/audit_dictionary.py
 python scripts/publish_dictionary_baseline.py
 ```
 
-更多字段和状态说明见 [字典架构文档](docs/DICTIONARY_ARCHITECTURE.md)。
+增量字典、审核队列和术语候选命令已经在本地功能分支实现，但在对应代码正式提交前不应仅依据本文档假设远端 checkout 已具备这些入口。具体状态见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
-## 使用
+## 导出
+
+目标 Template 1 是一个 Excel、三张工作表：
+
+1. `商品上下架明细`；
+2. `今日西班牙语清单`；
+3. `今日中文清单`。
+
+第一张表按日期写 0/1；第二、三张表只包含当日有效 CURRENT SKU；只有中文表嵌入本地 250×250 白底图片。当日数量以正式 Listing/CURRENT 有效集合为准，不以 Sitemap 原始数量为准。
+
+Template 1 当前是已冻结契约、待实现功能。现有本地实现仍是两个独立无图文件：
 
 ```powershell
-$env:PYTHONPATH = "src"
-
-# 建立基线状态文件（从 runtime/master/Action_Master.xlsx）
-python -m action_tracker init-baseline
-
-# 每日 dry-run（出证据，不写 Master）
-python -m action_tracker daily-run --dry-run
-
-# 状态 / QA
-python -m action_tracker status
-python -m action_tracker qa
-
-# 测试
-python -m pytest -q
+python -m action_tracker export --lang es --no-images --date YYYY-MM-DD
+python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
 ```
 
-## 目录
+## 主要目录
 
-- `src/action_tracker/`：采集、生命周期、Excel 与字典核心逻辑
-- `config/`：站点、阈值、15 个固定中文一级类目和术语种子
-- `data/dictionary/`：Git 追踪的正式字典基线
-- `runtime/`：本机 Master、快照、暂存、运行时字典、日志与备份（忽略）
-- `scripts/`：字典构建、审计、发布与人工复核辅助脚本
-- `tests/`：回归测试
+| 路径 | 用途 | 是否进入 Git |
+| --- | --- | --- |
+| `src/action_tracker/` | 采集、生命周期、QA、字典和导出代码 | 是 |
+| `config/` | 站点、阈值、类目、术语和 Profile 配置 | 是 |
+| `data/dictionary/` | 审计通过的正式字典基线 | 是 |
+| `runtime/master/` | 正式工作 Master | 否 |
+| `runtime/snapshots/` | 每轮原始与标准化证据 | 否 |
+| `runtime/state/` | 跨日生命周期状态 | 否 |
+| `runtime/dictionary/` | 本机字典运行区 | 否 |
+| `runtime/images/` | 本地图片缓存 | 否 |
+| `runtime/exports/` | 导出文件与 manifest | 否 |
+| `tests/` | 回归测试 | 是 |
 
-## 提交约定
+## 安全边界
 
-提交时仅选择代码、配置、文档和 `data/dictionary/` 基线。不要使用 `git add .`；`runtime/`、图片、导出、报告和临时文件不应提交。
+- `F:\按日期整理` 永远只读；
+- `F:\Action_Master\Action_Master.xlsx` 只允许读取或复制；
+- QA FAIL 和 dry-run 不得覆盖正式 Master/State；
+- 不绕过 CAPTCHA、Cloudflare 或其他网站安全机制；
+- 不每天全量抓详情、全量翻译或全量下载图片；
+- 不使用 Sitemap-only SKU 冒充当日有效在售商品；
+- SQLite 继续冻结，不是生产主链。
+
+开发和提交规则见 [AGENTS.md](AGENTS.md)。

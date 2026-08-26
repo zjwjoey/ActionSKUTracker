@@ -1,5 +1,8 @@
 # Action 本地字典与功能模块边界
 
+> 状态说明：Git 已发布基础字典与构建/审计流程；增量 Enrichment、统一 Review
+> Queue 和术语候选代码目前只存在于本地功能分支工作区，尚待单独审查提交。
+
 ## 定位
 
 本地字典是商品身份和标准化层，不替代生命周期 Master、运行 snapshot 或官网西语事实。它保存稳定的命名、品牌、分类和术语；价格、在售状态、缺失次数、促销事件和详情抓取状态仍由现有运行系统负责。
@@ -51,3 +54,29 @@
 若 CSV 正被 Excel 占用，构建会保留 `*.pending-*.csv` 并报出待提交路径，原字典不会被截断或覆盖。每次构建先校验 CSV 的 schema 与唯一键；出现重复 SKU、重复分类关系或冲突人工覆盖时直接失败，必须人工修正后重跑。
 
 术语初始种子位于 `config/dictionary_terms.yaml`，当前只收录高置信度规格、单位、材质和属性词；模糊词不自动替换商品字段。`scripts/build_spanish_reference.py` 可将历史西语 Raw 表与已有数值参考合并为运行时证据，构建阶段按字段选择最近的干净值。找不到可信来源的字段进入 `source_damage_report.csv`，不得用模型伪造官网西语。
+
+## 增量标准化
+
+日常不重建和重翻全部长期商品。`dictionary-enrich --run-id` 只选择 NEW、西语事实
+source hash 变化和 NEEDS_REVIEW。未变化的老 SKU 不产生新翻译，也不更新
+`updated_at`。此阶段只读取正式 Snapshot，不访问官网、不调用模型。详见
+`DICTIONARY_ENRICHMENT.md`。
+
+## 统一 Review Queue
+
+所有字典问题进入 `runtime/review_queue/review_queue.csv`，使用稳定 review_id
+去重。人工决定按问题类型写回商品字段覆盖、品牌字典或术语字典；源事实损坏不能
+用中文覆盖解决。详见 `REVIEW_QUEUE.md`。
+
+## 术语成长
+
+术语候选只从增量 SKU 提取，保存覆盖 SKU 数、频次、类目分布和上下文。候选不会
+自动写入正式术语字典，只有人工 APPROVED 才能晋升。详见 `TERM_CANDIDATES.md`。
+
+## 与 Export 的关系
+
+Export 是字典的只读消费者。中文版逐字段应用人工覆盖、商品字典、品牌/类目/术语、
+有效模型结果和 fallback；Export 不得修改字典。中文缺失不能删除当日在售 SKU。
+
+当前 Git 已发布基线为商品 8,617、品牌 509、类目关系 185、术语 33；本地待审版本
+为品牌 588、术语 44。后者在审计和正式发布前不能称为远端稳定基线。
