@@ -59,9 +59,23 @@
 - 人工批准后才进入正式术语字典；
 - 尚待单独代码提交。
 
-## 3. 当前阶段：STEP 7 + Template 1
+## 3. 当前阶段：先发布基础 Export
 
-### 3.1 历史 Presence 服务
+虽然 ES/ZH 两个独立无图导出已经在本地工作区实现，但它们尚未完成独立提交、真实
+正式来源预览和用户验收。当前优先级是先把基础导出变成可日常使用的稳定功能：
+
+1. 隔离并审查现有 exporting 代码；
+2. 冻结两个无图基础 Profile；
+3. 完成正式来源、ES/ZH 对账、manifest 和只读校验；
+4. 使用真实正式 run 生成预览；
+5. 完整测试并独立提交；
+6. 用户确认基础导出可用。
+
+详细计划见 `EXPORT_IMPLEMENTATION_PLAN.md`。基础版本验收前不开始图片和三表合一。
+
+## 4. 后续阶段：STEP 7 + Template 1
+
+### 4.1 历史 Presence 服务
 
 需要实现：
 
@@ -73,7 +87,7 @@
 6. 保存原始行数、唯一 SKU 数、重复数和来源 hash；
 7. 为 Template 1 和独立 `export-history` 提供同一服务。
 
-### 3.2 Template 1
+### 4.2 Template 1
 
 需要实现一个工作簿三张表：
 
@@ -90,15 +104,22 @@
 - 缺中文、详情或图片不能删除 SKU；
 - 更新 `config/export_profiles.yaml`，使机器配置与文档一致。
 
-## 4. STEP 8：整合、回归与上线
+## 5. STEP 8：整合、回归与上线
 
-### 4.1 文档
+### 5.0 轻量 CI（已实现本地文件，待本轮独立提交）
+
+- `.github/workflows/ci.yml` 在 push/PR 时运行 Python 3.12 的 CI-safe 测试；
+- 依赖固定在 `requirements.txt` 与 `requirements-dev.txt`；
+- CI 不访问官网、不安装浏览器、不写 Master/State/Dictionary、不下载图片、不发布基线；
+- 当前本地 CI 模拟结果为 `194 passed`；CI 绿灯仍不能替代真实 daily-run 和 QA。
+
+### 5.1 文档
 
 - README、AGENTS、CURRENT_STATE、ARCHITECTURE、DATA_MODEL、QA_RULES、ROADMAP；
 - 字典、生命周期和 Export 专题文档；
 - 文档不得把本地未提交功能写成远端已发布功能。
 
-### 4.2 CLI
+### 5.2 CLI
 
 目标入口：
 
@@ -112,7 +133,7 @@ term-candidates --run-id ...
 
 最终命令名在实现时冻结；旧的 `export --lang es|zh --no-images` 可保留兼容期，但不能与 Template 1 状态混淆。
 
-### 4.3 必须测试
+### 5.3 必须测试
 
 - Export Profile 工作表和字段；
 - 同日期幂等；
@@ -127,7 +148,7 @@ term-candidates --run-id ...
 - 仅中文表插图和缺图不丢 SKU；
 - 导出来源保持只读。
 
-### 4.4 上线顺序
+### 5.4 上线顺序
 
 1. 使用历史文件执行只读 dry-run；
 2. 生成 Template 1 preview；
@@ -137,7 +158,7 @@ term-candidates --run-id ...
 6. 再次生成 export preview；
 7. 人工确认后才标记正式可用并提交代码/配置/测试。
 
-## 5. 发布前需要先处理的版本工作
+## 6. 发布前需要先处理的版本工作
 
 当前本地工作区包含多个阶段的未提交代码。下一步应按功能拆分审查和提交：
 
@@ -151,7 +172,7 @@ term-candidates --run-id ...
 
 每组提交必须只含对应代码、配置、测试和文档，不使用 `git add .`。
 
-## 6. 暂缓事项
+## 7. 暂缓事项
 
 ### SQLite
 
@@ -165,7 +186,7 @@ term-candidates --run-id ...
 
 不启用每日全量模型翻译。只允许增量任务、缓存和人工 Review 闭环。
 
-## 7. Definition of Done
+## 8. Definition of Done
 
 Template 1 和字典闭环只有同时满足以下条件才算完成：
 

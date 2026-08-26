@@ -186,3 +186,21 @@ ES/ZH 的 SKU、顺序、当前售价、原价、图片链接和商品链接逐 
 5. export preview 三表对账通过；
 6. manifest 数量、hash 和图片统计正确；
 7. 没有把本机 runtime、密钥、Cookie、图片或正式 Excel 提交到 Git。
+
+## 10. CI 门禁
+
+### QA-CI-001：安全测试范围
+
+CI 只运行标记为 `CI_SAFE` 的本地测试，测试数据使用临时目录或内存 fixture；真实官网采集、浏览器安装与交互、图片下载和模型网络调用不属于 CI。
+
+### QA-CI-002：依赖可复现
+
+CI 使用 Python 3.12 和仓库中的 `requirements-dev.txt`。新增运行时依赖时必须同步更新依赖文件、文档和测试。
+
+### QA-CI-003：无生产副作用
+
+CI 不得修改 Master、State、Dictionary、历史源文件或 `runtime/` 生产证据，也不得执行 baseline 发布、push 或 merge。
+
+### QA-CI-004：门禁含义
+
+CI 全绿只表示代码回归测试通过；正式运行仍必须经过本地 dry-run、QA、正式提交和导出预览。

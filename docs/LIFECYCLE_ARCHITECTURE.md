@@ -53,3 +53,5 @@ Snapshots retain sitemap/listing raw evidence, normalized records, presence evid
 
 Current automated suite: `python -m pytest -q`.
 It covers lifecycle transitions, same-day idempotency, invalid observation protection, QA blocking, translation fallback/no-provider state, and state-file persistence.
+
+The GitHub Actions workflow runs only the local, side-effect-free regression suite with temporary fixtures. It does not perform a real site observation or write production Master/State files; those remain Windows-local release steps.

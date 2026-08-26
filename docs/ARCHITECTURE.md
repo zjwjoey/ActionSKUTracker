@@ -159,3 +159,9 @@ Template 1：
 | `database/` | 冻结的 SQLite 脚手架 |
 
 专题细节见 `LIFECYCLE_ARCHITECTURE.md`、`DICTIONARY_ARCHITECTURE.md` 和 `EXPORT_ARCHITECTURE.md`。
+
+## 11. CI 与本地运行边界
+
+GitHub Actions 只验证可重复的本地代码行为：schema 校验、生命周期规则、字典优先级、导出格式和审核队列等测试使用临时目录与模拟数据。CI 不访问 Action 官网、不启动真实浏览器、不读取或写入本机 runtime、不发布字典基线，也不下载图片。
+
+真实 daily-run、详情补抓、QA 门禁、正式 Master/State 更新和导出预览仍必须在 Windows 本地按运行规则执行。CI 通过不能被解释为一次真实官网运行成功。

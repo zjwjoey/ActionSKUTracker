@@ -46,3 +46,5 @@ QA `PASS`（或已定义的 `PASS_PRESENCE_ONLY`）。任一条件不满足即�
 - `selected_skus.csv`：SKU、被选原因、官网事实哈希；
 - `review_candidates.csv`：未能自动确认的问题；
 - `enrichment_report.json`：输入 run、数量、字典变更和无网络声明。
+
+CI 只测试上述选择范围、字段保护和无网络约束的临时 fixture；不会执行真实 enrichment，也不会写入正式运行字典。

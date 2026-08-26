@@ -1,5 +1,9 @@
 # Action 西班牙站正式导出 Profile：Template 1
 
+> 实施顺序：Template 1 是第二阶段详细 Profile。必须先完成并验收 ES/ZH 两个独立
+> 无图基础导出；基础版本未达到 `docs/EXPORT_IMPLEMENTATION_PLAN.md` 的完成标准前，
+> 不开始历史矩阵、三表合一和图片嵌入。
+
 ## 1. Profile 身份
 
 | 项目 | 固定值 |
@@ -11,7 +15,9 @@
 | 工作表数量 | 3 |
 | 数据来源 | 同一日期、同一正式 `run_id` |
 
-该 Profile 是目标导出契约。现有程序的两个独立 ES/ZH 无图文件属于过渡实现，不能视为 Template 1 已完成。
+该 Profile 是第二阶段目标导出契约。现有程序的两个独立 ES/ZH 无图文件是第一阶段
+基础版本；它们需要先达到可日常使用状态，后续 Template 1 必须复用其正式来源、
+字段构建和对账能力，不能视为一次性代码，也不能视为 Template 1 已完成。
 
 ## 2. 正式来源
 
@@ -246,3 +252,5 @@ SUM(当日日期列) == COUNT(DISTINCT CURRENT_VALID.sku)
 10. 图片缺失不删除 SKU 测试；
 11. QA FAIL / dry-run 禁止正式导出测试；
 12. 导出前后来源文件哈希不变测试。
+
+这些测试在 GitHub Actions 中只使用临时 fixture；真实正式来源、图片缓存和视觉检查仍由 Windows 本地发布流程完成。CI 通过不等于 Template 1 已正式发布。

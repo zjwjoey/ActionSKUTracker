@@ -60,10 +60,23 @@ Export 绝对不得：
 | 模板 | 状态 | 输出 |
 | --- | --- | --- |
 | Template 1 | 目标契约，待按本文实现 | 一个 Excel、三张工作表 |
-| 旧版 ES/ZH 无图 Profile | 已有实现 | 两个独立 Excel，仅作为过渡实现 |
+| 基础 ES/ZH 无图 Profile | 本地已实现，待真实预览、验收与独立提交 | 两个独立 Excel，先作为日常可用基础版本 |
 | 独立历史 Presence Export | 已完成设计、尚未实现 | 与 Template 1 第一张表复用同一 Presence 构建服务 |
 
 Template 1 的完整字段契约见 `docs/EXPORT_PROFILE.md`。
+
+## 4.1 实施顺序
+
+Export 不直接从 Template 1 开始。第一阶段先稳定和发布两个独立无图基础文件：
+
+- 西班牙语全量无图；
+- 中文全量无图。
+
+基础版本必须先完成正式来源解析、14 列结构、ES/ZH 对账、manifest、只读保护、
+真实预览和用户验收。只有基础版本可用于日常工作后，才进入 Template 1 的历史
+Presence、三表合一和中文图片嵌入。
+
+完整顺序和验收条件见 `docs/EXPORT_IMPLEMENTATION_PLAN.md`。
 
 ## 5. Template 1 的工作簿结构
 
@@ -135,3 +148,9 @@ src/action_tracker/exporting/
 - Template 1 的三表合一、第一张表当日列、新 SKU 合并及中文表图片嵌入尚未实现；
 - 本文件和 `EXPORT_PROFILE.md` 先冻结需求，后续代码必须按 Profile 实现并补回归测试；
 - 图片下载仍是独立任务，Export 只消费已经存在的本地图片。
+
+## 10. CI 与导出验证边界
+
+导出回归测试在 CI 中使用临时 Master/Snapshot fixture，验证字段、集合、manifest、幂等和只读保护。CI 不读取本机正式 runtime，不访问 Action 官网，不下载或嵌入真实图片，也不生成正式交付文件。
+
+真实来源解析、QA 通过后的导出预览和人工视觉检查仍属于本地发布流程；CI 通过不能替代这些步骤。

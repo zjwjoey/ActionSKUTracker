@@ -108,6 +108,10 @@ python -m action_tracker export --lang es --no-images --date YYYY-MM-DD
 python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
 ```
 
+开发顺序是先完成、试跑并验收这两个基础无图文件，再实现 Template 1 的历史
+Presence、三表合一和中文图片。详见
+[Export 落地计划](docs/EXPORT_IMPLEMENTATION_PLAN.md)。
+
 ## 主要目录
 
 | 路径 | 用途 | 是否进入 Git |
@@ -134,3 +138,18 @@ python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
 - SQLite 继续冻结，不是生产主链。
 
 开发和提交规则见 [AGENTS.md](AGENTS.md)。
+
+## CI
+
+GitHub Actions 会在 push 和 Pull Request 时自动运行云端安全测试。
+
+CI 只运行不访问官网、使用临时目录的本地测试，不执行：
+
+- Action 真实网站采集；
+- Playwright 真实抓取或浏览器安装；
+- 正式 Master/State 写入；
+- runtime 生产状态修改；
+- 字典 baseline 发布、图片下载、push 或 merge。
+
+完整真实运行仍必须在本地经过 dry-run 和 QA。依赖入口见
+`requirements.txt` 与 `requirements-dev.txt`。

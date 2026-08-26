@@ -70,6 +70,14 @@
 - 文档必须区分：稳定主线、仅本地已实现、设计完成但未实现。
 - 不把一次运行的 SKU 数量写成永久业务规则。
 
+### CI 验证边界
+
+- `.github/workflows/ci.yml` 只运行可在临时目录完成的 `CI_SAFE` 测试。
+- CI 使用 `requirements-dev.txt` 安装依赖，不安装 Playwright 浏览器，不访问 Action 官网。
+- 真实采集、浏览器交互、dry-run、正式 Master/State 写入、字典基线发布和图片任务均属于 `LOCAL_ONLY`，不得被 CI 默认触发。
+- 未完成安全分类的测试属于 `UNCERTAIN`，必须留在本地审查，不能为了让 CI 变绿而静默跳过。
+- CI 通过只说明代码回归测试通过，不代表官网访问、QA、生命周期提交或导出正式来源已经通过。
+
 ## 8. Git 规则
 
 - 禁止 `git reset --hard`、`git clean -fd`、未经确认的强制推送等破坏性操作。

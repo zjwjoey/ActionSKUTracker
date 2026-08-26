@@ -1,0 +1,5 @@
+# Runtime dependencies used by the local Action SKU Tracker application.
+# Versions reflect the verified Python 3.12 environment used for the current test baseline.
+openpyxl==3.1.5
+PyYAML==6.0.3
+playwright==1.46.0

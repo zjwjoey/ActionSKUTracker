@@ -39,3 +39,5 @@ python -m action_tracker review-queue decide --review-id <id> --decision APPROVE
 会自动转为 `RESOLVED`（保留审计行、从待办中消失），也不会重新生成同一问题；
 拒绝项只保留 `REJECTED` 审计状态。`SOURCE_DAMAGED` 等
 官网事实问题不会被人工中文覆盖，必须等待可信西语证据恢复后才会自然消失。
+
+Review Queue 的稳定 ID、去重和状态迁移在 CI 中使用临时队列验证；CI 不读取或修改本机正式审核队列。

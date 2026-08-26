@@ -36,3 +36,5 @@ python -m action_tracker review-queue decide --review-id <id> --decision APPROVE
 `--term-type` 覆盖候选的保守默认值 `general`。当前正式术语表尚未引入类目 scope：
 候选先保留类目分布证据，scope/category 扩展需单独做 schema 迁移，不能在本阶段
 静默改变既有词的适用范围。
+
+候选提取的回归测试可在 CI 中运行，但 CI 不从真实运行区提取候选，也不会自动晋升或写入正式术语字典。
