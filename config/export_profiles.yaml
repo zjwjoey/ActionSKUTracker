@@ -1,0 +1,145 @@
+# 正式导出 Profile 的机器可读契约。STEP 1 仅定义，不包含任何执行逻辑。
+schema_version: 1
+output_root: runtime/exports
+
+source_policy:
+  allowed_qa_states: [PASS, PASS_PRESENCE_ONLY]
+  required_commit_status: FULL_COMMIT
+  current_source: master_current
+  historical_source: formal_snapshot
+  reject_dry_run: true
+  reject_uncommitted_or_failed_runs: true
+  no_network_access: true
+  stable_sort: sku_numeric_then_text
+  canonical_source_hash: sha256_of_stably_serialized_selected_records
+
+workbook_format:
+  sheet_name: 商品全量
+  include_explanation_sheet: false
+  auto_filter: true
+  freeze_panes: A2
+  header:
+    bold: true
+    fill: "1F4E78"
+    font_color: "FFFFFF"
+  body:
+    vertical_alignment: top
+    wrap_text_columns: [标题, 分类1, 分类2, 规格, 描述, 产品详情, 备注]
+    max_row_height: 405
+  sku:
+    data_type: text
+  price:
+    data_type: number
+    number_format: "€#,##0.00"
+  hyperlinks: [图片链接, 商品链接]
+  hyperlink_display_text:
+    图片链接: 查看图片
+    商品链接: 查看商品
+  embedded_images: false
+
+common_columns:
+  - id: image_placeholder
+    header: 图片
+    data_type: blank
+    rule: always_blank_for_no_images_profile
+  - id: sku
+    header: 编号
+    data_type: text
+    owner: master_fact
+  - id: title
+    header: 标题
+    data_type: text
+  - id: category_1
+    header: 分类1
+    data_type: text
+  - id: category_2
+    header: 分类2
+    data_type: text
+  - id: specification
+    header: 规格
+    data_type: text
+  - id: current_price
+    header: 折后价
+    data_type: number
+    owner: master_fact
+    semantic: current_price_not_promotion_proof
+  - id: original_price
+    header: 原价
+    data_type: number_or_blank
+    owner: master_fact
+    display_when: original_price_gt_current_price
+  - id: unit_price
+    header: 单价
+    data_type: text
+  - id: description
+    header: 描述
+    data_type: text_or_blank
+  - id: product_details
+    header: 产品详情
+    data_type: text_or_blank
+  - id: image_url
+    header: 图片链接
+    data_type: url_or_blank
+    owner: master_fact
+  - id: product_url
+    header: 商品链接
+    data_type: url
+    owner: master_fact
+  - id: remarks
+    header: 备注
+    data_type: text_or_blank
+
+profiles:
+  full_es_no_images:
+    profile_version: 1
+    implementation_status: implemented
+    language: es
+    filename_pattern: "{date_compact}Action商品全量_西班牙语版_不带图.xlsx"
+    include_embedded_images: false
+    field_sources:
+      title: master.name_es
+      category_1: master.cat1_es
+      category_2: master.cat2_es
+      specification: master.spec_es
+      unit_price: master.unit_price
+      description: master.desc_es
+      product_details: master.details_es
+      remarks: lifecycle_status_and_official_tags_es
+
+  full_zh_no_images:
+    profile_version: 1
+    implementation_status: implemented
+    language: zh
+    filename_pattern: "{date_compact}Action商品全量_中文版_不带图.xlsx"
+    include_embedded_images: false
+    derived_field_priority:
+      - manual_field_override
+      - valid_product_dictionary_value
+      - formal_brand_category_term_dictionary
+      - source_hash_valid_model_translation
+      - spanish_fallback_with_review_marker
+    field_sources:
+      title: dictionary.name_zh_standard
+      category_1: dictionary.cat1_zh
+      category_2: dictionary.cat2_zh
+      specification: dictionary.spec_zh_standard
+      unit_price: term_dictionary_normalized_master.unit_price
+      description: master.desc_zh_or_spanish_fallback
+      product_details: master.details_zh_or_spanish_fallback
+      remarks: lifecycle_status_official_tags_zh_and_fallback_markers
+
+  full_es_with_images:
+    profile_version: 1
+    implementation_status: defined_not_implemented
+    language: es
+    filename_pattern: "{date_compact}Action商品全量_西班牙语版_带图.xlsx"
+    include_embedded_images: true
+    image_rule: existing_local_250x250_white_background_only
+
+  full_zh_with_images:
+    profile_version: 1
+    implementation_status: defined_not_implemented
+    language: zh
+    filename_pattern: "{date_compact}Action商品全量_中文版_带图.xlsx"
+    include_embedded_images: true
+    image_rule: existing_local_250x250_white_background_only

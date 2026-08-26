@@ -39,7 +39,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("status", help="查看项目状态")
     q = sub.add_parser("qa", help="重跑 QA（基于最近 snapshot）")
-    e = sub.add_parser("export", help="导出（阶段一未启用）")
+    e = sub.add_parser("export", help="导出已正式提交的商品清单")
+    e.add_argument("--lang", choices=("es", "zh"), required=True, help="导出语言")
+    e.add_argument("--no-images", action="store_true", required=True, help="当前仅支持不嵌图的导出")
+    e.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
+    e.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
     return p
 
 
@@ -89,7 +93,16 @@ def main(argv=None) -> int:
     if args.command == "qa":
         return _qa(cfg)
     if args.command == "export":
-        print("阶段一：export 未启用")
+        from .exporting.service import ExportValidationError, export_catalog
+        try:
+            result = export_catalog(
+                cfg, language=args.lang, export_date=args.date,
+                no_images=args.no_images, run_id=args.run_id,
+            )
+        except ExportValidationError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
         return 0
     return 0
 
