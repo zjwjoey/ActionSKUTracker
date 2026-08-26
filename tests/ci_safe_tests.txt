@@ -1,0 +1,22 @@
+# Explicit CI-safe test allowlist.
+# Add a test module only after verifying that it uses fixtures/mocks and has no
+# website, browser, production runtime, image, or model-network side effects.
+tests/test_april_archive.py
+tests/test_badges.py
+tests/test_collection_resilience.py
+tests/test_current_sheet_semantics.py
+tests/test_database_schema.py
+tests/test_detail_retry_apply.py
+tests/test_dictionary.py
+tests/test_dictionary_baseline.py
+tests/test_dictionary_pipeline.py
+tests/test_lifecycle.py
+tests/test_lifecycle_state.py
+tests/test_long_term_master.py
+tests/test_master_structure.py
+tests/test_observation_validity.py
+tests/test_p0_runtime.py
+tests/test_price.py
+tests/test_qa.py
+tests/test_translation.py
+tests/test_writer.py

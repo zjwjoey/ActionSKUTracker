@@ -67,12 +67,12 @@ Git 当前已发布字典基线：
 - STEP 6：`term-candidates --run-id` 术语候选；
 - 相关导出、审核队列、术语候选测试。
 
-2026-08-26 在当前本地工作区执行完整测试：`194 passed`。
+2026-08-26 在当前本地工作区执行完整测试：`194 passed`；干净提交 `739dd89` 的基线为 `170 passed`。
 
 ### CI 状态
 
 - 已新增轻量 GitHub Actions 工作流：`.github/workflows/ci.yml`。
-- 工作流固定使用 Python 3.12，安装 `requirements-dev.txt`，执行 `python -m pytest -q tests`。
+- 工作流固定使用 Python 3.12，安装 `requirements-dev.txt`，按 `tests/ci_safe_tests.txt` 白名单执行测试；干净提交副本已验证 `170 passed`。
 - 当前测试已按行为核对为 CI-safe：使用临时目录和模拟数据，不访问官网、不安装浏览器、不写入生产 Master/State/Dictionary。
 - CI 是代码回归门禁，不替代本地真实采集、QA、正式提交或导出预览。
 
@@ -137,7 +137,7 @@ Template 1 目前只有文档契约，尚未完成三表合一、历史列更新
 5. README/主文档完成后仍需代码、配置、测试交叉核对；
 6. 正式上线前必须执行历史数据 dry-run、真实完整 run、QA PASS 和 export preview；
 7. 图片下载模块继续独立，Export 只能消费已经存在的本地图片。
-8. CI 工作流和依赖声明需要与本轮文档一起独立提交；通过 CI 后仍需本地真实流程验收。
+8. CI 工作流、依赖声明和安全测试白名单已提交；首轮 GitHub Runner 结果仍需以远端实际运行记录为准，通过 CI 后仍需本地真实流程验收。
 
 ## 9. 下一步
 

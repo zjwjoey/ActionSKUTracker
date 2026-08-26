@@ -106,12 +106,12 @@
 
 ## 5. STEP 8：整合、回归与上线
 
-### 5.0 轻量 CI（已实现本地文件，待本轮独立提交）
+### 5.0 轻量 CI（已提交，首轮远端验证待完成）
 
-- `.github/workflows/ci.yml` 在 push/PR 时运行 Python 3.12 的 CI-safe 测试；
+- `.github/workflows/ci.yml` 在 push/PR 时按 `tests/ci_safe_tests.txt` 白名单运行 Python 3.12 的 CI-safe 测试；
 - 依赖固定在 `requirements.txt` 与 `requirements-dev.txt`；
 - CI 不访问官网、不安装浏览器、不写 Master/State/Dictionary、不下载图片、不发布基线；
-- 当前本地 CI 模拟结果为 `194 passed`；CI 绿灯仍不能替代真实 daily-run 和 QA。
+- 当前本地工作区为 `194 passed`，干净提交基线为 `170 passed`；CI 绿灯仍不能替代真实 daily-run 和 QA。
 
 ### 5.1 文档
 
