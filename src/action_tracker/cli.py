@@ -44,6 +44,9 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--no-images", action="store_true", required=True, help="当前仅支持不嵌图的导出")
     e.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     e.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
+    t = sub.add_parser("export-template1", help="导出 Template 1 三表版本")
+    t.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
+    t.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
     return p
 
 
@@ -100,6 +103,15 @@ def main(argv=None) -> int:
                 no_images=args.no_images, run_id=args.run_id,
             )
         except ExportValidationError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "export-template1":
+        from .exporting.template1_service import export_template1
+        try:
+            result = export_template1(cfg, export_date=args.date, run_id=args.run_id)
+        except (ValueError, OSError) as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False))

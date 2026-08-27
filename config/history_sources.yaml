@@ -1,0 +1,61 @@
+# 历史 Presence 的唯一事实来源。每增加一期，只增加一项；禁止由 first_seen/
+# last_seen 或商品字典反推某一期的在售状态。F:\按日期整理 仅只读。
+seed:
+  path: "D:/Users/Administrator/Desktop/Action商品上下架明细 26.08.24.xlsx"
+  sheet: "ACTION商品上下架明细"
+  sku_header: "编号"
+  fields:
+    name_zh: "中文品名"
+    image_url: "图片链接"
+    product_url: "商品链接"
+sources:
+  - date: "2026-01-09"
+    path: "F:/按日期整理/20260109/20260109Action商品全量_西语版_不带图.xlsx"
+    sheet: "数据"
+    sku_header: "编号"
+    fields: {name_es: "标题", cat1_es: "分类1", cat2_es: "分类2", spec_es: "规格", product_url: "商品链接"}
+  - date: "2026-04-05"
+    path: "F:/按日期整理/20260405/20260405Action商品全量_西语版_不带图.xlsx"
+    sheet: "Sheet1"
+    sku_header: "Product ID"
+    fields: {name_es: "Nombre del producto", cat1_es: "Categoria", spec_es: "Especificación"}
+  - date: "2026-07-01"
+    path: "F:/按日期整理/20260701/20260701Action商品全量_西语版_不带图.xlsx"
+    sheet: "格式化模板"
+    sku_header: "编号"
+    fields: {name_es: "西语品名", cat1_es: "分类1", cat2_es: "分类2", spec_es: "规格", product_url: "商品链接"}
+  - date: "2026-07-06"
+    path: "F:/按日期整理/20260706/20260706Action商品全量_西语版_不带图.xlsx"
+    sheet: "Action ES 商品"
+    sku_header: "编号"
+    fields: {name_es: "标题（商品名）", cat1_es: "分类1（一级类目）", cat2_es: "分类2（二级类目）", spec_es: "规格", product_url: "商品链接"}
+  - date: "2026-07-13"
+    path: "F:/按日期整理/20260713/20260713Action商品全量_西语版_不带图.xlsx"
+    sheet: "商品全量"
+    sku_header: "编号"
+    fields: {name_es: "标题", cat1_es: "分类1", cat2_es: "分类2", spec_es: "规格", product_url: "商品链接"}
+  - date: "2026-07-20"
+    path: "F:/按日期整理/20260720/20260720Action商品全量_西语版_不带图.xlsx"
+    sheet: "商品全量"
+    sku_header: "编号"
+    fields: {name_es: "标题", cat1_es: "分类1", cat2_es: "分类2", spec_es: "规格", product_url: "商品链接"}
+  - date: "2026-07-27"
+    path: "F:/按日期整理/20260727/20260727Action商品全量_西语版_不带图.xlsx"
+    sheet: "商品全量"
+    sku_header: "编号"
+    fields: {name_es: "西班牙语品名", cat1_es: "一级类目", cat2_es: "二级类目", spec_es: "规格", product_url: "商品链接"}
+  - date: "2026-08-02"
+    path: "F:/按日期整理/20260802/20260802Action商品全量_西语版_不带图.xlsx"
+    sheet: "products_current"
+    sku_header: "编号"
+    fields: {name_es: "西班牙语品名", cat1_es: "一级类目", cat2_es: "二级类目", spec_es: "规格", product_url: "商品链接"}
+  - date: "2026-08-10"
+    path: "F:/按日期整理/20260810/20260810Action商品全量_西语版_不带图.xlsx"
+    sheet: "productos"
+    sku_header: "编号"
+    fields: {name_es: "品名", cat1_es: "一级类目", cat2_es: "二级类目", spec_es: "规格", product_url: "商品链接"}
+  - date: "2026-08-24"
+    path: "F:/按日期整理/20260824/20260824Action商品全量_西班牙语版_不带图.xlsx"
+    sheet: "商品全量"
+    sku_header: "编号"
+    fields: {name_es: "标题（西语）", cat1_es: "分类1（西语）", cat2_es: "分类2（西语）", spec_es: "规格（西语）", product_url: "商品链接"}
