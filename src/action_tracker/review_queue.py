@@ -389,7 +389,7 @@ def decide_review(
             _upsert_brand(cfg, value)
             _upsert_product_override(cfg, sku=row["sku"], field="brand_id", value=value, reason=f"review_id={review_id}")
             route = "brand_dictionary+manual_overrides"
-        elif row["issue_type"] in {"NAME_REVIEW", "CATEGORY_REVIEW"}:
+        elif row["issue_type"] in {"NAME_REVIEW", "SPEC_REVIEW", "CATEGORY_REVIEW"}:
             if not value or not row["sku"]:
                 raise ReviewQueueError("PRODUCT_APPROVAL_REQUIRES_SKU_AND_VALUE")
             _upsert_product_override(cfg, sku=row["sku"], field=row["field"], value=value, reason=f"review_id={review_id}")

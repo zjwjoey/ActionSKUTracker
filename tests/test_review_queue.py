@@ -81,6 +81,29 @@ def test_approved_name_review_writes_field_level_override(tmp_path):
     assert load_queue(cfg)["review-name"]["status"] == "APPROVED"
 
 
+def test_approved_spec_review_writes_field_level_override(tmp_path):
+    cfg = _cfg(tmp_path)
+    _header(cfg["paths"]["dictionary"] / "product_dictionary.csv", [
+        "sku", "canonical_id", "name_es_raw", "name_zh_standard", "brand_id", "cat1_es", "cat2_es", "cat1_zh", "cat2_zh",
+        "spec_es_raw", "spec_zh_standard", "source_hash", "translation_status", "review_status", "locked", "source_first_seen", "source_last_seen", "updated_at", "notes",
+    ])
+    with (cfg["paths"]["dictionary"] / "product_dictionary.csv").open("a", encoding="utf-8", newline="") as fh:
+        csv.writer(fh).writerow(["1001"] + [""] * 18)
+    _header(cfg["paths"]["dictionary"] / "manual_overrides.csv", OVERRIDE_HEADERS)
+    _write_queue(cfg, [{
+        "review_id": "review-spec", "issue_type": "SPEC_REVIEW", "sku": "1001", "field": "spec_zh_standard",
+        "current_value": "", "suggested_value": "", "evidence": "西语规格", "reason": "人工确认",
+        "created_at": "2026-08-25T00:00:00+00:00", "status": "PENDING", "source": "TEST",
+        "updated_at": "2026-08-25T00:00:00+00:00", "resolution": "",
+    }])
+    result = decide_review(cfg, review_id="review-spec", decision="APPROVED", value="40支装")
+    assert result["route"] == "manual_overrides"
+    rows = list(csv.DictReader((cfg["paths"]["dictionary"] / "manual_overrides.csv").open(encoding="utf-8-sig")))
+    assert rows[0]["field"] == "spec_zh_standard"
+    assert rows[0]["value"] == "40支装"
+    assert load_queue(cfg)["review-spec"]["status"] == "APPROVED"
+
+
 def test_rejected_review_does_not_write_dictionary(tmp_path):
     cfg = _cfg(tmp_path)
     _header(cfg["paths"]["dictionary"] / "manual_overrides.csv", OVERRIDE_HEADERS)

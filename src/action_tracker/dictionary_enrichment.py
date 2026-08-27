@@ -249,7 +249,9 @@ def enrich_dictionary(cfg: dict[str, Any], *, run_id: str) -> dict[str, Any]:
         {"sku": sku, "reasons": "|".join(sorted(candidates[sku])), "source_hash": _fact_hash(records[sku], by_sku.get(sku))}
         for sku in candidate_skus
     ]
-    effective_candidate_rows = [updated_by_sku.get(sku, by_sku[sku]) for sku in candidate_skus]
+    # Missing baseline SKUs are valid NEW candidates; avoid evaluating a
+    # dictionary lookup used as the ``get`` default for those rows.
+    effective_candidate_rows = [updated_by_sku.get(sku) or by_sku.get(sku, {}) for sku in candidate_skus]
     review_reasons = _candidate_review_reasons(effective_candidate_rows)
     for filename, headers, rows in (
         ("selected_skus.csv", ["sku", "reasons", "source_hash"], selected_rows),
