@@ -6,7 +6,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from action_tracker.dictionary_apply import DictionaryApplyError, _gate_errors, _preview_rows, dictionary_apply
+from action_tracker.dictionary import DICTIONARY_BASELINE_FILENAMES
+import action_tracker.dictionary_apply as dictionary_apply_module
+from action_tracker.dictionary_apply import (
+    DictionaryApplyError, _commit_allowlisted, _dictionary_binding_is_valid, _gate_errors, _load_apply_master_records,
+    _preview_rows, dictionary_apply,
+)
 from action_tracker.dictionary_resolver import FieldResolution, RecordResolution
 
 from test_exporting import _cfg, _record, _run_log, _write_dictionary, _write_master, _write_snapshot
@@ -35,6 +40,13 @@ def test_dictionary_apply_dry_run_writes_preview_without_changing_master(tmp_pat
 def test_dictionary_apply_formal_write_is_blocked(tmp_path):
     cfg = _cfg(tmp_path)
     with pytest.raises(DictionaryApplyError, match="PRODUCTION_DICTIONARY_APPLY_DISABLED"):
+        dictionary_apply(cfg, run_id="2026-08-26_130145", dry_run=False)
+
+
+def test_production_string_false_is_rejected_not_treated_as_truthy(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg["dictionary_apply"] = {"production_enabled": "false"}
+    with pytest.raises(DictionaryApplyError, match="PRODUCTION_DICTIONARY_APPLY_CONFIG_INVALID"):
         dictionary_apply(cfg, run_id="2026-08-26_130145", dry_run=False)
 
 
@@ -85,3 +97,72 @@ def test_apply_gate_rejects_non_formal_or_failed_qa_before_write(tmp_path):
     errors = _gate_errors(cfg, source, [], object(), {}, before)
     assert "QA_NOT_PASS" in errors
     assert hashlib.sha256(cfg["paths"]["master"].read_bytes()).hexdigest() == before
+
+
+def test_dictionary_binding_requires_baseline_and_selected_file_hashes(tmp_path):
+    cfg = _cfg(tmp_path)
+    record = _record("1001")
+    _write_dictionary(cfg["paths"]["dictionary_baseline"], record)
+    entries = {}
+    for filename in DICTIONARY_BASELINE_FILENAMES:
+        payload = (cfg["paths"]["dictionary_baseline"] / filename).read_bytes()
+        entries[filename] = {"sha256": hashlib.sha256(payload).hexdigest()}
+    (cfg["paths"]["dictionary_baseline"] / "baseline_manifest.json").write_text(json.dumps({"files": entries}), encoding="utf-8")
+    import shutil
+    shutil.copytree(cfg["paths"]["dictionary_baseline"], cfg["paths"]["dictionary"])
+    context = SimpleNamespace(directory=cfg["paths"]["dictionary"])
+    assert _dictionary_binding_is_valid(cfg, context)
+    with (cfg["paths"]["dictionary"] / "product_dictionary.csv").open("a", encoding="utf-8") as handle:
+        handle.write("tampered\n")
+    assert not _dictionary_binding_is_valid(cfg, context)
+
+
+def test_apply_master_reader_rejects_duplicate_sku(tmp_path):
+    cfg = _cfg(tmp_path)
+    record = _record("1001")
+    _write_master(cfg["paths"]["master"], [], [record])
+    import openpyxl
+    wb = openpyxl.load_workbook(cfg["paths"]["master"])
+    for sheet in ("01_SKU_ZH_CURRENT", "02_SKU_ES_CURRENT"):
+        ws = wb[sheet]
+        ws.append([cell.value for cell in ws[2]])
+    wb.save(cfg["paths"]["master"])
+    wb.close()
+    with pytest.raises(DictionaryApplyError, match="MASTER_DUPLICATE_SKU"):
+        _load_apply_master_records(cfg["paths"]["master"])
+
+
+def test_post_commit_validation_failure_restores_exact_backup(tmp_path, monkeypatch):
+    """一旦替换后验证失败，字典 Apply 必须恢复替换前的原始 Master。"""
+    cfg = _cfg(tmp_path)
+    cfg["paths"]["backups"] = tmp_path / "backups"
+    cfg["paths"]["temp"] = tmp_path / "temp"
+    record = _record("1001")
+    _write_master(cfg["paths"]["master"], [], [record])
+    import openpyxl
+    wb = openpyxl.load_workbook(cfg["paths"]["master"])
+    for sheet in ("03_PRICE_HISTORY", "04_EVENT_HISTORY", "06_REVIEW_QUEUE"):
+        wb.create_sheet(sheet)
+    wb.save(cfg["paths"]["master"])
+    wb.close()
+    original = cfg["paths"]["master"].read_bytes()
+    master_records = _load_apply_master_records(cfg["paths"]["master"])
+    fields = {
+        field: FieldResolution("", "none", "READY")
+        for field in ("name", "cat1", "cat2", "spec", "description", "details")
+    }
+    resolution = RecordResolution("1001", fields, "MATCH", "OK", "AUTO_READY", (), "CONFIRMED")
+    real_assert = dictionary_apply_module._assert_master_safe
+    calls = {"count": 0}
+
+    def fail_only_after_replace(before, staged):
+        calls["count"] += 1
+        if calls["count"] == 2:
+            raise DictionaryApplyError("forced post-commit verification failure")
+        return real_assert(before, staged)
+
+    monkeypatch.setattr(dictionary_apply_module, "_assert_master_safe", fail_only_after_replace)
+    before_hash = hashlib.sha256(original).hexdigest()
+    with pytest.raises(DictionaryApplyError, match="POST_COMMIT_FAILURE_ROLLED_BACK"):
+        _commit_allowlisted(cfg, [record], [resolution], master_records, before_hash, "rollback-test")
+    assert cfg["paths"]["master"].read_bytes() == original

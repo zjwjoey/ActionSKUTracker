@@ -90,8 +90,10 @@ Export 是字典的只读消费者。中文版逐字段应用人工覆盖、商�
 写入 `runtime/dictionary/reports/`，不改 Master、State 或正式字典。
 
 `dictionary-apply --dry-run` 生成字段级 preview、`field_diff.csv`、审核清单和 hash manifest；
-正式 `--commit` 受 QA、FULL_COMMIT、审计、不可变事实、备份/锁/原子替换 Gate 保护，
-生产配置当前关闭，未通过门禁的数据不得进入生产。
+正式 `--commit` 受 QA、FULL_COMMIT、未过期审计、不可变事实、当前 SKU 集合、字典基线逐文件 SHA-256
+绑定、备份/锁/原子替换 Gate 保护。未知品牌或未知源质量绝不 AUTO_READY；正式 Apply 默认还拒绝
+PROVISIONAL 品牌。每次写入有唯一备份，替换后回读、hash 或 manifest 写入失败均须自动恢复备份并记录
+恢复状态。生产配置当前关闭，未通过门禁的数据不得进入生产。
 
 ## CI 边界
 

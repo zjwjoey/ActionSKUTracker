@@ -35,6 +35,10 @@ def _build_master(path: Path):
     ws3.append(["Canonical_ID", "SKU", "日期", "旧售价 (€)", "新售价 (€)", "变化类型"])
     ws4 = wb.create_sheet("04_EVENT_HISTORY")
     ws4.append(["Canonical_ID", "SKU", "日期", "事件类型", "旧值", "新值"])
+    ws5 = wb.create_sheet("05_RUN_LOG")
+    ws5.append(writer.RUN_LOG_HEADERS)
+    ws6 = wb.create_sheet("06_REVIEW_QUEUE")
+    ws6.append(writer.REVIEW_HEADERS)
     wb.save(path)
 
 
@@ -90,6 +94,18 @@ def test_t21_write_failure_keeps_master(tmp_path, monkeypatch):
     # 备份仍产生
     backups = list(cfg["paths"]["backups"].glob("Action_Master_*.xlsx"))
     assert backups, "应自动备份"
+
+
+def test_backup_names_are_unique_and_restore_is_atomic(tmp_path):
+    cfg = _cfg(tmp_path)
+    _build_master(cfg["paths"]["master"])
+    original = cfg["paths"]["master"].read_bytes()
+    first = writer._backup(cfg["paths"]["master"], cfg["paths"]["backups"])
+    second = writer._backup(cfg["paths"]["master"], cfg["paths"]["backups"])
+    assert first != second and first.read_bytes() == original and second.read_bytes() == original
+    cfg["paths"]["master"].write_bytes(b"broken")
+    writer.restore_master_from_backup(first, cfg["paths"]["master"])
+    assert cfg["paths"]["master"].read_bytes() == original
 
 
 # ---- 测试 20：重复运行同一 run -> 不重复增加 PRICE_HISTORY/EVENT_HISTORY ----

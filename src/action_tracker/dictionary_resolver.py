@@ -99,12 +99,13 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
             source = "brand_dictionary_provisional" if status == "READY" else "brand_dictionary"
             fields["brand"] = FieldResolution(brand_value, source, status)
 
-    source_quality = context.source_quality_by_sku.get(sku, "") or "OK"
+    raw_source_quality = context.source_quality_by_sku.get(sku, "") or "OK"
+    source_quality = raw_source_quality if raw_source_quality in {"OK", "SOURCE_DAMAGED", "SOURCE_POLLUTED"} else "SOURCE_UNTRUSTED"
     source_hash_status = "MATCH" if str(product.get("source_hash") or "") == source_hash and source_hash else "MISMATCH"
     reasons: list[str] = []
     if source_hash_status != "MATCH":
         reasons.append("SOURCE_HASH_CHANGED")
-    if source_quality in {"SOURCE_DAMAGED", "SOURCE_POLLUTED"}:
+    if source_quality in {"SOURCE_DAMAGED", "SOURCE_POLLUTED", "SOURCE_UNTRUSTED"}:
         reasons.append(source_quality)
     if str(product.get("review_status") or "").strip() == "NEEDS_REVIEW" or str(product.get("translation_status") or "").strip() == "NEEDS_REVIEW":
         reasons.append("NEEDS_REVIEW")
@@ -125,7 +126,7 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
     # readiness 只在关键中文派生字段（品名、规格）出现普通西语残留时阻断。
     if any(contains_unallowed_spanish(fields[key].value) for key in ("name", "spec")):
         reasons.append("SPANISH_RESIDUAL")
-    if source_quality in {"SOURCE_DAMAGED", "SOURCE_POLLUTED"}:
+    if source_quality in {"SOURCE_DAMAGED", "SOURCE_POLLUTED", "SOURCE_UNTRUSTED"}:
         readiness = "SOURCE_BLOCKED"
     else:
         mandatory_ok = (
@@ -135,6 +136,7 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
             and cat1 in FIXED_CAT1
             and fields["spec"].status in {"READY", "MISSING"}
             and fields["cat2"].status in {"READY", "MISSING"}
+            and fields["brand"].status == "READY"
             and not any(reason in reasons for reason in ("NEEDS_REVIEW", "UNCONFIRMED_PRODUCT_DICTIONARY", "SPANISH_RESIDUAL"))
         )
         readiness = "AUTO_READY" if mandatory_ok else "REVIEW_REQUIRED"

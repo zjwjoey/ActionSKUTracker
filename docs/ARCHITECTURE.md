@@ -127,10 +127,12 @@ Detail 不是主 Presence 链的一部分：
 日常增量只处理 NEW、source hash 变化和 NEEDS_REVIEW。字典不决定价格、Presence 或生命周期。
 
 解析与应用保持在主链之外：正式 Observation 通过后，`dictionary_resolver.py` 逐字段解析
-并给出 `AUTO_READY`、`REVIEW_REQUIRED` 或 `SOURCE_BLOCKED`；`dictionary-coverage` 只读
-统计，`dictionary-apply --dry-run` 只产出 preview、field_diff 和 manifest；正式 `--commit`
-已有独立 QA/FULL_COMMIT/Audit、不可变事实和并发 hash Gate，但生产配置仍关闭，因此当前不允许该层直接写入
-Master，避免字典异常影响 Presence 权威结果。
+并给出 `AUTO_READY`、`REVIEW_REQUIRED` 或 `SOURCE_BLOCKED`；未知品牌和未识别源质量一律不能
+AUTO_READY。`dictionary-coverage` 只读统计，`dictionary-apply --dry-run` 只产出 preview、field_diff
+和 manifest；正式 `--commit` 还要求 QA/FULL_COMMIT、未过期审计、基线与选中字典的逐文件 SHA-256
+绑定、不可变事实和并发 hash Gate。写入采用唯一备份、暂存验证、原子替换和替换后回读；后续任一校验
+失败即恢复备份并在 manifest 记录恢复状态。生产配置仍关闭，因此当前不允许该层直接写入 Master，避免
+字典异常影响 Presence 权威结果。
 
 ## 9. Export
 

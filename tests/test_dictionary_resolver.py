@@ -79,3 +79,22 @@ def test_provisional_brand_is_explicit_and_policy_controls_promotion():
     strict_result = resolve_record(record, strict)
     assert strict_result.fields["brand"].status == "REVIEW"
     assert "BRAND_CANDIDATE" in strict_result.review_reasons
+
+
+def test_unknown_brand_cannot_be_auto_ready():
+    record = _record()
+    source_hash = product_source_hash({"name_es_raw": "Caja", "cat1_es": "Hogar", "cat2_es": "", "spec_es_raw": "2 unidades"})
+    product = {"1001": {"name_zh_standard": "盒子", "spec_zh_standard": "2件", "cat1_zh": "家务清洁", "source_hash": source_hash, "translation_status": "HUMAN_REVIEWED", "brand_id": "UnknownBrand"}}
+    result = resolve_record(record, _context(product=product))
+    assert result.brand_classification == "UNKNOWN"
+    assert result.fields["brand"].status == "REVIEW"
+    assert result.readiness == "REVIEW_REQUIRED"
+
+
+def test_unknown_source_quality_fails_closed_as_source_blocked():
+    record = _record()
+    source_hash = product_source_hash({"name_es_raw": "Caja", "cat1_es": "Hogar", "cat2_es": "", "spec_es_raw": "2 unidades"})
+    product = {"1001": {"name_zh_standard": "盒子", "spec_zh_standard": "2件", "cat1_zh": "家务清洁", "source_hash": source_hash, "translation_status": "HUMAN_REVIEWED"}}
+    result = resolve_record(record, _context(product=product, quality={"1001": "UNRECOGNISED"}))
+    assert result.readiness == "SOURCE_BLOCKED"
+    assert "SOURCE_UNTRUSTED" in result.review_reasons

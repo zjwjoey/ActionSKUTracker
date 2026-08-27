@@ -52,16 +52,17 @@ QA 通过且非 dry-run 才能写入 Master/State。SQLite 仍冻结，不参与
   匹配且质量为 OK 时可用；普通西语残留会进入审核。
 - `dictionary-coverage`：只读统计 CURRENT，不修改 Master、State 或字典。
 - `dictionary-apply --dry-run`：生成 `apply_preview.csv`、`field_diff.csv`、`review_required.csv`、
-  `apply_manifest.json`；真实 run 当前为 AUTO_READY 5,413、71 个审核 SKU、7 个源阻断。
+  `apply_manifest.json`；2026-08-26 真实 run 在严格未知品牌门禁后为 AUTO_READY 5,410、74 个审核 SKU、7 个源阻断。
 - `dictionary-enrich`：只选择 NEW、source_hash 变化和 NEEDS_REVIEW，不访问官网、不调用模型。
 - `review-queue build/decide`：稳定 review_id 去重，批准后按问题类型写入正确知识层；
   拒绝保留审计状态，已解决问题转 RESOLVED。
 - `term-candidates`：从增量 SKU 统计术语、频次、覆盖 SKU、类目分布、上下文和来源日期；
   候选永不自动晋升，只有人工 APPROVED 才写入正式术语字典。
 
-Dictionary Apply Gate 已实现，正式 Master 写入仍由 `dictionary_apply.production_enabled=false`
-明确关闭。Gate 会校验 QA/FULL_COMMIT、审计、Resolver、CURRENT 集合、并发 hash、字段白名单、
-备份/锁、暂存验证和原子替换；当前 full dry-run 的不可变事实变化为 0。
+Dictionary Apply Gate 已实现，正式 Master 写入仍由 YAML 布尔值
+`dictionary_apply.production_enabled=false` 明确关闭。Gate 会校验 QA/FULL_COMMIT、未过期审计、
+Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash、字段白名单、唯一备份/锁、暂存验证、
+原子替换和替换后回读；任何后续校验异常均恢复备份并记录 manifest 状态。当前 full dry-run 的不可变事实变化为 0。
 
 ## 5. Export 状态
 
@@ -71,14 +72,14 @@ Dictionary Apply Gate 已实现，正式 Master 写入仍由 `dictionary_apply.p
 
 ## 6. 测试与 CI
 
-当前完整回归：`217 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+当前完整回归：`224 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
 
 ## 7. 未完成/风险
 
 1. Dictionary Apply 正式写 Master 尚未启用；Gate 已完整实现，但生产配置仍关闭。
-2. 71 个 Review Required 和 7 个 Source Blocked 需要人工/可信西语证据处理；已分别生成
+2. 74 个 Review Required 和 7 个 Source Blocked 需要人工/可信西语证据处理；已分别生成
    `review_closure_report.csv` 与 `source_blocked_review.csv`，不使用中文反推西语。
 3. 术语 scope、图片下载与带图 Export、export-history 独立功能尚未进入生产主链。
 4. 工作区仍有此前 Template 1 与字典功能的待提交改动，提交时必须按功能拆分，不能混入

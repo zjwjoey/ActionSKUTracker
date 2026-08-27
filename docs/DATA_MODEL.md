@@ -100,8 +100,9 @@ SKU 主键，保存标准中文字段、对应西语来源、source hash、状�
 品牌标准名、别名、确认状态和证据。品牌可以保留原文，不进行机械翻译。
 
 Resolver 对品牌另存运行时分类：`CONFIRMED`（人工确认或证据明确）、`PROVISIONAL`
-（字典存在但尚未完成人工确认）和 `UNKNOWN`（没有可信字典项）。只有配置明确允许
-`PROVISIONAL` 时它才可参与 AUTO_READY；UNKNOWN 必须进入审核。
+（字典存在但尚未完成人工确认）和 `UNKNOWN`（没有可信字典项）。`UNKNOWN` 必须进入审核，
+不得 AUTO_READY；`PROVISIONAL` 是否可用于普通覆盖率由显式布尔配置控制，但正式 Apply 默认
+要求 `CONFIRMED`。
 
 ### category_dictionary.csv
 
@@ -161,8 +162,10 @@ Template 1 的字段契约见 `EXPORT_PROFILE.md`。ES/ZH 必须共享同一正�
 
 Dictionary Apply 的 `field_diff.csv` 只允许 `name_zh、cat1_zh、cat2_zh、spec_zh、desc_zh、details_zh`。
 Apply manifest 记录 Master 前后 hash、字典/基线 hash、Resolver 计数、逐字段变化统计和
-`immutable_fact_change_count`；后者必须为 0。生产写入还必须经过 QA/FULL_COMMIT、Audit、锁、备份、
-暂存验证和原子替换，当前由配置关闭。
+`immutable_fact_change_count`；后者必须为 0。正式写入前会把选中的字典文件和
+`baseline_manifest.json` 的逐文件 SHA-256 绑定核验；manifest 还记录 `commit_state`、唯一
+`backup_path` 与 `rollback_status`。生产写入必须经过 QA/FULL_COMMIT、Audit、锁、备份、暂存验证、
+原子替换及替换后回读；替换后校验或 manifest 落盘失败必须恢复已验证备份。当前由配置关闭。
 
 ## 9. 历史 Presence
 

@@ -11,6 +11,7 @@ import datetime as dt
 import logging
 import os
 import shutil
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -59,9 +60,11 @@ SOURCE_SCHEMA_HEADERS = [
 
 def _backup(master: Path, backups_dir: Path) -> Path:
     backups_dir.mkdir(parents=True, exist_ok=True)
-    stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-    target = backups_dir / f"Action_Master_{stamp}.xlsx"
+    stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    target = backups_dir / f"Action_Master_{stamp}_{uuid.uuid4().hex}.xlsx"
     shutil.copy2(master, target)
+    if not target.exists() or target.stat().st_size != master.stat().st_size:
+        raise RuntimeError(f"MASTER_BACKUP_VERIFICATION_FAILED: {target}")
     log.info("已备份 Master -> %s", target)
     return target
 
@@ -290,55 +293,79 @@ def stage_master(
     event_events: list[dict],
     run_log_row: dict | None = None,
     review_rows: list[dict] | None = None,
-) -> Path:
+    return_backup: bool = False,
+) -> Path | tuple[Path, Path]:
     """暂存新的 Master 到 temp：备份 → 复制 → 更新 → 保存 → 完整验证。
 
     返回已就绪的 temp 路径（尚未替换正式文件），供"Master + 状态文件一起
     先生成再统一提交"使用。只有 commit_master 才会替换正式 Master。
+    ``return_backup=True`` 时同时返回本次已验证的备份路径，供调用方在
+    替换后校验失败时执行确定性恢复。
     """
     master: Path = cfg["paths"]["master"]
     if not master.exists():
         raise FileNotFoundError(f"Master 不存在: {master}")
 
-    _backup(master, cfg["paths"]["backups"])
+    backup = _backup(master, cfg["paths"]["backups"])
     tmp: Path = cfg["paths"]["temp"] / master.name
     tmp.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(master, tmp)
+    try:
+        shutil.copy2(master, tmp)
 
-    wb = openpyxl.load_workbook(tmp)
-    # 迁移旧版 05/06 审计表（幂等），为新 05/06 腾出表名
-    _migrate_legacy_sheets(wb, cfg)
+        wb = openpyxl.load_workbook(tmp)
+        try:
+            # 迁移旧版 05/06 审计表（幂等），为新 05/06 腾出表名
+            _migrate_legacy_sheets(wb, cfg)
 
-    # 01 / 02 更新
-    n_zh = _update_or_append_current(wb, "01_SKU_ZH_CURRENT", ZH_MAP, updated_records, set(ZH_MAP.values()))
-    n_es = _update_or_append_current(wb, "02_SKU_ES_CURRENT", ES_MAP, updated_records, set(ES_MAP.values()))
-    log.info("01 更新 %d 行, 02 更新 %d 行", n_zh, n_es)
-    _refresh_long_term_catalog(wb)
+            # 01 / 02 更新
+            n_zh = _update_or_append_current(wb, "01_SKU_ZH_CURRENT", ZH_MAP, updated_records, set(ZH_MAP.values()))
+            n_es = _update_or_append_current(wb, "02_SKU_ES_CURRENT", ES_MAP, updated_records, set(ES_MAP.values()))
+            log.info("01 更新 %d 行, 02 更新 %d 行", n_zh, n_es)
+            _refresh_long_term_catalog(wb)
 
-    # 03 / 04 追加（表头用常量，行 dict 的 key 与之对齐）
-    _append_rows(wb, "03_PRICE_HISTORY", price_events, PRICE_HISTORY_HEADERS)
-    _append_rows(wb, "04_EVENT_HISTORY", event_events, EVENT_HISTORY_HEADERS)
+            # 03 / 04 追加（表头用常量，行 dict 的 key 与之对应）
+            _append_rows(wb, "03_PRICE_HISTORY", price_events, PRICE_HISTORY_HEADERS)
+            _append_rows(wb, "04_EVENT_HISTORY", event_events, EVENT_HISTORY_HEADERS)
 
-    # 05_RUN_LOG / 06_REVIEW_QUEUE（规范 §十；不存在则创建，无行也要有表）
-    _ensure_sheet(wb, "05_RUN_LOG", RUN_LOG_HEADERS)
-    if run_log_row:
-        _append_rows(wb, "05_RUN_LOG", [run_log_row], RUN_LOG_HEADERS)
-    _ensure_sheet(wb, "06_REVIEW_QUEUE", REVIEW_HEADERS)
-    if review_rows:
-        _append_rows(wb, "06_REVIEW_QUEUE", review_rows, REVIEW_HEADERS)
+            # 05_RUN_LOG / 06_REVIEW_QUEUE（规范 §十；不存在则创建，无行也要有表）
+            _ensure_sheet(wb, "05_RUN_LOG", RUN_LOG_HEADERS)
+            if run_log_row:
+                _append_rows(wb, "05_RUN_LOG", [run_log_row], RUN_LOG_HEADERS)
+            _ensure_sheet(wb, "06_REVIEW_QUEUE", REVIEW_HEADERS)
+            if review_rows:
+                _append_rows(wb, "06_REVIEW_QUEUE", review_rows, REVIEW_HEADERS)
 
-    wb.save(tmp)
-    wb.close()
+            wb.save(tmp)
+        finally:
+            wb.close()
 
-    # 完整验证
-    _validate(tmp)
-    return tmp
+        # 完整验证
+        _validate(tmp)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+    return (tmp, backup) if return_backup else tmp
 
 
 def commit_master(tmp: Path, master: Path) -> Path:
     """原子替换正式 Master（tmp 必须已通过 _validate）。"""
     os.replace(tmp, master)
     log.info("正式 Master 已更新: %s", master)
+    return master
+
+
+def restore_master_from_backup(backup: Path, master: Path) -> Path:
+    """用已验证备份原子恢复 Master；恢复失败必须向调用方暴露。"""
+    if not backup.exists():
+        raise FileNotFoundError(f"MASTER_BACKUP_MISSING: {backup}")
+    restore_tmp = master.with_name(f".{master.stem}.{uuid.uuid4().hex}.restore{master.suffix}")
+    try:
+        shutil.copy2(backup, restore_tmp)
+        _validate(restore_tmp)
+        os.replace(restore_tmp, master)
+    finally:
+        restore_tmp.unlink(missing_ok=True)
+    log.warning("已从备份恢复 Master: %s", backup)
     return master
 
 

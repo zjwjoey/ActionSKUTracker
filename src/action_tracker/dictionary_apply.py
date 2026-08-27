@@ -5,12 +5,18 @@ import csv
 import datetime as dt
 import hashlib
 import json
+import os
+import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+import openpyxl
+
+from .dictionary import DICTIONARY_BASELINE_FILENAMES
 from .dictionary_resolver import RecordResolution, resolve_record
-from .excel.reader import load_current
-from .excel.writer import commit_master, stage_master
+from .excel.reader import ES_MAP, ZH_MAP, load_current
+from .excel.writer import commit_master, restore_master_from_backup, stage_master
 from .exporting.dictionary_join import load_dictionary_context
 from .exporting.profiles import load_profile
 from .exporting.service import ExportValidationError, resolve_formal_source
@@ -19,6 +25,12 @@ from .services.runtime import RunLock
 
 class DictionaryApplyError(RuntimeError):
     """字典 Apply 预览或 Gate 失败。"""
+
+
+@dataclass(frozen=True)
+class CommitOutcome:
+    master_hash: str
+    backup_path: Path
 
 
 # Apply is limited to derived Chinese fields.  Official Spanish facts,
@@ -35,7 +47,8 @@ IMMUTABLE_FIELDS = (
 
 
 def dictionary_apply(cfg: dict[str, Any], *, run_id: str, dry_run: bool = True) -> dict[str, Any]:
-    if not dry_run and not bool((cfg.get("dictionary_apply") or {}).get("production_enabled", False)):
+    production_enabled = _production_enabled(cfg)
+    if not dry_run and not production_enabled:
         raise DictionaryApplyError("PRODUCTION_DICTIONARY_APPLY_DISABLED")
     profile = load_profile(cfg, language="es", no_images=True)
     try:
@@ -46,7 +59,7 @@ def dictionary_apply(cfg: dict[str, Any], *, run_id: str, dry_run: bool = True) 
     resolutions = [resolve_record(dict(record), context) for record in source.records]
     master_path = Path(cfg["paths"]["master"])
     before_hash = _master_hash(cfg)
-    master_records = load_current(master_path) if master_path.exists() else {}
+    master_records = _load_apply_master_records(master_path) if master_path.exists() else {}
     immutable_count = _immutable_diff_count(source.records, master_records)
     output_dir = Path(cfg["paths"]["dictionary"]) / "apply" / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -72,17 +85,35 @@ def dictionary_apply(cfg: dict[str, Any], *, run_id: str, dry_run: bool = True) 
         "unchanged_field_count": summary["unchanged_field_count"], "immutable_fact_change_count": immutable_count,
         "field_change_summary": summary["fields"], "applied_sku_count": len({row["sku"] for row in preview_rows}),
         "applied_field_count": len(preview_rows), "formal_write": False,
-        "production_enabled": bool((cfg.get("dictionary_apply") or {}).get("production_enabled", False)),
-        "committed": False, "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "production_enabled": production_enabled, "committed": False, "commit_state": "DRY_RUN",
+        "backup_path": None, "rollback_status": "NOT_APPLICABLE",
+        "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
-    if not dry_run:
+    if dry_run:
+        _write_json(output_dir / "apply_manifest.json", manifest)
+    else:
         errors = _gate_errors(cfg, source, resolutions, context, master_records, before_hash)
         if errors:
             raise DictionaryApplyError("DICTIONARY_APPLY_GATE_REJECTED: " + ",".join(errors))
-        committed_hash = _commit_allowlisted(cfg, source.records, resolutions, master_records, before_hash, run_id)
-        manifest.update({"temporary_master_hash": committed_hash, "master_hash_after_if_committed": committed_hash,
-                         "master_hash_after": committed_hash, "formal_write": True, "committed": True})
-    (output_dir / "apply_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        # Persist a recoverable intent before replacing Master.  If the process
+        # stops after replace, the backup path identifies the only valid rollback.
+        manifest.update({"commit_state": "PENDING", "rollback_status": "NOT_NEEDED_YET"})
+        _write_json(output_dir / "apply_manifest.json", manifest)
+        outcome: CommitOutcome | None = None
+        try:
+            outcome = _commit_allowlisted(cfg, source.records, resolutions, master_records, before_hash, run_id)
+            manifest.update({
+                "temporary_master_hash": outcome.master_hash,
+                "master_hash_after_if_committed": outcome.master_hash,
+                "master_hash_after": outcome.master_hash,
+                "formal_write": True, "committed": True, "commit_state": "COMMITTED",
+                "backup_path": str(outcome.backup_path), "rollback_status": "NOT_NEEDED",
+            })
+            _write_json(output_dir / "apply_manifest.json", manifest)
+        except Exception as exc:
+            if outcome is not None:
+                _restore_after_manifest_failure(cfg, outcome, before_hash, manifest, output_dir)
+            raise DictionaryApplyError(f"DICTIONARY_APPLY_COMMIT_FAILED: {exc}") from exc
     return {"run_id": run_id, "dry_run": dry_run, "output_dir": str(output_dir), **{
         key: manifest[key] for key in ("auto_ready_count", "applied_sku_count", "applied_field_count", "review_required_count", "source_blocked_count", "actual_changed_field_count")
     }}
@@ -143,23 +174,29 @@ def _gate_errors(cfg: dict[str, Any], source: Any, resolutions: list[RecordResol
     if not qa.get("passed") or qa.get("state") not in allowed:
         errors.append("QA_NOT_PASS")
     audit_files = sorted(Path(cfg["paths"]["dictionary"]).glob("audit_report_*.json"), reverse=True)
-    if not audit_files or int((_read_json(audit_files[0]).get("summary") or {}).get("fail") or 0) != 0:
+    audit = _read_json(audit_files[0]) if audit_files else {}
+    if not audit_files or int((audit.get("summary") or {}).get("fail") or 0) != 0:
         errors.append("DICTIONARY_AUDIT_NOT_PASS")
-    if not (Path(cfg["paths"]["dictionary_baseline"]) / "baseline_manifest.json").exists():
-        errors.append("DICTIONARY_BASELINE_NOT_AUDITABLE")
+    if not _dictionary_binding_is_valid(cfg, context):
+        errors.append("DICTIONARY_HASH_BINDING_INVALID")
+    run_date = str((_read_json(source.directory / "run_report.json") if source.directory else {}).get("run_date") or "")
+    if run_date and str(audit.get("latest_date") or "") < run_date:
+        errors.append("DICTIONARY_AUDIT_STALE")
     if any(item.readiness != "AUTO_READY" for item in resolutions):
         errors.append("RESOLVER_NOT_AUTO_READY")
+    if _require_confirmed_brands_for_apply(cfg) and any(item.brand_classification == "PROVISIONAL" for item in resolutions):
+        errors.append("PROVISIONAL_BRAND_NOT_ALLOWED_FOR_APPLY")
     if set(master_records) != {str(record.get("sku") or "") for record in source.records}:
         errors.append("TARGET_CURRENT_SKU_SET_MISMATCH")
     if not before_hash or _master_hash_from_path(Path(cfg["paths"]["master"])) != before_hash:
         errors.append("MASTER_CHANGED_CONCURRENTLY")
-    if not bool((cfg.get("dictionary_apply") or {}).get("production_enabled", False)):
+    if not _production_enabled(cfg):
         errors.append("PRODUCTION_DICTIONARY_APPLY_DISABLED")
     return errors
 
 
 def _commit_allowlisted(cfg: dict[str, Any], records: Iterable[dict[str, Any]], resolutions: list[RecordResolution],
-                        master_records: dict[str, dict[str, Any]], before_hash: str, run_id: str) -> str:
+                        master_records: dict[str, dict[str, Any]], before_hash: str, run_id: str) -> CommitOutcome:
     updated = {sku: dict(record) for sku, record in master_records.items()}
     for item in resolutions:
         if item.readiness != "AUTO_READY" or item.sku not in updated:
@@ -171,14 +208,34 @@ def _commit_allowlisted(cfg: dict[str, Any], records: Iterable[dict[str, Any]], 
     lock = RunLock(Path(cfg["paths"]["state"]), stale_minutes=int((cfg.get("run") or {}).get("lock_stale_minutes", 180)))
     lock.acquire(run_id, command="dictionary-apply")
     tmp: Path | None = None
+    backup: Path | None = None
+    replaced = False
     try:
         if _master_hash_from_path(Path(cfg["paths"]["master"])) != before_hash:
             raise DictionaryApplyError("MASTER_CHANGED_CONCURRENTLY")
-        tmp = stage_master(cfg, updated_records=updated, price_events=[], event_events=[])
+        staged = stage_master(cfg, updated_records=updated, price_events=[], event_events=[], return_backup=True)
+        tmp, backup = staged
         _assert_master_safe(Path(cfg["paths"]["master"]), tmp)
         commit_master(tmp, Path(cfg["paths"]["master"]))
         tmp = None
-        return _master_hash_from_path(Path(cfg["paths"]["master"])) or ""
+        replaced = True
+        _assert_master_safe(backup, Path(cfg["paths"]["master"]))
+        master_hash = _master_hash_from_path(Path(cfg["paths"]["master"]))
+        if not master_hash:
+            raise DictionaryApplyError("MASTER_POST_COMMIT_HASH_MISSING")
+        return CommitOutcome(master_hash=master_hash, backup_path=backup)
+    except Exception as exc:
+        if replaced and backup is not None:
+            try:
+                restore_master_from_backup(backup, Path(cfg["paths"]["master"]))
+                if _master_hash_from_path(Path(cfg["paths"]["master"])) != before_hash:
+                    raise DictionaryApplyError("MASTER_ROLLBACK_HASH_MISMATCH")
+            except Exception as rollback_exc:
+                raise DictionaryApplyError(
+                    f"MASTER_STATE_UNKNOWN_AFTER_COMMIT_FAILURE: backup={backup}; rollback_error={rollback_exc}"
+                ) from exc
+            raise DictionaryApplyError(f"POST_COMMIT_FAILURE_ROLLED_BACK: backup={backup}; error={exc}") from exc
+        raise
     finally:
         lock.release()
         if tmp and tmp.exists():
@@ -186,7 +243,7 @@ def _commit_allowlisted(cfg: dict[str, Any], records: Iterable[dict[str, Any]], 
 
 
 def _assert_master_safe(before: Path, staged: Path) -> None:
-    old, new = load_current(before), load_current(staged)
+    old, new = _load_apply_master_records(before), _load_apply_master_records(staged)
     if list(old) != list(new) or set(old) != set(new):
         raise DictionaryApplyError("IMMUTABLE_SKU_ORDER_OR_SET_CHANGED")
     for sku in old:
@@ -208,6 +265,102 @@ def _immutable_diff_count(source_records: Iterable[dict[str, Any]], master_recor
 
 def _norm(value: Any) -> str:
     return "" if value is None else str(value).strip()
+
+
+def _production_enabled(cfg: dict[str, Any]) -> bool:
+    value = (cfg.get("dictionary_apply") or {}).get("production_enabled", False)
+    if isinstance(value, bool):
+        return value
+    raise DictionaryApplyError("PRODUCTION_DICTIONARY_APPLY_CONFIG_INVALID")
+
+
+def _require_confirmed_brands_for_apply(cfg: dict[str, Any]) -> bool:
+    value = (cfg.get("dictionary_apply") or {}).get("require_confirmed_brands_for_apply", True)
+    if isinstance(value, bool):
+        return value
+    raise DictionaryApplyError("DICTIONARY_APPLY_BRAND_POLICY_CONFIG_INVALID")
+
+
+def _dictionary_binding_is_valid(cfg: dict[str, Any], context: Any) -> bool:
+    """Bind both the selected dictionary and Git baseline files to one manifest."""
+    baseline = Path(cfg["paths"]["dictionary_baseline"])
+    manifest = _read_json(baseline / "baseline_manifest.json")
+    files = manifest.get("files") if isinstance(manifest, dict) else None
+    if not isinstance(files, dict) or set(files) != set(DICTIONARY_BASELINE_FILENAMES):
+        return False
+    for filename in DICTIONARY_BASELINE_FILENAMES:
+        expected = str((files.get(filename) or {}).get("sha256") or "")
+        baseline_file = baseline / filename
+        selected_file = Path(context.directory) / filename
+        if not expected or not baseline_file.exists() or not selected_file.exists():
+            return False
+        if _hash(baseline_file) != expected or _hash(selected_file) != expected:
+            return False
+    return True
+
+
+def _load_apply_master_records(path: Path) -> dict[str, dict[str, Any]]:
+    """Read CURRENT only after schema, SKU uniqueness and ES/ZH set checks pass."""
+    if not path.exists():
+        raise DictionaryApplyError(f"MASTER_MISSING: {path}")
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    try:
+        records_by_sheet: dict[str, list[str]] = {}
+        for sheet, mapping in (("01_SKU_ZH_CURRENT", ZH_MAP), ("02_SKU_ES_CURRENT", ES_MAP)):
+            if sheet not in wb.sheetnames:
+                raise DictionaryApplyError(f"MASTER_SCHEMA_MISSING_SHEET:{sheet}")
+            ws = wb[sheet]
+            headers = [str(cell.value or "").strip() for cell in ws[1]]
+            missing = [header for header in mapping if header not in headers]
+            if missing:
+                raise DictionaryApplyError(f"MASTER_SCHEMA_MISSING_HEADERS:{sheet}:{','.join(missing)}")
+            sku_index = headers.index("SKU")
+            seen: set[str] = set()
+            order: list[str] = []
+            for row_no, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                sku = str(row[sku_index] if sku_index < len(row) and row[sku_index] is not None else "").strip()
+                if not sku:
+                    continue
+                if sku in seen:
+                    raise DictionaryApplyError(f"MASTER_DUPLICATE_SKU:{sheet}:{sku}:row={row_no}")
+                seen.add(sku)
+                order.append(sku)
+            records_by_sheet[sheet] = order
+        if set(records_by_sheet["01_SKU_ZH_CURRENT"]) != set(records_by_sheet["02_SKU_ES_CURRENT"]):
+            raise DictionaryApplyError("MASTER_ES_ZH_SKU_SET_MISMATCH")
+        if records_by_sheet["01_SKU_ZH_CURRENT"] != records_by_sheet["02_SKU_ES_CURRENT"]:
+            raise DictionaryApplyError("MASTER_ES_ZH_SKU_ORDER_MISMATCH")
+    finally:
+        wb.close()
+    return load_current(path)
+
+
+def _restore_after_manifest_failure(
+    cfg: dict[str, Any], outcome: CommitOutcome, before_hash: str, manifest: dict[str, Any], output_dir: Path,
+) -> None:
+    try:
+        restore_master_from_backup(outcome.backup_path, Path(cfg["paths"]["master"]))
+        if _master_hash(cfg) != before_hash:
+            raise DictionaryApplyError("MASTER_ROLLBACK_HASH_MISMATCH")
+        manifest.update({"committed": False, "commit_state": "ROLLED_BACK", "rollback_status": "SUCCESS"})
+        _write_json(output_dir / "apply_manifest.json", manifest)
+    except Exception as rollback_exc:
+        raise DictionaryApplyError(
+            f"MASTER_STATE_UNKNOWN_AFTER_MANIFEST_FAILURE: backup={outcome.backup_path}; rollback_error={rollback_exc}"
+        ) from rollback_exc
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        with tmp.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def _read_json(path: Path) -> dict[str, Any]:

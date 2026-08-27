@@ -105,6 +105,8 @@ dictionary_apply:
   # PRODUCT_DICTIONARY_REFERENCE/未完成人工确认的品牌只能按显式策略作为临时候选；
   # UNKNOWN 品牌仍然不能 AUTO_READY。
   allow_provisional_brands: true
+  # 即使导出/覆盖率暂时允许临时品牌，正式回填默认仍要求品牌已确认。
+  require_confirmed_brands_for_apply: true
 
 # ---- AI（预留）：后续翻译用 AI API 配置，不接外部翻译服务 ----
 # 密钥不落盘：运行时从环境变量 ACTION_AI_API_KEY 读取

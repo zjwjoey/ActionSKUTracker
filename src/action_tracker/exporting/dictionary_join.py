@@ -110,7 +110,10 @@ def load_dictionary_context(cfg: dict[str, Any]) -> DictionaryContext:
         ),
         content_hash=_dictionary_content_hash(directory),
         source_quality_by_sku={row["sku"]: _text(row.get("status")) for row in damage},
-        allow_provisional_brands=bool((cfg.get("dictionary_apply") or {}).get("allow_provisional_brands", True)),
+        allow_provisional_brands=_strict_bool_config(
+            (cfg.get("dictionary_apply") or {}).get("allow_provisional_brands", True),
+            name="dictionary_apply.allow_provisional_brands",
+        ),
     )
 
 
@@ -403,6 +406,13 @@ def _sku_sort_key(record: dict[str, Any]) -> tuple[int, int, str]:
 
 def _text(value: Any) -> str:
     return "" if value is None else str(value).strip()
+
+
+def _strict_bool_config(value: Any, *, name: str) -> bool:
+    """配置只能用 YAML 布尔值，避免字符串 ``false`` 被 Python 当成真值。"""
+    if isinstance(value, bool):
+        return value
+    raise DictionaryJoinError(f"INVALID_BOOLEAN_CONFIG: {name}")
 
 
 def _none_or_text(value: Any) -> str | None:

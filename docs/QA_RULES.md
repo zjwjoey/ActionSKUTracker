@@ -144,8 +144,11 @@ TERM_CANDIDATE 必须经人工 APPROVED 才能进入正式术语字典。
 
 Dictionary Apply 默认只允许 dry-run。预览必须逐字段记录旧值、新值、来源、Resolver 状态和原因；
 `field_diff.csv` 只允许六类中文派生字段，旧值等于新值不得计为实际变化。未来 `--commit` 必须同时满足
-QA/FULL_COMMIT、审计通过、Resolver 全部 AUTO_READY、CURRENT SKU 集合一致、Master hash 未并发变化，
-并通过备份、锁、暂存、不可变事实校验和原子替换；`dictionary_apply.production_enabled=false` 时必须拒绝。
+QA/FULL_COMMIT、未过期的 Audit、Resolver 全部 AUTO_READY、CURRENT SKU 集合一致、Master hash 未并发变化，
+并逐文件验证选中字典和基线 manifest 的 SHA-256 一致。`production_enabled` 和正式品牌策略只能是 YAML
+布尔值；字符串 `"false"` 等配置必须拒绝。默认正式 Apply 不接受 PROVISIONAL/UNKNOWN 品牌。写入还必须
+通过唯一备份、锁、暂存、不可变事实校验、原子替换及替换后回读；后续校验失败必须恢复备份并把状态写入
+manifest。`dictionary_apply.production_enabled=false` 时必须拒绝。
 未 AUTO_READY 的 SKU 只能进入 review_required.csv，不能部分写入 Master。
 
 ## 8. Export 规则
