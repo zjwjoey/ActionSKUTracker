@@ -59,3 +59,23 @@ def test_resolver_detects_plain_spanish_residual_in_confirmed_value():
     result = resolve_record(record, _context(product=product))
     assert "SPANISH_RESIDUAL" in result.review_reasons
     assert result.readiness == "REVIEW_REQUIRED"
+
+
+def test_provisional_brand_is_explicit_and_policy_controls_promotion():
+    record = _record()
+    source_hash = product_source_hash({"name_es_raw": "Caja", "cat1_es": "Hogar", "cat2_es": "", "spec_es_raw": "2 unidades"})
+    product = {"1001": {"name_zh_standard": "盒子", "spec_zh_standard": "2件", "cat1_zh": "家务清洁", "source_hash": source_hash, "translation_status": "HUMAN_REVIEWED", "brand_id": "NewBrand"}}
+    provisional = {"NewBrand": {"brand_id": "NewBrand", "canonical_name": "NewBrand", "confidence": "PRODUCT_DICTIONARY_REFERENCE", "review_status": "NEEDS_HUMAN_REVIEW"}}
+    context = DictionaryContext(
+        directory=Path("."), product_by_sku=product, manual_by_sku={}, model_by_sku={}, brand_by_id=provisional,
+        category_by_pair={}, category_by_cat1={"hogar": {"cat1_zh": "家务清洁"}}, terms=(), damage_by_sku={},
+        brand_reference_keys=frozenset({"newbrand"}), unresolved_brand_ids=frozenset(), content_hash="test",
+        source_quality_by_sku={}, allow_provisional_brands=True,
+    )
+    result = resolve_record(record, context)
+    assert result.brand_classification == "PROVISIONAL"
+    assert result.fields["brand"].status == "READY"
+    strict = context.__class__(**{**context.__dict__, "allow_provisional_brands": False})
+    strict_result = resolve_record(record, strict)
+    assert strict_result.fields["brand"].status == "REVIEW"
+    assert "BRAND_CANDIDATE" in strict_result.review_reasons

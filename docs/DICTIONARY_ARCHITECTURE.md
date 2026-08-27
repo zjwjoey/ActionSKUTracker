@@ -1,7 +1,7 @@
 # Action 本地字典与功能模块边界
 
-> 状态说明：基础字典、增量 Enrichment、统一 Review Queue、术语候选、Coverage 和
-> Resolver 已提交到 `feat/export-dictionary-closure`；正式 Master 回填仍关闭。
+> 状态说明：基础字典、增量 Enrichment、统一 Review Queue、术语候选、Coverage、Resolver
+> 和 Apply Gate 已提交到 `feat/export-dictionary-closure`；生产 Master 回填仍由配置关闭。
 
 ## 定位
 
@@ -78,8 +78,8 @@ source hash 变化和 NEEDS_REVIEW。未变化的老 SKU 不产生新翻译，�
 Export 是字典的只读消费者。中文版逐字段应用人工覆盖、商品字典、品牌/类目/术语、
 有效模型结果和 fallback；Export 不得修改字典。中文缺失不能删除当日在售 SKU。
 
-当前功能分支已发布基线为商品 8,617、品牌 588、类目关系 185、术语 44；main
-仍保留旧的 509/33 基线。任何后续字典数据变更仍必须先 audit PASS、manifest hash
+当前运行时基线为商品 8,662、品牌 588、类目关系 186、术语 44；main
+仍保留旧基线。任何后续字典数据变更仍必须先 audit PASS、manifest hash
 对账，再明确发布。
 
 ## Resolver 与覆盖率
@@ -89,8 +89,9 @@ Export 是字典的只读消费者。中文版逐字段应用人工覆盖、商�
 的模型缓存可用；普通西语残留、源损坏、未确认商品记录和未知品牌进入审核。`dictionary-coverage`
 写入 `runtime/dictionary/reports/`，不改 Master、State 或正式字典。
 
-`dictionary-apply --dry-run` 只生成字段级 preview、审核清单和 hash manifest；正式 Master
-写入当前关闭，未通过 QA、FULL_COMMIT、审计和原子替换 Gate 的数据不得进入生产。
+`dictionary-apply --dry-run` 生成字段级 preview、`field_diff.csv`、审核清单和 hash manifest；
+正式 `--commit` 受 QA、FULL_COMMIT、审计、不可变事实、备份/锁/原子替换 Gate 保护，
+生产配置当前关闭，未通过门禁的数据不得进入生产。
 
 ## CI 边界
 

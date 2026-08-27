@@ -50,9 +50,10 @@ def build_parser() -> argparse.ArgumentParser:
     dc = sub.add_parser("dictionary-coverage", help="统计 CURRENT 的 AI-Free 字典覆盖率")
     dc.add_argument("--date", help="业务日期（YYYY-MM-DD）")
     dc.add_argument("--run-id", help="可选：指定正式 observation run_id")
-    da = sub.add_parser("dictionary-apply", help="生成字典字段应用预览（默认不写 Master）")
+    da = sub.add_parser("dictionary-apply", help="生成字典字段应用预览；--commit 受正式 Apply Gate 保护")
     da.add_argument("--run-id", required=True, help="必须是正式提交的 observation run_id")
     da.add_argument("--dry-run", action="store_true", help="仅生成 apply 预览；默认行为")
+    da.add_argument("--commit", action="store_true", help="请求正式写入；生产配置关闭时明确拒绝")
     de = sub.add_parser("dictionary-enrich", help="对已正式提交 run 的新增/变更 SKU 做增量字典标准化")
     de.add_argument("--run-id", required=True, help="必须是 FULL_COMMIT 且 QA PASS 的 observation run_id")
     rq = sub.add_parser("review-queue", help="构建或处理统一人工审核队列")
@@ -148,7 +149,9 @@ def main(argv=None) -> int:
     if args.command == "dictionary-apply":
         from .dictionary_apply import DictionaryApplyError, dictionary_apply
         try:
-            result = dictionary_apply(cfg, run_id=args.run_id, dry_run=True)
+            if args.dry_run and args.commit:
+                raise DictionaryApplyError("DICTIONARY_APPLY_MUTUALLY_EXCLUSIVE_FLAGS")
+            result = dictionary_apply(cfg, run_id=args.run_id, dry_run=not args.commit)
         except (DictionaryApplyError, ValueError, OSError) as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2

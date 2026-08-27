@@ -54,6 +54,7 @@ class RecordResolution:
     source_quality_status: str
     readiness: str
     review_reasons: tuple[str, ...]
+    brand_classification: str = "NONE"
 
 
 def resolve_record(record: dict[str, Any], context: DictionaryContext) -> RecordResolution:
@@ -77,15 +78,26 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
     brand_id = str(product.get("brand_id") or "").strip()
     brand_row = context.brand_by_id.get(brand_id, {})
     brand_value = str(brand_row.get("canonical_name") or brand_id).strip()
+    brand_classification = "NONE"
     if not brand_id:
         # The source does not provide a brand for many Action private-label or
         # generic items.  That is not an unknown-brand defect; only a
         # non-empty, unrecognised brand identifier needs review.
         fields["brand"] = FieldResolution("", "none", "READY")
-    elif brand_id not in context.brand_by_id or brand_id in context.unresolved_brand_ids:
+    elif brand_id not in context.brand_by_id:
+        brand_classification = "UNKNOWN"
         fields["brand"] = FieldResolution(brand_value, "brand_dictionary", "REVIEW")
     else:
-        fields["brand"] = FieldResolution(brand_value, "brand_dictionary", "READY")
+        review_status = str(brand_row.get("review_status") or "").strip().upper()
+        confidence = str(brand_row.get("confidence") or "").strip().upper()
+        if review_status == "HUMAN_REVIEWED" or confidence in {"REFERENCE", "HUMAN_CONFIRMED", "AI_REVIEWED"} and review_status != "NEEDS_HUMAN_REVIEW":
+            brand_classification = "CONFIRMED"
+            fields["brand"] = FieldResolution(brand_value, "brand_dictionary", "READY")
+        else:
+            brand_classification = "PROVISIONAL"
+            status = "READY" if context.allow_provisional_brands else "REVIEW"
+            source = "brand_dictionary_provisional" if status == "READY" else "brand_dictionary"
+            fields["brand"] = FieldResolution(brand_value, source, status)
 
     source_quality = context.source_quality_by_sku.get(sku, "") or "OK"
     source_hash_status = "MATCH" if str(product.get("source_hash") or "") == source_hash and source_hash else "MISMATCH"
@@ -126,7 +138,7 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
             and not any(reason in reasons for reason in ("NEEDS_REVIEW", "UNCONFIRMED_PRODUCT_DICTIONARY", "SPANISH_RESIDUAL"))
         )
         readiness = "AUTO_READY" if mandatory_ok else "REVIEW_REQUIRED"
-    return RecordResolution(sku, fields, source_hash_status, source_quality, readiness, tuple(dict.fromkeys(reasons)))
+    return RecordResolution(sku, fields, source_hash_status, source_quality, readiness, tuple(dict.fromkeys(reasons)), brand_classification)
 
 
 def _product_field(field: str, record: dict[str, Any], product: dict[str, str], manual: dict[str, str], model: dict[str, str], context: DictionaryContext, source_hash: str, fallback_field: str) -> FieldResolution:

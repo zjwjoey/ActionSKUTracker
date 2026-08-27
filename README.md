@@ -13,7 +13,7 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 - 商品、品牌、类目、术语、人工覆盖和模型结果字典；
 - 增量字典标准化、统一 Review Queue、术语候选管线；
 - ES/ZH 两个独立无图导出，以及 Template 1 三表无图导出；
-- AI-Free 字典覆盖率、字段级 Resolver、Dictionary Apply 预览、统一审核队列和术语候选。
+- AI-Free 字典覆盖率、字段级 Resolver、Dictionary Apply 预览与正式 Gate（生产写入默认关闭）、统一审核队列和术语候选。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
@@ -72,6 +72,9 @@ python -m action_tracker dictionary-coverage --run-id <正式run_id>
 # 生成字典字段应用预览；默认绝不写 Master
 python -m action_tracker dictionary-apply --run-id <正式run_id> --dry-run
 
+# 请求正式 Apply（当前配置会安全拒绝）
+python -m action_tracker dictionary-apply --run-id <正式run_id> --commit
+
 # 完整回归测试
 python -m pytest -q
 ```
@@ -95,7 +98,7 @@ python scripts/audit_dictionary.py
 python scripts/publish_dictionary_baseline.py
 ```
 
-增量字典、审核队列、术语候选和 Resolver 已实现为本地离线能力；Dictionary Apply 当前只生成预览，正式写入仍由安全 Gate 禁止。具体状态见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
+增量字典、审核队列、术语候选和 Resolver 已实现为本地离线能力；Dictionary Apply Gate 已实现，生产写入由 `dictionary_apply.production_enabled: false` 明确关闭。具体状态见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
 ## 导出
 

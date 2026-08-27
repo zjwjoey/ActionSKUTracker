@@ -128,7 +128,8 @@ Detail 不是主 Presence 链的一部分：
 
 解析与应用保持在主链之外：正式 Observation 通过后，`dictionary_resolver.py` 逐字段解析
 并给出 `AUTO_READY`、`REVIEW_REQUIRED` 或 `SOURCE_BLOCKED`；`dictionary-coverage` 只读
-统计，`dictionary-apply --dry-run` 只产出 preview 和 manifest。当前不允许该层直接写入
+统计，`dictionary-apply --dry-run` 只产出 preview、field_diff 和 manifest；正式 `--commit`
+已有独立 QA/FULL_COMMIT/Audit、不可变事实和并发 hash Gate，但生产配置仍关闭，因此当前不允许该层直接写入
 Master，避免字典异常影响 Presence 权威结果。
 
 ## 9. Export

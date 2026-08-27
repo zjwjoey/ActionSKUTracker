@@ -140,9 +140,12 @@ TERM_CANDIDATE 必须经人工 APPROVED 才能进入正式术语字典。
 按品牌字典/人工确认保留原文。描述和详情当前允许西语 fallback，但必须标记字段待补，
 不得伪装成中文已完成。
 
-### QA-DICT-009：Apply 预览
+### QA-DICT-009：Apply Gate
 
-Dictionary Apply 第一阶段只允许 dry-run。预览必须逐字段记录旧值、新值、来源和原因；
+Dictionary Apply 默认只允许 dry-run。预览必须逐字段记录旧值、新值、来源、Resolver 状态和原因；
+`field_diff.csv` 只允许六类中文派生字段，旧值等于新值不得计为实际变化。未来 `--commit` 必须同时满足
+QA/FULL_COMMIT、审计通过、Resolver 全部 AUTO_READY、CURRENT SKU 集合一致、Master hash 未并发变化，
+并通过备份、锁、暂存、不可变事实校验和原子替换；`dictionary_apply.production_enabled=false` 时必须拒绝。
 未 AUTO_READY 的 SKU 只能进入 review_required.csv，不能部分写入 Master。
 
 ## 8. Export 规则

@@ -50,7 +50,7 @@
 - 字典不得改写 SKU、价格、商品链接、西语官网事实或在售结论。
 - 正式字典基线必须先审计，再发布到 `data/dictionary/`。
 - `dictionary-coverage`、`dictionary-enrich`、`review-queue` 和 `term-candidates` 必须保持离线：不得调用模型 API 或官网。
-- `dictionary-apply` 当前仅允许 `--dry-run`；任何未来正式写 Master 的实现都必须另设 QA/FULL_COMMIT/Audit Gate、字段 diff、备份和原子替换测试。
+- `dictionary-apply` 默认只允许 `--dry-run`；`--commit` 已接入 QA/FULL_COMMIT/Audit Gate、字段 diff、备份、锁和原子替换路径，但 `dictionary_apply.production_enabled` 当前必须保持 false，开启需单独授权和回归审查。
 
 ## 6. Export 边界
 

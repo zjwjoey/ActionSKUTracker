@@ -1,6 +1,6 @@
 # Action SKU Tracker 路线图
 
-更新日期：2026-08-26
+更新日期：2026-08-27
 
 ## 1. 总原则
 
@@ -111,16 +111,18 @@
 - `.github/workflows/ci.yml` 在 push/PR 时按 `tests/ci_safe_tests.txt` 白名单运行 Python 3.12 的 CI-safe 测试；
 - 依赖固定在 `requirements.txt` 与 `requirements-dev.txt`；
 - CI 不访问官网、不安装浏览器、不写 Master/State/Dictionary、不下载图片、不发布基线；
-- 当前本地工作区为 `209 passed`；CI 绿灯仍不能替代真实 daily-run 和 QA。
+- 当前本地工作区为 `217 passed`；CI 绿灯仍不能替代真实 daily-run 和 QA。
 
 ### 5.0.1 字典收口（本地已实现，正式回填未启用）
 
 - `dictionary-coverage` 输出真实 AI-Free Coverage 和逐 SKU CSV；
 - `dictionary_resolver` 输出字段级来源/状态及 `AUTO_READY/REVIEW_REQUIRED/SOURCE_BLOCKED`；
-- `dictionary-apply --dry-run` 输出字段 diff、审核清单和 hash manifest，正式写 Master 保持关闭；
+- `dictionary-apply --dry-run` 输出字段 diff、审核清单和 hash manifest；`--commit` 已实现独立 Apply Gate，
+  但生产配置保持关闭；
+- `review_closure_report.csv` 和 `source_blocked_review.csv` 分离记录可自动核验与必须人工/可信西语证据的项目；
 - Review Queue 和 Term Candidates 已形成稳定去重、人工批准、正确知识层路由的闭环；
-- 真实 run `2026-08-26_130145`：5,491 CURRENT、5,399 AUTO_READY（98.3245%）、84 REVIEW、
-  8 SOURCE_BLOCKED。
+- 真实 run `2026-08-26_130145`：5,491 CURRENT、5,413 AUTO_READY（98.5795%）、71 REVIEW、
+  7 SOURCE_BLOCKED；这些是本次运行报告，不是永久业务目标。
 
 ### 5.1 文档
 

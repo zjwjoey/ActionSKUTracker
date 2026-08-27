@@ -54,6 +54,9 @@ def _build_report(resolutions: list[RecordResolution], source: Any, date: str, d
         "missing_category": sum(item.fields["cat1"].status == "MISSING" or item.fields["cat2"].status == "MISSING" for item in resolutions),
         "missing_spec": sum(item.fields["spec"].status == "MISSING" for item in resolutions),
         "unknown_brand": sum(item.fields["brand"].status in {"MISSING", "REVIEW"} for item in resolutions),
+        "brand_confirmed": sum(item.brand_classification == "CONFIRMED" for item in resolutions),
+        "brand_provisional": sum(item.brand_classification == "PROVISIONAL" for item in resolutions),
+        "brand_unknown": sum(item.brand_classification == "UNKNOWN" for item in resolutions),
         "unknown_term": sum(item.fields["unit_price"].status == "FALLBACK" for item in resolutions),
         "review_reason_counts": _reason_counts(resolutions),
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -61,7 +64,7 @@ def _build_report(resolutions: list[RecordResolution], source: Any, date: str, d
 
 
 def _write_csv(path: Path, resolutions: list[RecordResolution]) -> None:
-    headers = ["sku", "auto_ready", "name_status", "cat1_status", "cat2_status", "spec_status", "brand_status", "source_hash_status", "source_quality_status", "review_reason"]
+    headers = ["sku", "auto_ready", "name_status", "cat1_status", "cat2_status", "spec_status", "brand_status", "brand_classification", "source_hash_status", "source_quality_status", "review_reason"]
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=headers)
         writer.writeheader()
@@ -71,6 +74,7 @@ def _write_csv(path: Path, resolutions: list[RecordResolution]) -> None:
                 "name_status": item.fields["name"].status, "cat1_status": item.fields["cat1"].status,
                 "cat2_status": item.fields["cat2"].status, "spec_status": item.fields["spec"].status,
                 "brand_status": item.fields["brand"].status, "source_hash_status": item.source_hash_status,
+                "brand_classification": item.brand_classification,
                 "source_quality_status": item.source_quality_status, "review_reason": "|".join(item.review_reasons),
             })
 

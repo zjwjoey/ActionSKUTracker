@@ -1,6 +1,6 @@
 # 增量字典标准化（STEP 4）
 
-> 当前状态：本地功能分支已实现并通过测试；正式 Master 回填仍关闭。
+> 当前状态：本地功能分支已实现并通过测试；Dictionary Apply Gate 已落地，正式 Master 回填仍由生产配置关闭。
 
 `dictionary-enrich` 是正式 Observation 成功后的独立补充阶段，不接入
 `daily.py`，不影响 Presence、生命周期或 Master 提交。

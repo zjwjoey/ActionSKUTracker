@@ -141,12 +141,12 @@ src/action_tracker/exporting/
 
 ## 9. 当前实现状态
 
-截至本文件建立时：
+截至 2026-08-27：
 
 - ES/ZH 两个独立无图文件已经可以从正式来源导出；
 - Template 1 无图三表、第一张表当日列和新 SKU union 已实现；
-- 中文表图片嵌入尚未实现；
-- 本文件和 `EXPORT_PROFILE.md` 先冻结需求，后续代码必须按 Profile 实现并补回归测试；
+- 中文表图片嵌入尚未实现，继续独立冻结；
+- Profile、基础导出和 Template 1 无图三表已实现并通过回归，正式来源仍必须来自 QA/FULL_COMMIT；
 - 图片下载仍是独立任务，Export 只消费已经存在的本地图片。
 
 ## 10. CI 与导出验证边界

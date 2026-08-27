@@ -99,6 +99,10 @@ SKU 主键，保存标准中文字段、对应西语来源、source hash、状�
 
 品牌标准名、别名、确认状态和证据。品牌可以保留原文，不进行机械翻译。
 
+Resolver 对品牌另存运行时分类：`CONFIRMED`（人工确认或证据明确）、`PROVISIONAL`
+（字典存在但尚未完成人工确认）和 `UNKNOWN`（没有可信字典项）。只有配置明确允许
+`PROVISIONAL` 时它才可参与 AUTO_READY；UNKNOWN 必须进入审核。
+
 ### category_dictionary.csv
 
 西语类目关系到 15 个固定中文一级类目及中文二级类目。关系键必须唯一。
@@ -154,6 +158,11 @@ Export 由以下实体组成：
 - `ExportManifest`：数量、hash、图片和校验结果。
 
 Template 1 的字段契约见 `EXPORT_PROFILE.md`。ES/ZH 必须共享同一正式 SKU 集合；中文缺失不能删除行。
+
+Dictionary Apply 的 `field_diff.csv` 只允许 `name_zh、cat1_zh、cat2_zh、spec_zh、desc_zh、details_zh`。
+Apply manifest 记录 Master 前后 hash、字典/基线 hash、Resolver 计数、逐字段变化统计和
+`immutable_fact_change_count`；后者必须为 0。生产写入还必须经过 QA/FULL_COMMIT、Audit、锁、备份、
+暂存验证和原子替换，当前由配置关闭。
 
 ## 9. 历史 Presence
 

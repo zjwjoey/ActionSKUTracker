@@ -49,6 +49,7 @@ class DictionaryContext:
     unresolved_brand_ids: frozenset[str]
     content_hash: str
     source_quality_by_sku: dict[str, str] = field(default_factory=dict)
+    allow_provisional_brands: bool = True
 
 
 def load_dictionary_context(cfg: dict[str, Any]) -> DictionaryContext:
@@ -109,6 +110,7 @@ def load_dictionary_context(cfg: dict[str, Any]) -> DictionaryContext:
         ),
         content_hash=_dictionary_content_hash(directory),
         source_quality_by_sku={row["sku"]: _text(row.get("status")) for row in damage},
+        allow_provisional_brands=bool((cfg.get("dictionary_apply") or {}).get("allow_provisional_brands", True)),
     )
 
 

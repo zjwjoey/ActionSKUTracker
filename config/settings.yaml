@@ -98,6 +98,14 @@ run:
   # dry-run 时是否对新品/变化 SKU 抓详情
   dry_run_fetch_details: true
 
+# 字典 Apply Gate：实现了正式门禁，但生产写入仍明确关闭。
+# 只有未来经过独立授权、审计和回归验证后才可改为 true。
+dictionary_apply:
+  production_enabled: false
+  # PRODUCT_DICTIONARY_REFERENCE/未完成人工确认的品牌只能按显式策略作为临时候选；
+  # UNKNOWN 品牌仍然不能 AUTO_READY。
+  allow_provisional_brands: true
+
 # ---- AI（预留）：后续翻译用 AI API 配置，不接外部翻译服务 ----
 # 密钥不落盘：运行时从环境变量 ACTION_AI_API_KEY 读取
 ai:
