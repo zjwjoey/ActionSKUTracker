@@ -10,6 +10,7 @@ from action_tracker.dictionary import DICTIONARY_BASELINE_FILENAMES
 import action_tracker.dictionary_apply as dictionary_apply_module
 from action_tracker.dictionary_apply import (
     DictionaryApplyError, _commit_allowlisted, _dictionary_binding_is_valid, _gate_errors, _load_apply_master_records,
+    _recover_interrupted_apply,
     _preview_rows, dictionary_apply,
 )
 from action_tracker.dictionary_resolver import FieldResolution, RecordResolution
@@ -130,6 +131,31 @@ def test_apply_master_reader_rejects_duplicate_sku(tmp_path):
     wb.close()
     with pytest.raises(DictionaryApplyError, match="MASTER_DUPLICATE_SKU"):
         _load_apply_master_records(cfg["paths"]["master"])
+
+
+def test_apply_master_reader_rejects_nonempty_row_with_empty_sku(tmp_path):
+    cfg = _cfg(tmp_path)
+    record = _record("1001")
+    _write_master(cfg["paths"]["master"], [], [record])
+    import openpyxl
+    wb = openpyxl.load_workbook(cfg["paths"]["master"])
+    ws = wb["01_SKU_ZH_CURRENT"]
+    ws.cell(row=3, column=3).value = "orphan data"
+    wb.save(cfg["paths"]["master"])
+    wb.close()
+    with pytest.raises(DictionaryApplyError, match="MASTER_EMPTY_SKU"):
+        _load_apply_master_records(cfg["paths"]["master"])
+
+
+def test_interrupted_apply_without_backup_pointer_blocks_overwrite(tmp_path):
+    cfg = _cfg(tmp_path)
+    run_dir = cfg["paths"]["dictionary"] / "apply" / "recovery-test"
+    run_dir.mkdir(parents=True)
+    (run_dir / "apply_manifest.json").write_text(json.dumps({
+        "commit_state": "PENDING", "master_hash_before": "abc", "backup_path": None,
+    }), encoding="utf-8")
+    with pytest.raises(DictionaryApplyError, match="MASTER_RECOVERY_REQUIRED"):
+        _recover_interrupted_apply(cfg, "recovery-test")
 
 
 def test_post_commit_validation_failure_restores_exact_backup(tmp_path, monkeypatch):

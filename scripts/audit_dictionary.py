@@ -61,6 +61,14 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def dictionary_content_hash(directory: Path) -> str:
+    digest = hashlib.sha256()
+    for filename in DICTIONARY_BASELINE_FILENAMES:
+        digest.update(filename.encode("utf-8"))
+        digest.update((directory / filename).read_bytes())
+    return digest.hexdigest()
+
+
 def baseline_file_set_mismatches(files: object) -> tuple[list[str], list[str]]:
     if isinstance(files, (str, bytes)):
         actual = set()
@@ -246,6 +254,8 @@ def main() -> int:
     report = {
         "audit_date": date.today().isoformat(),
         "latest_date": latest,
+        "dictionary_hash": dictionary_content_hash(dictionary),
+        "baseline_manifest_hash": sha256(baseline_manifest_path) if baseline_manifest_path.exists() else None,
         "product_rows": len(products),
         "current_rows": len(current),
         "checks": checks,

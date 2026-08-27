@@ -9,7 +9,7 @@ import os
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 import openpyxl
 
@@ -47,6 +47,7 @@ IMMUTABLE_FIELDS = (
 
 
 def dictionary_apply(cfg: dict[str, Any], *, run_id: str, dry_run: bool = True) -> dict[str, Any]:
+    _recover_interrupted_apply(cfg, run_id)
     production_enabled = _production_enabled(cfg)
     if not dry_run and not production_enabled:
         raise DictionaryApplyError("PRODUCTION_DICTIONARY_APPLY_DISABLED")
@@ -101,7 +102,13 @@ def dictionary_apply(cfg: dict[str, Any], *, run_id: str, dry_run: bool = True) 
         _write_json(output_dir / "apply_manifest.json", manifest)
         outcome: CommitOutcome | None = None
         try:
-            outcome = _commit_allowlisted(cfg, source.records, resolutions, master_records, before_hash, run_id)
+            outcome = _commit_allowlisted(
+                cfg, source.records, resolutions, master_records, before_hash, run_id,
+                on_backup_ready=lambda backup: _write_json(
+                    output_dir / "apply_manifest.json",
+                    {**manifest, "backup_path": str(backup), "commit_state": "READY_TO_REPLACE"},
+                ),
+            )
             manifest.update({
                 "temporary_master_hash": outcome.master_hash,
                 "master_hash_after_if_committed": outcome.master_hash,
@@ -179,6 +186,10 @@ def _gate_errors(cfg: dict[str, Any], source: Any, resolutions: list[RecordResol
         errors.append("DICTIONARY_AUDIT_NOT_PASS")
     if not _dictionary_binding_is_valid(cfg, context):
         errors.append("DICTIONARY_HASH_BINDING_INVALID")
+    if str(audit.get("dictionary_hash") or "") != str(getattr(context, "content_hash", "")):
+        errors.append("DICTIONARY_AUDIT_HASH_MISMATCH")
+    if str(audit.get("baseline_manifest_hash") or "") != str(_dictionary_baseline_hash(cfg) or ""):
+        errors.append("DICTIONARY_AUDIT_MANIFEST_HASH_MISMATCH")
     run_date = str((_read_json(source.directory / "run_report.json") if source.directory else {}).get("run_date") or "")
     if run_date and str(audit.get("latest_date") or "") < run_date:
         errors.append("DICTIONARY_AUDIT_STALE")
@@ -196,7 +207,8 @@ def _gate_errors(cfg: dict[str, Any], source: Any, resolutions: list[RecordResol
 
 
 def _commit_allowlisted(cfg: dict[str, Any], records: Iterable[dict[str, Any]], resolutions: list[RecordResolution],
-                        master_records: dict[str, dict[str, Any]], before_hash: str, run_id: str) -> CommitOutcome:
+                        master_records: dict[str, dict[str, Any]], before_hash: str, run_id: str,
+                        on_backup_ready: Callable[[Path], None] | None = None) -> CommitOutcome:
     updated = {sku: dict(record) for sku, record in master_records.items()}
     for item in resolutions:
         if item.readiness != "AUTO_READY" or item.sku not in updated:
@@ -215,6 +227,8 @@ def _commit_allowlisted(cfg: dict[str, Any], records: Iterable[dict[str, Any]], 
             raise DictionaryApplyError("MASTER_CHANGED_CONCURRENTLY")
         staged = stage_master(cfg, updated_records=updated, price_events=[], event_events=[], return_backup=True)
         tmp, backup = staged
+        if on_backup_ready is not None:
+            on_backup_ready(backup)
         _assert_master_safe(Path(cfg["paths"]["master"]), tmp)
         commit_master(tmp, Path(cfg["paths"]["master"]))
         tmp = None
@@ -291,12 +305,41 @@ def _dictionary_binding_is_valid(cfg: dict[str, Any], context: Any) -> bool:
     for filename in DICTIONARY_BASELINE_FILENAMES:
         expected = str((files.get(filename) or {}).get("sha256") or "")
         baseline_file = baseline / filename
-        selected_file = Path(context.directory) / filename
+        selected_directory = getattr(context, "directory", None)
+        if selected_directory is None:
+            return False
+        selected_file = Path(selected_directory) / filename
         if not expected or not baseline_file.exists() or not selected_file.exists():
             return False
         if _hash(baseline_file) != expected or _hash(selected_file) != expected:
             return False
     return True
+
+
+def _recover_interrupted_apply(cfg: dict[str, Any], run_id: str) -> None:
+    """在下一次调用前处理上次替换后未完成 manifest 的恢复状态。"""
+    manifest_path = Path(cfg["paths"]["dictionary"]) / "apply" / run_id / "apply_manifest.json"
+    if not manifest_path.exists():
+        return
+    manifest = _read_json(manifest_path)
+    if manifest.get("commit_state") not in {"PENDING", "READY_TO_REPLACE"}:
+        return
+    backup_value = str(manifest.get("backup_path") or "")
+    before_hash = str(manifest.get("master_hash_before") or "")
+    if not backup_value or not before_hash:
+        raise DictionaryApplyError("MASTER_RECOVERY_REQUIRED: incomplete apply manifest")
+    master = Path(cfg["paths"]["master"])
+    current_hash = _master_hash_from_path(master)
+    if current_hash == before_hash:
+        manifest.update({"commit_state": "RECOVERED_NO_REPLACE", "committed": False, "rollback_status": "NOT_NEEDED"})
+        _write_json(manifest_path, manifest)
+        return
+    backup = Path(backup_value)
+    restore_master_from_backup(backup, master)
+    if _master_hash_from_path(master) != before_hash:
+        raise DictionaryApplyError("MASTER_RECOVERY_HASH_MISMATCH")
+    manifest.update({"commit_state": "ROLLED_BACK", "committed": False, "rollback_status": "SUCCESS"})
+    _write_json(manifest_path, manifest)
 
 
 def _load_apply_master_records(path: Path) -> dict[str, dict[str, Any]]:
@@ -320,6 +363,8 @@ def _load_apply_master_records(path: Path) -> dict[str, dict[str, Any]]:
             for row_no, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 sku = str(row[sku_index] if sku_index < len(row) and row[sku_index] is not None else "").strip()
                 if not sku:
+                    if any(value not in (None, "") for value in row):
+                        raise DictionaryApplyError(f"MASTER_EMPTY_SKU:{sheet}:row={row_no}")
                     continue
                 if sku in seen:
                     raise DictionaryApplyError(f"MASTER_DUPLICATE_SKU:{sheet}:{sku}:row={row_no}")

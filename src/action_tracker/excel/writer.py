@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import hashlib
 import logging
 import os
 import shutil
@@ -63,10 +64,19 @@ def _backup(master: Path, backups_dir: Path) -> Path:
     stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     target = backups_dir / f"Action_Master_{stamp}_{uuid.uuid4().hex}.xlsx"
     shutil.copy2(master, target)
-    if not target.exists() or target.stat().st_size != master.stat().st_size:
+    if (not target.exists() or target.stat().st_size != master.stat().st_size
+            or _sha256(target) != _sha256(master)):
         raise RuntimeError(f"MASTER_BACKUP_VERIFICATION_FAILED: {target}")
     log.info("已备份 Master -> %s", target)
     return target
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def _cell(value: Any) -> Any:
