@@ -107,6 +107,10 @@ SKU 主键，保存标准中文字段、对应西语来源、source hash、状�
 
 人工确认的西语术语、中文标准译法和 term type。未来若增加 category scope，必须迁移 schema 和 Profile 版本。
 
+术语候选是独立运行证据，不等于正式术语：`term_es、suggested_zh、term_type、
+occurrence_count、sku_count、cat1_distribution、sample_contexts、source_dates、
+decision、review_status`。候选必须经人工批准后才可写入 `term_dictionary.csv`。
+
 ### manual_overrides.csv
 
 同一 SKU、同一字段最多一条有效人工覆盖，记录值、原因、来源、锁定状态和时间。覆盖只保护目标字段。
@@ -131,7 +135,7 @@ SKU 主键，保存标准中文字段、对应西语来源、source hash、状�
 
 ```text
 review_id, issue_type, sku, field, current_value, suggested_value,
-evidence, reason, created_at, updated_at, status, decision
+evidence, reason, created_at, updated_at, status, resolution
 ```
 
 `review_id` 由问题类型、SKU、字段、当前值、建议值和证据稳定计算。状态仅允许：PENDING、APPROVED、REJECTED、RESOLVED。

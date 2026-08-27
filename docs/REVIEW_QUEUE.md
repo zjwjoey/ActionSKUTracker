@@ -1,6 +1,7 @@
 # 统一 Review Queue（STEP 5）
 
-> 当前状态：本地功能分支已实现并通过测试，代码尚待单独审查、提交和远端发布。
+> 当前状态：本地功能分支已实现并通过测试；运行时队列不进入 Git，正式字典批准后需重建
+> 字典并再次审计。
 
 运行时队列位于 `runtime/review_queue/review_queue.csv`。它是审核状态的唯一
 保存位置；Master 的 `06_REVIEW_QUEUE` 仍是生命周期审计证据，只读导入，绝不
@@ -9,7 +10,7 @@
 ## 数据契约
 
 每行都有：`review_id、issue_type、sku、field、current_value、suggested_value、
-evidence、reason、created_at、status`，并额外记录来源、更新时间和人工决议。
+evidence、reason、created_at、status`，并额外记录来源、更新时间和人工 resolution。
 `review_id` 由问题类型、SKU、字段、当前值、建议值和证据稳定计算；相同未解决
 问题重复构建时只会保留一条，不会每天新增副本。
 

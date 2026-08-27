@@ -26,6 +26,7 @@ from action_tracker.dictionary import (
     index_product_overrides,
     index_model_translations,
     normalize_category_key,
+    reconcile_brand_rows,
     write_manifest,
     write_dictionary_csv,
 )
@@ -151,8 +152,9 @@ def main() -> int:
     reference_brands = load_brand_reference(_source_path(cfg, "brand_reference"))
     brand_rows = {row["brand_id"]: row for row in reference_brands}
     brand_rows.update({row["brand_id"]: row for row in existing_brands})
+    reconciled_brands = reconcile_brand_rows(products, brand_rows)
     brand_changed = write_dictionary_csv(
-        brand_path, [brand_rows[key] for key in sorted(brand_rows)], BRAND_DICTIONARY_HEADERS,
+        brand_path, reconciled_brands, BRAND_DICTIONARY_HEADERS,
         key_fields=("brand_id",),
     )
     term_path = out_dir / "term_dictionary.csv"

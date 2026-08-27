@@ -5,7 +5,7 @@ import csv
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -48,6 +48,7 @@ class DictionaryContext:
     brand_reference_keys: frozenset[str]
     unresolved_brand_ids: frozenset[str]
     content_hash: str
+    source_quality_by_sku: dict[str, str] = field(default_factory=dict)
 
 
 def load_dictionary_context(cfg: dict[str, Any]) -> DictionaryContext:
@@ -107,6 +108,7 @@ def load_dictionary_context(cfg: dict[str, Any]) -> DictionaryContext:
             if _text(row.get("brand_id")) and _normalized_brand_key(row["brand_id"]) not in brand_reference_keys
         ),
         content_hash=_dictionary_content_hash(directory),
+        source_quality_by_sku={row["sku"]: _text(row.get("status")) for row in damage},
     )
 
 

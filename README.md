@@ -12,8 +12,8 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 - QA 门禁、Snapshot、Staging 和原子更新 Master；
 - 商品、品牌、类目、术语、人工覆盖和模型结果字典；
 - 增量字典标准化、统一 Review Queue、术语候选管线；
-- 已有 ES/ZH 两个独立无图导出的本地实现；
-- Template 1 三表工作簿已经冻结需求，尚未完成代码实现。
+- ES/ZH 两个独立无图导出，以及 Template 1 三表无图导出；
+- AI-Free 字典覆盖率、字段级 Resolver、Dictionary Apply 预览、统一审核队列和术语候选。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
@@ -66,6 +66,12 @@ python -m action_tracker daily-run --no-dry-run
 # 基于最近 snapshot 重跑 QA
 python -m action_tracker qa
 
+# 统计当前正式 CURRENT 的 AI-Free 字典覆盖率（只读）
+python -m action_tracker dictionary-coverage --run-id <正式run_id>
+
+# 生成字典字段应用预览；默认绝不写 Master
+python -m action_tracker dictionary-apply --run-id <正式run_id> --dry-run
+
 # 完整回归测试
 python -m pytest -q
 ```
@@ -89,7 +95,7 @@ python scripts/audit_dictionary.py
 python scripts/publish_dictionary_baseline.py
 ```
 
-增量字典、审核队列和术语候选命令已经在本地功能分支实现，但在对应代码正式提交前不应仅依据本文档假设远端 checkout 已具备这些入口。具体状态见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
+增量字典、审核队列、术语候选和 Resolver 已实现为本地离线能力；Dictionary Apply 当前只生成预览，正式写入仍由安全 Gate 禁止。具体状态见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
 ## 导出
 
@@ -99,17 +105,16 @@ python scripts/publish_dictionary_baseline.py
 2. `今日西班牙语清单`；
 3. `今日中文清单`。
 
-第一张表按日期写 0/1；第二、三张表只包含当日有效 CURRENT SKU；只有中文表嵌入本地 250×250 白底图片。当日数量以正式 Listing/CURRENT 有效集合为准，不以 Sitemap 原始数量为准。
+第一张表按日期写 0/1；第二、三张表只包含当日有效 CURRENT SKU；只有中文表允许嵌入本地 250×250 白底图片，当前先输出不带图版本。当日数量以正式 Listing/CURRENT 有效集合为准，不以 Sitemap 原始数量为准。
 
-Template 1 当前是已冻结契约、待实现功能。现有本地实现仍是两个独立无图文件：
+Template 1 无图三表已经可以从正式 run 生成；现有基础无图文件仍可单独导出：
 
 ```powershell
 python -m action_tracker export --lang es --no-images --date YYYY-MM-DD
 python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
 ```
 
-开发顺序是先完成、试跑并验收这两个基础无图文件，再实现 Template 1 的历史
-Presence、三表合一和中文图片。详见
+历史 Presence 和中文图片嵌入属于后续独立阶段。详见
 [Export 落地计划](docs/EXPORT_IMPLEMENTATION_PLAN.md)。
 
 ## 主要目录

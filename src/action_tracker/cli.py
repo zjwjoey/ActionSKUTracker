@@ -47,6 +47,26 @@ def build_parser() -> argparse.ArgumentParser:
     t = sub.add_parser("export-template1", help="导出 Template 1 三表版本")
     t.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     t.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
+    dc = sub.add_parser("dictionary-coverage", help="统计 CURRENT 的 AI-Free 字典覆盖率")
+    dc.add_argument("--date", help="业务日期（YYYY-MM-DD）")
+    dc.add_argument("--run-id", help="可选：指定正式 observation run_id")
+    da = sub.add_parser("dictionary-apply", help="生成字典字段应用预览（默认不写 Master）")
+    da.add_argument("--run-id", required=True, help="必须是正式提交的 observation run_id")
+    da.add_argument("--dry-run", action="store_true", help="仅生成 apply 预览；默认行为")
+    de = sub.add_parser("dictionary-enrich", help="对已正式提交 run 的新增/变更 SKU 做增量字典标准化")
+    de.add_argument("--run-id", required=True, help="必须是 FULL_COMMIT 且 QA PASS 的 observation run_id")
+    rq = sub.add_parser("review-queue", help="构建或处理统一人工审核队列")
+    rq_sub = rq.add_subparsers(dest="review_queue_command", required=True)
+    rq_build = rq_sub.add_parser("build", help="只读汇集 Master 与字典侧当前问题")
+    rq_build.add_argument("--run-id", help="可选：纳入此 run 的增量字典审核证据")
+    rq_decide = rq_sub.add_parser("decide", help="保存人工审核决定；批准字典项会写入对应字典")
+    rq_decide.add_argument("--review-id", required=True)
+    rq_decide.add_argument("--decision", choices=("APPROVED", "REJECTED", "RESOLVED"), required=True)
+    rq_decide.add_argument("--value", default="", help="批准名称/品牌/术语时的人工确认值")
+    rq_decide.add_argument("--term-type", default="", help="仅 TERM_CANDIDATE：人工确认的术语类型，可覆盖候选建议")
+    tc = sub.add_parser("term-candidates", help="从正式 run 的增量 SKU 提取术语候选，绝不自动入库")
+    tc.add_argument("--run-id", required=True, help="必须已有同 run 的 dictionary-enrich 正式证据")
+    tc.add_argument("--min-sku-count", type=int, default=2, help="候选至少覆盖的 SKU 数，默认 2")
     return p
 
 
@@ -112,6 +132,56 @@ def main(argv=None) -> int:
         try:
             result = export_template1(cfg, export_date=args.date, run_id=args.run_id)
         except (ValueError, OSError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "dictionary-coverage":
+        from .dictionary_coverage import dictionary_coverage
+        try:
+            result = dictionary_coverage(cfg, export_date=args.date, run_id=args.run_id)
+        except (ValueError, OSError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "dictionary-apply":
+        from .dictionary_apply import DictionaryApplyError, dictionary_apply
+        try:
+            result = dictionary_apply(cfg, run_id=args.run_id, dry_run=True)
+        except (DictionaryApplyError, ValueError, OSError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "dictionary-enrich":
+        from .dictionary_enrichment import DictionaryEnrichmentError, enrich_dictionary
+        try:
+            result = enrich_dictionary(cfg, run_id=args.run_id)
+        except DictionaryEnrichmentError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "review-queue":
+        from .review_queue import ReviewQueueError, build_review_queue, decide_review
+        try:
+            if args.review_queue_command == "build":
+                result = build_review_queue(cfg, run_id=args.run_id)
+            else:
+                result = decide_review(
+                    cfg, review_id=args.review_id, decision=args.decision, value=args.value, term_type=args.term_type,
+                )
+        except ReviewQueueError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "term-candidates":
+        from .term_candidates import TermCandidateError, extract_term_candidates
+        try:
+            result = extract_term_candidates(cfg, run_id=args.run_id, min_sku_count=args.min_sku_count)
+        except TermCandidateError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False))

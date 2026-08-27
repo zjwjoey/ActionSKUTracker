@@ -164,11 +164,20 @@ def write_dictionary_csv(
     return True
 
 
-def _source_hash(row: Mapping[str, object]) -> str:
+def product_source_hash(row: Mapping[str, object]) -> str:
+    """计算商品官网事实字段的稳定哈希。
+
+    仅包含品名、一级/二级类目和规格；价格、生命周期、中文派生字段都不
+    属于字典失效条件。供增量标准化与字典重建共用，避免两套哈希口径漂移。
+    """
     payload = "\x1f".join(_text(row.get(field)) for field in (
         "name_es_raw", "cat1_es", "cat2_es", "spec_es_raw",
     ))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+# 兼容内部旧调用；新代码应使用公开的 product_source_hash。
+_source_hash = product_source_hash
 
 
 def _row_signature(row: Mapping[str, object]) -> tuple[str, ...]:
@@ -340,6 +349,55 @@ def category_rows_from_products(
             row["notes"] = row["notes"] or "首次由 Master 事实记录发现；等待分类字典确认"
         result.append(row)
     return result
+
+
+def reconcile_brand_rows(
+    products: Iterable[Mapping[str, object]], existing: Mapping[str, Mapping[str, object]],
+) -> list[dict[str, str]]:
+    """补齐商品字典已引用、但品牌字典尚无记录的品牌。
+
+    这不是人工确认：新增项保留原品牌拼写，并明确标为待人工复核，防止
+    `product_dictionary.brand_id` 形成悬空引用。
+    """
+    def identity_keys(row: Mapping[str, object]) -> set[str]:
+        values = [_text(row.get("brand_id")), _text(row.get("canonical_name"))]
+        values.extend(part.strip() for part in _text(row.get("aliases_es")).split("|") if part.strip())
+        return {" ".join(value.casefold().split()) for value in values if value}
+
+    def is_auto_reference(row: Mapping[str, object]) -> bool:
+        return _text(row.get("confidence")) == "PRODUCT_DICTIONARY_REFERENCE"
+
+    rows: dict[str, dict[str, str]] = {}
+    seen_identities: set[str] = set()
+    # 重跑构建时也要清掉上一轮自动补入的别名重复项。保留原有/人工记录，
+    # 而不是保留自动补入的占位行。
+    for brand_id, raw in sorted(existing.items(), key=lambda item: (is_auto_reference(item[1]), item[0])):
+        if not _text(brand_id):
+            continue
+        row = {header: _text(raw.get(header)) for header in BRAND_DICTIONARY_HEADERS}
+        keys = identity_keys(row)
+        if keys & seen_identities and is_auto_reference(row):
+            continue
+        rows[_text(brand_id)] = row
+        seen_identities.update(keys)
+    for product in products:
+        brand_id = _text(product.get("brand_id"))
+        normalized_brand = " ".join(brand_id.casefold().split())
+        if not brand_id or normalized_brand in seen_identities:
+            continue
+        row = {
+            "brand_id": brand_id,
+            "canonical_name": brand_id,
+            "aliases_es": brand_id,
+            "keep_original": "1",
+            "is_action_brand": "0",
+            "confidence": "PRODUCT_DICTIONARY_REFERENCE",
+            "review_status": "NEEDS_HUMAN_REVIEW",
+            "notes": "商品字典已引用；自动补齐以消除悬空品牌引用，待人工抽检。",
+        }
+        rows[brand_id] = row
+        seen_identities.update(identity_keys(row))
+    return [rows[brand_id] for brand_id in sorted(rows)]
 
 
 def write_manifest(path: Path, payload: Mapping[str, object]) -> None:

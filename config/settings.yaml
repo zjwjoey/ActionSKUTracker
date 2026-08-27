@@ -50,6 +50,7 @@ paths:
   state: runtime/state
   dictionary: runtime/dictionary
   dictionary_baseline: data/dictionary
+  review_queue: runtime/review_queue
   images: runtime/images
   exports: runtime/exports
   logs: runtime/logs

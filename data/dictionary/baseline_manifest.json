@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "published_at": "2026-08-25T16:17:47+08:00",
+  "published_at": "2026-08-25T17:23:14+08:00",
   "source_directory": "runtime/dictionary",
   "files": {
     "product_dictionary.csv": {
@@ -8,16 +8,16 @@
       "sha256": "eccaf9c1f7c8dd616dd9524a55e9b1d508f7cce6554bbd477877a781d996de37"
     },
     "brand_dictionary.csv": {
-      "rows": 509,
-      "sha256": "1a2709cd6b76a228bcb2ef9acd18c0d62f57d44db8e4d5a7ea12a4266369700f"
+      "rows": 588,
+      "sha256": "120d1d061b3b786a7519c8254b714cb89f8f0c63be23612fc57ac99f57876d0e"
     },
     "category_dictionary.csv": {
       "rows": 185,
       "sha256": "47190ab85a41be152a12320c14acfb419b34bb8922a1020be3072e3640e1b8b3"
     },
     "term_dictionary.csv": {
-      "rows": 33,
-      "sha256": "3bcb498602ccc20edaf22df3ce7cf0feefe8321fa933a67e9135f6fe120a8671"
+      "rows": 44,
+      "sha256": "c2763166078544a4e58a628a4be1f43bd1c042bce52edeee5e13785c52136a6b"
     },
     "manual_overrides.csv": {
       "rows": 30,

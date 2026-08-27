@@ -78,8 +78,19 @@ source hash 变化和 NEEDS_REVIEW。未变化的老 SKU 不产生新翻译，�
 Export 是字典的只读消费者。中文版逐字段应用人工覆盖、商品字典、品牌/类目/术语、
 有效模型结果和 fallback；Export 不得修改字典。中文缺失不能删除当日在售 SKU。
 
-当前 Git 已发布基线为商品 8,617、品牌 509、类目关系 185、术语 33；本地待审版本
-为品牌 588、术语 44。后者在审计和正式发布前不能称为远端稳定基线。
+当前 Git 已发布基线为商品 8,617、品牌 509、类目关系 185、术语 33；本地工作区
+候选版本为品牌 588、术语 44。工作区版本只有在 audit PASS、manifest hash 对账和
+明确发布后才能称为远端稳定基线。
+
+## Resolver 与覆盖率
+
+`dictionary_resolver.py` 对每个 CURRENT SKU 返回字段值、来源、字段状态和 SKU 级
+`AUTO_READY / REVIEW_REQUIRED / SOURCE_BLOCKED`。仅 source_hash 匹配且质量为 OK
+的模型缓存可用；普通西语残留、源损坏、未确认商品记录和未知品牌进入审核。`dictionary-coverage`
+写入 `runtime/dictionary/reports/`，不改 Master、State 或正式字典。
+
+`dictionary-apply --dry-run` 只生成字段级 preview、审核清单和 hash manifest；正式 Master
+写入当前关闭，未通过 QA、FULL_COMMIT、审计和原子替换 Gate 的数据不得进入生产。
 
 ## CI 边界
 

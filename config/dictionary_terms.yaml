@@ -1,6 +1,18 @@
 # Action 西语术语字典的高置信度初始种子。
 # 这里只收录可独立审查的规格、单位和材质词；有商品语义歧义的词不自动写入。
 terms:
+  # 官网单价缩写：仅用于单位规范，不改变价格数值。
+  - {term_es: "ud.", term_zh: 件, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价缩写：unidad"}
+  - {term_es: ud, term_zh: 件, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价缩写：unidad"}
+  - {term_es: kg, term_zh: 千克, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价单位缩写"}
+  - {term_es: ml, term_zh: 毫升, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价单位缩写"}
+  - {term_es: cl, term_zh: 厘升, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价单位缩写"}
+  - {term_es: l, term_zh: 升, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价单位缩写"}
+  - {term_es: "m²", term_zh: 平方米, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价面积单位"}
+  - {term_es: m2, term_zh: 平方米, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价面积单位"}
+  - {term_es: m, term_zh: 米, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价长度单位缩写"}
+  - {term_es: g, term_zh: 克, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价重量单位缩写"}
+  - {term_es: lav, term_zh: 次洗涤, term_type: unit, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "官网单价缩写：lavado"}
   - {term_es: colores, term_zh: 颜色, term_type: spec, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "规格颜色"}
   - {term_es: variantes, term_zh: 变体, term_type: spec, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "规格变体"}
   - {term_es: diferentes, term_zh: 不同款式, term_type: spec, forbidden_zh: "", keep_original: "0", review_status: SEED_REVIEWED, notes: "规格描述"}

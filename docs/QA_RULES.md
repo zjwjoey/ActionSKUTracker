@@ -134,6 +134,17 @@ TERM_CANDIDATE 必须经人工 APPROVED 才能进入正式术语字典。
 
 同一稳定 review_id 不得每天重复入队；解决后转 RESOLVED，拒绝后保留 REJECTED 审计。
 
+### QA-DICT-008：西语残留
+
+中文品名和中文规格中的普通西语残留不得标记为 AUTO_READY；品牌、型号和技术缩写可
+按品牌字典/人工确认保留原文。描述和详情当前允许西语 fallback，但必须标记字段待补，
+不得伪装成中文已完成。
+
+### QA-DICT-009：Apply 预览
+
+Dictionary Apply 第一阶段只允许 dry-run。预览必须逐字段记录旧值、新值、来源和原因；
+未 AUTO_READY 的 SKU 只能进入 review_required.csv，不能部分写入 Master。
+
 ## 8. Export 规则
 
 ### QA-EXP-001：正式来源

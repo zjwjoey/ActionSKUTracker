@@ -150,6 +150,16 @@ def main() -> int:
     check("current_categories_fixed", all(row.get("cat1_zh") in FIXED_CATEGORIES for row in current), sorted({row.get("cat1_zh", "") for row in current} - FIXED_CATEGORIES))
     check("category_dictionary_fixed", all(row.get("cat1_zh") in FIXED_CATEGORIES for row in categories), sorted({row.get("cat1_zh", "") for row in categories} - FIXED_CATEGORIES))
     check("brand_names_unique", len({(row.get("canonical_name") or "").casefold() for row in brands}) == len(brands), len(brands))
+    brand_reference_keys = set()
+    for row in brands:
+        values = [row.get("brand_id") or "", row.get("canonical_name") or ""]
+        values.extend(part.strip() for part in (row.get("aliases_es") or "").split("|") if part.strip())
+        brand_reference_keys.update(" ".join(value.casefold().split()) for value in values if value)
+    dangling_brand_ids = sorted({
+        row.get("brand_id") or "" for row in products
+        if row.get("brand_id") and " ".join((row.get("brand_id") or "").casefold().split()) not in brand_reference_keys
+    })
+    check("product_brand_references", not dangling_brand_ids, {"missing_brand_ids": dangling_brand_ids[:20]})
 
     stale_overrides = [row["sku"] for row in model_rows if row["sku"] in product_by_sku and row["source_hash"] != product_by_sku[row["sku"]]["source_hash"]]
     missing_override_skus = [row["sku"] for row in model_rows if row["sku"] not in product_by_sku]

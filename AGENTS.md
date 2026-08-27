@@ -49,6 +49,8 @@
 - 模型或规则不得直接批量晋升术语；正式术语必须经过 Review Queue 人工确认。
 - 字典不得改写 SKU、价格、商品链接、西语官网事实或在售结论。
 - 正式字典基线必须先审计，再发布到 `data/dictionary/`。
+- `dictionary-coverage`、`dictionary-enrich`、`review-queue` 和 `term-candidates` 必须保持离线：不得调用模型 API 或官网。
+- `dictionary-apply` 当前仅允许 `--dry-run`；任何未来正式写 Master 的实现都必须另设 QA/FULL_COMMIT/Audit Gate、字段 diff、备份和原子替换测试。
 
 ## 6. Export 边界
 

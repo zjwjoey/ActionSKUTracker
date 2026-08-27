@@ -10,8 +10,12 @@ from action_tracker.dictionary import (
     index_product_overrides,
     load_dictionary_csv,
     normalize_category_key,
+    reconcile_brand_rows,
+    product_source_hash,
     write_dictionary_csv,
 )
+from action_tracker.dictionary_enrichment import processable_candidate_skus, select_candidates
+from action_tracker.dictionary_enrichment import DictionaryEnrichmentError, _validate_formal_snapshot
 from action_tracker.dictionary_sources import (
     is_polluted_source_field,
     load_clean_historical_spanish_reference,
@@ -114,6 +118,28 @@ def test_category_rebuild_keeps_manual_second_level_and_notes():
     }]
     rows = category_rows_from_products([], existing=old)
     assert rows == old
+
+
+def test_brand_reconciliation_adds_unreferenced_product_brand_as_reviewable_original_name():
+    rows = reconcile_brand_rows(
+        [{"brand_id": "Troppie"}],
+        {"Known": {"brand_id": "Known", "canonical_name": "Known", "keep_original": "1"}},
+    )
+    by_id = {row["brand_id"]: row for row in rows}
+    assert by_id["Known"]["canonical_name"] == "Known"
+    assert by_id["Troppie"] == {
+        "brand_id": "Troppie", "canonical_name": "Troppie", "aliases_es": "Troppie",
+        "keep_original": "1", "is_action_brand": "0", "confidence": "PRODUCT_DICTIONARY_REFERENCE",
+        "review_status": "NEEDS_HUMAN_REVIEW", "notes": "商品字典已引用；自动补齐以消除悬空品牌引用，待人工抽检。",
+    }
+
+
+def test_brand_reconciliation_reuses_existing_brand_alias_instead_of_adding_duplicate():
+    rows = reconcile_brand_rows(
+        [{"brand_id": "troppie"}],
+        {"Troppie": {"brand_id": "Troppie", "canonical_name": "Troppie", "aliases_es": "Troppie"}},
+    )
+    assert [row["brand_id"] for row in rows] == ["Troppie"]
 
 
 def test_product_override_is_field_level_not_whole_row_lock():
@@ -219,6 +245,63 @@ def test_source_change_marks_non_manual_translation_for_review():
     second = build_product_dictionary({"1001": {"name_es": "Producto B", "name_zh": "商品B"}}, {"1001": first}, updated_at="2026-08-25")[0]
     assert second["translation_status"] == "NEEDS_REVIEW"
     assert second["review_status"] == "NEEDS_REVIEW"
+
+
+def test_incremental_candidate_selection_ignores_unchanged_old_sku():
+    record = {"sku": "1001", "name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "Limpieza", "spec_es": "2 unidades"}
+    source_hash = product_source_hash({
+        "name_es_raw": record["name_es"], "cat1_es": record["cat1_es"],
+        "cat2_es": record["cat2_es"], "spec_es_raw": record["spec_es"],
+    })
+    assert select_candidates({"1001": record}, [], [{"sku": "1001", "source_hash": source_hash, "review_status": "UNREVIEWED"}]) == {}
+
+
+def test_incremental_candidate_selection_does_not_treat_missing_listing_field_as_fact_change():
+    record = {"sku": "1001", "name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "", "spec_es": ""}
+    source_hash = product_source_hash({
+        "name_es_raw": "Producto", "cat1_es": "Hogar", "cat2_es": "Limpieza", "spec_es_raw": "2 unidades",
+    })
+    product = {
+        "sku": "1001", "source_hash": source_hash, "name_es_raw": "Producto", "cat1_es": "Hogar",
+        "cat2_es": "Limpieza", "spec_es_raw": "2 unidades", "review_status": "UNREVIEWED",
+    }
+    assert select_candidates({"1001": record}, [], [product]) == {}
+
+
+def test_incremental_candidate_selection_is_limited_to_new_changed_or_review():
+    records = {
+        "1001": {"sku": "1001", "name_es": "A", "cat1_es": "Hogar", "cat2_es": "", "spec_es": ""},
+        "1002": {"sku": "1002", "name_es": "B", "cat1_es": "Hogar", "cat2_es": "", "spec_es": ""},
+        "1003": {"sku": "1003", "name_es": "C", "cat1_es": "Hogar", "cat2_es": "", "spec_es": ""},
+    }
+    products = [
+        {"sku": "1001", "source_hash": "old", "review_status": "UNREVIEWED", "translation_status": "MODEL_TRANSLATED"},
+        {"sku": "1002", "source_hash": product_source_hash({"name_es_raw": "B", "cat1_es": "Hogar", "cat2_es": "", "spec_es_raw": ""}), "review_status": "NEEDS_REVIEW", "translation_status": "NEEDS_REVIEW"},
+    ]
+    selected = select_candidates(records, [{"sku": "1003", "status": "NEW"}], products)
+    assert selected == {"1001": {"SOURCE_HASH_CHANGED"}, "1002": {"NEEDS_REVIEW"}, "1003": {"NEW"}}
+
+
+def test_incremental_new_existing_sku_is_audited_but_not_rewritten():
+    record = {"sku": "1001", "name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "", "spec_es": ""}
+    source_hash = product_source_hash({
+        "name_es_raw": "Producto", "cat1_es": "Hogar", "cat2_es": "Limpieza", "spec_es_raw": "2 unidades",
+    })
+    existing = {"1001": {
+        "sku": "1001", "source_hash": source_hash, "name_es_raw": "Producto", "cat1_es": "Hogar",
+        "cat2_es": "Limpieza", "spec_es_raw": "2 unidades", "name_zh_standard": "已有中文",
+    }}
+    selected = {"1001": {"NEW"}}
+    assert processable_candidate_skus(selected, existing, {"1001": record}, {}) == set()
+
+
+def test_incremental_enrichment_rejects_dry_run_snapshot(tmp_path):
+    (tmp_path / "run_report.json").write_text(
+        '{"run_id":"r1","dry_run":true,"commit_status":"FULL_COMMIT"}', encoding="utf-8",
+    )
+    (tmp_path / "qa_report.json").write_text('{"passed":true,"state":"PASS"}', encoding="utf-8")
+    with pytest.raises(DictionaryEnrichmentError, match="DRY_RUN_NOT_ALLOWED"):
+        _validate_formal_snapshot(tmp_path, "r1")
 
 
 def test_duplicate_csv_key_is_rejected(tmp_path):

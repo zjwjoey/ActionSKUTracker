@@ -126,6 +126,11 @@ Detail 不是主 Presence 链的一部分：
 
 日常增量只处理 NEW、source hash 变化和 NEEDS_REVIEW。字典不决定价格、Presence 或生命周期。
 
+解析与应用保持在主链之外：正式 Observation 通过后，`dictionary_resolver.py` 逐字段解析
+并给出 `AUTO_READY`、`REVIEW_REQUIRED` 或 `SOURCE_BLOCKED`；`dictionary-coverage` 只读
+统计，`dictionary-apply --dry-run` 只产出 preview 和 manifest。当前不允许该层直接写入
+Master，避免字典异常影响 Presence 权威结果。
+
 ## 9. Export
 
 Export 读取正式事实、字典、历史 Presence 和本地图片，生成交付文件。它不得访问官网或写回任何来源。

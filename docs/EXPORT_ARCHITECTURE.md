@@ -59,7 +59,7 @@ Export 绝对不得：
 
 | 模板 | 状态 | 输出 |
 | --- | --- | --- |
-| Template 1 | 目标契约，待按本文实现 | 一个 Excel、三张工作表 |
+| Template 1 无图 | 本地已实现并通过回归测试，待独立提交/用户验收 | 一个 Excel、三张工作表 |
 | 基础 ES/ZH 无图 Profile | 本地已实现，待真实预览、验收与独立提交 | 两个独立 Excel，先作为日常可用基础版本 |
 | 独立历史 Presence Export | 已完成设计、尚未实现 | 与 Template 1 第一张表复用同一 Presence 构建服务 |
 
@@ -67,14 +67,13 @@ Template 1 的完整字段契约见 `docs/EXPORT_PROFILE.md`。
 
 ## 4.1 实施顺序
 
-Export 不直接从 Template 1 开始。第一阶段先稳定和发布两个独立无图基础文件：
+基础阶段已完成两个独立无图文件，并新增 Template 1 无图组合预览：
 
 - 西班牙语全量无图；
 - 中文全量无图。
 
-基础版本必须先完成正式来源解析、14 列结构、ES/ZH 对账、manifest、只读保护、
-真实预览和用户验收。只有基础版本可用于日常工作后，才进入 Template 1 的历史
-Presence、三表合一和中文图片嵌入。
+基础版本包含正式来源解析、14 列结构、ES/ZH 对账、manifest 和只读保护。Template 1
+当前已完成历史 union、三表合一和 0/1 Presence；中文图片嵌入仍是后续独立阶段。
 
 完整顺序和验收条件见 `docs/EXPORT_IMPLEMENTATION_PLAN.md`。
 
@@ -145,7 +144,8 @@ src/action_tracker/exporting/
 截至本文件建立时：
 
 - ES/ZH 两个独立无图文件已经可以从正式来源导出；
-- Template 1 的三表合一、第一张表当日列、新 SKU 合并及中文表图片嵌入尚未实现；
+- Template 1 无图三表、第一张表当日列和新 SKU union 已实现；
+- 中文表图片嵌入尚未实现；
 - 本文件和 `EXPORT_PROFILE.md` 先冻结需求，后续代码必须按 Profile 实现并补回归测试；
 - 图片下载仍是独立任务，Export 只消费已经存在的本地图片。
 
