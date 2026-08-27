@@ -1,35 +1,35 @@
 {
   "schema_version": 1,
-  "published_at": "2026-08-25T17:23:14+08:00",
+  "published_at": "2026-08-27T10:28:36+08:00",
   "source_directory": "runtime/dictionary",
   "files": {
     "product_dictionary.csv": {
-      "rows": 8617,
-      "sha256": "eccaf9c1f7c8dd616dd9524a55e9b1d508f7cce6554bbd477877a781d996de37"
+      "rows": 8662,
+      "sha256": "737a75da73e4c65cb8b137344d79c68b1ee5c136fd0e20f3450ae76d2afd2dd1"
     },
     "brand_dictionary.csv": {
       "rows": 588,
       "sha256": "120d1d061b3b786a7519c8254b714cb89f8f0c63be23612fc57ac99f57876d0e"
     },
     "category_dictionary.csv": {
-      "rows": 185,
-      "sha256": "47190ab85a41be152a12320c14acfb419b34bb8922a1020be3072e3640e1b8b3"
+      "rows": 186,
+      "sha256": "63ebc1486f0d75cf82101380016ac627c6467ed0afa79edcc955e8cff2632da4"
     },
     "term_dictionary.csv": {
       "rows": 44,
       "sha256": "c2763166078544a4e58a628a4be1f43bd1c042bce52edeee5e13785c52136a6b"
     },
     "manual_overrides.csv": {
-      "rows": 30,
-      "sha256": "6aea8f7c2f3d44d9f84685bf40b0268e40b607444848e439b73fdb6a71f680cb"
+      "rows": 197,
+      "sha256": "aa129ca24f0ceb5106ef334cddcd3d8650087dab206bd421ed493882f4a2c5c8"
     },
     "model_translation_overrides.csv": {
-      "rows": 825,
-      "sha256": "26111defc8d55efab1c5147d8fbcb3b1175f8d0042670473bae28706edf2c3ef"
+      "rows": 823,
+      "sha256": "94829db913c8e867bc9d56e1d0cf740001e9c757402d33a5353f9e77b9a5e75b"
     },
     "source_damage_report.csv": {
-      "rows": 131,
-      "sha256": "c8531a5fbd7c4f57a29307d589ea8cf08b7c0ce0350635242e5ab163e013653c"
+      "rows": 130,
+      "sha256": "0f057f4d797d047ceb176ea4eac97ce5c6de1b11069b70415dd24e7194f9094e"
     }
   }
 }

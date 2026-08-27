@@ -104,6 +104,30 @@ def main() -> int:
     categories = tables["category_dictionary.csv"]
     model_rows = tables["model_translation_overrides.csv"]
     damage_rows = tables["source_damage_report.csv"]
+    # Manual product overrides are the approved field-level dictionary layer.
+    # Apply them to the audit view so accepted values are audited exactly as
+    # exports resolve them, while keeping the raw product table checks intact.
+    _, manual_rows = read_csv(dictionary / "manual_overrides.csv")
+    manual_by_product: dict[str, dict[str, str]] = {}
+    for override in manual_rows:
+        if (override.get("scope") or "").strip() != "product":
+            continue
+        sku = (override.get("key") or "").strip()
+        field = (override.get("field") or "").strip()
+        value = (override.get("value") or "").strip()
+        if sku and field and value:
+            manual_by_product.setdefault(sku, {})[field] = value
+    effective_products = []
+    for product in products:
+        effective = dict(product)
+        overrides = manual_by_product.get(product.get("sku", ""), {})
+        effective.update(overrides)
+        if overrides.get("name_zh_standard"):
+            # A confirmed field-level name override is a usable translation
+            # even when the raw product row still carries the old fallback
+            # status; this mirrors Resolver precedence.
+            effective["translation_status"] = "HUMAN_REVIEWED"
+        effective_products.append(effective)
     baseline = ROOT / "data" / "dictionary"
     baseline_manifest_path = baseline / "baseline_manifest.json"
     if baseline_manifest_path.exists():
@@ -187,9 +211,18 @@ def main() -> int:
 
     brand_rows = tables["brand_dictionary.csv"]
     brands_for_scan = sorted({row["canonical_name"] for row in brand_rows if row.get("canonical_name")}, key=len, reverse=True)
-    candidates = refiner._candidates(products, brands_for_scan)
+    candidates = refiner._candidates(effective_products, brands_for_scan)
     reviewed = refiner._reviewed_non_translation_keys(dictionary)
-    unresolved = [item["sku"] for item in candidates if (item["sku"], item["source_hash"]) not in reviewed and item["sku"] in current_skus]
+    manual_complete = {
+        sku for sku, overrides in manual_by_product.items()
+        if overrides.get("name_zh_standard") and overrides.get("spec_zh_standard")
+    }
+    unresolved = [
+        item["sku"] for item in candidates
+        if item["sku"] not in manual_complete
+        and (item["sku"], item["source_hash"]) not in reviewed
+        and item["sku"] in current_skus
+    ]
     check("current_translation_residual", not unresolved, {"latest_date": latest, "unresolved_skus": unresolved[:50]})
     pending_review = [row["sku"] for row in current if row.get("review_status") == "NEEDS_REVIEW"]
     check("current_review_pending", not pending_review, {"pending_skus": pending_review[:50]}, warning=True)

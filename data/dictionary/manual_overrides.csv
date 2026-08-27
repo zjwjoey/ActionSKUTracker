@@ -1,31 +1,198 @@
 ﻿scope,key,field,value,reason,source,locked,updated_at
-product,3201830,name_zh_standard,拖鞋,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3217162,name_zh_standard,帽子,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3218007,name_zh_standard,墙面装饰,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3222377,name_zh_standard,K歌套装,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3225423,name_zh_standard,Jacky-M自粘假指甲,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3201830,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3217162,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3218007,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3222377,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3225423,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,2557704,name_zh_standard,Troppie果味饮料,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,2520562,name_zh_standard,Kate Legwear 100丹尼保暖裤袜,review_id=b064c7dcf8b4b91bb616f55b,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:42+08:00
+product,2520562,spec_zh_standard,尺码S/M,review_id=54a6ff02d33a10471dbd40c5,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:32+08:00
+product,2543429,name_zh_standard,带盖储物箱,review_id=041168069a7ec6925ee142a8,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:24+08:00
+product,2543429,spec_zh_standard,8.5升 | 39x29x11厘米,review_id=3d56e80ef5bbbab638ff6808,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:31+08:00
+product,2554927,name_zh_standard,家居袜,review_id=5f9b6a46990303f15d047484,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:34+08:00
+product,2554927,spec_zh_standard,均码 | 2双 | 多种类型,review_id=f5adf66c728daa213945b338,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:51+08:00
 product,2557704,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3209615,name_zh_standard,Furby Furblets电子宠物,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,2557704,name_zh_standard,Troppie果味饮料,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,2563019,name_zh_standard,浴袍,review_id=d070368a1545cac4f3023687,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:46+08:00
+product,2563019,spec_zh_standard,S-XL码 | 不同款式,review_id=04ae2d9162b9ab17161dcf3f,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:24+08:00
+product,2568889,name_zh_standard,开襟羊毛衫,review_id=99ef6b96e65bd2ce48ebd7d7,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:40+08:00
+product,2568889,spec_zh_standard,尺码S-XL｜多色,review_id=65200649096d654f050da1bf,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:35+08:00
+product,2576247,name_zh_standard,家居袜,review_id=6106fec09a3eef3c45108789,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:34+08:00
+product,2576247,spec_zh_standard,尺码35-42 | 3双 | 多色,review_id=b890ec20c07e8fcac3e9b1d0,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:42+08:00
+product,3000782,name_zh_standard,Dumil纸杯,review_id=c386edd253cbe698c8f376ad,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:44+08:00
+product,3000782,spec_zh_standard,60个 | 200毫升,review_id=613bfe46ac9e1bd12ca81ff5,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:34+08:00
+product,3001960,name_zh_standard,拖鞋,review_id=13eedef529fd154a3f9da986,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:26+08:00
+product,3001960,spec_zh_standard,尺码36-41 | 多种款式,review_id=bdfcd702deafd47d0b5c5d57,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:43+08:00
+product,3002303,name_zh_standard,圈圈纱围巾,review_id=3322451128d5a3151bf78747,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:30+08:00
+product,3002303,spec_zh_standard,176x50厘米 | 多种款式,review_id=441b5d3bbfc0b0de5ea865e5,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:31+08:00
+product,3003233,name_zh_standard,珍宝珠润唇膏,review_id=5a8e5c2d00215913ee6ec07b,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:33+08:00
+product,3003233,spec_zh_standard,5支装,review_id=c024f44b00e8603cce50b312,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:43+08:00
+product,3006554,name_zh_standard,拖鞋,review_id=e94818e2ba050c198024c909,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:49+08:00
+product,3006554,spec_zh_standard,尺码 37-41 | 多种款式,review_id=a5ef2a20cb63d9a383a997b8,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:40+08:00
+product,3008847,name_zh_standard,永久性记号笔,review_id=af1e343621df9049c694192a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:42+08:00
+product,3008847,spec_zh_standard,24支装,review_id=68d83752b3a754f9de340043,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:36+08:00
+product,3011006,name_zh_standard,毛绒毯,review_id=25777fa33c4466298751127d,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:27+08:00
+product,3011006,spec_zh_standard,150x200厘米 | 多种款式,review_id=2a8e13bbc0e799ee0a944d21,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:28+08:00
+product,3011648,name_zh_standard,妮维雅男士清新沐浴露,review_id=eec15f3d5809ea08d6b7c593,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:50+08:00
+product,3011648,spec_zh_standard,250毫升,review_id=6d2d51b65d9a8d42efafe0d8,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:36+08:00
+product,3015095,name_zh_standard,舒适长裤,review_id=3d70bf5648c74521dbdf3c26,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:31+08:00
+product,3015095,spec_zh_standard,S-XL码 | 多色,review_id=da0c10901b564951a7f8fb7c,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:47+08:00
+product,3015578,name_zh_standard,Werckmann立式工作灯,review_id=28252163012d19059a2f69c4,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:28+08:00
+product,3015578,spec_zh_standard,200+50流明,review_id=d939112bd1f783b37322757a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:47+08:00
+product,3016637,name_zh_standard,带灯玻璃苹果,review_id=2de8d290b08d5a853b3972e5,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:29+08:00
+product,3016637,spec_zh_standard,直径7x8.5厘米 | 多种颜色,review_id=aa3a92fe06c3b83beff2c57c,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:41+08:00
+product,3200618,name_zh_standard,发圈,review_id=edf0896beb444e4c3244dc48,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:50+08:00
+product,3200618,spec_zh_standard,6件装 | 多种颜色,review_id=9ba61d29781b5978454b453f,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:40+08:00
+product,3201262,name_zh_standard,Werckmann 照明帽,review_id=c20a7620ee403325e1b9a8e7,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:43+08:00
+product,3201262,spec_zh_standard,40流明,review_id=0f3019f574de237f2bc09bea,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:25+08:00
+product,3201441,name_zh_standard,Alison & Mae 雪尼尔编织毛线,review_id=4ca490c60a8f26fd9882a9fb,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:32+08:00
+product,3201441,spec_zh_standard,300克 | 多种颜色,review_id=37c139a8586805fff824e154,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:30+08:00
+product,3201687,name_zh_standard,人造悬挂植物,review_id=01bd132787c9b19db3642061,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:40:18+08:00
+product,3201687,spec_zh_standard,不同款式,review_id=d82e57fa33ea394d6f2ce34d,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:46+08:00
+product,3201830,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3201830,name_zh_standard,拖鞋,review_id=4c1594cfc0209cdea9cb3a61,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:32+08:00
+product,3201830,spec_zh_standard,尺码36-41｜多款可选,review_id=cb61d9a6c814092ebf35ce9e,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:45+08:00
+product,3202721,name_zh_standard,Favora's 巧克力松露,review_id=eeeb3fe62b0ede02447a59f2,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:50+08:00
+product,3202721,spec_zh_standard,400克,review_id=abdcd865b955f024ac87a287,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:41+08:00
+product,3204983,name_zh_standard,CreaScents香薰油,review_id=78ce434c36ff8379613e2f92,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:38+08:00
+product,3204983,spec_zh_standard,5x10毫升 | 不同款式,review_id=96349418a67f52ae93781533,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:39+08:00
+product,3206019,name_zh_standard,万圣节自粘假指甲,review_id=c4f4220da166e12a92c7d628,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:44+08:00
+product,3206019,spec_zh_standard,24片 | 不同款式,review_id=c5eeea3f68876f6e23f64134,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:44+08:00
+product,3208114,name_zh_standard,欧元巧克力硬币,review_id=a56b5b8eae59ff00d3cc0a7a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:40+08:00
+product,3208114,spec_zh_standard,50克,review_id=4099b1578c23e8022355d73e,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:31+08:00
+product,3208364,name_zh_standard,餐具,review_id=de6db22d1e7d60282d054b35,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:48+08:00
+product,3208364,spec_zh_standard,24件套,review_id=189b5da73a3087acb9359e4f,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:26+08:00
+product,3208505,name_zh_standard,钻石画曼陀罗,review_id=632c0443f10fa82ded3bc0cb,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:35+08:00
+product,3208505,spec_zh_standard,直径30厘米 | 多种款式,review_id=763571a981ddf112ccb64df4,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:37+08:00
 product,3209615,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3209639,name_zh_standard,Rodeo混合糖果,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3209615,name_zh_standard,Furby Furblets电子宠物,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
 product,3209639,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3209865,name_zh_standard,Gabby's Dollhouse玩具套装,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3209639,name_zh_standard,Rodeo混合糖果,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
 product,3209865,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3209915,name_zh_standard,Absolu Chic Paris毛毯,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3209865,name_zh_standard,Gabby's Dollhouse玩具套装,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
 product,3209915,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3209975,name_zh_standard,锯齿纹装饰靠垫,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3209915,name_zh_standard,Absolu Chic Paris毛毯,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
 product,3209975,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3210263,name_zh_standard,TCX防裂丙烯酸密封胶套装,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3209975,name_zh_standard,锯齿纹装饰靠垫,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3210121,name_zh_standard,M&M's花生巧克力豆限量版,review_id=0e8b5184b50dbdb8c95e49a3,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:25+08:00
+product,3210121,spec_zh_standard,250克,review_id=d050f985976d56a3bb59e91f,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:45+08:00
 product,3210263,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3210285,name_zh_standard,3M Command装饰夹,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3210263,name_zh_standard,TCX防裂丙烯酸密封胶套装,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
 product,3210285,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3219656,name_zh_standard,Zed Candy USA硬糖,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3210285,name_zh_standard,3M Command装饰夹,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3212343,name_zh_standard,闪粉（适用于头发、身体和面部）,review_id=d1585c3e722bace209c738e5,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:46+08:00
+product,3212343,spec_zh_standard,不同款式,review_id=65be8385702f34117d3ea560,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:35+08:00
+product,3214923,name_zh_standard,带支架托盘,review_id=b98118112ecef8a3cf97de37,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:42+08:00
+product,3214923,spec_zh_standard,直径28x7.5厘米 | 不同款式,review_id=f30c13df900033503a2a1bd7,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:51+08:00
+product,3215276,name_zh_standard,双头马克笔,review_id=c098c2f15ec5f7a52951b7ac,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:43+08:00
+product,3215276,spec_zh_standard,60支 | 不同款式,review_id=d1980ccda456bf52cab7af93,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:46+08:00
+product,3216790,name_zh_standard,3D手工迷你模型 哈利波特,review_id=370738b55d9cab0801a9da09,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:30+08:00
+product,3216790,spec_zh_standard,多种款式,review_id=cfc8f84adc99ee5b5d827527,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:45+08:00
+product,3216966,name_zh_standard,Dani抱枕套,review_id=5c180414a70342790b176508,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:33+08:00
+product,3216966,spec_zh_standard,45x45厘米 | 多种颜色,review_id=43bf24d49614d0345245faef,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:31+08:00
+product,3217018,name_zh_standard,摇粒绒居家套装,review_id=030ea6d35e1e9373e055f99b,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:24+08:00
+product,3217018,spec_zh_standard,S-XL码 | 多色,review_id=e5dcf6cb102a24853b3ad38c,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:49+08:00
+product,3217077,name_zh_standard,睡衣,review_id=e22356a1b8fe342b2481e05a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:48+08:00
+product,3217077,spec_zh_standard,尺码S-XL | 多种款式,review_id=259943cb9e9648bb736787cc,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:27+08:00
+product,3217087,name_zh_standard,保暖内衣,review_id=d53823578150025aa42d2bbd,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:46+08:00
+product,3217087,spec_zh_standard,尺码S-XL,review_id=af60a43425b5316cb7b7e76d,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:42+08:00
+product,3217096,name_zh_standard,居家套装,review_id=60b4d921f75f93e891b94ae3,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:34+08:00
+product,3217096,spec_zh_standard,S-XL码 | 多色,review_id=2f45037677a1ad265c3f54ca,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:29+08:00
+product,3217162,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3217162,name_zh_standard,帽子,review_id=f84b336d705f5a7733ad570e,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:51+08:00
+product,3217162,spec_zh_standard,均码，多色可选,review_id=0ae87eebdf0616beeec981db,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:25+08:00
+product,3217163,name_zh_standard,拖鞋,review_id=3c519b8c23e6d59a767b60f7,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:30+08:00
+product,3217163,spec_zh_standard,尺码37-41 | 多种颜色,review_id=4baf90eec222048dedc8b8f3,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:32+08:00
+product,3217164,name_zh_standard,雪尼尔袜,review_id=3c611527a273da7f169db3b8,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:30+08:00
+product,3217164,spec_zh_standard,尺码35-42 | 不同款式,review_id=09540ab4a7e59f72341bc0bb,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:25+08:00
+product,3217190,name_zh_standard,LED闹钟,review_id=e33e7d1e704e7270d7811d5c,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:48+08:00
+product,3217190,spec_zh_standard,多种颜色,review_id=2545995fa3f85a8c90860fe2,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:27+08:00
+product,3217194,name_zh_standard,长蜡烛烛台,review_id=801b6dae0d5bc31eceaf9e59,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:38+08:00
+product,3217194,spec_zh_standard,3件装 | 多种颜色,review_id=fc058fa68fbedc2da74b3bbf,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:51+08:00
+product,3217299,name_zh_standard,烟灰缸,review_id=6325ce0b10f51c773dee2623,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:35+08:00
+product,3217299,spec_zh_standard,直径 9.5厘米,review_id=dd68d144ded01bb2baaaef79,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:48+08:00
+product,3217354,name_zh_standard,袜子,review_id=2bd22c1e4f9f4f5265af8df0,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:29+08:00
+product,3217354,spec_zh_standard,尺码35-42 | 多种款式,review_id=dc376cb2a496019d615ce15b,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:47+08:00
+product,3217378,name_zh_standard,毛绒拖鞋,review_id=0e4796a0018a789dd7ddf6e9,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:25+08:00
+product,3217378,spec_zh_standard,尺码37-41 | 多种颜色,review_id=6c8c74e9c478f94e5aa2d02c,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:36+08:00
+product,3217383,name_zh_standard,拖鞋,review_id=54c76dedb18a9bb0f26e750a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:33+08:00
+product,3217383,spec_zh_standard,尺码40-45 | 多种款式,review_id=d45e0d280cab9f258eaaa86a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:46+08:00
+product,3217434,name_zh_standard,泡泡抱枕套,review_id=392b89775c2e20f4456fadaa,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:30+08:00
+product,3217434,spec_zh_standard,45x45厘米 | 多色,review_id=659a96e4f19f477123063163,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:35+08:00
+product,3218007,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3218007,name_zh_standard,墙面装饰,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3218503,name_zh_standard,碗,review_id=23942f3a4d59203b66602c1a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:26+08:00
+product,3218503,spec_zh_standard,直径10x4.5厘米 | 多种颜色,review_id=70ac0b35dd8062cc6192f8e9,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:37+08:00
+product,3218511,name_zh_standard,Sitecom无线充电支架,review_id=e5f3da865ba4f5e7ac47e131,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:49+08:00
+product,3218511,spec_zh_standard,15瓦,review_id=882ce99ac7039a657dfad09a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:38+08:00
+product,3218590,name_zh_standard,DAY冰箱收纳盒,review_id=61d8596fe93b98b4568e58ff,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:34+08:00
+product,3218590,spec_zh_standard,21x15x10厘米 | 多种颜色,review_id=8cdd88e0d93ac2266e0b2848,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:39+08:00
+product,3218998,name_zh_standard,睡衣,review_id=d88e61e11d650b9828cf066a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:47+08:00
+product,3218998,spec_zh_standard,尺码 S-XL | 多种颜色,review_id=28b604b1d5d4145cda43e151,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:28+08:00
+product,3219303,name_zh_standard,贴纸书,review_id=66131829ddbaeded4902f183,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:36+08:00
+product,3219303,spec_zh_standard,24页 | 多种款式,review_id=78716e8243c413cfbe1b1d9d,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:37+08:00
+product,3219602,name_zh_standard,极光投影仪,review_id=1b56dd52a1dc6c3cf2eb7595,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:26+08:00
+product,3219602,spec_zh_standard,8种模式,review_id=7af3c93e5c02312280a3be0f,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:38+08:00
 product,3219656,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
-product,3223230,name_zh_standard,Quality Street巧克力糖果,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3219656,name_zh_standard,Zed Candy USA硬糖,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3220335,name_zh_standard,笔袋,review_id=2ab6bf35079348391fb31037,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:28+08:00
+product,3220335,spec_zh_standard,直径6.5x21厘米 | 多种颜色,review_id=63199b4e0072c68e2b462522,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:34+08:00
+product,3220638,name_zh_standard,毛毡板,review_id=9b118e19b8c94d688dd17e78,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:40+08:00
+product,3220638,spec_zh_standard,30x45厘米 | 多种颜色,review_id=fd6f306e6ae3dfa3759bc39b,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:52+08:00
+product,3221691,name_zh_standard,丙烯酸马克笔,review_id=ce82b4d97fa18a249027c169,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:45+08:00
+product,3221691,spec_zh_standard,40支装,review_id=95af60d0f6b7f43703709497,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:39+08:00
+product,3221876,name_zh_standard,霓虹灯箱,review_id=e4eca2995b688ee46d0b9ae5,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:49+08:00
+product,3221876,spec_zh_standard,28x15x4.5厘米 | 多种款式,review_id=2423017c4fb27c10004ab46a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:27+08:00
+product,3222067,name_zh_standard,购物手推车,review_id=c656183c70ba7856a4aa7b58,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:44+08:00
+product,3222067,spec_zh_standard,30升,review_id=447548f65aa7b36061e51fbb,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:31+08:00
+product,3222069,name_zh_standard,硅胶刮刀,review_id=28f7b0e9b43737ec6de96edd,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:28+08:00
+product,3222069,spec_zh_standard,28厘米 | 多种颜色,review_id=c80b67160767d2bc65dea3ad,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:44+08:00
+product,3222258,name_zh_standard,餐垫,review_id=29838f180c72cab6bee5af2c,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:28+08:00
+product,3222258,spec_zh_standard,直径38厘米 | 2件 | 多种颜色,review_id=56d763791eb0d58f923a95c3,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:33+08:00
+product,3222377,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3222377,name_zh_standard,K歌套装,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3222535,name_zh_standard,笔记本套装,review_id=d9bb608675498247e1e11ede,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:47+08:00
+product,3222535,spec_zh_standard,不同款式,review_id=a7f7abc8981d8875d6e20bc5,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:41+08:00
 product,3223230,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3223230,name_zh_standard,Quality Street巧克力糖果,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3223294,name_zh_standard,Haribo F!ZZ酸味软糖,AUDIT_REPAIR:可信西语原文 Haribo F!ZZ Sour,UNIFIED_REVIEW_QUEUE,0,2026-08-27T10:00:55+08:00
+product,3223294,spec_zh_standard,400克,AUDIT_REPAIR:可信西语规格 400 gramos,UNIFIED_REVIEW_QUEUE,0,2026-08-27T10:00:55+08:00
+product,3223498,name_zh_standard,Sologic 充电和数据线,review_id=05c49142dd4d035cd2fbf0e4,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:25+08:00
+product,3223498,spec_zh_standard,18-60瓦 | 3条装,review_id=274e34200701720963672f6a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:27+08:00
+product,3224691,name_zh_standard,C&C汽车清洁套装,review_id=c039c0972e28892a0e2ffc1c,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:43+08:00
+product,3224691,spec_zh_standard,7件套,review_id=1fe0af834cd82e53db7bacd1,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:26+08:00
+product,3224704,name_zh_standard,Natural Heroes 沐浴露和淋浴露,review_id=ff00d5a3b6b4d337ff665fb7,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:52+08:00
+product,3224704,spec_zh_standard,500毫升 | 多种款式,review_id=fb661bb25ccf95997c8a72e1,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:51+08:00
+product,3224719,name_zh_standard,La Isla Living地毯,review_id=7857b6d1b0a9071cd95916ce,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:37+08:00
+product,3224719,spec_zh_standard,133x190厘米 | 多种颜色,review_id=f062ea75762ff46f33ef06ba,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:50+08:00
+product,3224809,name_zh_standard,Beeztees 狗狗毛绒玩具,review_id=5c53b318c057a199c566e721,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:33+08:00
+product,3224809,spec_zh_standard,25厘米 | 多种款式,review_id=c682f9d2c58fce7284f0974b,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:44+08:00
+product,3224836,name_zh_standard,羊毛夹克,review_id=e75b677334f2561d77ed192e,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:49+08:00
+product,3224836,spec_zh_standard,尺码 S-XL | 多种颜色,review_id=2bf022e9c19b479ae30b90be,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:29+08:00
+product,3224837,name_zh_standard,居家套装,review_id=c29cce00fd77daeffdcdec52,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:43+08:00
+product,3224837,spec_zh_standard,S-XL码 | 多种颜色,review_id=ab219261226e0608c6465a29,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:41+08:00
+product,3224863,name_zh_standard,睡衣,review_id=7e769b214396da8870c4c5fb,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:38+08:00
+product,3224863,spec_zh_standard,S-XL码 | 多色,review_id=c901e084bd6bd9fa0d192583,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:45+08:00
+product,3225113,name_zh_standard,Alexia 窗帘,review_id=0b16c55095a7a1d41286fa92,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:25+08:00
+product,3225113,spec_zh_standard,140x260厘米 | 多种颜色,review_id=2e255285ed1d5c870db5dfea,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:29+08:00
+product,3225162,name_zh_standard,万圣节碗,review_id=9ca7e973af87d50adf75b02a,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:40+08:00
+product,3225162,spec_zh_standard,14厘米 | 多种款式,review_id=2c9cf85bf143fac74081f7b7,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:29+08:00
+product,3225163,name_zh_standard,万圣节马克杯,review_id=92974deaa012f12bf3634e06,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:39+08:00
+product,3225163,spec_zh_standard,300毫升 | 多种款式,review_id=794cac3f9b3ddd3897f8bf87,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:38+08:00
+product,3225223,name_zh_standard,Asevi Color 洗衣液,review_id=bcb499de2d983a72725005df,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:43+08:00
+product,3225223,spec_zh_standard,60次洗涤,review_id=ea6b51fc86801b33cd1f39e9,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:50+08:00
+product,3225224,name_zh_standard,Asevi Blanco Activo 洗衣液,review_id=448b8158f9a5cc83ce0df283,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:32+08:00
+product,3225224,spec_zh_standard,60次洗涤,review_id=67637a5234b0cfe3f51016ea,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:36+08:00
+product,3225423,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3225423,name_zh_standard,Jacky-M自粘假指甲,review_id=e5481b571d74d6f5060a5f30,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:49+08:00
+product,3225423,spec_zh_standard,24件装｜不同款式,review_id=8c54935721d223aa6aa66540,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:38+08:00
+product,3225520,name_zh_standard,Kappa运动袜,review_id=69e18029f1a0757f3caf4660,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:36+08:00
+product,3225520,spec_zh_standard,尺码35-42 | 3双 | 多种款式,review_id=a918f1b9db2b2688aaac948f,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:41+08:00
+product,3225541,name_zh_standard,罗纹睡衣裤,review_id=a6c44ff47bfed045eed5ab7b,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:41+08:00
+product,3225541,spec_zh_standard,S-XL码 | 不同款式,review_id=5c59da7fbb34559854382985,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:33+08:00
+product,3225588,name_zh_standard,袜子,review_id=fc6d92c5b369b780cc4decda,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:51+08:00
+product,3225588,spec_zh_standard,尺码35-42 | 2双 | 多种颜色,review_id=aae61d11796fc371124c7c76,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:41+08:00
+product,3225604,name_zh_standard,万圣节花盆,review_id=53516c94a01ec8b85c4bc129,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:32+08:00
+product,3225604,spec_zh_standard,15厘米 | 多种款式,review_id=4cefd2e0b7fb8d124edc2ff4,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:32+08:00
+product,3225607,name_zh_standard,菱形图案餐垫,review_id=24e18adafb8df7657ec12817,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:27+08:00
+product,3225607,spec_zh_standard,直径38x0.5厘米,review_id=e7d0a181e4a4564d5b1c75b6,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:49+08:00
+product,3225864,name_zh_standard,辣条零食 Genji,review_id=dcf5f95580f298db12df2072,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:48+08:00
+product,3225864,spec_zh_standard,72克,review_id=12dcff342bfb5b9eaf376241,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:26+08:00
+product,3226012,name_zh_standard,短靴,review_id=91d5161120e3895b63392b83,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:39+08:00
+product,3226012,spec_zh_standard,37-40码 | 多种颜色,review_id=e27d81a9db3518442a750a77,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:48+08:00
+product,3226788,name_zh_standard,粗链手链,review_id=735be37f55d2914af90aade7,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:37+08:00
+product,3226788,spec_zh_standard,多种颜色,review_id=b4cd4030205cf2cd73aa2221,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:42+08:00
