@@ -1,7 +1,7 @@
 # Action 本地字典与功能模块边界
 
-> 状态说明：Git 已发布基础字典与构建/审计流程；增量 Enrichment、统一 Review
-> Queue 和术语候选代码目前只存在于本地功能分支工作区，尚待单独审查提交。
+> 状态说明：基础字典、增量 Enrichment、统一 Review Queue、术语候选、Coverage 和
+> Resolver 已提交到 `feat/export-dictionary-closure`；正式 Master 回填仍关闭。
 
 ## 定位
 
