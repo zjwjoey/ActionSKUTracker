@@ -18,9 +18,11 @@ from action_tracker.dictionary import (  # noqa: E402
     CATEGORY_DICTIONARY_HEADERS,
     DICTIONARY_BASELINE_FILENAMES,
     MODEL_TRANSLATION_HEADERS,
+    OVERRIDE_HEADERS,
     PRODUCT_DICTIONARY_HEADERS,
     SOURCE_DAMAGE_HEADERS,
     TERM_DICTIONARY_HEADERS,
+    index_product_overrides,
 )
 from action_tracker.dictionary_sources import is_polluted_source_field  # noqa: E402
 from action_tracker.excel.reader import load_current  # noqa: E402
@@ -71,6 +73,30 @@ def baseline_file_set_mismatches(files: object) -> tuple[list[str], list[str]]:
     return sorted(expected - actual), sorted(actual - expected)
 
 
+def effective_product_view(
+    products: list[dict[str, str]], manual_rows: list[dict[str, str]],
+) -> tuple[list[dict[str, str]], dict[str, dict[str, str]]]:
+    """Apply approved field-level product overrides for audit-only checks."""
+    validated_overrides = index_product_overrides(manual_rows)
+    manual_by_product = {
+        sku: {field: value for field, value in fields.items() if value}
+        for sku, fields in validated_overrides.items()
+    }
+
+    effective_products = []
+    for product in products:
+        effective = dict(product)
+        overrides = manual_by_product.get(product.get("sku", ""), {})
+        effective.update(overrides)
+        if overrides.get("name_zh_standard"):
+            # A confirmed field-level name override is a usable translation
+            # even when the raw product row still carries the old fallback
+            # status; this mirrors Resolver precedence.
+            effective["translation_status"] = "HUMAN_REVIEWED"
+        effective_products.append(effective)
+    return effective_products, manual_by_product
+
+
 def main() -> int:
     dictionary = ROOT / "runtime" / "dictionary"
     master = ROOT / "runtime" / "master" / "Action_Master.xlsx"
@@ -85,6 +111,7 @@ def main() -> int:
         "brand_dictionary.csv": (BRAND_DICTIONARY_HEADERS, ("brand_id",)),
         "category_dictionary.csv": (CATEGORY_DICTIONARY_HEADERS, ("cat1_es", "cat2_es")),
         "term_dictionary.csv": (TERM_DICTIONARY_HEADERS, ("term_es", "term_type")),
+        "manual_overrides.csv": (OVERRIDE_HEADERS, ("scope", "key", "field")),
         "model_translation_overrides.csv": (MODEL_TRANSLATION_HEADERS, ("sku",)),
         "source_damage_report.csv": (SOURCE_DAMAGE_HEADERS, ("sku",)),
     }
@@ -108,26 +135,7 @@ def main() -> int:
     # Apply them to the audit view so accepted values are audited exactly as
     # exports resolve them, while keeping the raw product table checks intact.
     _, manual_rows = read_csv(dictionary / "manual_overrides.csv")
-    manual_by_product: dict[str, dict[str, str]] = {}
-    for override in manual_rows:
-        if (override.get("scope") or "").strip() != "product":
-            continue
-        sku = (override.get("key") or "").strip()
-        field = (override.get("field") or "").strip()
-        value = (override.get("value") or "").strip()
-        if sku and field and value:
-            manual_by_product.setdefault(sku, {})[field] = value
-    effective_products = []
-    for product in products:
-        effective = dict(product)
-        overrides = manual_by_product.get(product.get("sku", ""), {})
-        effective.update(overrides)
-        if overrides.get("name_zh_standard"):
-            # A confirmed field-level name override is a usable translation
-            # even when the raw product row still carries the old fallback
-            # status; this mirrors Resolver precedence.
-            effective["translation_status"] = "HUMAN_REVIEWED"
-        effective_products.append(effective)
+    effective_products, manual_by_product = effective_product_view(products, manual_rows)
     baseline = ROOT / "data" / "dictionary"
     baseline_manifest_path = baseline / "baseline_manifest.json"
     if baseline_manifest_path.exists():
@@ -156,7 +164,8 @@ def main() -> int:
     product_by_sku = {row["sku"]: row for row in products}
     master_current = load_current(master)
     current_skus = set(master_current)
-    current = [product_by_sku[sku] for sku in sorted(current_skus) if sku in product_by_sku]
+    effective_by_sku = {row["sku"]: row for row in effective_products}
+    current = [effective_by_sku.get(sku, product_by_sku[sku]) for sku in sorted(current_skus) if sku in product_by_sku]
     check("master_hash", hashlib.sha256(master.read_bytes()).hexdigest() == json.loads((dictionary / "build_manifest.json").read_text(encoding="utf-8"))["source_master_sha256"], "Master 未被构建流程改动")
     dictionary_current_skus = {row["sku"] for row in current}
     check("current_sku_set_exact", dictionary_current_skus == current_skus, {

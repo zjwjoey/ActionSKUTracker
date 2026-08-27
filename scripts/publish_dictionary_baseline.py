@@ -119,6 +119,10 @@ def main() -> int:
     staged = manifest_path.with_name(f".{manifest_path.name}.{uuid.uuid4().hex}.tmp")
     staged.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     os.replace(staged, manifest_path)
+    # The first audit necessarily ran before the baseline copy. Re-run after
+    # publishing so the persisted report describes the final synchronized
+    # state instead of retaining a transient baseline mismatch warning.
+    audit_report, audit_payload = _run_audit(root, runtime)
     print(json.dumps({
         "baseline": str(baseline), "files": rows, "manifest": str(manifest_path),
         "audit_report": str(audit_report), "audit_summary": audit_payload["summary"],

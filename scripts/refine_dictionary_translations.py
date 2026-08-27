@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from functools import lru_cache
 import json
 import os
 import re
@@ -48,6 +49,20 @@ def _text(value: object) -> str:
     return "" if value is None else str(value).strip()
 
 
+@lru_cache(maxsize=16)
+def _brand_pattern(brands: tuple[str, ...]) -> re.Pattern[str] | None:
+    """Compile all known brands once instead of running one regex per brand."""
+    # Longest-first preserves the previous caller contract when one brand is
+    # a prefix of another (for example, ``Action`` and ``Action Kids``).
+    alternatives = [
+        re.escape(brand)
+        for brand in sorted({_text(value) for value in brands if _text(value)}, key=len, reverse=True)
+    ]
+    if not alternatives:
+        return None
+    return re.compile("(?:" + "|".join(alternatives) + ")", re.IGNORECASE)
+
+
 def _source_path(cfg: dict, key: str) -> Path:
     raw = (cfg.get("dictionary_sources") or {}).get(key, "")
     path = Path(raw)
@@ -55,9 +70,8 @@ def _source_path(cfg: dict, key: str) -> Path:
 
 
 def _residual_latin(value: str, brands: list[str]) -> list[str]:
-    cleaned = value
-    for brand in brands:
-        cleaned = re.sub(re.escape(brand), "", cleaned, flags=re.I)
+    pattern = _brand_pattern(tuple(brands))
+    cleaned = pattern.sub("", value) if pattern else value
     cleaned = ALLOWED_LATIN.sub("", cleaned)
     return LATIN_WORD.findall(cleaned)
 

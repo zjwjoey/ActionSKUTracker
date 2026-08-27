@@ -12,6 +12,7 @@ tests/test_dictionary_baseline.py
 tests/test_dictionary_pipeline.py
 tests/test_dictionary_resolver.py
 tests/test_dictionary_coverage.py
+tests/test_audit_dictionary.py
 tests/test_dictionary_apply.py
 tests/test_review_queue.py
 tests/test_term_candidates.py
@@ -26,4 +27,5 @@ tests/test_p0_runtime.py
 tests/test_price.py
 tests/test_qa.py
 tests/test_translation.py
+tests/test_refine_dictionary_translations.py
 tests/test_writer.py
