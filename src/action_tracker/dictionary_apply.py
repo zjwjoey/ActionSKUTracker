@@ -61,7 +61,12 @@ def dictionary_apply(cfg: dict[str, Any], *, run_id: str, dry_run: bool = True) 
     master_path = Path(cfg["paths"]["master"])
     before_hash = _master_hash(cfg)
     master_records = _load_apply_master_records(master_path) if master_path.exists() else {}
-    immutable_count = _immutable_diff_count(source.records, master_records)
+    # Compare the staged Apply candidate with the exact Master that will be
+    # replaced.  Comparing the observation snapshot with Master is invalid:
+    # they may be different dates and therefore legitimately differ in
+    # last_seen, prices, tags, or SKU membership.
+    candidate_records = _build_allowlisted_records(master_records, resolutions)
+    immutable_count = _immutable_diff_count(master_records, candidate_records)
     output_dir = Path(cfg["paths"]["dictionary"]) / "apply" / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
     preview_rows, summary = _preview_rows(source.records, resolutions)
@@ -209,14 +214,7 @@ def _gate_errors(cfg: dict[str, Any], source: Any, resolutions: list[RecordResol
 def _commit_allowlisted(cfg: dict[str, Any], records: Iterable[dict[str, Any]], resolutions: list[RecordResolution],
                         master_records: dict[str, dict[str, Any]], before_hash: str, run_id: str,
                         on_backup_ready: Callable[[Path], None] | None = None) -> CommitOutcome:
-    updated = {sku: dict(record) for sku, record in master_records.items()}
-    for item in resolutions:
-        if item.readiness != "AUTO_READY" or item.sku not in updated:
-            continue
-        for field, target in ALLOWLIST.items():
-            result = item.fields.get(field)
-            if result and result.status == "READY" and result.source not in {"fallback", "none", "missing"}:
-                updated[item.sku][target] = result.value
+    updated = _build_allowlisted_records(master_records, resolutions)
     lock = RunLock(Path(cfg["paths"]["state"]), stale_minutes=int((cfg.get("run") or {}).get("lock_stale_minutes", 180)))
     lock.acquire(run_id, command="dictionary-apply")
     tmp: Path | None = None
@@ -266,14 +264,38 @@ def _assert_master_safe(before: Path, staged: Path) -> None:
                 raise DictionaryApplyError(f"IMMUTABLE_FACT_CHANGED:{sku}:{field}")
 
 
-def _immutable_diff_count(source_records: Iterable[dict[str, Any]], master_records: dict[str, dict[str, Any]]) -> int:
+def _build_allowlisted_records(
+    master_records: dict[str, dict[str, Any]], resolutions: Iterable[RecordResolution],
+) -> dict[str, dict[str, Any]]:
+    """Build the exact Master candidate using only the derived-field allowlist."""
+    updated = {sku: dict(record) for sku, record in master_records.items()}
+    for item in resolutions:
+        if item.readiness != "AUTO_READY" or item.sku not in updated:
+            continue
+        for field, target in ALLOWLIST.items():
+            result = item.fields.get(field)
+            if result and result.status == "READY" and result.source not in {"fallback", "none", "missing"}:
+                updated[item.sku][target] = result.value
+    return updated
+
+
+def _immutable_diff_count(
+    before_records: dict[str, dict[str, Any]], after_records: dict[str, dict[str, Any]],
+) -> int:
+    """Count immutable changes between the pre-Apply Master and its candidate.
+
+    This deliberately does not compare a dated observation snapshot with the
+    current Master.  Snapshot-vs-Master differences are expected between runs;
+    only the proposed replacement workbook is relevant to this invariant.
+    """
     count = 0
-    for source in source_records:
-        current = master_records.get(str(source.get("sku") or ""))
-        if not current:
+    for sku, before in before_records.items():
+        after = after_records.get(sku)
+        if not after:
             count += 1
             continue
-        count += sum(_norm(source.get(field)) != _norm(current.get(field)) for field in IMMUTABLE_FIELDS)
+        count += sum(_norm(before.get(field)) != _norm(after.get(field)) for field in IMMUTABLE_FIELDS)
+    count += len(set(after_records) - set(before_records))
     return count
 
 

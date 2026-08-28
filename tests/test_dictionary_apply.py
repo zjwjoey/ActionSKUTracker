@@ -10,7 +10,7 @@ from action_tracker.dictionary import DICTIONARY_BASELINE_FILENAMES
 import action_tracker.dictionary_apply as dictionary_apply_module
 from action_tracker.dictionary_apply import (
     DictionaryApplyError, _commit_allowlisted, _dictionary_binding_is_valid, _gate_errors, _load_apply_master_records,
-    _recover_interrupted_apply,
+    _recover_interrupted_apply, _build_allowlisted_records, _immutable_diff_count,
     _preview_rows, dictionary_apply,
 )
 from action_tracker.dictionary_resolver import FieldResolution, RecordResolution
@@ -80,6 +80,25 @@ def test_diff_does_not_count_equal_value_as_actual_change():
     assert rows == []
     assert summary["actual_changed_field_count"] == 0
     assert summary["unchanged_field_count"] == 6
+
+
+def test_immutable_metric_compares_apply_candidate_not_a_different_date_snapshot():
+    """A dated observation may differ from Master without an Apply mutation."""
+    source = _record("1001", last_seen="2026-08-26", current=1.29)
+    master = _record("1001", last_seen="2026-08-28", current=1.79)
+    master_records = {"1001": master}
+    fields = {
+        field: FieldResolution("新中文值", "manual_override", "READY")
+        for field in ("name", "cat1", "cat2", "spec", "description", "details")
+    }
+    resolution = RecordResolution("1001", fields, "MATCH", "OK", "AUTO_READY", ())
+
+    candidate = _build_allowlisted_records(master_records, [resolution])
+    assert _immutable_diff_count(master_records, candidate) == 0
+    assert source["last_seen"] != master["last_seen"]
+
+    candidate["1001"]["current_price"] = 9.99
+    assert _immutable_diff_count(master_records, candidate) == 1
 
 
 def test_apply_gate_rejects_non_formal_or_failed_qa_before_write(tmp_path):
