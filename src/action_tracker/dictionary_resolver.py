@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import re
 from typing import Any
 
+from .dictionary import format_confirmed_brand_title, is_confirmed_brand_record
 from .exporting.dictionary_join import (
     DictionaryContext,
     _fact_source_hash,
@@ -88,9 +89,7 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
         brand_classification = "UNKNOWN"
         fields["brand"] = FieldResolution(brand_value, "brand_dictionary", "REVIEW")
     else:
-        review_status = str(brand_row.get("review_status") or "").strip().upper()
-        confidence = str(brand_row.get("confidence") or "").strip().upper()
-        if review_status == "HUMAN_REVIEWED" or confidence in {"REFERENCE", "HUMAN_CONFIRMED", "AI_REVIEWED"} and review_status != "NEEDS_HUMAN_REVIEW":
+        if is_confirmed_brand_record(brand_row):
             brand_classification = "CONFIRMED"
             fields["brand"] = FieldResolution(brand_value, "brand_dictionary", "READY")
         else:
@@ -98,6 +97,19 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
             status = "READY" if context.allow_provisional_brands else "REVIEW"
             source = "brand_dictionary_provisional" if status == "READY" else "brand_dictionary"
             fields["brand"] = FieldResolution(brand_value, source, status)
+
+    # Chinese display titles may add the brand marker only after the brand is
+    # confirmed.  Manual title overrides remain field-level authority and are
+    # never reformatted automatically.
+    if (
+        brand_classification == "CONFIRMED"
+        and fields["name"].status == "READY"
+        and fields["name"].source != "manual_override"
+    ):
+        name = fields["name"]
+        fields["name"] = FieldResolution(
+            format_confirmed_brand_title(name.value, brand_value), name.source, name.status,
+        )
 
     raw_source_quality = context.source_quality_by_sku.get(sku, "") or "OK"
     source_quality = raw_source_quality if raw_source_quality in {"OK", "SOURCE_DAMAGED", "SOURCE_POLLUTED"} else "SOURCE_UNTRUSTED"

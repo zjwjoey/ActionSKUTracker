@@ -5,6 +5,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import shutil
 import unicodedata
 import uuid
@@ -74,6 +75,42 @@ def _text(value: object) -> str:
 
 def _is_locked(value: object) -> bool:
     return _text(value).lower() in {"1", "true", "yes", "locked"}
+
+
+def is_confirmed_brand_record(row: Mapping[str, object]) -> bool:
+    """Return whether a brand dictionary row may affect Chinese display text.
+
+    This deliberately does not infer a brand from a product title.  Only a
+    dictionary row that has either human review or recognised evidence-based
+    confidence is eligible for the derived ``品牌牌商品`` display rule.
+    """
+    review_status = _text(row.get("review_status")).upper()
+    confidence = _text(row.get("confidence")).upper()
+    return review_status == "HUMAN_REVIEWED" or (
+        confidence in {"REFERENCE", "HUMAN_CONFIRMED", "AI_REVIEWED"}
+        and review_status != "NEEDS_HUMAN_REVIEW"
+    )
+
+
+def format_confirmed_brand_title(title: object, brand: object) -> str:
+    """Format a confirmed brand in a Chinese product title without guessing.
+
+    If the confirmed brand is already in the title, it is normalised to one
+    occurrence followed by ``牌``.  If it is absent, it is prefixed.  A title
+    consisting of the brand alone is left intact because there is no reliable
+    generic product name to attach to it.
+    """
+    display = _text(title)
+    canonical = _text(brand)
+    if not display or not canonical:
+        return display
+    match = re.search(re.escape(canonical), display, flags=re.IGNORECASE)
+    if match is None:
+        return f"{canonical}牌{display}"
+    remainder = display[match.end():].lstrip()
+    if not remainder or remainder.startswith("牌"):
+        return display
+    return f"{display[:match.start()]}{canonical}牌{remainder}"
 
 
 def normalize_category_key(value: object) -> str:

@@ -17,8 +17,10 @@ from ..dictionary import (
     PRODUCT_DICTIONARY_HEADERS,
     SOURCE_DAMAGE_HEADERS,
     TERM_DICTIONARY_HEADERS,
+    format_confirmed_brand_title,
     index_model_translations,
     index_product_overrides,
+    is_confirmed_brand_record,
     load_dictionary_rows,
     normalize_category_key,
 )
@@ -133,6 +135,17 @@ def build_zh_rows(records: Iterable[dict[str, Any]], context: DictionaryContext)
         )
         if used_fallback:
             fallbacks.append("中文品名待审核")
+        brand_id = _text(product.get("brand_id"))
+        brand_row = context.brand_by_id.get(brand_id, {})
+        if (
+            not used_fallback
+            and not _text(manual.get("name_zh_standard"))
+            and brand_id in context.brand_by_id
+            and is_confirmed_brand_record(brand_row)
+        ):
+            title = format_confirmed_brand_title(
+                title, _text(brand_row.get("canonical_name")) or brand_id,
+            )
         cat1, cat1_fallback = _resolve_category_field("cat1_zh", record, product, manual, context, source_hash)
         if cat1_fallback:
             fallbacks.append("中文分类1待审核")

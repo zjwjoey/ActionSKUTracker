@@ -251,6 +251,39 @@ def test_zh_export_uses_field_priority_and_preserves_fact_columns(tmp_path):
     assert manifest["dictionary_fallback_counts"] == {"中文描述待审核": 1}
 
 
+def test_zh_export_adds_confirmed_brand_marker_but_keeps_manual_title(tmp_path):
+    cfg = _cfg(tmp_path)
+    run_id = "2026-08-24_010000"
+    record = _record("1001")
+    _write_master(cfg["paths"]["master"], [_run_log(run_id, "2026-08-24")], [record])
+    _write_snapshot(cfg["paths"]["snapshots"], run_id, "2026-08-24", [record])
+    _write_dictionary(cfg["paths"]["dictionary_baseline"], record)
+    _write_csv(cfg["paths"]["dictionary_baseline"] / "brand_dictionary.csv", BRAND_DICTIONARY_HEADERS, [{
+        "brand_id": "BrandX", "canonical_name": "BrandX", "confidence": "REFERENCE",
+    }])
+
+    result = export_catalog(cfg, language="zh", export_date="2026-08-24", no_images=True)
+    workbook = openpyxl.load_workbook(result["output"], data_only=True)
+    try:
+        assert workbook["商品全量"].cell(2, 3).value == "BrandX牌字典品名"
+    finally:
+        workbook.close()
+
+    _write_dictionary(
+        cfg["paths"]["dictionary_baseline"], record,
+        manual=[{"scope": "product", "key": "1001", "field": "name_zh_standard", "value": "人工品名"}],
+    )
+    _write_csv(cfg["paths"]["dictionary_baseline"] / "brand_dictionary.csv", BRAND_DICTIONARY_HEADERS, [{
+        "brand_id": "BrandX", "canonical_name": "BrandX", "confidence": "REFERENCE",
+    }])
+    manual_result = export_catalog(cfg, language="zh", export_date="2026-08-24", no_images=True)
+    manual_workbook = openpyxl.load_workbook(manual_result["output"], data_only=True)
+    try:
+        assert manual_workbook["商品全量"].cell(2, 3).value == "人工品名"
+    finally:
+        manual_workbook.close()
+
+
 def test_zh_export_stale_dictionary_value_falls_back_without_dropping_sku(tmp_path):
     cfg = _cfg(tmp_path)
     run_id = "2026-08-24_010000"

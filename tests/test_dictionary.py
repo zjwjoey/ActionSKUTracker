@@ -7,7 +7,9 @@ from action_tracker.dictionary import (
     PRODUCT_DICTIONARY_HEADERS,
     build_product_dictionary,
     category_rows_from_products,
+    format_confirmed_brand_title,
     index_product_overrides,
+    is_confirmed_brand_record,
     load_dictionary_csv,
     normalize_category_key,
     reconcile_brand_rows,
@@ -41,6 +43,17 @@ def test_dictionary_keeps_stable_fields_only_and_builds_status():
     assert row["translation_status"] == "HUMAN_REVIEWED"
     assert row["source_last_seen"] == "2026-08-25"
     assert "current_price" not in PRODUCT_DICTIONARY_HEADERS
+
+
+def test_confirmed_brand_title_rule_adds_one_marker_without_guessing():
+    confirmed = {"brand_id": "Stanger", "canonical_name": "Stanger", "confidence": "REFERENCE"}
+    provisional = {"brand_id": "Stanger", "canonical_name": "Stanger", "review_status": "NEEDS_HUMAN_REVIEW"}
+    assert is_confirmed_brand_record(confirmed) is True
+    assert is_confirmed_brand_record(provisional) is False
+    assert format_confirmed_brand_title("记号笔", "Stanger") == "Stanger牌记号笔"
+    assert format_confirmed_brand_title("stanger 记号笔", "Stanger") == "Stanger牌记号笔"
+    assert format_confirmed_brand_title("Stanger牌记号笔", "Stanger") == "Stanger牌记号笔"
+    assert format_confirmed_brand_title("Stanger", "Stanger") == "Stanger"
 
 
 def test_locked_dictionary_values_are_not_overwritten():

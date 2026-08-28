@@ -5,11 +5,11 @@ from action_tracker.dictionary_resolver import resolve_record
 from action_tracker.exporting.dictionary_join import DictionaryContext
 
 
-def _context(*, product=None, manual=None, model=None, category=None, quality=None):
+def _context(*, product=None, manual=None, model=None, category=None, quality=None, brands=None):
     return DictionaryContext(
         directory=Path("."),
         product_by_sku=product or {}, manual_by_sku=manual or {}, model_by_sku=model or {},
-        brand_by_id={"Action": {"brand_id": "Action", "canonical_name": "Action"}},
+        brand_by_id=brands or {"Action": {"brand_id": "Action", "canonical_name": "Action"}},
         category_by_pair={}, category_by_cat1=category or {}, terms=(), damage_by_sku={},
         brand_reference_keys=frozenset({"action"}), unresolved_brand_ids=frozenset(),
         content_hash="test", source_quality_by_sku=quality or {},
@@ -31,6 +31,19 @@ def test_resolver_manual_override_has_field_level_priority():
     assert result.fields["name"].value == "人工名"
     assert result.fields["name"].source == "manual_override"
     assert result.readiness == "AUTO_READY"
+
+
+def test_resolver_adds_marker_only_for_confirmed_brand_and_not_manual_title():
+    record = _record()
+    source_hash = product_source_hash({"name_es_raw": "Caja", "cat1_es": "Hogar", "cat2_es": "", "spec_es_raw": "2 unidades"})
+    product = {"1001": {"sku": "1001", "name_zh_standard": "记号笔", "spec_zh_standard": "2件装", "source_hash": source_hash, "translation_status": "HUMAN_REVIEWED", "cat1_zh": "家务清洁", "brand_id": "Stanger"}}
+    brands = {"Stanger": {"brand_id": "Stanger", "canonical_name": "Stanger", "confidence": "REFERENCE"}}
+    result = resolve_record(record, _context(product=product, brands=brands))
+    assert result.brand_classification == "CONFIRMED"
+    assert result.fields["name"].value == "Stanger牌记号笔"
+
+    manual = resolve_record(record, _context(product=product, brands=brands, manual={"1001": {"name_zh_standard": "人工记号笔"}}))
+    assert manual.fields["name"].value == "人工记号笔"
 
 
 def test_resolver_rejects_stale_model_and_marks_hash_change():
