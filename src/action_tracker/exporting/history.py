@@ -15,6 +15,10 @@ class HistoryExportError(ValueError):
     """历史来源缺失、结构不一致或 Presence 值非法。"""
 
 
+PresenceValue = int | str
+PRESENCE_UNKNOWN = "UNKNOWN"
+
+
 @dataclass(frozen=True)
 class HistorySourceStat:
     date: str
@@ -22,12 +26,17 @@ class HistorySourceStat:
     raw_rows: int
     unique_skus: int
     duplicate_rows: int
+    presence_capability: bool
+    absence_capability: bool
+    observation_complete: bool
+    evidence_level: str
+    status: str
 
 
 @dataclass(frozen=True)
 class PresenceHistory:
     dates: tuple[str, ...]
-    presence_by_sku: dict[str, dict[str, int]]
+    presence_by_sku: dict[str, dict[str, PresenceValue]]
     latest_by_sku: dict[str, dict[str, Any]]
     seed_by_sku: dict[str, dict[str, Any]]
     source_stats: tuple[HistorySourceStat, ...]
@@ -37,26 +46,7 @@ class PresenceHistory:
 
 def build_history_only_rows(history: PresenceHistory) -> list[dict[str, Any]]:
     """Build the historical SKU union without inventing a current observation."""
-    if not history.dates:
-        raise HistoryExportError("HISTORY_DATES_EMPTY")
-    rows: list[dict[str, Any]] = []
-    for sku in sorted(history.presence_by_sku, key=_sku_key):
-        latest = history.latest_by_sku.get(sku, {})
-        seed = history.seed_by_sku.get(sku, {})
-        presence = history.presence_by_sku.get(sku, {})
-        row: dict[str, Any] = {
-            "编号": sku,
-            "中文品名": _first(seed.get("name_zh"), latest.get("name_zh")),
-            "图片链接": _first(latest.get("image_url"), seed.get("image_url")),
-            "商品链接": _first(latest.get("product_url"), seed.get("product_url")),
-        }
-        for date in history.dates:
-            value = presence.get(date, 0)
-            if value not in (0, 1):
-                raise HistoryExportError(f"HISTORY_BAD_PRESENCE: {sku}/{date}")
-            row[date] = int(value)
-        rows.append(row)
-    return rows
+    return build_presence_rows(history)
 
 
 _DATE_HEADER_RE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{2})$")
@@ -68,13 +58,14 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         raise HistoryExportError(f"HISTORY_CONFIG_MISSING: {config_path}")
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     seed = raw.get("seed") or {}
-    presence: dict[str, dict[str, int]] = {}
+    presence: dict[str, dict[str, PresenceValue]] = {}
     latest: dict[str, dict[str, Any]] = {}
     seed_rows: dict[str, dict[str, Any]] = {}
     dates: set[str] = set()
     stats: list[HistorySourceStat] = []
     seed_path: str | None = None
     seed_row_count = 0
+    source_by_date: dict[str, HistorySourceStat] = {}
 
     if seed.get("path"):
         path = _resolve_path(cfg, seed["path"])
@@ -82,6 +73,12 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         seed_records, seed_dates = _read_seed(path, seed)
         dates.update(seed_dates)
         seed_row_count = len(seed_records)
+        seed_cfg = _capabilities(seed, source_name="seed")
+        seed_skus = {record["sku"] for record in seed_records}
+        for date in seed_dates:
+            source_by_date[date] = HistorySourceStat(
+                date, str(path), seed_row_count, len(seed_skus), seed_row_count - len(seed_skus), *seed_cfg,
+            )
         for record in seed_records:
             sku = record["sku"]
             seed_rows[sku] = record
@@ -96,6 +93,7 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
             # instead of silently letting a differently formatted source win.
             continue
         path = _resolve_path(cfg, source.get("path"))
+        capabilities = _capabilities(source, source_name=date)
         records = _read_source(path, source)
         sku_values = [row["sku"] for row in records]
         unique = set(sku_values)
@@ -107,14 +105,26 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
                 latest.setdefault(sku, {}).update(fields)
         dates.add(date)
         seen_dates.add(date)
-        stats.append(HistorySourceStat(date, str(path), len(records), len(unique), len(records) - len(unique)))
+        stat = HistorySourceStat(
+            date, str(path), len(records), len(unique), len(records) - len(unique), *capabilities,
+        )
+        stats.append(stat)
+        source_by_date[date] = stat
+
+    # Fill absence only when the source explicitly proves completeness and
+    # absence capability. Partial sources remain UNKNOWN; not observed is not 0.
+    all_skus = set(presence)
+    for date, stat in source_by_date.items():
+        default: PresenceValue = 0 if stat.absence_capability and stat.observation_complete else PRESENCE_UNKNOWN
+        for sku in all_skus:
+            presence.setdefault(sku, {}).setdefault(date, default)
 
     return PresenceHistory(
         dates=tuple(sorted(dates)),
         presence_by_sku=presence,
         latest_by_sku=latest,
         seed_by_sku=seed_rows,
-        source_stats=tuple(sorted(stats, key=lambda item: item.date)),
+        source_stats=tuple(sorted(source_by_date.values(), key=lambda item: item.date)),
         seed_path=seed_path,
         seed_row_count=seed_row_count,
     )
@@ -123,17 +133,21 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
 def build_presence_rows(
     history: PresenceHistory,
     *,
-    export_date: str,
-    current_records: list[dict[str, Any]],
-    zh_rows: list[dict[str, Any]],
-    dictionary: Any,
+    export_date: str | None = None,
+    current_records: list[dict[str, Any]] | None = None,
+    zh_rows: list[dict[str, Any]] | None = None,
+    dictionary: Any | None = None,
 ) -> list[dict[str, Any]]:
     """合并历史、当前 CURRENT 和字典展示字段；过去日期永不由生命周期反推。"""
+    if not history.dates:
+        raise HistoryExportError("HISTORY_DATES_EMPTY")
+    current_records = current_records or []
+    zh_rows = zh_rows or []
     current_by_sku = {str(row.get("sku") or "").strip(): row for row in current_records}
     zh_by_sku = {str(row.get("编号") or "").strip(): row for row in zh_rows}
     all_skus = set(history.presence_by_sku) | set(current_by_sku)
     dates = list(history.dates)
-    if export_date not in dates:
+    if export_date is not None and export_date not in dates:
         dates.append(export_date)
         dates.sort()
     rows: list[dict[str, Any]] = []
@@ -146,7 +160,7 @@ def build_presence_rows(
         name_es = _first(current.get("name_es"), old.get("name_es"), seed.get("name_es"))
         product_url = _first(current.get("product_url"), old.get("product_url"), seed.get("product_url"))
         image_url = _first(current.get("image_url"), old.get("image_url"), seed.get("image_url"))
-        dictionary_product = dictionary.product_by_sku.get(sku, {})
+        dictionary_product = dictionary.product_by_sku.get(sku, {}) if dictionary is not None else {}
         brand_id = _first(current.get("brand_id"), dictionary_product.get("brand_id"), old.get("brand_id"), seed.get("brand_id"))
         brand = ""
         if brand_id:
@@ -163,14 +177,32 @@ def build_presence_rows(
         }
         row["图片链接"] = image_url
         row["presence"] = dict(history.presence_by_sku.get(sku, {}))
-        row["presence"][export_date] = 1 if sku in current_by_sku else 0
+        if export_date is not None:
+            row["presence"][export_date] = 1 if sku in current_by_sku else 0
         for date in dates:
-            row[date] = int(row["presence"].get(date, 0))
+            value = row["presence"].get(date, PRESENCE_UNKNOWN)
+            if value not in (0, 1, PRESENCE_UNKNOWN):
+                raise HistoryExportError(f"HISTORY_BAD_PRESENCE: {sku}/{date}")
+            row[date] = value
         row["首次出现日期"] = next((date for date in dates if row[date] == 1), "")
         row["最近出现日期"] = next((date for date in reversed(dates) if row[date] == 1), "")
-        row["当前状态"] = "在售" if row[export_date] == 1 else "不在售"
+        row["当前状态"] = ("在售" if row[export_date] == 1 else "不在售") if export_date is not None else ""
         rows.append(row)
     return rows
+
+
+def _capabilities(config: dict[str, Any], *, source_name: str) -> tuple[bool, bool, bool, str, str]:
+    required = ("presence_capability", "absence_capability", "observation_complete", "evidence_level")
+    if any(key not in config for key in required):
+        raise HistoryExportError(f"HISTORY_CAPABILITY_CONFIG_MISSING: {source_name}")
+    values = tuple(config[key] for key in required)
+    if not all(isinstance(value, bool) for value in values[:3]):
+        raise HistoryExportError(f"HISTORY_CAPABILITY_CONFIG_INVALID: {source_name}")
+    evidence = str(values[3]).strip().upper()
+    if evidence not in {"A", "B", "C", "D"} or not values[0]:
+        raise HistoryExportError(f"HISTORY_CAPABILITY_CONFIG_INVALID: {source_name}")
+    status = "COMPLETE" if values[1] and values[2] else "PARTIAL"
+    return values[0], values[1], values[2], evidence, status
 
 
 def _read_seed(path: Path, seed_cfg: dict[str, Any]) -> tuple[list[dict[str, Any]], set[str]]:

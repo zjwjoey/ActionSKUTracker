@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .history import HistoryExportError, build_history_only_rows, load_presence_history
+from .history import PRESENCE_UNKNOWN, HistoryExportError, build_presence_rows, load_presence_history
 from .template1 import HISTORY_HEADERS, write_history_xlsx
 
 
@@ -16,12 +16,12 @@ def export_history(cfg: dict[str, Any], *, export_date: str) -> dict[str, Any]:
     _validate_date(export_date)
     try:
         history = load_presence_history(cfg)
-        rows = build_history_only_rows(history)
+        rows = build_presence_rows(history)
     except HistoryExportError:
         raise
-    output = Path(cfg["paths"]["exports"]) / f"{export_date.replace('-', '')}Action商品上下架明细.xlsx"
+    output = Path(cfg["paths"]["exports"]) / f"{export_date.replace('-', '')}_Action商品上下架明细.xlsx"
     temporary = output.with_name(f".{output.stem}.preview.xlsx")
-    write_history_xlsx(temporary, history_rows=rows, history_dates=history.dates)
+    write_history_xlsx(temporary, history_rows=rows, history_dates=history.dates, source_stats=history.source_stats)
     try:
         verification = verify_history_xlsx(temporary, history_dates=history.dates, expected_skus={row["编号"] for row in rows})
         temporary.replace(output)
@@ -36,6 +36,10 @@ def export_history(cfg: dict[str, Any], *, export_date: str) -> dict[str, Any]:
         "export_date": export_date,
         "history_union_sku_count": len(rows),
         "history_dates": list(history.dates),
+        "presence_one_count": sum(1 for row in rows for date in history.dates if row.get(date) == 1),
+        "presence_zero_count": sum(1 for row in rows for date in history.dates if row.get(date) == 0),
+        "unknown_presence_count": sum(1 for row in rows for date in history.dates if row.get(date) == PRESENCE_UNKNOWN),
+        "source_audit_count": len(history.source_stats),
         "seed_path": history.seed_path,
         "seed_row_count": history.seed_row_count,
         "seed_sha256": _file_hash(Path(history.seed_path)) if history.seed_path else None,
@@ -55,7 +59,7 @@ def verify_history_xlsx(path: Path, *, history_dates: tuple[str, ...], expected_
 
     workbook = openpyxl.load_workbook(path, read_only=False, data_only=True)
     try:
-        if workbook.sheetnames != ["商品上下架明细"]:
+        if workbook.sheetnames != ["商品上下架明细", "历史来源审计"]:
             raise HistoryExportError("HISTORY_EXPORT_SHEET_MISMATCH")
         ws = workbook["商品上下架明细"]
         headers = [cell.value for cell in ws[1]]
@@ -71,8 +75,11 @@ def verify_history_xlsx(path: Path, *, history_dates: tuple[str, ...], expected_
         for date in history_dates:
             col = headers.index(_compact_date(date)) + 1
             values = [ws.cell(row=row, column=col).value for row in range(2, ws.max_row + 1)]
-            if any(value not in (0, 1) for value in values):
+            if any(value not in (0, 1, PRESENCE_UNKNOWN) for value in values):
                 raise HistoryExportError(f"HISTORY_EXPORT_BAD_PRESENCE: {date}")
+        audit = workbook["历史来源审计"]
+        if audit.max_row - 1 != len(history_dates):
+            raise HistoryExportError("HISTORY_EXPORT_AUDIT_MISMATCH")
         return {"sku_count": len(skus), "date_count": len(history_dates)}
     finally:
         workbook.close()

@@ -11,7 +11,10 @@ from openpyxl.utils import get_column_letter
 from .history import PresenceHistory
 
 
-HISTORY_HEADERS = ("序号", "编号", "中文品名", "图片链接", "商品链接")
+HISTORY_HEADERS = (
+    "序号", "编号", "中文品名", "品牌", "一级类目（中文）", "二级类目（中文）",
+    "西班牙语品名", "规格（西语）", "图片链接", "商品链接", "首次出现日期", "最近出现日期", "当前状态",
+)
 CATALOG_HEADERS = (
     "图片", "编号", "标题", "分类1", "分类2", "规格", "折后价", "原价", "单价",
     "描述", "产品详情", "图片链接", "商品链接", "备注",
@@ -44,12 +47,19 @@ def write_template1_xlsx(
             temporary.unlink()
 
 
-def write_history_xlsx(path: Path, *, history_rows: list[dict[str, Any]], history_dates: tuple[str, ...]) -> None:
+def write_history_xlsx(
+    path: Path,
+    *,
+    history_rows: list[dict[str, Any]],
+    history_dates: tuple[str, ...],
+    source_stats: tuple[Any, ...] = (),
+) -> None:
     """Write the standalone historical Presence workbook using Template 1 formatting."""
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.title = "商品上下架明细"
     _write_history_sheet(sheet, history_rows, history_dates)
+    _write_history_audit_sheet(workbook.create_sheet("历史来源审计"), source_stats)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.stem}.tmp.xlsx")
     try:
@@ -97,18 +107,38 @@ def _write_history_sheet(ws: Any, rows: list[dict[str, Any]], dates: tuple[str, 
     headers = list(HISTORY_HEADERS) + [_compact_date(date) for date in dates]
     ws.append(headers)
     for number, row in enumerate(rows, 1):
-        values = [
-            number, row.get("编号"), row.get("中文品名"), row.get("图片链接"), row.get("商品链接"),
-        ] + [row.get(date, 0) for date in dates]
+        values = [number] + [row.get(header, "") for header in HISTORY_HEADERS[1:]]
+        values += [row.get(date, "UNKNOWN") for date in dates]
         ws.append(values)
     _format_sheet(ws, wrap_columns={"中文品名", "一级类目（中文）", "二级类目（中文）", "西班牙语品名", "规格（西语）"})
-    for col in (4, 5):
+    headers = list(HISTORY_HEADERS)
+    for header in ("图片链接", "商品链接"):
+        col = headers.index(header) + 1
         for cell in ws.iter_cols(min_col=col, max_col=col, min_row=2):
             for item in cell:
                 _set_hyperlink(item)
     for col in range(len(HISTORY_HEADERS) + 1, len(headers) + 1):
         for row_no in range(2, ws.max_row + 1):
             ws.cell(row=row_no, column=col).number_format = "0"
+
+
+def _write_history_audit_sheet(ws: Any, source_stats: tuple[Any, ...]) -> None:
+    headers = (
+        "日期", "来源路径", "原始行数", "唯一SKU数", "重复行数", "presence_capability",
+        "absence_capability", "observation_complete", "evidence_level", "状态",
+    )
+    ws.append(list(headers))
+    for stat in source_stats:
+        ws.append([
+            stat.date, stat.path, stat.raw_rows, stat.unique_skus, stat.duplicate_rows,
+            stat.presence_capability, stat.absence_capability, stat.observation_complete,
+            stat.evidence_level, stat.status,
+        ])
+    _format_sheet(ws, wrap_columns={"来源路径"})
+    for index, header in enumerate(headers, 1):
+        if header in {"presence_capability", "absence_capability", "observation_complete"}:
+            for row_no in range(2, ws.max_row + 1):
+                ws.cell(row=row_no, column=index).number_format = "@"
 
 
 def _write_catalog_sheet(ws: Any, rows: list[dict[str, Any]]) -> None:
