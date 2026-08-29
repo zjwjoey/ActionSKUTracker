@@ -40,17 +40,28 @@ Generated Outputs
 | Excel/CSV | 生成式展示、兼容和交付文件 |
 | Dictionary | 中文派生知识层，不改写官网西语事实 |
 
+## 当前实现快照（2026-08-30）
+
+| 模块 | 当前状态 | 生产开关 |
+|---|---|---|
+| Export Foundation V1 | ES/ZH 无图、历史 Presence、带图 Export 代码和验证已实现 | 只接受正式 QA/FULL_COMMIT 来源 |
+| SQLite V2 | CommitBundle、事务 Writer、Shadow/Primary 接线、PRIMARY Read Repository 已实现 | `EXCEL_PRIMARY`（默认） |
+| Image Foundation V1 | Manifest、低并发同步、标准化、QA、250×250 derivative、带图 Export 已实现 | 不自动下载；需显式 `image-sync` |
+
+真实 SQLite 基线迁移、连续 3 次 Shadow parity、备份/回滚演练和 Primary 切换仍是生产门禁，
+不能用 fixture 测试替代。
+
 ## 二、明确不纳入本轮
 
-- 图片下载、图片标准化和带图 Excel；
+- 图片全量下载、真实性能基线和自动接入 daily 主链；
 - 新爬虫、Cloudflare 绕过、代理或指纹改造；
 - Lifecycle 算法重写；
 - 全量自动 AI 翻译；
 - PostgreSQL、Web 后台、多机部署和 API Server；
 - Dictionary 全面数据库化。
 
-图片和自动化翻译不塞进 Export V1 或 SQLite Core Transaction；Image Foundation 的基础能力可在
-SQLite 进行期间并行开发，但图片元数据接入 SQLite 必须等 PRIMARY 契约稳定。
+图片和自动化翻译不塞进 Export V1 或 SQLite Core Transaction；Image Foundation 的代码已独立完成，
+真实全量同步和图片元数据接入 SQLite 仍按 PRIMARY 门禁执行。
 
 ## 三、阶段总览
 

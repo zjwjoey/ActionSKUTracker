@@ -57,6 +57,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("image-status", help="查看本地图片资产状态")
     sub.add_parser("db-status", help="查看 SQLite V2 数据库状态")
     sub.add_parser("db-validate-production", help="验证 SQLite V2 完整性和外键")
+    dbm = sub.add_parser("db-migrate-baseline", help="从只读 Master/State 建立 SQLite V2 基线")
+    dbm.add_argument("--date", required=True, help="基线日期（YYYY-MM-DD）")
+    dbp = sub.add_parser("db-promote-primary", help="显式将已验证的 SQLite Shadow 数据库提升为 Primary")
+    dbe = sub.add_parser("sync-exports", help="重试 SQLite 提交对应的 Excel/CSV 兼容导出确认")
+    dbe.add_argument("--commit-id", help="可选：只同步指定 commit_id")
     dc = sub.add_parser("dictionary-coverage", help="统计 CURRENT 的 AI-Free 字典覆盖率")
     dc.add_argument("--date", help="业务日期（YYYY-MM-DD）")
     dc.add_argument("--run-id", help="可选：指定正式 observation run_id")
@@ -183,6 +188,46 @@ def main(argv=None) -> int:
             db_path = Path(cfg["project_root"]) / db_path
         try:
             result = validate_production_database(db_path)
+        except ProductionDatabaseError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "db-migrate-baseline":
+        from .database.production import ProductionDatabaseError, import_legacy_baseline_v2
+        db_path = Path((cfg.get("storage") or {}).get("db_path") or Path(cfg["project_root"]) / "runtime" / "db" / "action_tracker.db")
+        if not db_path.is_absolute():
+            db_path = Path(cfg["project_root"]) / db_path
+        try:
+            commit_id = import_legacy_baseline_v2(db_path, master_path=Path(cfg["paths"]["master"]), state_dir=Path(cfg["paths"]["state"]), observed_at=args.date)
+        except (ProductionDatabaseError, ValueError, OSError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps({"database": str(db_path), "commit_id": commit_id}, ensure_ascii=False))
+        return 0
+    if args.command == "sync-exports":
+        from .database.integration import database_path
+        from .database.production import ProductionDatabaseError, sync_pending_exports
+        db_path = database_path(cfg)
+        state_dir = Path(cfg["paths"]["state"])
+        try:
+            result = sync_pending_exports(
+                db_path,
+                master=Path(cfg["paths"]["master"]),
+                known=state_dir / "known_skus.csv",
+                offline=state_dir / "offline_skus.csv",
+                commit_id=args.commit_id,
+            )
+        except (ProductionDatabaseError, OSError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps({"database": str(db_path), "results": result}, ensure_ascii=False))
+        return 0
+    if args.command == "db-promote-primary":
+        from .database.integration import database_path
+        from .database.production import ProductionDatabaseError, promote_database_role
+        try:
+            result = promote_database_role(database_path(cfg))
         except ProductionDatabaseError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2

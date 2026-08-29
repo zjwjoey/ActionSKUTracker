@@ -4,6 +4,7 @@ import hashlib
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -22,17 +23,26 @@ class ImageSyncError(RuntimeError):
 class ImageSyncService:
     """Incremental, resumable image sync isolated from product collection."""
 
-    def __init__(self, *, asset_root: Path, manifest_path: Path, staging_root: Path, timeout_seconds: int = 20, max_retries: int = 3, downloader: Callable[[str, int], bytes] | None = None):
+    def __init__(self, *, asset_root: Path, manifest_path: Path, staging_root: Path, timeout_seconds: int = 20, max_retries: int = 3, download_workers: int = 1, downloader: Callable[[str, int], bytes] | None = None):
         self.asset_root = Path(asset_root)
         self.staging_root = Path(staging_root)
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
+        self.download_workers = max(1, int(download_workers))
         self.downloader = downloader or self._download
         self.manifest = ImageManifest(manifest_path)
 
     def sync(self, rows: list[dict[str, Any]], *, run_id: str) -> dict[str, Any]:
         started = datetime.now(timezone.utc).isoformat()
         counts = {key: 0 for key in ("source_sku_count", "available_count", "missing_source_url_count", "download_failed_count", "downloaded_count", "reused_count", "changed_count")}
+        seen_skus: set[str] = set()
+        for row in rows:
+            sku = str(row.get("sku") or row.get("编号") or "").strip()
+            if sku and sku in seen_skus:
+                raise ImageSyncError(f"IMAGE_DUPLICATE_SKU: {sku}")
+            if sku:
+                seen_skus.add(sku)
+        pending: list[tuple[str, str, Path, str, bool]] = []
         for row in rows:
             sku = str(row.get("sku") or row.get("编号") or "").strip()
             if not sku:
@@ -51,7 +61,31 @@ class ImageSyncService:
                 continue
             if previous and previous.source_image_url and previous.source_image_url != url:
                 counts["changed_count"] += 1
-            record = self._sync_one(sku, url, target, str(row.get("canonical_id") or ""), run_id)
+            pending.append((sku, url, target, str(row.get("canonical_id") or ""), bool(previous and previous.source_image_url and previous.source_image_url != url)))
+
+        # Network work is bounded and concurrent; manifest promotion remains in
+        # this caller thread so the checkpoint is deterministic and atomic.
+        def fetch(item: tuple[str, str, Path, str, bool]) -> ImageAssetRecord:
+            sku, url, target, canonical_id, source_changed = item
+            try:
+                record = self._sync_one(sku, url, target, canonical_id, run_id)
+            except Exception as exc:  # defensive worker isolation
+                record = ImageAssetRecord(
+                    sku=sku, canonical_id=canonical_id, source_image_url=url,
+                    master_image_path=str(target), download_status="DOWNLOAD_FAILED",
+                    normalize_status="FAILED", qa_status="FAILED",
+                    error_type=type(exc).__name__, error_message=str(exc),
+                )
+            record.source_changed = source_changed
+            if source_changed and record.download_status == "DOWNLOAD_FAILED":
+                # Preserve the failure reason while retaining the fact that the
+                # source changed in the explicit boolean audit field.
+                record.source_changed = True
+            return record
+
+        with ThreadPoolExecutor(max_workers=self.download_workers) as pool:
+            records = list(pool.map(fetch, pending))
+        for record in records:
             self.manifest.upsert(record)
             if record.available:
                 counts["available_count"] += 1

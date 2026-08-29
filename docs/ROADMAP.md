@@ -65,8 +65,8 @@ Export Foundation V1 正式发布和 SQLite Production Source of Truth 接管纳
 
 ## 3. 当前阶段：先发布基础 Export
 
-虽然 ES/ZH 两个独立无图导出已经在本地工作区实现，但它们尚未完成独立提交、真实
-正式来源预览和用户验收。当前优先级是先把基础导出变成可日常使用的稳定功能：
+ES/ZH 独立无图导出、历史 Presence 和带图 Export 已在本地实现；正式发布仍需独立提交、
+真实来源预览和用户验收。基础导出的稳定验收已完成本地验证：
 
 1. 隔离并审查现有 exporting 代码；
 2. 冻结两个无图基础 Profile；
@@ -75,7 +75,8 @@ Export Foundation V1 正式发布和 SQLite Production Source of Truth 接管纳
 5. 完整测试并独立提交；
 6. 用户确认基础导出可用。
 
-详细计划见 `EXPORT_IMPLEMENTATION_PLAN.md`。基础版本验收前不开始图片和三表合一。
+详细计划见 `EXPORT_IMPLEMENTATION_PLAN.md`。带图 Export 虽已独立实现，仍不自动触发图片下载，
+并且不改变基础无图导出的业务事实。
 
 ## 3.1 Export V1 之后的 SQLite 接管计划
 
@@ -83,24 +84,25 @@ SQLite 生产接管已经纳入统一开发计划，执行顺序为：
 
 | 阶段 | 目标 | 当前状态 |
 |---|---|---|
-| Phase 2 | Production Contracts、Writer Inventory、Schema V2 契约 | 待开发 |
-| Phase 3 | Schema V2、CommitBundle、事务 Writer | 待开发 |
-| Phase 4 | `SQLITE_SHADOW`，连续 3 次真实 parity | 待开发 |
-| Phase 5 | DB Read Path，Excel 暂时继续写 | 待开发 |
+| Phase 2 | Production Contracts、Writer Inventory、Schema V2 契约 | 契约和状态文档已具备 |
+| Phase 3 | Schema V2、CommitBundle、事务 Writer | 已实现并有回归测试 |
+| Phase 4 | `SQLITE_SHADOW`，连续 3 次真实 parity | Writer/接线已实现；真实 3 次 parity 待执行 |
+| Phase 5 | DB Read Path，Excel 暂时继续写 | PRIMARY Read Repository 已实现 |
 | Phase 6 | Cutover Candidate、备份、回滚和重建验证 | 待开发 |
-| Phase 7 | `SQLITE_PRIMARY` 正式接管 | 待开发 |
+| Phase 7 | `SQLITE_PRIMARY` 正式接管 | 代码路径与 Read Repository 已实现；生产切换待门禁 |
 | Phase 8 | Excel/CSV 降级为 Generated View | 待开发 |
-| Phase 9 | Image Contracts、AssetRecord、目录和状态冻结 | 待开发 |
-| Phase 10 | Image Foundation：下载、标准化、QA、缓存、Derivative | 待开发 |
+| Phase 9 | Image Contracts、AssetRecord、目录和状态冻结 | 已实现 |
+| Phase 10 | Image Foundation：下载、标准化、QA、缓存、Derivative | 已实现并有 fixture 测试 |
 | Phase 11 | 20–50 SKU 真实图片切片 | 待开发 |
 | Phase 12 | Full CURRENT 增量图片同步和性能基线 | 待开发 |
-| Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | 待开发 |
+| Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | ES/ZH 带图 Export 已实现；Template 1 嵌图待接入 |
 
-因此当前“SQLite 冻结”只表示**尚未接入生产主链**，不是取消数据库接管计划。详细设计见
+因此当前 `EXCEL_PRIMARY` 只表示**尚未切换生产主链**，不是取消数据库接管计划。SQLite V2
+Writer、Shadow/Primary 接线和 Read Repository 已实现；真实 Shadow 对账、基线迁移和切换门禁仍待完成。详细设计见
 [`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。
 
-图片也已纳入同一总计划，但当前仍未开发；其基础能力可与 SQLite Contracts/Writer 并行，
-带图 Export 必须等 P0 字段契约冻结，`image_assets` 元数据接入必须等 SQLite PRIMARY 稳定。
+图片也已纳入同一总计划；Contracts、增量同步、标准化、QA、Derivatives 和带图 Export 已在本地实现，
+真实全量图片同步/性能基线仍待执行，`image_assets` 元数据仅在 SQLite PRIMARY 配置下接入。
 
 ## 4. 后续阶段：STEP 7 + Template 1
 

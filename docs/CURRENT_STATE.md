@@ -1,14 +1,15 @@
 # Action SKU Tracker 当前状态
 
-更新日期：2026-08-27
+更新日期：2026-08-30
 项目目录：`F:\ActionSKUTracker`
 当前分支：`feat/export-foundation-v1`
 
 ## 1. 生产主链边界
 
 Sitemap/Listing/补充入口 → Presence 冻结 → Lifecycle → QA → Snapshot/Staging →
-QA 通过且非 dry-run 才能写入 Master/State。SQLite 当前仍冻结、不参与生产主链，但已纳入
-Export V1 之后的 SQLite PRIMARY 接管计划。本轮没有修改
+QA 通过且非 dry-run 才能写入 Master/State。当前 `storage.mode=EXCEL_PRIMARY`，因此 Excel/CSV
+仍是生产主链；SQLite V2 已有事务接线、Shadow/Primary Writer 和 PRIMARY Read Repository，
+但尚未切换生产主链。本轮没有修改
 `monitor/listing.py`、`monitor/sitemap.py`、`monitor/sku_monitor.py`、`services/lifecycle.py`
 或 Presence/Cloudflare/QA 核心语义。
 
@@ -68,26 +69,37 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
 ## 5. Export 状态
 
 基础 ES/ZH 无图导出、Template 1 三表无图导出和独立历史 Presence 导出已在本地实现。
-历史 Presence 使用 `1/0/UNKNOWN` 三态并附历史来源审计；中文图片嵌入仍未启用，
-图片下载模块继续独立冻结。Export 只读取正式 QA/FULL_COMMIT 来源，不重新访问官网。
+历史 Presence 使用 `1/0/UNKNOWN` 三态并附历史来源审计；图片资产同步、250×250 白底衍生图
+和 ES/ZH 带图 Export 已实现，缺图不会删除 SKU。Export 只读取正式 QA/FULL_COMMIT 来源，
+不重新访问官网。
 
-## 6. 测试与 CI
+## 6. SQLite 与图片实现状态
 
-当前完整回归：`240 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+- SQLite V2：`CommitBundle`、`BEGIN IMMEDIATE`、外键/完整性检查、幂等 run、`base_commit_id`
+  乐观门禁、`export_sync`、`sync-exports` 和 PRIMARY Read Repository 已实现并有 fixture 测试。
+- 当前真实 runtime 数据库仍是 `ACTION_SQLITE_MIRROR 1.0.0` 旧镜像；正式接管前需显式执行
+  `db-migrate-baseline --date YYYY-MM-DD` 到受控数据库，并完成连续 Shadow 对账。
+- 图片：`image-sync` 支持低并发、超时、指数退避、staging 原子 promotion、Manifest checkpoint、
+  失败隔离和 SQLite PRIMARY 元数据镜像；当前配置不自动下载图片，Manifest 为空属于当前运行状态。
+
+## 7. 测试与 CI
+
+当前完整回归：`254 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
 
-## 7. 未完成/风险
+## 8. 未完成/风险
 
 1. Dictionary Apply 正式写 Master 尚未启用；Gate 已完整实现，但生产配置仍关闭。
 2. 74 个 Review Required 和 7 个 Source Blocked 需要人工/可信西语证据处理；已分别生成
    `review_closure_report.csv` 与 `source_blocked_review.csv`，不使用中文反推西语。
-3. 术语 scope、图片下载与带图 Export 尚未进入生产主链；Image Foundation 已纳入统一计划，
-   历史 export-history 已实现，待正式发布验收。
+3. 图片尚未进入自动 daily 主链；需要基于正式 CURRENT 单独运行 `image-sync`，再运行带图 Export。
+   当前已完成 fixture/结构验收，真实全量图片性能基线仍待执行。
 4. 工作区仍有此前 Template 1 与字典功能的待提交改动，提交时必须按功能拆分，不能混入
    runtime、报告、图片或密钥。
 
 SQLite Production Source of Truth 的完整阶段计划（Contracts → Writer → Shadow → Read →
-Cutover → PRIMARY）见 `docs/MASTER_DEVELOPMENT_PLAN.md`，目前尚未开始生产接管实现。
+Cutover → PRIMARY）见 `docs/MASTER_DEVELOPMENT_PLAN.md`；当前完成了 Writer、接线和 Read
+Repository，尚未完成真实 Shadow 三次对账和 PRIMARY 切换。
 Image Foundation 的 Phase 9–13（Contracts → Foundation → Slice → Full Sync → With-Images Export）
-也已纳入同一计划，目前尚未开发。
+已完成 Contracts、Foundation 和 With-Images Export 实现，真实全量同步/性能基线待执行。

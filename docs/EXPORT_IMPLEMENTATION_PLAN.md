@@ -270,5 +270,5 @@ CI 绿灯是代码合并前置条件，但不构成正式 Export 发布许可。
 | `preview_verified` | 用真实正式来源生成并人工核对预览 |
 | `released` | 代码、配置、测试、文档均已提交，用户确认可用 |
 
-当前状态：基础无图导出和 Template 1 无图三表为 `implemented_local / tested`；中文图片嵌入与独立
-`export-history` 仍为后续阶段，不能因为无图导出通过就自动开启。
+当前状态：基础无图导出、Template 1 无图三表、独立 `export-history` 和 ES/ZH 带图 Export 为
+`implemented_local / tested`；真实图片同步与 Template 1 中文嵌图仍需单独验收，不能由导出自动触发。

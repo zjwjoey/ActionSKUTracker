@@ -136,11 +136,11 @@ def build_zh_rows(records: Iterable[dict[str, Any]], context: DictionaryContext)
         if used_fallback:
             fallbacks.append("中文品名待审核")
         brand_id = _text(product.get("brand_id"))
-        brand_row = context.brand_by_id.get(brand_id, {})
+        brand_row = lookup_brand_row(context.brand_by_id, brand_id)
         if (
             not used_fallback
             and not _text(manual.get("name_zh_standard"))
-            and brand_id in context.brand_by_id
+            and brand_row
             and is_confirmed_brand_record(brand_row)
         ):
             title = format_confirmed_brand_title(
@@ -187,6 +187,47 @@ def build_zh_rows(records: Iterable[dict[str, Any]], context: DictionaryContext)
             "产品详情": details,
             "图片链接": _none_or_text(record.get("image_url")),
             "商品链接": _text(record.get("product_url")),
+            "备注": _zh_remarks(record, fallbacks),
+        })
+    return rows, fallback_counts
+
+
+def build_zh_rows_from_localized_source(records: Iterable[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Build Chinese rows from SQLite ``product_localizations`` values.
+
+    This is the PRIMARY export path: localization values have already passed
+    the dictionary/apply gate and are therefore not re-joined against the
+    file-based dictionary.  Missing derived fields remain visible as review
+    fallbacks rather than dropping the SKU.
+    """
+    rows: list[dict[str, Any]] = []
+    fallback_counts: dict[str, int] = {}
+    for record in sorted(records, key=_sku_sort_key):
+        sku = _text(record.get("sku"))
+        fallbacks: list[str] = []
+        values = (
+            ("name_zh", "name_es", "中文品名"), ("cat1_zh", "cat1_es", "中文分类1"),
+            ("cat2_zh", "cat2_es", "中文分类2"), ("spec_zh", "spec_es", "中文规格"),
+            ("desc_zh", "desc_es", "中文描述"), ("details_zh", "details_es", "中文产品详情"),
+        )
+        resolved: dict[str, Any] = {}
+        for target, fallback_key, label in values:
+            value = _none_or_text(record.get(target))
+            if target in {"name_zh", "cat1_zh", "cat2_zh", "spec_zh"} and value and not _CJK_RE.search(value):
+                value = None
+            if not value:
+                value = _none_or_text(record.get(fallback_key))
+                fallbacks.append(label + "待审核")
+            resolved[target] = value
+        for item in fallbacks:
+            fallback_counts[item] = fallback_counts.get(item, 0) + 1
+        rows.append({
+            "图片": None, "编号": sku, "标题": resolved["name_zh"], "分类1": resolved["cat1_zh"],
+            "分类2": resolved["cat2_zh"], "规格": resolved["spec_zh"],
+            "折后价": _required_price(record.get("current_price"), sku=sku),
+            "原价": _display_original_price(record, sku=sku), "单价": _none_or_text(record.get("unit_price")),
+            "描述": resolved["desc_zh"], "产品详情": resolved["details_zh"],
+            "图片链接": _none_or_text(record.get("image_url")), "商品链接": _text(record.get("product_url")),
             "备注": _zh_remarks(record, fallbacks),
         })
     return rows, fallback_counts
@@ -278,6 +319,26 @@ def _normalized_brand_key(value: object) -> str:
     return " ".join(_text(value).casefold().split())
 
 
+def is_valid_chinese_category_value(value: object) -> bool:
+    """分类派生值必须包含中文，避免历史西语值被当作已确认结果。"""
+    return bool(_CJK_RE.search(_text(value)))
+
+
+def lookup_brand_row(brand_by_id: dict[str, dict[str, str]], brand_id: object) -> dict[str, str]:
+    """按品牌 ID 查找记录，兼容官网大小写差异但不放宽别名匹配。"""
+    value = _text(brand_id)
+    if not value:
+        return {}
+    exact = brand_by_id.get(value)
+    if exact is not None:
+        return exact
+    normalized = _normalized_brand_key(value)
+    for key, row in brand_by_id.items():
+        if _normalized_brand_key(key) == normalized:
+            return row
+    return {}
+
+
 def _resolve_product_field(
     field: str,
     record: dict[str, Any],
@@ -300,6 +361,13 @@ def _resolve_product_field(
     if (model_value and _text(model.get("source_hash")) == source_hash
             and _text(model.get("quality_status")).upper() == "OK"):
         return model_value, False
+    # Do not expose a known-polluted Spanish fact as a Chinese fallback.  A
+    # manual/model value above may still be used, but absent trusted evidence
+    # the field remains blank and is marked for review.
+    sku = _text(record.get("sku"))
+    damage_key = "spec_es_raw" if field == "spec_zh_standard" else ("name_es_raw" if field == "name_zh_standard" else "")
+    if damage_key and damage_key in context.damage_by_sku.get(sku, set()):
+        return "", True
     return fallback, True
 
 
@@ -312,16 +380,20 @@ def _resolve_category_field(
     source_hash: str,
 ) -> tuple[str, bool]:
     manual_value = _text(manual.get(field))
-    if manual_value:
+    if manual_value and is_valid_chinese_category_value(manual_value):
         return manual_value, False
     product_value = _text(product.get(field))
-    if product_value and _text(product.get("source_hash")) == source_hash:
+    if (
+        product_value
+        and is_valid_chinese_category_value(product_value)
+        and _text(product.get("source_hash")) == source_hash
+    ):
         return product_value, False
     cat1_key = normalize_category_key(record.get("cat1_es"))
     cat2_key = normalize_category_key(record.get("cat2_es"))
     mapped = context.category_by_pair.get((cat1_key, cat2_key)) or context.category_by_cat1.get(cat1_key) or {}
     mapped_value = _text(mapped.get(field))
-    if mapped_value:
+    if mapped_value and is_valid_chinese_category_value(mapped_value):
         return mapped_value, False
     fallback = _text(record.get("cat1_es" if field == "cat1_zh" else "cat2_es"))
     return fallback, True

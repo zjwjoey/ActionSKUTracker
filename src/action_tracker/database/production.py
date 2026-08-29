@@ -74,6 +74,14 @@ class ProductionWriter:
     def __init__(self, path: Path, *, role: str = "SHADOW") -> None:
         self.path = Path(path)
         self.role = role
+        if self.path.exists():
+            try:
+                with sqlite3.connect(self.path) as raw:
+                    row = raw.execute("SELECT value FROM schema_metadata WHERE key='database_role'").fetchone()
+            except sqlite3.OperationalError:
+                row = None
+            if row and str(row[0]) != role:
+                raise ProductionDatabaseError("DB_ROLE_MISMATCH_REQUIRES_EXPLICIT_CUTOVER")
         migrate_v2(self.path, role=role)
 
     def commit(self, bundle: CommitBundle) -> str:
@@ -147,6 +155,12 @@ class ProductionWriter:
             if not sku:
                 raise ProductionDatabaseError("DB_PRODUCT_SKU_MISSING")
             cid = str(r.get("canonical_id") or f"ACT{sku.zfill(7)}")
+            if r.get("_historical_minimal"):
+                # Existing historical identities already hold their official
+                # facts.  A minimal lifecycle-only row must never null out
+                # those facts or reset badges/prices during an absence run.
+                if db.execute("SELECT 1 FROM products WHERE official_sku=?", (sku,)).fetchone():
+                    continue
             db.execute(
                 """INSERT INTO products(canonical_id,official_sku,name_es,name_zh,current_price,original_price,unit_price_raw,raw_badges,
                 action_new_badge,promotion_active,sustainable_badge,status,consecutive_missing,product_url,image_url,first_seen_at,
@@ -273,11 +287,119 @@ def database_status(path: Path) -> dict[str, Any]:
                 "pending_export_sync": pending, "products": products, "lifecycle": lifecycle}
 
 
+def promote_database_role(path: Path, *, target_role: str = "PRIMARY") -> dict[str, str]:
+    """Explicitly promote a validated V2 database; never called implicitly."""
+    if target_role != "PRIMARY":
+        raise ProductionDatabaseError("DB_ROLE_TARGET_UNSUPPORTED")
+    if not Path(path).exists():
+        raise ProductionDatabaseError("DB_MISSING")
+    with connect(Path(path)) as db:
+        metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
+        if metadata.get("schema_family") != "ACTION_SQLITE_DATA" or metadata.get("schema_version") != "2.0.0":
+            raise ProductionDatabaseError("DB_V2_SCHEMA_REQUIRED")
+        current = metadata.get("database_role")
+        if current == "PRIMARY":
+            return {"previous_role": "PRIMARY", "role": "PRIMARY", "status": "ALREADY_PRIMARY"}
+        if current != "SHADOW":
+            raise ProductionDatabaseError("DB_ROLE_INVALID")
+        if db.execute("PRAGMA integrity_check").fetchone()[0] != "ok" or db.execute("PRAGMA foreign_key_check").fetchall():
+            raise ProductionDatabaseError("DB_NOT_SAFE_TO_PROMOTE")
+        db.execute("UPDATE schema_metadata SET value='PRIMARY' WHERE key='database_role'")
+    return {"previous_role": "SHADOW", "role": "PRIMARY", "status": "PROMOTED"}
+
+
+def mark_export_sync(path: Path, commit_id: str, *, master: Path, known: Path, offline: Path) -> dict[str, Any]:
+    """Mark compatibility projections as synchronized after verifying files.
+
+    This never creates or edits the projections.  Generation remains the
+    responsibility of the existing Excel/CSV writer; this function records an
+    auditable, content-addressed acknowledgement in SQLite.
+    """
+    files = {"master": Path(master), "known": Path(known), "offline": Path(offline)}
+    hashes: dict[str, str | None] = {}
+    missing: list[str] = []
+    for name, file_path in files.items():
+        if not file_path.exists():
+            missing.append(name)
+            hashes[name] = None
+        else:
+            hashes[name] = hashlib.sha256(file_path.read_bytes()).hexdigest()
+    status = "SUCCESS" if not missing else "PENDING"
+    error = None if not missing else "MISSING_PROJECTION:" + ",".join(missing)
+    from .connection import connect
+
+    with connect(Path(path)) as db:
+        db.execute(
+            "UPDATE export_sync SET master_status=?,known_status=?,offline_status=?,master_sha256=?,known_sha256=?,offline_sha256=?,last_attempt_at=CURRENT_TIMESTAMP,error=?,status=? WHERE commit_id=?",
+            ("SUCCESS" if "master" not in missing else "PENDING",
+             "SUCCESS" if "known" not in missing else "PENDING",
+             "SUCCESS" if "offline" not in missing else "PENDING",
+             hashes["master"], hashes["known"], hashes["offline"], error, status, commit_id),
+        )
+    return {"commit_id": commit_id, "status": status, "missing": missing, "hashes": hashes}
+
+
+def sync_pending_exports(path: Path, *, master: Path, known: Path, offline: Path,
+                         commit_id: str | None = None) -> list[dict[str, Any]]:
+    """Retry export-sync acknowledgements for pending SQLite commits."""
+    if not Path(path).exists():
+        raise ProductionDatabaseError("DB_MISSING")
+    with connect(Path(path)) as db:
+        tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if "export_sync" not in tables:
+            raise ProductionDatabaseError("DB_V2_SCHEMA_REQUIRED")
+        query = "SELECT commit_id FROM export_sync WHERE status != 'SUCCESS'"
+        args: tuple[Any, ...] = ()
+        if commit_id:
+            query += " AND commit_id=?"
+            args = (commit_id,)
+        ids = [str(row[0]) for row in db.execute(query, args).fetchall()]
+    return [mark_export_sync(Path(path), value, master=master, known=known, offline=offline) for value in ids]
+
+
+def persist_image_manifest(path: Path, manifest_path: Path) -> dict[str, int]:
+    """Mirror image manifest metadata into V2 without storing image bytes."""
+    from ..images.assets import ImageManifest
+
+    manifest = ImageManifest(Path(manifest_path))
+    inserted = 0
+    skipped = 0
+    with connect(Path(path)) as db:
+        try:
+            db.execute("SELECT 1 FROM image_assets LIMIT 1")
+        except sqlite3.OperationalError as exc:
+            raise ProductionDatabaseError("DB_V2_IMAGE_TABLE_MISSING") from exc
+        for record in manifest.records.values():
+            product = db.execute("SELECT 1 FROM products WHERE official_sku=?", (record.sku,)).fetchone()
+            if not product:
+                skipped += 1
+                continue
+            db.execute(
+                """INSERT INTO image_assets(official_sku,canonical_id,source_image_url,master_image_path,source_hash,master_hash,width,height,status,first_downloaded_at,last_checked_at,updated_at,error_type)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(official_sku) DO UPDATE SET canonical_id=excluded.canonical_id,source_image_url=excluded.source_image_url,
+                   master_image_path=excluded.master_image_path,source_hash=excluded.source_hash,master_hash=excluded.master_hash,
+                   width=excluded.width,height=excluded.height,status=excluded.status,first_downloaded_at=COALESCE(image_assets.first_downloaded_at, excluded.first_downloaded_at),
+                   last_checked_at=excluded.last_checked_at,updated_at=excluded.updated_at,error_type=excluded.error_type""",
+                (record.sku, record.canonical_id, record.source_image_url, record.master_image_path,
+                 record.source_hash, record.master_hash, record.master_width or record.source_width,
+                 record.master_height or record.source_height,
+                 "AVAILABLE" if record.available else record.download_status,
+                 record.first_downloaded_at or record.last_downloaded_at, record.last_checked_at,
+                 datetime.now(timezone.utc).isoformat(), record.error_type or None),
+            )
+            inserted += 1
+    return {"manifest_records": len(manifest.records), "upserted": inserted, "skipped_unknown_product": skipped}
+
+
 def validate_production_database(path: Path) -> dict[str, Any]:
     """Run invariant checks without mutating the database."""
     if not Path(path).exists():
         raise ProductionDatabaseError("DB_MISSING")
     with connect(Path(path)) as db:
+        metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
+        if metadata.get("schema_family") != "ACTION_SQLITE_DATA" or metadata.get("schema_version") != "2.0.0":
+            raise ProductionDatabaseError("DB_V2_SCHEMA_REQUIRED")
         integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
         foreign_keys = db.execute("PRAGMA foreign_key_check").fetchall()
         if integrity != "ok":
@@ -305,7 +427,10 @@ def import_legacy_baseline_v2(db_path: Path, *, master_path: Path, state_dir: Pa
 
     current = load_current(Path(master_path))
     known = load_known_skus(Path(state_dir))
-    products = tuple(current.values())
+    product_by_sku = {str(r.get("sku") or "").strip(): dict(r) for r in current.values() if str(r.get("sku") or "").strip()}
+    for sku, record in known.items():
+        product_by_sku.setdefault(sku, {"sku": sku, "canonical_id": record.get("canonical_id"), "status": record.get("last_status", "OFFLINE"), "last_seen": record.get("last_seen_date")})
+    products = tuple(product_by_sku.values())
     lifecycle = []
     for sku, record in known.items():
         lifecycle.append({
