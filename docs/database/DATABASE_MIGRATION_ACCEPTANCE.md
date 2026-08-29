@@ -31,6 +31,12 @@
 
 ## 3. 必须通过的 Gate
 
+### 3.0 Schema identity / legacy gate
+
+- `schema_family` 必须为 `ACTION_SQLITE_MIRROR`，`schema_version` 必须为 `1.0.0`；
+- 缺少 V1 身份列或带有早期脚手架形状的 DB 必须被识别为 `LEGACY`，`db-init` 返回 `LEGACY_DB_REBUILD_REQUIRED`，不允许原地升级；
+- 空库/新库 `db-init` 可重复执行，V1 库重复执行不改变结构。
+
 ### 3.1 Schema Gate
 
 - 所有 V1 表创建成功：`products`、`product_localizations`、`observations`、`price_history`、`events`、`runs`、`reviews`、`schema_metadata`、`migration_runs`；
@@ -80,7 +86,17 @@ ZH_CURRENT SKU set
 - 只有所有验证 PASS 才能用 staging DB 替换 Mirror；
 - 替换失败必须保留旧 Mirror，并在 migration report 记录 rollback 状态。
 
-### 3.7 Read-only Source Gate
+### 3.7 Field parity / raw evidence gate
+
+- `products`、`product_localizations`、`price_history`、`events`、`runs`、`reviews` 均做逐字段对账；每类最多输出 20 条 mismatch 样本，任何 mismatch 都使验证 FAIL；
+- `source_records` 必须覆盖 10 张 Sheet 的每一条非空源行，`(Sheet, row_no)` 精确一致，`raw_json` 与 `raw_hash` 一致；原始证据层不与 source issues 混淆。
+
+### 3.8 Promotion safety gate
+
+- staging 校验通过后，立即重新计算 Master SHA-256；若与迁移前不同，禁止替换旧 Mirror；
+- 原子替换后执行完整性、外键、schema family/version、migration_id 最小验证；失败时从备份恢复旧 Mirror。
+
+### 3.9 Read-only Source Gate
 
 迁移前后计算 Master SHA-256：
 
@@ -132,6 +148,10 @@ MASTER_HASH_BEFORE == MASTER_HASH_AFTER
 13. 缺 Sheet/缺列/非法 Excel 明确失败；
 14. 中文修改不改变西语事实；
 15. 迁移重复执行结果确定且不产生重复 products/history。
+16. 六类业务表逐字段篡改会被 parity gate 拒绝；
+17. source_records 行删除、raw_json/hash 篡改会被 evidence gate 拒绝；
+18. Master final hash 变化、promotion 后最小校验失败均保留旧 Mirror；
+19. 旧库形状明确拒绝，重复身份、缺 Sheet、缺列、外键孤儿明确失败。
 
 ## 6. 最终判定
 

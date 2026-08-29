@@ -89,13 +89,17 @@ def main(argv=None) -> int:
     setup_logging(cfg["paths"]["logs"])
 
     if args.command in ("db-init", "db-mirror", "db-validate"):
-        from .database.schema import migrate
+        from .database.schema import inspect_schema, migrate
         from .database.mirror import build_mirror
         from .database.validation import validate_mirror
         db_default = cfg["project_root"] / "runtime" / "db" / "action_tracker.db"
         db_path = Path(args.db) if getattr(args, "db", None) else db_default
         master_path = Path(args.master) if getattr(args, "master", None) else cfg["paths"]["master"]
         if args.command == "db-init":
+            identity = inspect_schema(db_path)
+            if identity == "LEGACY":
+                print(json.dumps({"status": "FAIL", "error": "LEGACY_DB_REBUILD_REQUIRED", "db": str(db_path)}, ensure_ascii=False))
+                return 2
             migrate(db_path)
             print(json.dumps({"status": "PASS", "db": str(db_path), "schema_version": "1.0.0"}, ensure_ascii=False))
             return 0

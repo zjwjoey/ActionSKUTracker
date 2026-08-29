@@ -1,8 +1,9 @@
 # ActionSKUTracker — SQLite Data Foundation V1 Schema
 
-状态：设计冻结，尚未接管生产。
+状态：设计冻结；SQLite Mirror V1 技术 Gate 已通过，尚未接管生产。
 数据库目标：`F:\ActionSKUTracker\runtime\db\action_tracker.db`
 Schema 版本：`1.0.0`
+Schema family：`ACTION_SQLITE_MIRROR`
 
 ## 1. 总体原则
 
@@ -165,6 +166,18 @@ Schema 版本：`1.0.0`
 ### 2.9 `migration_runs`
 
 保存每次 Excel → staging SQLite 的迁移批次：`migration_id`、source path/hash、时间、状态、各表数量、parity/integrity/FK 结果、报告路径和 rollback 状态。
+
+### 2.10 `source_records`
+
+这是不可替代的原始证据层。每个 Master Sheet 的每一条非空数据行都按
+`(migration_id, source_sheet, source_row_no)` 保存一条记录，包含规范化后的完整
+`raw_json` 与 SHA-256 `raw_hash`。它与 `migration_source_issues` 分离：有问题的来源行也必须先保留，不能因无法关联正式 SKU 而丢失。当前真实迁移共保留 70,933 条证据行，覆盖全部 10 张 Sheet。
+
+### 2.11 旧库识别
+
+`db-init` 会先检查 `schema_family`、`schema_version` 及 V1 身份列。缺失元数据或仍是早期
+`products(official_sku, ...)` 脚手架的文件会返回 `LEGACY_DB_REBUILD_REQUIRED`，禁止原地
+升级；必须从 Master 重新建立 staging Mirror。
 
 ## 3. Views
 

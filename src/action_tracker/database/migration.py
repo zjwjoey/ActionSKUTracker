@@ -74,6 +74,14 @@ def _json_value(value: Any, header: str = "") -> Any:
     return value
 
 
+def _canonical_raw_json(raw: dict[str, Any]) -> str:
+    return json.dumps(raw, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _raw_hash(raw_json: str) -> str:
+    return hashlib.sha256(raw_json.encode("utf-8")).hexdigest()
+
+
 def _row_to_dict(headers: list[str], values: Iterable[Any]) -> dict[str, Any]:
     return {header: _json_value(value, header) for header, value in zip(headers, values)}
 
@@ -156,12 +164,30 @@ def migrate_master(master_path: Path, staging_path: Path, migration_id: str) -> 
             raise ValueError(f"Missing required Master sheets: {', '.join(missing_sheets)}")
         conn = connect(staging_path)
         migrate(staging_path)
-        counts = {name: 0 for name in ("products", "localizations", "observations", "price_history", "events", "runs", "reviews", "source_issues")}
+        counts = {name: 0 for name in ("products", "localizations", "observations", "price_history", "events", "runs", "reviews", "source_records", "source_issues")}
         with transaction(conn) as db:
             db.execute("INSERT OR REPLACE INTO schema_metadata(key,value) VALUES (?,?)", ("schema_version", SCHEMA_VERSION))
             db.execute("INSERT OR REPLACE INTO schema_metadata(key,value) VALUES (?,?)", ("master_path", str(master_path)))
             db.execute("INSERT OR REPLACE INTO schema_metadata(key,value) VALUES (?,?)", ("master_sha256", source_hash))
             db.execute("INSERT OR REPLACE INTO schema_metadata(key,value) VALUES (?,?)", ("migration_id", migration_id))
+
+            # Preserve every non-empty Master row as an independent evidence
+            # record.  This layer is intentionally not FK-constrained: audit
+            # rows may have no formal SKU/product yet.
+            for sheet_name, header_row in SHEET_CONFIG.items():
+                ws = wb[sheet_name]
+                for row_no, headers, values in _records(ws, header_row):
+                    raw = _row_to_dict(headers, values)
+                    raw_json = _canonical_raw_json(raw)
+                    sku_label = "SKU" if "SKU" in headers else "正式SKU" if "正式SKU" in headers else None
+                    cid_label = "Canonical_ID" if "Canonical_ID" in headers else "实体ID" if "实体ID" in headers else None
+                    sku = _text(values[headers.index(sku_label)]) if sku_label else ""
+                    canonical_id = _text(values[headers.index(cid_label)]) if cid_label else ""
+                    db.execute(
+                        "INSERT INTO source_records(migration_id,source_sheet,source_row_no,record_type,sku,canonical_id,raw_json,raw_hash) VALUES(?,?,?,?,?,?,?,?)",
+                        (migration_id, sheet_name, row_no, f"MASTER_{sheet_name}_ROW", sku or None, canonical_id or None, raw_json, _raw_hash(raw_json)),
+                    )
+                    counts["source_records"] += 1
 
             # Long-term products are the identity source.
             ws = wb["08_LONG_TERM_MASTER"]

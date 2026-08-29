@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from .connection import connect
 
 SCHEMA_VERSION = "1.0.0"
+SCHEMA_FAMILY = "ACTION_SQLITE_MIRROR"
 
 # The legacy tables remain intentionally for compatibility with the existing
 # baseline tests and old callers.  V1 Mirror code uses the tables below marked
@@ -193,6 +196,20 @@ CREATE TABLE IF NOT EXISTS migration_source_issues (
   raw_json TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS source_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  migration_id TEXT NOT NULL,
+  source_sheet TEXT NOT NULL,
+  source_row_no INTEGER NOT NULL,
+  record_type TEXT NOT NULL,
+  sku TEXT,
+  canonical_id TEXT,
+  raw_json TEXT NOT NULL,
+  raw_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(migration_id, source_sheet, source_row_no)
+);
+
 CREATE INDEX IF NOT EXISTS idx_products_status ON products(current_status_raw);
 CREATE INDEX IF NOT EXISTS idx_price_history_sku_date ON price_history(sku, observed_at);
 CREATE INDEX IF NOT EXISTS idx_events_sku_date ON events(sku, occurred_at);
@@ -219,6 +236,37 @@ def migrate(path):
     try:
         db.executescript(DDL)
         db.execute("INSERT OR IGNORE INTO schema_migrations(version) VALUES (?)", (SCHEMA_VERSION,))
+        db.execute("INSERT OR REPLACE INTO schema_metadata(key,value) VALUES (?,?)", ("schema_family", SCHEMA_FAMILY))
+        db.execute("INSERT OR REPLACE INTO schema_metadata(key,value) VALUES (?,?)", ("schema_version", SCHEMA_VERSION))
         db.commit()
     finally:
         db.close()
+
+
+def inspect_schema(path: Path):
+    """Classify a database before db-init mutates it.
+
+    An old scaffold may contain a table named ``products`` but it does not
+    have the V1 identity columns.  Such a file must be rebuilt from Master,
+    not upgraded in place with ``CREATE TABLE IF NOT EXISTS``.
+    """
+    if not Path(path).exists() or Path(path).stat().st_size == 0:
+        return "NEW"
+    import sqlite3
+
+    conn = sqlite3.connect(path)
+    try:
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if not tables:
+            return "NEW"
+        metadata = dict(conn.execute("SELECT key,value FROM schema_metadata").fetchall()) if "schema_metadata" in tables else {}
+        family = metadata.get("schema_family")
+        if family and family != SCHEMA_FAMILY:
+            return "LEGACY"
+        if "products" not in tables:
+            return "LEGACY"
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(products)")}
+        required = {"sku", "canonical_id", "source_sheet", "source_raw_json", "current_status_raw"}
+        return "V1" if required <= columns else "LEGACY"
+    finally:
+        conn.close()

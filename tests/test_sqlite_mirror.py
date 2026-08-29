@@ -7,7 +7,9 @@ from openpyxl import Workbook, load_workbook
 
 from action_tracker.database.connection import connect, transaction
 from action_tracker.database.mirror import build_mirror
-from action_tracker.database.schema import migrate
+from action_tracker.database.schema import inspect_schema, migrate
+from action_tracker.database import mirror as mirror_module
+from action_tracker.database.repository import import_baseline
 from action_tracker.database.validation import validate_mirror
 
 
@@ -37,7 +39,7 @@ def make_fixture(path: Path) -> None:
     ], [["ENT-1", "100", "Producto de prueba", 2.5, 3.0, 2.0, "UP", "本期上涨", 0.5, 25, "2026-08-29", 1.0, 3.0, "Hogar", "Almacenaje", "1 unidad", "2,50 €/ud", 0, 0, 0, 0, "", "CURRENT", "2026-01-01", "2026-08-29", "Descripción ES", "Detalle ES", "https://example/100", "https://example/image", "OK"]])
     _sheet(wb, "03_PRICE_HISTORY", ["Canonical_ID", "SKU", "日期", "旧售价 (€)", "新售价 (€)", "原价 (€)", "变化类型", "变化金额 (€)", "变化幅度 (%)", "促销状态", "来源文件", "来源Sheet"], [["ACT-1", "100", "2026-08-29", 2.0, 2.5, 3.0, "UP", 0.5, 25, "", "run.xlsx", "Sheet1"], ["ACT-X", "", "2026-04-05", None, 1.59, None, "NEW", None, None, "", "old.xlsx", "Sheet1"]])
     _sheet(wb, "04_EVENT_HISTORY", ["Canonical_ID", "SKU", "日期", "事件类型", "旧值", "新值", "来源文件", "备注"], [["ACT-1", "100", "2026-08-29", "PRICE_UP", "2", "2.5", "run.xlsx", "evidence"], ["ACT-X", "", "2026-04-05", "FIRST_SEEN", "", "", "old.xlsx", "pending"]])
-    _sheet(wb, "05_RUN_LOG", ["Run ID", "运行日期", "开始时间", "结束时间", "Git Commit", "Sitemap SKU数", "Listing SKU数", "ACTIVE", "NEW", "REAPPEARED", "MISSING_FIRST", "MISSING_CONTINUED", "OFFLINE", "PRICE_UP", "PRICE_DOWN", "PROMO_START", "PROMO_END", "NEW_BADGE_ON", "NEW_BADGE_OFF", "CONTENT_CHANGE", "异常数量", "QA状态", "运行状态", "备注"], [["run-1", "2026-08-29", "2026-08-29T01:00:00", "2026-08-29T01:10:00", "abc", 2, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, "PASS", "FULL_COMMIT", ""]])
+    _sheet(wb, "05_RUN_LOG", ["Run ID", "运行日期", "开始时间", "结束时间", "Git Commit", "Sitemap SKU数", "Listing SKU数", "ACTIVE", "NEW", "REAPPEARED", "MISSING_FIRST", "MISSING_CONTINUED", "OFFLINE", "PRICE_UP", "PRICE_DOWN", "PROMO_START", "PROMO_END", "NEW_BADGE_ON", "NEW_BADGE_OFF", "CONTENT_CHANGE", "异常数量", "QA状态", "运行状态", "备注"], [["run-1", "2026-08-29", "2026-08-29T01:00:00", "2026-08-29T01:10:00", "abc", 2, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, "PASS", "FULL_COMMIT", ""]])
     _sheet(wb, "06_REVIEW_QUEUE", ["日期", "SKU", "问题类型", "证据", "候选值", "置信度", "建议动作", "人工备注"], [["2026-08-29", "100", "NAME", "evidence", "测试商品", 0.9, "REVIEW", ""]])
     _sheet(wb, "07_APRIL_ARCHIVE", ["四月归档ID", "正式SKU"], [["APR-1", "100"]])
     _sheet(wb, "08_LONG_TERM_MASTER", ["实体ID", "正式SKU", "四月归档ID", "身份类型", "匹配状态", "匹配置信度", "当前状态", "中文品名", "西班牙语品名", "一级类目（中文）", "一级类目（西语）", "规格（中文）", "规格（西语）", "当前售价 (€)", "历史最低价 (€)", "历史最高价 (€)", "首次观察日期", "最后观察日期", "四月原始记录数", "四月归档ID集合", "来源数", "来源工作表", "商品链接", "核对备注"], [["ENT-1", "100", "APR-1", "MATCHED", "MATCHED", 1.0, "CURRENT", "测试商品", "Producto de prueba", "家居", "Hogar", "1件", "1 unidad", 2.5, 1.0, 3.0, "2026-01-01", "2026-08-29", 1, "APR-1", 1, "01", "https://example/100", ""], ["ENT-2", "200", "", "NEW", "MATCHED", 1.0, "HISTORICAL", "历史商品", "Historico", "家居", "Hogar", "1件", "1 unidad", 1.0, 1.0, 1.0, "2026-01-01", "2026-01-02", 0, "", 1, "08", "", ""], ["ENT-3", "", "APR-3", "PENDING", "UNMATCHED", 0.0, "ARCHIVE_PENDING_MATCH", "", "", "", "", "", "", "", "", "2026-04-05", "2026-04-05", 1, "APR-3", 1, "07", "", ""]], header_row=7)
@@ -112,3 +114,168 @@ def test_failed_promotion_preserves_existing_mirror(tmp_path, monkeypatch):
     assert result["status"] == "FAIL"
     assert result["validation"]["rollback_preserved_old_mirror"] is True
     assert db.read_bytes() == old_bytes
+
+
+@pytest.mark.parametrize(
+    ("table", "column", "value"),
+    [
+        ("products", "current_price", 999.0),
+        ("product_localizations", "name", "被篡改"),
+        ("price_history", "new_price", 999.0),
+        ("events", "event_type", "TAMPERED"),
+        ("runs", "qa_status", "FAIL"),
+        ("reviews", "evidence", "被篡改"),
+    ],
+)
+def test_field_level_parity_rejects_tampering(tmp_path, table, column, value):
+    master, db = tmp_path / "Master.xlsx", tmp_path / "action.db"
+    make_fixture(master)
+    assert build_mirror(master, db, tmp_path / "reports")["status"] == "PASS"
+    key = "sku='100'" if table in {"products", "product_localizations", "price_history", "events"} else "run_id='run-1'" if table == "runs" else "review_id='MASTER06:2'"
+    with connect(db) as conn:
+        conn.execute(f"UPDATE {table} SET {column}=? WHERE {key}", (value,))
+    result = validate_mirror(master, db)
+    assert result["status"] == "FAIL"
+    assert result["checks"]["field_parity"] is False
+    parity_key = "localizations" if table == "product_localizations" else table
+    assert result["field_parity"][parity_key]["mismatch_count"] > 0
+
+
+def test_source_evidence_parity_rejects_hash_or_row_loss(tmp_path):
+    master, db = tmp_path / "Master.xlsx", tmp_path / "action.db"
+    make_fixture(master)
+    assert build_mirror(master, db, tmp_path / "reports")["status"] == "PASS"
+    conn = connect(db)
+    try:
+        conn.execute("UPDATE source_records SET raw_json='{}' WHERE source_sheet='08_LONG_TERM_MASTER' AND source_row_no=8")
+        conn.commit()
+    finally:
+        conn.close()
+    result = validate_mirror(master, db)
+    assert result["status"] == "FAIL"
+    assert result["checks"]["source_evidence_parity"] is False
+
+    # Restore a clean mirror and remove one evidence row entirely.
+    assert build_mirror(master, db, tmp_path / "reports")["status"] == "PASS"
+    conn = connect(db)
+    try:
+        conn.execute("DELETE FROM source_records WHERE source_sheet='10_SOURCE_SCHEMA' AND source_row_no=2")
+        conn.commit()
+    finally:
+        conn.close()
+    result = validate_mirror(master, db)
+    assert result["status"] == "FAIL"
+    assert result["source_evidence_parity"]["exact_row_identity"] is False
+
+
+def test_db_init_rejects_legacy_shape(tmp_path):
+    legacy = tmp_path / "legacy.db"
+    import sqlite3
+    with sqlite3.connect(legacy) as conn:
+        conn.execute("CREATE TABLE products (official_sku TEXT PRIMARY KEY)")
+    assert inspect_schema(legacy) == "LEGACY"
+
+
+def test_db_init_is_idempotent_for_v1(tmp_path):
+    db = tmp_path / "new.db"
+    assert inspect_schema(db) == "NEW"
+    migrate(db)
+    assert inspect_schema(db) == "V1"
+    migrate(db)
+    assert inspect_schema(db) == "V1"
+
+
+def test_import_baseline_preserves_multi_sku_identity(tmp_path):
+    db = tmp_path / "baseline.db"
+    count = import_baseline(
+        db,
+        {"100": {"name_es": "A"}, "200": {"name_es": "B"}, "300": {"name_es": "C"}},
+        "2026-08-29",
+    )
+    assert count == 3
+    with connect(db, read_only=True) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM products").fetchone()[0] == 3
+        assert conn.execute("SELECT COUNT(DISTINCT source_row_no) FROM products WHERE source_sheet='BASELINE'").fetchone()[0] == 3
+
+
+def test_final_master_hash_gate_preserves_old_mirror(tmp_path, monkeypatch):
+    master, db = tmp_path / "Master.xlsx", tmp_path / "action.db"
+    make_fixture(master)
+    old_bytes = b"old mirror"
+    db.write_bytes(old_bytes)
+    original_hash = mirror_module.sha256_file(master)
+    calls = iter([original_hash, original_hash, "changed-before-promotion"])
+    monkeypatch.setattr(mirror_module, "sha256_file", lambda _: next(calls))
+    result = build_mirror(master, db, tmp_path / "reports")
+    assert result["status"] == "FAIL"
+    assert result["validation"]["failure_reason"] == "MASTER_CHANGED_BEFORE_MIRROR_PROMOTION"
+    assert db.read_bytes() == old_bytes
+
+
+def test_post_promotion_validation_failure_restores_backup(tmp_path, monkeypatch):
+    master, db = tmp_path / "Master.xlsx", tmp_path / "action.db"
+    make_fixture(master)
+    old_bytes = b"old mirror"
+    db.write_bytes(old_bytes)
+    monkeypatch.setattr(mirror_module, "_post_promotion_validate", lambda *_: {"status": "FAIL", "checks": {"integrity_check": False}})
+    result = build_mirror(master, db, tmp_path / "reports")
+    assert result["status"] == "FAIL"
+    assert result["validation"]["failure_reason"] == "POST_PROMOTION_VALIDATION_FAILED"
+    assert result["validation"]["rollback_restored_old_mirror"] is True
+    assert db.read_bytes() == old_bytes
+
+
+def test_repeat_mirror_business_rows_are_deterministic(tmp_path):
+    master = tmp_path / "Master.xlsx"
+    make_fixture(master)
+    db_a, db_b = tmp_path / "a.db", tmp_path / "b.db"
+    assert build_mirror(master, db_a, tmp_path / "reports-a")["status"] == "PASS"
+    assert build_mirror(master, db_b, tmp_path / "reports-b")["status"] == "PASS"
+    with connect(db_a, read_only=True) as a, connect(db_b, read_only=True) as b:
+        for query in (
+            "SELECT sku,canonical_id,name_es,current_price,current_status_raw FROM products ORDER BY sku",
+            "SELECT sku,language,name,cat1,cat2,spec,description,details FROM product_localizations ORDER BY sku,language",
+            "SELECT sku,canonical_id,observed_at,previous_price,new_price,original_price,change_type,promotion_raw,raw_json FROM price_history ORDER BY id",
+            "SELECT sku,canonical_id,occurred_at,event_type,old_value,new_value,evidence FROM events ORDER BY id",
+        ):
+            assert [tuple(row) for row in a.execute(query)] == [tuple(row) for row in b.execute(query)]
+
+
+def test_migration_rejects_missing_sheet_and_required_column(tmp_path):
+    master = tmp_path / "Master.xlsx"
+    make_fixture(master)
+    wb = load_workbook(master)
+    del wb["10_SOURCE_SCHEMA"]
+    wb.save(master)
+    with pytest.raises(ValueError, match="Missing required Master sheets"):
+        build_mirror(master, tmp_path / "missing-sheet.db", tmp_path / "reports")
+
+    make_fixture(master)
+    wb = load_workbook(master)
+    ws = wb["02_SKU_ES_CURRENT"]
+    ws.delete_cols(2)  # remove the required SKU column
+    wb.save(master)
+    with pytest.raises(ValueError, match="Missing required column 'SKU'"):
+        build_mirror(master, tmp_path / "missing-column.db", tmp_path / "reports")
+
+
+@pytest.mark.parametrize("duplicate_field", ["正式SKU", "实体ID"])
+def test_migration_rejects_duplicate_product_identity(tmp_path, duplicate_field):
+    master = tmp_path / "Master.xlsx"
+    make_fixture(master)
+    wb = load_workbook(master)
+    ws = wb["08_LONG_TERM_MASTER"]
+    ws.cell(row=9, column=2 if duplicate_field == "正式SKU" else 1).value = ws.cell(row=8, column=2 if duplicate_field == "正式SKU" else 1).value
+    wb.save(master)
+    with pytest.raises(Exception):
+        build_mirror(master, tmp_path / f"duplicate-{duplicate_field}.db", tmp_path / "reports")
+
+
+def test_schema_rejects_orphan_foreign_keys(tmp_path):
+    db = tmp_path / "fk.db"
+    migrate(db)
+    with connect(db) as conn:
+        with pytest.raises(Exception):
+            conn.execute("INSERT INTO product_localizations(sku,language,source,review_status,source_sheet,source_row_no) VALUES ('missing','zh','T','PENDING','T',1)")
+        with pytest.raises(Exception):
+            conn.execute("INSERT INTO observations(run_id,sku,observation_date,presence,observation_complete,raw_json) VALUES ('missing','missing','2026-08-29',1,1,'{}')")

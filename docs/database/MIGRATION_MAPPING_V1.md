@@ -31,6 +31,10 @@
 | `09_APRIL_MATCH_AUDIT` | `AUDIT_ONLY` / migration audit | 只保存匹配方法、候选、置信度和证据，不覆盖 products |
 | `10_SOURCE_SCHEMA` | `schema_metadata` + source manifest | 19 条全部保留；重复文件+Sheet 用 source row 区分 |
 
+除业务目标表外，10 张 Sheet 的所有非空源行统一写入 `source_records`，以
+`(migration_id, source_sheet, source_row_no)` 为稳定身份，保存完整 `raw_json` 和
+`raw_hash`。因此 `AUDIT_ONLY` 或 `SOURCE_ISSUE` 只表示业务解释策略，不表示原始行被丢弃。
+
 ## 3. 字段映射
 
 ### 3.1 `08_LONG_TERM_MASTER` → `products`
