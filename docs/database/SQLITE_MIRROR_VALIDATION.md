@@ -4,7 +4,7 @@
 分支：`feat/sqlite-data-foundation-v1`
 输入 Master：`F:\ActionSKUTracker\runtime\master\Action_Master.xlsx`
 Mirror：`F:\ActionSKUTracker\runtime\db\action_tracker.db`
-Migration ID：`20260829T162121Z_6c843c7d`
+Migration ID：`20260829T164012Z_89075793`
 
 ## 1. 执行边界
 
@@ -86,7 +86,7 @@ Sitemap、Lifecycle、Detail 或 QA 主链。Master 迁移前后 SHA-256 均为�
 
 ## 7. 报告文件与结论
 
-报告目录：`F:\ActionSKUTracker\runtime\db\reports\20260829T162121Z_6c843c7d\`
+报告目录：`F:\ActionSKUTracker\runtime\db\reports\20260829T164012Z_89075793\`
 
 - `migration_report.json`
 - `validation_report.json`

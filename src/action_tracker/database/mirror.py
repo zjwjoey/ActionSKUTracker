@@ -34,6 +34,16 @@ def _post_promotion_validate(path: Path, migration_id: str) -> dict[str, Any]:
         db.close()
 
 
+def _write_reports(report_dir: Path, migration_report: dict[str, Any], validation: dict[str, Any]) -> None:
+    """Persist the final state of both reports after every terminal branch."""
+    (report_dir / "migration_report.json").write_text(
+        json.dumps(migration_report, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
+    )
+    (report_dir / "validation_report.json").write_text(
+        json.dumps(validation, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
+    )
+
+
 def build_mirror(master_path: Path, output_path: Path, reports_root: Path | None = None) -> dict[str, Any]:
     """Build staging DB, validate it, and atomically replace the Mirror on PASS."""
     migration_id = _migration_id()
@@ -80,8 +90,7 @@ def build_mirror(master_path: Path, output_path: Path, reports_root: Path | None
         "post_validation_master_hash": validation["post_validation_master_hash"],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    (report_dir / "migration_report.json").write_text(json.dumps(migration_report, ensure_ascii=False, indent=2), encoding="utf-8")
-    (report_dir / "validation_report.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    _write_reports(report_dir, migration_report, validation)
     sheet_mapping = {
         "08_LONG_TERM_MASTER": {"policy": "MIGRATE_SPLIT_BY_STATUS", "destination": "products + migration_source_issues", "source_rows": validation["source"]["08_LONG_TERM_MASTER"]["rows"], "migrated_rows": migrated["counts"]["products"], "unmatched_rows": validation["source"]["08_LONG_TERM_MASTER"].get("unmatched_count", 0)},
         "01_SKU_ZH_CURRENT": {"policy": "MIGRATE + PARITY_ONLY", "destination": "product_localizations + CURRENT parity", "source_rows": validation["source"]["01_SKU_ZH_CURRENT"]["rows"], "migrated_rows": validation["source"]["01_SKU_ZH_CURRENT"]["rows"]},
@@ -119,8 +128,13 @@ def build_mirror(master_path: Path, output_path: Path, reports_root: Path | None
         finally:
             failed_db.close()
         migration_report.update({"validation_status": "FAIL", "verdict": validation["verdict"], "final_master_hash": final_master_hash, "failure_reason": validation["failure_reason"], "backup_path": str(backup_path) if backup_path else None})
-        (report_dir / "migration_report.json").write_text(json.dumps(migration_report, ensure_ascii=False, indent=2), encoding="utf-8")
-        (report_dir / "validation_report.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        migration_report.update({
+            "validation_status": "FAIL", "verdict": validation["verdict"],
+            "final_master_hash": final_master_hash, "master_hash_before": source_hash_before,
+            "master_hash_after": source_hash_after, "failure_reason": validation["failure_reason"],
+            "backup_path": str(backup_path) if backup_path else None,
+        })
+        _write_reports(report_dir, migration_report, validation)
         return {"migration_id": migration_id, "status": "FAIL", "report_dir": str(report_dir), "staging_db": str(staging_path), "backup_path": str(backup_path) if backup_path else None, "validation": validation}
     # Path.replace is the atomic promotion operation on the same volume.  Do
     # not unlink the old target first: if promotion fails, the old Mirror must
@@ -141,8 +155,13 @@ def build_mirror(master_path: Path, output_path: Path, reports_root: Path | None
             failed_db.commit()
         finally:
             failed_db.close()
-        (report_dir / "validation_report.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-        (report_dir / "migration_report.json").write_text(json.dumps({**migration_report, "validation_status": "FAIL", "verdict": validation["verdict"], "replacement_error": str(exc), "backup_path": str(backup_path) if backup_path else None}, ensure_ascii=False, indent=2), encoding="utf-8")
+        migration_report.update({
+            "validation_status": "FAIL", "verdict": validation["verdict"],
+            "final_master_hash": final_master_hash, "master_hash_before": source_hash_before,
+            "master_hash_after": source_hash_after, "replacement_error": str(exc),
+            "backup_path": str(backup_path) if backup_path else None,
+        })
+        _write_reports(report_dir, migration_report, validation)
         return {"migration_id": migration_id, "status": "FAIL", "report_dir": str(report_dir), "staging_db": str(staging_path), "backup_path": str(backup_path) if backup_path else None, "validation": validation}
     post = _post_promotion_validate(output_path, migration_id)
     validation["post_promotion_validation"] = post
@@ -157,9 +176,22 @@ def build_mirror(master_path: Path, output_path: Path, reports_root: Path | None
         validation["verdict"] = "SQLITE MIRROR REQUIRES FIXES"
         validation["failure_reason"] = "POST_PROMOTION_VALIDATION_FAILED"
         validation["rollback_restored_old_mirror"] = restored
-        (report_dir / "validation_report.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-        (report_dir / "migration_report.json").write_text(json.dumps({**migration_report, "validation_status": "FAIL", "verdict": validation["verdict"], "failure_reason": validation["failure_reason"], "rollback_restored_old_mirror": restored, "backup_path": str(backup_path) if backup_path else None}, ensure_ascii=False, indent=2), encoding="utf-8")
+        migration_report.update({
+            "validation_status": "FAIL", "verdict": validation["verdict"],
+            "final_master_hash": final_master_hash, "master_hash_before": source_hash_before,
+            "master_hash_after": source_hash_after, "failure_reason": validation["failure_reason"],
+            "rollback_restored_old_mirror": restored, "backup_path": str(backup_path) if backup_path else None,
+            "post_promotion_validation": post,
+        })
+        _write_reports(report_dir, migration_report, validation)
         return {"migration_id": migration_id, "status": "FAIL", "report_dir": str(report_dir), "output_db": str(output_path), "backup_path": str(backup_path) if backup_path else None, "validation": validation}
     result = {"migration_id": migration_id, "status": "PASS", "report_dir": str(report_dir), "output_db": str(output_path), "backup_path": str(backup_path) if backup_path else None, "validation": validation}
-    (report_dir / "migration_report.json").write_text(json.dumps({**migration_report, "output_db": str(output_path), "backup_path": result["backup_path"]}, ensure_ascii=False, indent=2), encoding="utf-8")
+    migration_report.update({
+        "output_db": str(output_path), "backup_path": result["backup_path"],
+        "validation_status": validation["status"], "verdict": validation["verdict"],
+        "master_hash_before": source_hash_before, "master_hash_after": source_hash_after,
+        "final_master_hash": final_master_hash, "master_unchanged": validation["master_unchanged"],
+        "post_promotion_validation": post,
+    })
+    _write_reports(report_dir, migration_report, validation)
     return result

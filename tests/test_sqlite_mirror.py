@@ -176,6 +176,27 @@ def test_db_init_rejects_legacy_shape(tmp_path):
     assert inspect_schema(legacy) == "LEGACY"
 
 
+def test_schema_identity_requires_family_version_and_all_v1_tables(tmp_path):
+    shaped = tmp_path / "shaped.db"
+    import sqlite3
+    with sqlite3.connect(shaped) as conn:
+        conn.execute("CREATE TABLE products (sku TEXT PRIMARY KEY, canonical_id TEXT, source_sheet TEXT, source_row_no INTEGER, source_raw_json TEXT, current_status_raw TEXT)")
+    assert inspect_schema(shaped) == "LEGACY"
+
+    v1 = tmp_path / "v1.db"
+    migrate(v1)
+    with sqlite3.connect(v1) as conn:
+        conn.execute("DELETE FROM schema_metadata WHERE key='schema_family'")
+        conn.commit()
+    assert inspect_schema(v1) == "LEGACY"
+
+    migrate(v1)
+    with sqlite3.connect(v1) as conn:
+        conn.execute("UPDATE schema_metadata SET value='0.9.0' WHERE key='schema_version'")
+        conn.commit()
+    assert inspect_schema(v1) == "LEGACY"
+
+
 def test_db_init_is_idempotent_for_v1(tmp_path):
     db = tmp_path / "new.db"
     assert inspect_schema(db) == "NEW"
@@ -196,6 +217,25 @@ def test_import_baseline_preserves_multi_sku_identity(tmp_path):
     with connect(db, read_only=True) as conn:
         assert conn.execute("SELECT COUNT(*) FROM products").fetchone()[0] == 3
         assert conn.execute("SELECT COUNT(DISTINCT source_row_no) FROM products WHERE source_sheet='BASELINE'").fetchone()[0] == 3
+
+
+def test_import_baseline_keeps_source_rows_when_input_order_changes(tmp_path):
+    db = tmp_path / "baseline.db"
+    import_baseline(db, {"100": {"name_es": "A"}, "200": {"name_es": "B"}}, "2026-08-29")
+    conn = connect(db, read_only=True)
+    try:
+        before = dict(conn.execute("SELECT sku,source_row_no FROM products WHERE source_sheet='BASELINE'").fetchall())
+    finally:
+        conn.close()
+    import_baseline(db, {"300": {"name_es": "C"}, "100": {"name_es": "A"}, "200": {"name_es": "B"}}, "2026-08-29")
+    conn = connect(db, read_only=True)
+    try:
+        after = dict(conn.execute("SELECT sku,source_row_no FROM products WHERE source_sheet='BASELINE'").fetchall())
+    finally:
+        conn.close()
+    assert after["100"] == before["100"]
+    assert after["200"] == before["200"]
+    assert after["300"] > max(before.values())
 
 
 def test_final_master_hash_gate_preserves_old_mirror(tmp_path, monkeypatch):
@@ -223,6 +263,35 @@ def test_post_promotion_validation_failure_restores_backup(tmp_path, monkeypatch
     assert result["validation"]["failure_reason"] == "POST_PROMOTION_VALIDATION_FAILED"
     assert result["validation"]["rollback_restored_old_mirror"] is True
     assert db.read_bytes() == old_bytes
+
+
+def test_success_report_contains_final_hash_and_post_promotion_validation(tmp_path):
+    master, db = tmp_path / "Master.xlsx", tmp_path / "action.db"
+    make_fixture(master)
+    result = build_mirror(master, db, tmp_path / "reports")
+    assert result["status"] == "PASS"
+    import json
+    report_dir = Path(result["report_dir"])
+    migration_report = json.loads((report_dir / "migration_report.json").read_text(encoding="utf-8"))
+    validation_report = json.loads((report_dir / "validation_report.json").read_text(encoding="utf-8"))
+    assert migration_report["final_master_hash"] == validation_report["final_master_hash"]
+    assert validation_report["final_master_hash"] == validation_report["master_hash_before"]
+    assert validation_report["post_promotion_validation"]["status"] == "PASS"
+
+
+def test_provenance_tampering_fails_field_parity(tmp_path):
+    master, db = tmp_path / "Master.xlsx", tmp_path / "action.db"
+    make_fixture(master)
+    assert build_mirror(master, db, tmp_path / "reports")["status"] == "PASS"
+    conn = connect(db)
+    try:
+        conn.execute("UPDATE products SET source_row_no=999 WHERE sku='100'")
+        conn.commit()
+    finally:
+        conn.close()
+    result = validate_mirror(master, db)
+    assert result["status"] == "FAIL"
+    assert result["field_parity"]["products"]["status"] == "FAIL"
 
 
 def test_repeat_mirror_business_rows_are_deterministic(tmp_path):

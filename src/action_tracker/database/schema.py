@@ -260,10 +260,13 @@ def inspect_schema(path: Path):
         if not tables:
             return "NEW"
         metadata = dict(conn.execute("SELECT key,value FROM schema_metadata").fetchall()) if "schema_metadata" in tables else {}
-        family = metadata.get("schema_family")
-        if family and family != SCHEMA_FAMILY:
+        if metadata.get("schema_family") != SCHEMA_FAMILY or metadata.get("schema_version") != SCHEMA_VERSION:
             return "LEGACY"
-        if "products" not in tables:
+        required_tables = {
+            "products", "product_localizations", "observations", "price_history", "events",
+            "runs", "reviews", "schema_metadata", "migration_runs", "migration_source_issues", "source_records",
+        }
+        if not required_tables <= tables:
             return "LEGACY"
         columns = {row[1] for row in conn.execute("PRAGMA table_info(products)")}
         required = {"sku", "canonical_id", "source_sheet", "source_raw_json", "current_status_raw"}
