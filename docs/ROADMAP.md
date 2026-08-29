@@ -90,9 +90,17 @@ SQLite 生产接管已经纳入统一开发计划，执行顺序为：
 | Phase 6 | Cutover Candidate、备份、回滚和重建验证 | 待开发 |
 | Phase 7 | `SQLITE_PRIMARY` 正式接管 | 待开发 |
 | Phase 8 | Excel/CSV 降级为 Generated View | 待开发 |
+| Phase 9 | Image Contracts、AssetRecord、目录和状态冻结 | 待开发 |
+| Phase 10 | Image Foundation：下载、标准化、QA、缓存、Derivative | 待开发 |
+| Phase 11 | 20–50 SKU 真实图片切片 | 待开发 |
+| Phase 12 | Full CURRENT 增量图片同步和性能基线 | 待开发 |
+| Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | 待开发 |
 
 因此当前“SQLite 冻结”只表示**尚未接入生产主链**，不是取消数据库接管计划。详细设计见
 [`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。
+
+图片也已纳入同一总计划，但当前仍未开发；其基础能力可与 SQLite Contracts/Writer 并行，
+带图 Export 必须等 P0 字段契约冻结，`image_assets` 元数据接入必须等 SQLite PRIMARY 稳定。
 
 ## 4. 后续阶段：STEP 7 + Template 1
 

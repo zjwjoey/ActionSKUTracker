@@ -6,6 +6,7 @@
 
 1. **Export Foundation V1 正式发布**；
 2. **SQLite Production Source of Truth 正式接管**。
+3. **Image Foundation V1 + With-Images Export**。
 
 “一起加入开发计划”表示两条主线纳入同一个最终交付目标，**不表示跳过中间门禁、把所有代码压成一个提交，或直接硬切生产**。每一阶段都必须可验证、可回滚。
 
@@ -35,6 +36,7 @@ Generated Outputs
 |---|---|
 | `runtime/snapshots/` | 保存原始采集证据、QA、Run Manifest |
 | `runtime/db/action_tracker.db` | 保存正式商品事实、生命周期、观察、价格、事件和审核状态 |
+| `runtime/images/` | 保存按 SKU 管理的本地 Master 图片和可重建的导出衍生图 |
 | Excel/CSV | 生成式展示、兼容和交付文件 |
 | Dictionary | 中文派生知识层，不改写官网西语事实 |
 
@@ -47,7 +49,8 @@ Generated Outputs
 - PostgreSQL、Web 后台、多机部署和 API Server；
 - Dictionary 全面数据库化。
 
-图片和自动化翻译在 SQLite PRIMARY 稳定后作为后续阶段，不塞进 Export V1 或 SQLite Cutover。
+图片和自动化翻译不塞进 Export V1 或 SQLite Core Transaction；Image Foundation 的基础能力可在
+SQLite 进行期间并行开发，但图片元数据接入 SQLite 必须等 PRIMARY 契约稳定。
 
 ## 三、阶段总览
 
@@ -276,6 +279,82 @@ DB_COMMITTED_EXPORT_PENDING
 
 Dictionary Apply 必须写入 `product_localizations`，禁止继续直接改 Master。
 
+### Phase 9–13：Image Foundation V1 + With-Images Export
+
+P2 的目标不是简单下载图片，而是建立：
+
+```text
+图片发现 → 增量同步 → Master Asset → 质量验证 → Derivative → Excel 嵌图
+```
+
+#### Phase 9：Image Contracts
+
+冻结以下内容，但不下载真实图片：
+
+- `ImageAssetRecord`；
+- 图片目录、状态和失败语义；
+- `runtime/images/assets/<SKU>/master.png`；
+- `runtime/images/derivatives/excel_250/<SKU>.png`；
+- Master 与 Derivative 分层；
+- 图片状态：`PENDING`、`AVAILABLE`、`NO_SOURCE_URL`、`DOWNLOAD_FAILED`、
+  `INVALID_CONTENT`、`INVALID_DIMENSION`、`NORMALIZE_FAILED`、`QA_FAILED`、`SOURCE_CHANGED`；
+- 图片失败不能改变 Presence、Lifecycle 或 SKU 数量。
+
+#### Phase 10：Image Foundation
+
+实现独立模块：
+
+```text
+ImageDownloader
+ImageNormalizer
+ImageValidator
+ImageManifestRepository
+ImageSyncPlanner
+ImageDerivativeService
+```
+
+要求：
+
+- 只访问正式 CURRENT 已提供的 `image_url`；
+- 低并发、超时、重试和指数退避；
+- 下载到 staging，验证通过后原子 promotion；
+- Master 保留可用原分辨率 PNG，透明背景优先；
+- 不把图片二进制写进 SQLite；
+- 不绕过 403、429 或 challenge；
+- 只使用 SKU 进行图片映射。
+
+#### Phase 11：20–50 SKU 真实切片
+
+覆盖正常 WebP/JPEG/PNG、透明图、白底图、非正方图、无 URL、坏 URL、下载失败、
+重复 URL 和 source URL 变化，验证同步、缓存、重试、Manifest 和错误隔离。
+
+#### Phase 12：Full CURRENT Image Sync
+
+对全量 CURRENT 执行可恢复同步：
+
+- Manifest 作为 checkpoint；
+- 已有且 hash/QA 未变的图片跳过；
+- 失败项可单独重试；
+- 生成 coverage、失败类型、下载数、复用数、变化数和耗时报告；
+- 50、500、1000、FULL 四个规模都要做真实性能基线。
+
+#### Phase 13：With-Images Export
+
+在 P0 无图 Export 上扩展，不复制业务字段逻辑：
+
+- `ES With Images`；
+- `ZH With Images`；
+- Template 1 只在 `今日中文清单` 嵌图；
+- `商品上下架明细` 不嵌图；
+- 图片列有图则嵌入，无图留空但保留 SKU；
+- With-Images 与 No-Images 的 SKU、价格、标题、类目、规格、URL、备注必须一致；
+- 使用 `preview → verify → atomic publish`，导出命令仍然 no-network；
+- `embedded_count + missing_count = CURRENT SKU count`；
+- 错 SKU 图片属于 HIGH，必须阻断发布。
+
+SQLite PRIMARY 稳定后，再新增 `image_assets` 元数据表；图片文件继续保存在文件系统，
+SQLite 只保存 URL、路径、hash、尺寸、状态和错误信息。`image_manifest.csv` 降级为兼容视图。
+
 ## 四、SQLite PRIMARY 最终验收
 
 必须全部通过：
@@ -311,7 +390,13 @@ Dictionary Apply 必须写入 `product_localizations`，禁止继续直接改 Ma
 9. Cutover Candidate、备份、回滚和重建验证
 10. SQLITE_PRIMARY
 11. Excel/CSV 降级为 Generated View
-12. 再做图片、Dictionary Apply 和自动翻译增强
+12. Image Contracts 与 fixture 实现
+13. Image 20–50 SKU 真实切片
+14. Image Full CURRENT Sync
+15. With-Images Export 和 Template 1 中文嵌图
+16. Image 性能、错图和缺图验收
+17. image_assets 元数据接入 SQLite
+18. Dictionary Apply 和自动翻译增强
 ```
 
 ## 六、每阶段分支和发布原则

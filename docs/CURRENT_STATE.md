@@ -82,9 +82,12 @@ runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 wor
 1. Dictionary Apply 正式写 Master 尚未启用；Gate 已完整实现，但生产配置仍关闭。
 2. 74 个 Review Required 和 7 个 Source Blocked 需要人工/可信西语证据处理；已分别生成
    `review_closure_report.csv` 与 `source_blocked_review.csv`，不使用中文反推西语。
-3. 术语 scope、图片下载与带图 Export 尚未进入生产主链；历史 export-history 已实现，待正式发布验收。
+3. 术语 scope、图片下载与带图 Export 尚未进入生产主链；Image Foundation 已纳入统一计划，
+   历史 export-history 已实现，待正式发布验收。
 4. 工作区仍有此前 Template 1 与字典功能的待提交改动，提交时必须按功能拆分，不能混入
    runtime、报告、图片或密钥。
 
 SQLite Production Source of Truth 的完整阶段计划（Contracts → Writer → Shadow → Read →
 Cutover → PRIMARY）见 `docs/MASTER_DEVELOPMENT_PLAN.md`，目前尚未开始生产接管实现。
+Image Foundation 的 Phase 9–13（Contracts → Foundation → Slice → Full Sync → With-Images Export）
+也已纳入同一计划，目前尚未开发。
