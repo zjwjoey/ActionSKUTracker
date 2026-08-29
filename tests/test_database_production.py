@@ -71,3 +71,10 @@ def test_v2_uses_dedicated_reviews_table_and_events_view(tmp_path: Path):
     with connect(db) as conn:
         assert conn.execute("SELECT COUNT(*) FROM reviews").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 0
+
+
+def test_database_boolean_parser_does_not_treat_false_text_as_true():
+    from action_tracker.database.production import _to_bool
+    assert _to_bool("false") is False
+    assert _to_bool("0") is False
+    assert _to_bool("true") is True

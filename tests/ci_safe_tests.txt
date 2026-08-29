@@ -8,6 +8,7 @@ tests/test_current_sheet_semantics.py
 tests/test_database_schema.py
 tests/test_database_production.py
 tests/test_database_integration.py
+tests/test_database_parity.py
 tests/test_detail_retry_apply.py
 tests/test_dictionary.py
 tests/test_dictionary_baseline.py

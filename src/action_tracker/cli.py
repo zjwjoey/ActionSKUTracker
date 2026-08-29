@@ -60,6 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
     dbm = sub.add_parser("db-migrate-baseline", help="从只读 Master/State 建立 SQLite V2 基线")
     dbm.add_argument("--date", required=True, help="基线日期（YYYY-MM-DD）")
     dbp = sub.add_parser("db-promote-primary", help="显式将已验证的 SQLite Shadow 数据库提升为 Primary")
+    dbv = sub.add_parser("db-parity", help="对账 SQLite V2 与当前 Excel/CSV 兼容投影")
     dbe = sub.add_parser("sync-exports", help="重试 SQLite 提交对应的 Excel/CSV 兼容导出确认")
     dbe.add_argument("--commit-id", help="可选：只同步指定 commit_id")
     dc = sub.add_parser("dictionary-coverage", help="统计 CURRENT 的 AI-Free 字典覆盖率")
@@ -233,6 +234,16 @@ def main(argv=None) -> int:
             return 2
         print(json.dumps(result, ensure_ascii=False))
         return 0
+    if args.command == "db-parity":
+        from .database.parity import compare_with_legacy_files
+        from .database.repository import ProductionRepositoryError
+        try:
+            result = compare_with_legacy_files(cfg)
+        except (ProductionRepositoryError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0 if result.get("status") == "PASS" else 3
     if args.command == "dictionary-coverage":
         from .dictionary_coverage import dictionary_coverage
         try:

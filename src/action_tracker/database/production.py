@@ -173,8 +173,8 @@ class ProductionWriter:
                 product_url=excluded.product_url,image_url=excluded.image_url,first_seen_at=excluded.first_seen_at,last_seen_at=excluded.last_seen_at,
                 last_checked_at=excluded.last_checked_at,source_hash=excluded.source_hash,updated_at=excluded.updated_at""",
                 (cid, sku, r.get("name_es"), r.get("name_zh"), r.get("current_price"), r.get("original_price"), r.get("unit_price_raw", r.get("unit_price")),
-                 r.get("raw_badges", r.get("raw_tags")), int(bool(r.get("action_new_badge", r.get("is_new_badge", False)))),
-                 int(bool(r.get("promotion_active", r.get("promotion", False)))), int(bool(r.get("sustainable_badge", r.get("sustainable", False)))),
+                 r.get("raw_badges", r.get("raw_tags")), int(_to_bool(r.get("action_new_badge", r.get("is_new_badge", False)))),
+                 int(_to_bool(r.get("promotion_active", r.get("promotion", False)))), int(_to_bool(r.get("sustainable_badge", r.get("sustainable", False)))),
                  r.get("status", "ACTIVE"), int(r.get("consecutive_missing", 0) or 0), r.get("product_url"), r.get("image_url"),
                  r.get("first_seen_at", r.get("first_seen")), r.get("last_seen_at", r.get("last_seen")), r.get("last_checked_at", now), r.get("source_hash"), now),
             )
@@ -222,7 +222,7 @@ class ProductionWriter:
                 ever_offline=excluded.ever_offline,last_run_id=excluded.last_run_id,updated_at=excluded.updated_at""",
                 (sku, cid, r.get("first_seen_date", r.get("first_seen")), r.get("last_seen_date", r.get("last_seen")), r.get("current_status", r.get("last_status", "ACTIVE")),
                  int(r.get("missing_count", r.get("consecutive_missing", 0)) or 0), r.get("last_missing_date"), r.get("offline_date"),
-                 r.get("last_state_observation_date"), int(bool(r.get("ever_offline", False))), r.get("last_run_id"), now),
+                 r.get("last_state_observation_date"), int(_to_bool(r.get("ever_offline", False))), r.get("last_run_id"), now),
             )
 
     @staticmethod
@@ -276,6 +276,12 @@ class ProductionWriter:
 def _event_key(run_id: str, row: dict[str, Any], kind: str) -> str:
     payload = json.dumps({"kind": kind, "run_id": run_id, **row}, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _to_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().casefold() in {"1", "true", "yes", "y", "on", "是", "有"}
 
 
 def database_status(path: Path) -> dict[str, Any]:

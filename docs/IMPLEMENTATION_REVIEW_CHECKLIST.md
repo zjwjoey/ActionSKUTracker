@@ -35,6 +35,7 @@ $env:PYTHONPATH = "src"
 python -m pytest -q
 python -m action_tracker db-status
 python -m action_tracker db-validate-production
+python -m action_tracker db-parity
 python -m action_tracker image-status
 python -m action_tracker sync-exports
 ```
