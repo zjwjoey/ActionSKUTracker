@@ -43,8 +43,8 @@ def build_mirror(master_path: Path, output_path: Path, reports_root: Path | None
     db = connect(staging_path)
     try:
         db.execute(
-            "UPDATE migration_runs SET finished_at=CURRENT_TIMESTAMP,status=?,validation_status=? WHERE migration_id=?",
-            ("VALIDATED" if validation["status"] == "PASS" else "FAILED", validation["verdict"], migration_id),
+            "UPDATE migration_runs SET finished_at=CURRENT_TIMESTAMP,status=?,validation_status=?,report_path=? WHERE migration_id=?",
+            ("VALIDATED" if validation["status"] == "PASS" else "FAILED", validation["verdict"], str(report_dir), migration_id),
         )
         db.commit()
     finally:
@@ -86,9 +86,28 @@ def build_mirror(master_path: Path, output_path: Path, reports_root: Path | None
         backup_dir.mkdir(parents=True, exist_ok=True)
         backup_path = backup_dir / f"{output_path.stem}_{migration_id}.db"
         shutil.copy2(output_path, backup_path)
-    if output_path.exists():
-        output_path.unlink()
-    staging_path.replace(output_path)
+    # Path.replace is the atomic promotion operation on the same volume.  Do
+    # not unlink the old target first: if promotion fails, the old Mirror must
+    # remain available and the backup above provides an additional recovery copy.
+    try:
+        staging_path.replace(output_path)
+    except OSError as exc:
+        validation["status"] = "FAIL"
+        validation["verdict"] = "SQLITE MIRROR REQUIRES FIXES"
+        validation["replacement_error"] = str(exc)
+        validation["rollback_preserved_old_mirror"] = output_path.exists()
+        failed_db = connect(staging_path)
+        try:
+            failed_db.execute(
+                "UPDATE migration_runs SET finished_at=CURRENT_TIMESTAMP,status='FAILED',validation_status=? WHERE migration_id=?",
+                (validation["verdict"], migration_id),
+            )
+            failed_db.commit()
+        finally:
+            failed_db.close()
+        (report_dir / "validation_report.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        (report_dir / "migration_report.json").write_text(json.dumps({**migration_report, "validation_status": "FAIL", "verdict": validation["verdict"], "replacement_error": str(exc), "backup_path": str(backup_path) if backup_path else None}, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {"migration_id": migration_id, "status": "FAIL", "report_dir": str(report_dir), "staging_db": str(staging_path), "backup_path": str(backup_path) if backup_path else None, "validation": validation}
     result = {"migration_id": migration_id, "status": "PASS", "report_dir": str(report_dir), "output_db": str(output_path), "backup_path": str(backup_path) if backup_path else None, "validation": validation}
     (report_dir / "migration_report.json").write_text(json.dumps({**migration_report, "output_db": str(output_path), "backup_path": result["backup_path"]}, ensure_ascii=False, indent=2), encoding="utf-8")
     return result

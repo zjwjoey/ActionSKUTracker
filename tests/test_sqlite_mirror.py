@@ -34,7 +34,7 @@ def make_fixture(path: Path) -> None:
         "历史最低价 (€)", "历史最高价 (€)", "一级类目（西语）", "二级类目（西语）",
         "规格（西语）", "单价", "新品", "促销", "可持续", "折扣", "原始标签", "当前状态",
         "首次发现日期", "最后确认存在日期", "描述（西语）", "产品详情（西语）", "商品链接", "图片链接", "匹配状态",
-    ], [["ACT-1", "100", "Producto de prueba", 2.5, 3.0, 2.0, "UP", "本期上涨", 0.5, 25, "2026-08-29", 1.0, 3.0, "Hogar", "Almacenaje", "1 unidad", "2,50 €/ud", 0, 0, 0, 0, "", "CURRENT", "2026-01-01", "2026-08-29", "Descripción ES", "Detalle ES", "https://example/100", "https://example/image", "OK"]])
+    ], [["ENT-1", "100", "Producto de prueba", 2.5, 3.0, 2.0, "UP", "本期上涨", 0.5, 25, "2026-08-29", 1.0, 3.0, "Hogar", "Almacenaje", "1 unidad", "2,50 €/ud", 0, 0, 0, 0, "", "CURRENT", "2026-01-01", "2026-08-29", "Descripción ES", "Detalle ES", "https://example/100", "https://example/image", "OK"]])
     _sheet(wb, "03_PRICE_HISTORY", ["Canonical_ID", "SKU", "日期", "旧售价 (€)", "新售价 (€)", "原价 (€)", "变化类型", "变化金额 (€)", "变化幅度 (%)", "促销状态", "来源文件", "来源Sheet"], [["ACT-1", "100", "2026-08-29", 2.0, 2.5, 3.0, "UP", 0.5, 25, "", "run.xlsx", "Sheet1"], ["ACT-X", "", "2026-04-05", None, 1.59, None, "NEW", None, None, "", "old.xlsx", "Sheet1"]])
     _sheet(wb, "04_EVENT_HISTORY", ["Canonical_ID", "SKU", "日期", "事件类型", "旧值", "新值", "来源文件", "备注"], [["ACT-1", "100", "2026-08-29", "PRICE_UP", "2", "2.5", "run.xlsx", "evidence"], ["ACT-X", "", "2026-04-05", "FIRST_SEEN", "", "", "old.xlsx", "pending"]])
     _sheet(wb, "05_RUN_LOG", ["Run ID", "运行日期", "开始时间", "结束时间", "Git Commit", "Sitemap SKU数", "Listing SKU数", "ACTIVE", "NEW", "REAPPEARED", "MISSING_FIRST", "MISSING_CONTINUED", "OFFLINE", "PRICE_UP", "PRICE_DOWN", "PROMO_START", "PROMO_END", "NEW_BADGE_ON", "NEW_BADGE_OFF", "CONTENT_CHANGE", "异常数量", "QA状态", "运行状态", "备注"], [["run-1", "2026-08-29", "2026-08-29T01:00:00", "2026-08-29T01:10:00", "abc", 2, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, "PASS", "FULL_COMMIT", ""]])
@@ -74,8 +74,13 @@ def test_fixture_mirror_parity_and_master_unchanged(tmp_path):
         assert conn.execute("SELECT COUNT(*) FROM price_history").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM migration_source_issues").fetchone()[0] >= 3
+        migration = conn.execute("SELECT status, validation_status, report_path FROM migration_runs").fetchone()
+        assert migration[0] == "VALIDATED"
+        assert migration[1] == "SQLITE MIRROR VALIDATED WITH SOURCE DATA ISSUES"
+        assert migration[2]
     validation = validate_mirror(master, db)
     assert validation["status"] == "PASS", validation
+    assert validation["checks"]["es_canonical_exact"] is True
 
 
 def test_validation_rejects_current_set_mismatch(tmp_path):
@@ -90,3 +95,20 @@ def test_validation_rejects_current_set_mismatch(tmp_path):
     result = validate_mirror(master, db)
     assert result["status"] == "FAIL"
     assert result["checks"]["es_db_current_equal"] is False
+
+
+def test_failed_promotion_preserves_existing_mirror(tmp_path, monkeypatch):
+    master = tmp_path / "Master.xlsx"
+    db = tmp_path / "action.db"
+    make_fixture(master)
+    old_bytes = b"existing mirror placeholder"
+    db.write_bytes(old_bytes)
+
+    def refuse_replace(self, target):
+        raise OSError("simulated promotion failure")
+
+    monkeypatch.setattr(Path, "replace", refuse_replace)
+    result = build_mirror(master, db, tmp_path / "reports")
+    assert result["status"] == "FAIL"
+    assert result["validation"]["rollback_preserved_old_mirror"] is True
+    assert db.read_bytes() == old_bytes

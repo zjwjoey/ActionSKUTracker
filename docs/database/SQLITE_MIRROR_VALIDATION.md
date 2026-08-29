@@ -4,7 +4,7 @@
 分支：`feat/sqlite-data-foundation-v1`
 输入 Master：`F:\ActionSKUTracker\runtime\master\Action_Master.xlsx`
 Mirror：`F:\ActionSKUTracker\runtime\db\action_tracker.db`
-Migration ID：`20260829T132648Z_b71f1151`
+Migration ID：`20260829T150552Z_c2ea5b6a`
 
 ## 1. 执行边界
 
@@ -39,6 +39,7 @@ ZH_CURRENT SKU set = ES_CURRENT SKU set = DB current SKU set
 - `PRAGMA integrity_check`：`ok`
 - `PRAGMA foreign_key_check`：空
 - products 正式 SKU 集合：通过
+- ES CURRENT 的 `Canonical_ID` 与长期实体表精确对账：通过
 - Master SHA-256 记录与前后哈希：通过
 - staging 校验通过后才替换 Mirror；旧 Mirror 若存在会先备份
 
@@ -63,7 +64,7 @@ ZH_CURRENT SKU set = ES_CURRENT SKU set = DB current SKU set
 
 本次报告目录：
 
-`F:\ActionSKUTracker\runtime\db\reports\20260829T132648Z_b71f1151\`
+`F:\ActionSKUTracker\runtime\db\reports\20260829T150552Z_c2ea5b6a\`
 
 - `migration_report.json`
 - `validation_report.json`
@@ -71,7 +72,7 @@ ZH_CURRENT SKU set = ES_CURRENT SKU set = DB current SKU set
 
 staging 文件位于：
 
-`F:\ActionSKUTracker\runtime\db\staging\20260829T132648Z_b71f1151\action_tracker.staging.db`
+`F:\ActionSKUTracker\runtime\db\staging\20260829T150552Z_c2ea5b6a\action_tracker.staging.db`
 
 ## 6. 结论与未授权事项
 

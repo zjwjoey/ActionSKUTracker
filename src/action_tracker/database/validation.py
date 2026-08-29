@@ -30,12 +30,21 @@ def _source_counts(master_path: Path) -> dict[str, Any]:
         counts["08_LONG_TERM_MASTER"]["formal_sku_set"] = {
             _text(values[sku_idx]) for _, _, values in long_rows if _text(values[sku_idx])
         }
+        counts["08_LONG_TERM_MASTER"]["canonical_by_sku"] = {
+            _text(values[sku_idx]): _text(values[_map(long_headers, "实体ID")])
+            for _, _, values in long_rows if _text(values[sku_idx])
+        }
         counts["08_LONG_TERM_MASTER"]["current_sku_set"] = {_text(values[sku_idx]) for _, _, values in long_rows if _text(values[sku_idx]) and _text(values[status_idx]) == "CURRENT"}
         for sheet_name in ("01_SKU_ZH_CURRENT", "02_SKU_ES_CURRENT"):
             rows = list(_records(wb[sheet_name], 1))
             headers = rows[0][1] if rows else []
             idx = _map(headers, "SKU")
             counts[sheet_name]["sku_set"] = {_text(values[idx]) for _, _, values in rows if _text(values[idx])}
+            if sheet_name == "02_SKU_ES_CURRENT":
+                cidx = _map(headers, "Canonical_ID")
+                counts[sheet_name]["canonical_by_sku"] = {
+                    _text(values[idx]): _text(values[cidx]) for _, _, values in rows if _text(values[idx])
+                }
         counts["03_PRICE_HISTORY"]["formal_sku_rows"] = sum(1 for _, headers, values in _records(wb["03_PRICE_HISTORY"], 1) if _text(values[_map(headers, "SKU")]))
         counts["04_EVENT_HISTORY"]["formal_sku_rows"] = sum(1 for _, headers, values in _records(wb["04_EVENT_HISTORY"], 1) if _text(values[_map(headers, "SKU")]))
         return counts
@@ -51,7 +60,7 @@ def validate_mirror(master_path: Path, db_path: Path) -> dict[str, Any]:
         "master_sha256": sha256_file(master_path),
         "db_path": str(db_path),
         "checks": {},
-        "source": {name: {k: v for k, v in values.items() if not isinstance(v, set)} for name, values in source.items()},
+        "source": {name: {k: v for k, v in values.items() if not isinstance(v, set) and not k.endswith("_by_sku")} for name, values in source.items()},
     }
     db = connect(db_path, read_only=True)
     try:
@@ -63,6 +72,12 @@ def validate_mirror(master_path: Path, db_path: Path) -> dict[str, Any]:
         zh_current = source["01_SKU_ZH_CURRENT"]["sku_set"]
         es_current = source["02_SKU_ES_CURRENT"]["sku_set"]
         formal_skus = source["08_LONG_TERM_MASTER"]["formal_sku_set"]
+        long_canonical_by_sku = source["08_LONG_TERM_MASTER"]["canonical_by_sku"]
+        es_canonical_by_sku = source["02_SKU_ES_CURRENT"]["canonical_by_sku"]
+        es_canonical_mismatches = [
+            sku for sku, canonical_id in es_canonical_by_sku.items()
+            if canonical_id and canonical_id != long_canonical_by_sku.get(sku)
+        ]
         db_counts = {
             "products": db.execute("SELECT COUNT(*) FROM products").fetchone()[0],
             "localizations": db.execute("SELECT COUNT(*) FROM product_localizations").fetchone()[0],
@@ -82,6 +97,7 @@ def validate_mirror(master_path: Path, db_path: Path) -> dict[str, Any]:
             "integrity_check": integrity,
             "foreign_key_check": fk_rows,
             "products_exact": db_products == formal_skus and len(db_products) == source["08_LONG_TERM_MASTER"]["formal_sku_count"],
+            "es_canonical_exact": not es_canonical_mismatches,
             "zh_es_current_equal": zh_current == es_current,
             "zh_db_current_equal": zh_current == db_current,
             "es_db_current_equal": es_current == db_current,
@@ -91,9 +107,10 @@ def validate_mirror(master_path: Path, db_path: Path) -> dict[str, Any]:
             "reviews_count_equal": db_counts["reviews"] == source["06_REVIEW_QUEUE"]["rows"],
             "master_hash_recorded": metadata_hash is not None and metadata_hash[0] == result["master_sha256"],
         })
+        result["es_canonical_mismatch_count"] = len(es_canonical_mismatches)
         required = (
             "foreign_keys", "integrity_check", "foreign_key_check", "products_exact",
-            "zh_es_current_equal", "zh_db_current_equal", "es_db_current_equal",
+            "zh_es_current_equal", "zh_db_current_equal", "es_db_current_equal", "es_canonical_exact",
             "price_history_count_equal", "events_count_equal", "runs_count_equal",
             "reviews_count_equal", "master_hash_recorded",
         )

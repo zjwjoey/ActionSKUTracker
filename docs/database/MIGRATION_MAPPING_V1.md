@@ -1,6 +1,6 @@
 # ActionSKUTracker — Excel → SQLite Mirror V1 Mapping
 
-状态：设计冻结，尚未执行真实迁移。
+状态：设计冻结；真实迁移已执行并通过技术 Gate，实际结果见 `SQLITE_MIRROR_VALIDATION.md`。
 来源：`F:\ActionSKUTracker\runtime\master\Action_Master.xlsx`
 原则：保留来源、保留原始值、拒绝猜测 SKU、拒绝静默去重。
 

@@ -149,6 +149,7 @@ def migrate_master(master_path: Path, staging_path: Path, migration_id: str) -> 
     if staging_path.exists():
         staging_path.unlink()
     wb = load_workbook(master_path, read_only=True, data_only=True)
+    conn = None
     try:
         missing_sheets = sorted(set(SHEET_CONFIG) - set(wb.sheetnames))
         if missing_sheets:
@@ -346,7 +347,8 @@ def migrate_master(master_path: Path, staging_path: Path, migration_id: str) -> 
             db.execute("INSERT INTO migration_runs(migration_id,source_master_path,source_master_sha256,started_at,status,products_count,localizations_count,observations_count,price_history_count,events_count,runs_count,reviews_count,validation_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", (
                 migration_id, str(master_path), source_hash, datetime.now().isoformat(timespec="seconds"), "MIGRATED", counts["products"], counts["localizations"], counts["observations"], counts["price_history"], counts["events"], counts["runs"], counts["reviews"], "PENDING",
             ))
-        conn.close()
         return {"migration_id": migration_id, "master_sha256": source_hash, "counts": counts}
     finally:
+        if conn is not None:
+            conn.close()
         wb.close()
