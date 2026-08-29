@@ -72,7 +72,7 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
 
 ## 6. 测试与 CI
 
-当前完整回归：`224 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+当前完整回归：`233 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
 
@@ -84,3 +84,12 @@ runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 wor
 3. 术语 scope、图片下载与带图 Export、export-history 独立功能尚未进入生产主链。
 4. 工作区仍有此前 Template 1 与字典功能的待提交改动，提交时必须按功能拆分，不能混入
    runtime、报告、图片或密钥。
+
+## 8. SQLite Data Foundation V1（新增）
+
+已在独立分支 `feat/sqlite-data-foundation-v1` 完成 Excel → SQLite Mirror 的技术闭环。
+真实 Master 镜像校验通过：8,680 个正式商品、5,431 个 CURRENT、14,042 条价格历史、
+21,000 条事件历史、18 条 Run、516 条 Review 均完成对账；Master 前后 SHA-256 不变。
+最终判定为 `SQLITE MIRROR VALIDATED WITH SOURCE DATA ISSUES`，源端 15,836 条待匹配/审计记录
+均被保留在迁移报告中。SQLite 仍是只读 Mirror/Validation 层，未接管每日运行或 Excel 主链。
+详见 `docs/database/SQLITE_MIRROR_VALIDATION.md`。

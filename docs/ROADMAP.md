@@ -212,3 +212,8 @@ Template 1 和字典闭环只有同时满足以下条件才算完成：
 - dry-run 和真实 preview 均通过；
 - 只提交应进入 Git 的文件；
 - 用户确认输出模板符合实际交付需求。
+
+## 9. SQLite Data Foundation V1
+
+V1 Mirror 已完成技术闭环并通过真实 Master 校验。后续仅可在单独授权后讨论 DB 驱动生产链；
+在此之前不得让 daily-run、生命周期、字典或导出绕过 Excel Master 直接写入 SQLite。

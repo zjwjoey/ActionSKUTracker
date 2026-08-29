@@ -1,0 +1,94 @@
+"""Build and validate a SQLite Mirror without touching production Excel."""
+from __future__ import annotations
+
+import json
+import shutil
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from .connection import connect
+from .migration import SHEET_CONFIG, migrate_master, sha256_file
+from .validation import validate_mirror
+
+
+def _migration_id() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "_" + uuid.uuid4().hex[:8]
+
+
+def build_mirror(master_path: Path, output_path: Path, reports_root: Path | None = None) -> dict[str, Any]:
+    """Build staging DB, validate it, and atomically replace the Mirror on PASS."""
+    migration_id = _migration_id()
+    reports_root = reports_root or output_path.parent / "reports"
+    report_dir = reports_root / migration_id
+    report_dir.mkdir(parents=True, exist_ok=True)
+    staging_path = output_path.parent / "staging" / migration_id / "action_tracker.staging.db"
+    source_hash_before = sha256_file(master_path)
+    migrated = migrate_master(master_path, staging_path, migration_id)
+    validation = validate_mirror(master_path, staging_path)
+    source_hash_after = sha256_file(master_path)
+    validation["master_hash_before"] = source_hash_before
+    validation["master_hash_after"] = source_hash_after
+    validation["master_unchanged"] = source_hash_before == source_hash_after
+    validation["staging_path"] = str(staging_path)
+    validation["status"] = "PASS" if validation["status"] == "PASS" and validation["master_unchanged"] else "FAIL"
+    source_issue_count = sum(validation.get("source_issue_counts", {}).values())
+    validation["verdict"] = (
+        "SQLITE MIRROR VALIDATED WITH SOURCE DATA ISSUES" if validation["status"] == "PASS" and source_issue_count
+        else "SQLITE MIRROR VALIDATED" if validation["status"] == "PASS"
+        else "SQLITE MIRROR REQUIRES FIXES"
+    )
+    # Record the migration outcome inside the staging DB before it is promoted.
+    db = connect(staging_path)
+    try:
+        db.execute(
+            "UPDATE migration_runs SET finished_at=CURRENT_TIMESTAMP,status=?,validation_status=? WHERE migration_id=?",
+            ("VALIDATED" if validation["status"] == "PASS" else "FAILED", validation["verdict"], migration_id),
+        )
+        db.commit()
+    finally:
+        db.close()
+    migration_report = {
+        "migration_id": migration_id,
+        "source_master": str(master_path),
+        "source_sha256": source_hash_before,
+        "staging_db": str(staging_path),
+        "output_db": str(output_path),
+        "counts": migrated["counts"],
+        "validation_status": validation["status"],
+        "verdict": validation["verdict"],
+        "source_issue_counts": validation.get("source_issue_counts", {}),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    (report_dir / "migration_report.json").write_text(json.dumps(migration_report, ensure_ascii=False, indent=2), encoding="utf-8")
+    (report_dir / "validation_report.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    sheet_mapping = {
+        "08_LONG_TERM_MASTER": {"policy": "MIGRATE_SPLIT_BY_STATUS", "destination": "products + migration_source_issues", "source_rows": validation["source"]["08_LONG_TERM_MASTER"]["rows"], "migrated_rows": migrated["counts"]["products"], "unmatched_rows": validation["source"]["08_LONG_TERM_MASTER"].get("unmatched_count", 0)},
+        "01_SKU_ZH_CURRENT": {"policy": "MIGRATE + PARITY_ONLY", "destination": "product_localizations + CURRENT parity", "source_rows": validation["source"]["01_SKU_ZH_CURRENT"]["rows"], "migrated_rows": validation["source"]["01_SKU_ZH_CURRENT"]["rows"]},
+        "02_SKU_ES_CURRENT": {"policy": "MIGRATE + PARITY_ONLY", "destination": "products + CURRENT parity", "source_rows": validation["source"]["02_SKU_ES_CURRENT"]["rows"], "migrated_rows": validation["source"]["02_SKU_ES_CURRENT"]["rows"]},
+        "03_PRICE_HISTORY": {"policy": "MIGRATE_LOSSLESS", "destination": "price_history + migration_source_issues", "source_rows": validation["source"]["03_PRICE_HISTORY"]["rows"], "migrated_rows": migrated["counts"]["price_history"], "unmatched_rows": validation["source"]["03_PRICE_HISTORY"]["rows"] - migrated["counts"]["price_history"]},
+        "04_EVENT_HISTORY": {"policy": "MIGRATE_LOSSLESS", "destination": "events + migration_source_issues", "source_rows": validation["source"]["04_EVENT_HISTORY"]["rows"], "migrated_rows": migrated["counts"]["events"], "unmatched_rows": validation["source"]["04_EVENT_HISTORY"]["rows"] - migrated["counts"]["events"]},
+        "05_RUN_LOG": {"policy": "MIGRATE_LOSSLESS", "destination": "runs", "source_rows": validation["source"]["05_RUN_LOG"]["rows"], "migrated_rows": migrated["counts"]["runs"]},
+        "06_REVIEW_QUEUE": {"policy": "MIGRATE_PRESERVE_DUPLICATES", "destination": "reviews + migration_source_issues", "source_rows": validation["source"]["06_REVIEW_QUEUE"]["rows"], "migrated_rows": migrated["counts"]["reviews"]},
+        "07_APRIL_ARCHIVE": {"policy": "AUDIT_ONLY", "destination": "migration_source_issues", "source_rows": validation["source"]["07_APRIL_ARCHIVE"]["rows"], "migrated_rows": 0},
+        "09_APRIL_MATCH_AUDIT": {"policy": "AUDIT_ONLY", "destination": "migration_source_issues", "source_rows": validation["source"]["09_APRIL_MATCH_AUDIT"]["rows"], "migrated_rows": 0},
+        "10_SOURCE_SCHEMA": {"policy": "MIGRATE_METADATA", "destination": "schema_metadata + migration_source_issues", "source_rows": validation["source"]["10_SOURCE_SCHEMA"]["rows"], "migrated_rows": 0},
+    }
+    (report_dir / "mapping_summary.json").write_text(json.dumps({"migration_id": migration_id, "counts": migrated["counts"], "source_issue_counts": validation.get("source_issue_counts", {}), "sheet_mapping": sheet_mapping}, ensure_ascii=False, indent=2), encoding="utf-8")
+    if validation["status"] != "PASS":
+        return {"migration_id": migration_id, "status": "FAIL", "report_dir": str(report_dir), "staging_db": str(staging_path), "validation": validation}
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    backup_path = None
+    if output_path.exists():
+        backup_dir = output_path.parent / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup_path = backup_dir / f"{output_path.stem}_{migration_id}.db"
+        shutil.copy2(output_path, backup_path)
+    if output_path.exists():
+        output_path.unlink()
+    staging_path.replace(output_path)
+    result = {"migration_id": migration_id, "status": "PASS", "report_dir": str(report_dir), "output_db": str(output_path), "backup_path": str(backup_path) if backup_path else None, "validation": validation}
+    (report_dir / "migration_report.json").write_text(json.dumps({**migration_report, "output_db": str(output_path), "backup_path": result["backup_path"]}, ensure_ascii=False, indent=2), encoding="utf-8")
+    return result

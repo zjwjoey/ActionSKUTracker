@@ -88,3 +88,9 @@
 - 未经用户明确授权不得 push、合并 main、创建 PR 或发布字典基线。
 - 用户明确要求 push 时，优先推送当前开发分支；没有明确要求不得直接改远端 main。
 - 生成的 Excel、CSV、JSON、图片、报告和临时文件原则上不提交，正式字典基线除外。
+
+### SQLite Data Foundation V1
+
+- `runtime/db/` 下的 SQLite、WAL/SHM、staging、backup 和报告均为本机生成物，不提交 Git。
+- `db-mirror` 只读 `runtime/master/Action_Master.xlsx`，必须先写 staging 并通过校验，再原子替换 Mirror。
+- SQLite 当前是 Mirror/Validation 层；不得在未获授权时让 daily-run、Lifecycle、Dictionary 或 Export 改以 DB 为生产 Source of Truth。

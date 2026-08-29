@@ -182,7 +182,7 @@ presence[sku, date] = 0  否则
 
 - 结构变化必须提升 schema/profile version；
 - 字段重命名要有显式迁移，不能静默复用旧列；
-- SQLite 不是当前数据模型的生产存储；
+- SQLite Data Foundation V1 只作为 Excel Master 的 Mirror/Validation 存储，不是当前生产写入源；
 - 任何迁移必须保留原文件、来源 hash、行数对账和可回滚证据。
 
 ## 11. CI 中的数据使用边界

@@ -164,7 +164,7 @@ Template 1：
 | `review_queue.py` | 审核闭环 |
 | `term_candidates.py` | 术语候选 |
 | `exporting/` | 只读导出、校验和 Excel 写入 |
-| `database/` | 冻结的 SQLite 脚手架 |
+| `database/` | SQLite Data Foundation V1：staging 镜像、外键校验和报告（不接管生产主链） |
 
 专题细节见 `LIFECYCLE_ARCHITECTURE.md`、`DICTIONARY_ARCHITECTURE.md` 和 `EXPORT_ARCHITECTURE.md`。
 
@@ -173,3 +173,6 @@ Template 1：
 GitHub Actions 只验证可重复的本地代码行为：schema 校验、生命周期规则、字典优先级、导出格式和审核队列等测试使用临时目录与模拟数据。CI 不访问 Action 官网、不启动真实浏览器、不读取或写入本机 runtime、不发布字典基线，也不下载图片。
 
 真实 daily-run、详情补抓、QA 门禁、正式 Master/State 更新和导出预览仍必须在 Windows 本地按运行规则执行。CI 通过不能被解释为一次真实官网运行成功。
+
+SQLite Mirror 只能从正式 Master 读取并在 staging 校验通过后生成；不访问官网、不写回
+Master/State/Dictionary。其 Schema、映射和实际验证分别见 `docs/database/` 下的 V1 文档。

@@ -6,6 +6,7 @@ tests/test_badges.py
 tests/test_collection_resilience.py
 tests/test_current_sheet_semantics.py
 tests/test_database_schema.py
+tests/test_sqlite_mirror.py
 tests/test_detail_retry_apply.py
 tests/test_dictionary.py
 tests/test_dictionary_baseline.py

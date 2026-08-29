@@ -68,6 +68,14 @@ def build_parser() -> argparse.ArgumentParser:
     tc = sub.add_parser("term-candidates", help="从正式 run 的增量 SKU 提取术语候选，绝不自动入库")
     tc.add_argument("--run-id", required=True, help="必须已有同 run 的 dictionary-enrich 正式证据")
     tc.add_argument("--min-sku-count", type=int, default=2, help="候选至少覆盖的 SKU 数，默认 2")
+    dbi = sub.add_parser("db-init", help="初始化 SQLite Mirror 数据库结构；不导入 Master")
+    dbi.add_argument("--db", help="SQLite 文件路径，默认 runtime/db/action_tracker.db")
+    dbm = sub.add_parser("db-mirror", help="将只读 Master 镜像到 SQLite staging，并在校验通过后替换 Mirror")
+    dbm.add_argument("--master", help="Master Excel 路径，默认配置中的 Master")
+    dbm.add_argument("--output", help="SQLite 输出路径，默认 runtime/db/action_tracker.db")
+    dbv = sub.add_parser("db-validate", help="校验 SQLite Mirror 与 Master 的结构、数量和 CURRENT 集合")
+    dbv.add_argument("--master", help="Master Excel 路径，默认配置中的 Master")
+    dbv.add_argument("--db", help="SQLite 文件路径，默认 runtime/db/action_tracker.db")
     return p
 
 
@@ -79,6 +87,26 @@ def main(argv=None) -> int:
     cfg = load_settings()
     ensure_runtime_dirs(cfg)
     setup_logging(cfg["paths"]["logs"])
+
+    if args.command in ("db-init", "db-mirror", "db-validate"):
+        from .database.schema import migrate
+        from .database.mirror import build_mirror
+        from .database.validation import validate_mirror
+        db_default = cfg["project_root"] / "runtime" / "db" / "action_tracker.db"
+        db_path = Path(args.db) if getattr(args, "db", None) else db_default
+        master_path = Path(args.master) if getattr(args, "master", None) else cfg["paths"]["master"]
+        if args.command == "db-init":
+            migrate(db_path)
+            print(json.dumps({"status": "PASS", "db": str(db_path), "schema_version": "1.0.0"}, ensure_ascii=False))
+            return 0
+        if args.command == "db-mirror":
+            output_path = Path(args.output) if args.output else db_path
+            result = build_mirror(master_path, output_path)
+            print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+            return 0 if result.get("status") == "PASS" else 2
+        result = validate_mirror(master_path, db_path)
+        print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+        return 0 if result.get("status") == "PASS" else 2
 
     if args.command in (None, "status"):
         return _status(cfg)

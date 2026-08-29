@@ -14,6 +14,7 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 - 增量字典标准化、统一 Review Queue、术语候选管线；
 - ES/ZH 两个独立无图导出，以及 Template 1 三表无图导出；
 - AI-Free 字典覆盖率、字段级 Resolver、Dictionary Apply 预览与正式 Gate（生产写入默认关闭）、统一审核队列和术语候选。
+- SQLite Data Foundation V1：从正式 Master 建立可审计的只读 Mirror，提供 Schema、迁移、校验和报告；不接管生产主链。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
@@ -75,6 +76,11 @@ python -m action_tracker dictionary-apply --run-id <正式run_id> --dry-run
 # 请求正式 Apply（当前配置会安全拒绝）
 python -m action_tracker dictionary-apply --run-id <正式run_id> --commit
 
+# SQLite Mirror（只读 Master；不运行官网采集、不写回 Master）
+python -m action_tracker db-init
+python -m action_tracker db-mirror
+python -m action_tracker db-validate
+
 # 完整回归测试
 python -m pytest -q
 ```
@@ -133,6 +139,7 @@ python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
 | `runtime/dictionary/` | 本机字典运行区 | 否 |
 | `runtime/images/` | 本地图片缓存 | 否 |
 | `runtime/exports/` | 导出文件与 manifest | 否 |
+| `runtime/db/` | SQLite Mirror、staging、备份与校验报告 | 否 |
 | `tests/` | 回归测试 | 是 |
 
 ## 安全边界
@@ -143,7 +150,9 @@ python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
 - 不绕过 CAPTCHA、Cloudflare 或其他网站安全机制；
 - 不每天全量抓详情、全量翻译或全量下载图片；
 - 不使用 Sitemap-only SKU 冒充当日有效在售商品；
-- SQLite 继续冻结，不是生产主链。
+- SQLite Data Foundation V1 当前仅是 Excel Master 的 Mirror/Validation 层，不是生产主链；每日采集、生命周期、QA、字典和导出仍以现有 Excel/证据链为准。
+
+SQLite 实际迁移数量与源数据问题见 [MASTER_INVENTORY_V1](docs/database/MASTER_INVENTORY_V1.md)、[DATABASE_MIGRATION_ACCEPTANCE](docs/database/DATABASE_MIGRATION_ACCEPTANCE.md) 和 [SQLITE_MIRROR_VALIDATION](docs/database/SQLITE_MIRROR_VALIDATION.md)。
 
 开发和提交规则见 [AGENTS.md](AGENTS.md)。
 

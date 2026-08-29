@@ -221,3 +221,10 @@ CI 不得修改 Master、State、Dictionary、历史源文件或 `runtime/` 生�
 ### QA-CI-004：门禁含义
 
 CI 全绿只表示代码回归测试通过；正式运行仍必须经过本地 dry-run、QA、正式提交和导出预览。
+
+### QA-DB-001：SQLite Mirror 门禁
+
+Excel → SQLite 迁移必须使用 staging、事务和外键；只有 Schema、CURRENT exact set、历史数量、
+`integrity_check`、`foreign_key_check` 以及 Master 前后 hash 全部通过才可替换 Mirror。技术 Gate
+通过但存在待匹配/审计源记录时，结果必须标记为 `SQLITE MIRROR VALIDATED WITH SOURCE DATA ISSUES`，
+不能伪装成无源问题 PASS。
