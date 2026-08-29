@@ -133,3 +133,5 @@ def test_template1_with_images_only_embeds_today_chinese_sheet(tmp_path):
     manifest = json.loads(Path(result["manifest"]).read_text(encoding="utf-8"))
     assert manifest["zh_image_embedded_count"] == 1
     assert manifest["zh_image_missing_count"] == 0
+    assert manifest["with_images"] is True
+    assert manifest["image_profile"] == "excel_250_white_v1"

@@ -104,6 +104,8 @@ def export_template1(
         "es_zh_sku_set_equal": True,
         "zh_image_embedded_count": image_stats["embedded_count"],
         "zh_image_missing_count": image_stats["missing_count"],
+        "with_images": with_images,
+        "image_profile": "excel_250_white_v1" if with_images else None,
         "dictionary_fallback_counts": fallback_counts,
         "history_source_stats": [stat.__dict__ for stat in history.source_stats],
         "history_seed_path": history.seed_path,
