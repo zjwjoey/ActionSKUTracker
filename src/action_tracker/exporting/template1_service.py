@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .dictionary_join import build_zh_rows, load_dictionary_context
+from .dictionary_join import build_zh_rows, build_zh_rows_from_localized_source, load_dictionary_context
 from .history import HistoryExportError, build_presence_rows, load_presence_history
 from .service import (
     ExportValidationError,
@@ -16,6 +16,7 @@ from .service import (
     validate_output_rows,
     validate_source_records,
     validate_spanish_source_fields,
+    validate_zh_rows_against_source,
 )
 from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, verify_template1_xlsx, write_template1_xlsx
 
@@ -37,8 +38,15 @@ def export_template1(
         validate_source_records(records, export_date=export_date)
         validate_spanish_source_fields(records)
         es_rows = build_es_rows(records)
-        dictionary = load_dictionary_context(cfg)
-        zh_rows, fallback_counts = build_zh_rows(records, dictionary)
+        if source.kind == "SQLITE_CURRENT":
+            # SQLite PRIMARY already contains the gated localization projection;
+            # do not re-join the file dictionary and risk a split-brain export.
+            zh_rows, fallback_counts = build_zh_rows_from_localized_source(records)
+            dictionary = None
+        else:
+            dictionary = load_dictionary_context(cfg)
+            zh_rows, fallback_counts = build_zh_rows(records, dictionary)
+        validate_zh_rows_against_source(zh_rows, records)
         validate_output_rows(es_rows)
         validate_output_rows(zh_rows)
         history = load_presence_history(cfg)
