@@ -92,6 +92,39 @@ CREATE TABLE IF NOT EXISTS run_evidence (
  evidence_json TEXT NOT NULL,
  FOREIGN KEY (run_id) REFERENCES runs(run_id)
 );
+CREATE TABLE IF NOT EXISTS reviews (
+ review_id TEXT PRIMARY KEY,
+ run_id TEXT NOT NULL,
+ entity_id TEXT NOT NULL,
+ issue_type TEXT NOT NULL,
+ evidence TEXT,
+ suggested_action TEXT,
+ status TEXT NOT NULL DEFAULT 'PENDING',
+ decision TEXT,
+ decision_value TEXT,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (run_id) REFERENCES runs(run_id)
+);
+CREATE TABLE IF NOT EXISTS source_records (
+ source_record_id TEXT PRIMARY KEY,
+ run_id TEXT NOT NULL,
+ source_name TEXT NOT NULL,
+ official_sku TEXT,
+ observed_at TEXT,
+ payload_json TEXT NOT NULL,
+ source_hash TEXT,
+ FOREIGN KEY (run_id) REFERENCES runs(run_id),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS migration_source_issues (
+ issue_id INTEGER PRIMARY KEY,
+ source_name TEXT NOT NULL,
+ issue_type TEXT NOT NULL,
+ entity_id TEXT,
+ details TEXT,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS export_sync (
  commit_id TEXT PRIMARY KEY,
  master_status TEXT NOT NULL DEFAULT 'PENDING',
@@ -121,6 +154,9 @@ CREATE TABLE IF NOT EXISTS image_assets (
  error_type TEXT,
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
+CREATE VIEW IF NOT EXISTS events AS
+ SELECT id,canonical_id,official_sku,occurred_at,event_type,old_value,new_value,run_id,evidence,event_key
+ FROM event_history;
 '''
 
 

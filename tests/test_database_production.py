@@ -61,3 +61,13 @@ def test_validate_production_database(tmp_path: Path):
     result = validate_production_database(db)
     assert result["integrity"] == "PASS"
     assert result["foreign_keys"] == "PASS"
+
+
+def test_v2_uses_dedicated_reviews_table_and_events_view(tmp_path: Path):
+    db = tmp_path / "action.db"
+    bundle = _bundle()
+    object.__setattr__(bundle, "review_rows", ({"sku": "1001", "问题类型": "DATA_INCONSISTENCY", "证据": "x", "建议动作": "核对"},))
+    ProductionWriter(db).commit(bundle)
+    with connect(db) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM reviews").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 0

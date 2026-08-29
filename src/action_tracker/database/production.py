@@ -247,10 +247,20 @@ class ProductionWriter:
 
     @staticmethod
     def _insert_reviews(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], run_id: str) -> None:
-        # Review rows are retained in the existing sync queue until a dedicated
-        # review table is migrated; this keeps V2 additive and backward-safe.
+        # Keep the dedicated V2 review table as the source of truth, while also
+        # retaining the legacy sync_queue copy for older operational tooling.
         for r in rows:
-            db.execute("INSERT INTO sync_queue(entity_type,entity_id,action,status) VALUES(?,?,?, 'PENDING')", ("review", str(r.get("review_id") or r.get("sku")), json.dumps({**r, "run_id": run_id}, ensure_ascii=False, default=str)))
+            payload = {**r, "run_id": run_id}
+            review_id = str(r.get("review_id") or _event_key(run_id, r, "review"))
+            entity_id = str(r.get("sku") or r.get("entity_id") or review_id)
+            issue_type = str(r.get("问题类型") or r.get("issue_type") or "DATA_INCONSISTENCY")
+            db.execute(
+                """INSERT OR IGNORE INTO reviews(review_id,run_id,entity_id,issue_type,evidence,suggested_action,status,created_at,updated_at)
+                   VALUES(?,?,?,?,?,?, 'PENDING',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",
+                (review_id, run_id, entity_id, issue_type,
+                 r.get("证据") or r.get("evidence"), r.get("建议动作") or r.get("suggested_action")),
+            )
+            db.execute("INSERT INTO sync_queue(entity_type,entity_id,action,status) VALUES(?,?,?, 'PENDING')", ("review", review_id, json.dumps(payload, ensure_ascii=False, default=str)))
 
     @staticmethod
     def _validate_transaction(db: sqlite3.Connection, bundle: CommitBundle, commit_id: str) -> None:
