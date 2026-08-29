@@ -12,6 +12,8 @@ exports/
 images/
 !src/action_tracker/images/
 !src/action_tracker/images/**
+src/action_tracker/images/__pycache__/
+src/action_tracker/images/**/*.pyc
 temp/
 backups/
 
