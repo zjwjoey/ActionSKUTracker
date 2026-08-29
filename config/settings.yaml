@@ -57,6 +57,27 @@ paths:
   backups: runtime/backups
   temp: runtime/temp
 
+storage:
+  mode: EXCEL_PRIMARY
+  db_path: runtime/db/action_tracker.db
+
+images:
+  enabled: false
+  asset_root: runtime/images/assets
+  staging_root: runtime/images/staging
+  derivative_root: runtime/images/derivatives
+  manifest_path: runtime/images/manifests/image_manifest.csv
+  download_workers: 3
+  timeout_seconds: 20
+  max_retries: 3
+  derivative_profiles:
+    excel_250:
+      width: 250
+      height: 250
+      background: white
+      fit: contain
+      format: png
+
 # 字典构建的只读辅助证据；缺失时构建继续，但会在 manifest 中明确记录。
 dictionary_sources:
   standardized_seed: runtime/exports/Action_Today_On_Sale_2026-08-24_中文标准化全量.xlsx

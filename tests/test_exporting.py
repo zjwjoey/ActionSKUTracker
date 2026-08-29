@@ -5,6 +5,7 @@ from pathlib import Path
 
 import openpyxl
 import pytest
+from PIL import Image
 
 from action_tracker.dictionary import (
     BRAND_DICTIONARY_HEADERS,
@@ -284,6 +285,35 @@ def test_zh_export_adds_confirmed_brand_marker_but_keeps_manual_title(tmp_path):
         manual_workbook.close()
 
 
+def test_zh_export_does_not_trust_spanish_category_value(tmp_path):
+    cfg = _cfg(tmp_path)
+    run_id = "2026-08-24_010000"
+    record = _record("1001")
+    _write_master(cfg["paths"]["master"], [_run_log(run_id, "2026-08-24")], [record])
+    _write_snapshot(cfg["paths"]["snapshots"], run_id, "2026-08-24", [record])
+    source_hash = hashlib.sha256("\x1f".join(str(record.get(key) or "").strip() for key in ("name_es", "cat1_es", "cat2_es", "spec_es")).encode("utf-8")).hexdigest()
+    _write_dictionary(
+        cfg["paths"]["dictionary_baseline"], record,
+        product={
+            "sku": "1001", "canonical_id": record["canonical_id"], "name_es_raw": record["name_es"],
+            "name_zh_standard": "字典品名", "brand_id": "BrandX", "cat1_es": record["cat1_es"],
+            "cat2_es": record["cat2_es"], "cat1_zh": "家务清洁", "cat2_zh": "Limpieza",
+            "spec_es_raw": record["spec_es"], "spec_zh_standard": "字典规格", "source_hash": source_hash,
+            "translation_status": "MODEL_TRANSLATED", "review_status": "UNREVIEWED", "locked": "0",
+        },
+        categories=[{
+            "cat1_es": record["cat1_es"], "cat2_es": record["cat2_es"], "cat1_code": "C08",
+            "cat1_zh": "家务清洁", "cat2_zh": "清洁用品", "review_status": "HUMAN_REVIEWED",
+        }],
+    )
+    result = export_catalog(cfg, language="zh", export_date="2026-08-24", no_images=True)
+    workbook = openpyxl.load_workbook(result["output"], data_only=True)
+    try:
+        assert workbook["商品全量"].cell(2, 5).value == "清洁用品"
+    finally:
+        workbook.close()
+
+
 def test_zh_export_stale_dictionary_value_falls_back_without_dropping_sku(tmp_path):
     cfg = _cfg(tmp_path)
     run_id = "2026-08-24_010000"
@@ -556,3 +586,26 @@ def test_manifest_has_sku_set_hash_and_row_height_is_capped(tmp_path):
         assert workbook["商品全量"].row_dimensions[2].height <= 405
     finally:
         workbook.close()
+
+
+def test_with_images_export_reads_local_derivative_and_preserves_sku(tmp_path):
+    cfg = _cfg(tmp_path)
+    run_id = "2026-08-24_010000"
+    record = _record("1001")
+    _write_master(cfg["paths"]["master"], [_run_log(run_id, "2026-08-24")], [record])
+    _write_snapshot(cfg["paths"]["snapshots"], run_id, "2026-08-24", [record])
+    image_root = tmp_path / "images"
+    cfg["paths"]["images"] = image_root
+    derivative = image_root / "derivatives" / "excel_250"
+    derivative.mkdir(parents=True)
+    Image.new("RGB", (250, 250), "white").save(derivative / "1001.png")
+    result = export_catalog(cfg, language="es", export_date="2026-08-24", no_images=False)
+    workbook = openpyxl.load_workbook(result["output"], data_only=True)
+    try:
+        ws = workbook["商品全量"]
+        assert ws.cell(2, 2).value == "1001"
+        assert len(ws._images) == 1
+    finally:
+        workbook.close()
+    assert result["image_embedded_count"] == 1
+    assert result["image_missing_count"] == 0

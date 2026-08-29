@@ -97,7 +97,11 @@ def export_catalog(
     # 避免验证失败或 manifest 写入失败时留下半套导出物。
     preview_path = output_path.with_name(f".{output_path.stem}.preview.xlsx")
     try:
-        write_catalog_xlsx(preview_path, headers=headers, rows=rows, workbook_format=profile.workbook_format)
+        image_stats = write_catalog_xlsx(
+            preview_path, headers=headers, rows=rows, workbook_format=profile.workbook_format,
+            image_root=(Path(cfg["paths"]["images"]) / "derivatives" / "excel_250") if not no_images else None,
+            embed_images=not no_images,
+        )
         _verify_written_workbook(preview_path, headers=headers, expected_skus=expected_skus)
         source_hash = canonical_source_hash(source.records)
         manifest = {
@@ -118,6 +122,9 @@ def export_catalog(
                 "workbook": "PASS",
             },
             "detail_retry_ids": _detail_retry_ids(source),
+            "image_profile": "excel_250_white_v1" if not no_images else None,
+            "image_embedded_count": image_stats["embedded_count"],
+            "image_missing_count": image_stats["missing_count"],
         }
         if language == "zh":
             manifest["dictionary_hash"] = dictionary_hash
@@ -135,6 +142,8 @@ def export_catalog(
         "sku_count": len(rows),
         "source_kind": source.kind,
         "profile": profile.profile_id,
+        "image_embedded_count": image_stats["embedded_count"],
+        "image_missing_count": image_stats["missing_count"],
     }
 
 

@@ -6,6 +6,7 @@ tests/test_badges.py
 tests/test_collection_resilience.py
 tests/test_current_sheet_semantics.py
 tests/test_database_schema.py
+tests/test_database_production.py
 tests/test_detail_retry_apply.py
 tests/test_dictionary.py
 tests/test_dictionary_baseline.py
@@ -19,6 +20,7 @@ tests/test_term_candidates.py
 tests/test_exporting.py
 tests/test_template1.py
 tests/test_history_export.py
+tests/test_image_foundation.py
 tests/test_lifecycle.py
 tests/test_lifecycle_state.py
 tests/test_long_term_master.py
