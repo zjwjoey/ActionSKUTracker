@@ -82,7 +82,7 @@ Generated Outputs
 
 1. ES 全量无图；
 2. ZH 全量无图；
-3. Template 1 无图三表；
+3. Template 1 三表（无图与中文嵌图模式）；
 4. 独立 History Presence Export；
 5. Manifest、QA、只读保护、ES/ZH parity；
 6. GitHub CI、合并 main、发布后真实验证。

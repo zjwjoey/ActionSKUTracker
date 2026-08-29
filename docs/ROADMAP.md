@@ -95,14 +95,14 @@ SQLite 生产接管已经纳入统一开发计划，执行顺序为：
 | Phase 10 | Image Foundation：下载、标准化、QA、缓存、Derivative | 已实现并有 fixture 测试 |
 | Phase 11 | 20–50 SKU 真实图片切片 | 待开发 |
 | Phase 12 | Full CURRENT 增量图片同步和性能基线 | 待开发 |
-| Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | ES/ZH 带图 Export 已实现；Template 1 嵌图待接入 |
+| Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | ES/ZH 带图 Export 与 Template 1 中文嵌图均已实现 |
 
 因此当前 `EXCEL_PRIMARY` 只表示**尚未切换生产主链**，不是取消数据库接管计划。SQLite V2
 Writer、Shadow/Primary 接线和 Read Repository 已实现；真实 Shadow 对账、基线迁移和切换门禁仍待完成。详细设计见
 [`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。
 
 图片也已纳入同一总计划；Contracts、增量同步、标准化、QA、Derivatives 和带图 Export 已在本地实现，
-真实全量图片同步/性能基线仍待执行，`image_assets` 元数据仅在 SQLite PRIMARY 配置下接入。
+真实全量图片同步/性能基线仍待执行，`image_assets` 元数据仅在 SQLite PRIMARY 配置下接入；Template 1 带图命令已可用。
 
 ## 4. 后续阶段：STEP 7 + Template 1
 

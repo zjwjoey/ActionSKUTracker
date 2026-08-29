@@ -111,7 +111,7 @@ python scripts/publish_dictionary_baseline.py
 2. `今日西班牙语清单`；
 3. `今日中文清单`。
 
-第一张表按日期写 0/1；第二、三张表只包含当日有效 CURRENT SKU；只有中文表允许嵌入本地 250×250 白底图片，当前先输出不带图版本。当日数量以正式 Listing/CURRENT 有效集合为准，不以 Sitemap 原始数量为准。
+第一张表按日期写 0/1；第二、三张表只包含当日有效 CURRENT SKU；只有中文表允许嵌入本地 250×250 白底图片。当日数量以正式 Listing/CURRENT 有效集合为准，不以 Sitemap 原始数量为准。
 
 Template 1 无图三表已经可以从正式 run 生成；现有基础无图文件仍可单独导出：
 
@@ -120,6 +120,8 @@ python -m action_tracker export --lang es --no-images --date YYYY-MM-DD
 python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
 # 读取本地图片并导出带图版本（不会触发网络下载）
 python -m action_tracker export --lang zh --with-images --date YYYY-MM-DD
+# Template 1：只有“今日中文清单”嵌入本地图片，另外两张表保持无图
+python -m action_tracker export-template1 --date YYYY-MM-DD --with-images
 # 图片同步（只针对正式 CURRENT 的 image_url）
 python -m action_tracker image-sync --date YYYY-MM-DD
 python -m action_tracker image-status

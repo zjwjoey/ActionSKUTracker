@@ -18,6 +18,7 @@
 - 透明图保留透明背景，Excel derivative 为 250×250 RGB 白底 contain；
 - 无图片 URL、坏内容、下载失败、标准化失败和 QA 失败均保留 SKU；
 - ES/ZH 带图 Export 使用与无图版本完全相同的字段和 SKU 集合，只读取本地衍生图；
+- Template 1 带图版本已接通：仅“今日中文清单”嵌入图片，历史上下架矩阵与今日西语清单不嵌图；
 - SQLite PRIMARY 模式下可把 Manifest 元数据镜像到 `image_assets`，不存图片二进制。
 
 ## 真实验收现状
@@ -33,6 +34,7 @@
 - 对正式 CURRENT 做一次 20–50 SKU 真实图片切片；
 - 再执行 50、500、1000、FULL 规模性能基线；
 - 确认图片源 URL 可访问后运行 `image-sync --date YYYY-MM-DD`，再生成带图导出。
+- Template 1 带图命令：`python -m action_tracker export-template1 --date YYYY-MM-DD --with-images`。
 
 ## 证据
 

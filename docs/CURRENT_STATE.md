@@ -68,7 +68,7 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
 
 ## 5. Export 状态
 
-基础 ES/ZH 无图导出、Template 1 三表无图导出和独立历史 Presence 导出已在本地实现。
+基础 ES/ZH 无图导出、Template 1 三表无图/带图导出和独立历史 Presence 导出已在本地实现。
 历史 Presence 使用 `1/0/UNKNOWN` 三态并附历史来源审计；图片资产同步、250×250 白底衍生图
 和 ES/ZH 带图 Export 已实现，缺图不会删除 SKU。Export 只读取正式 QA/FULL_COMMIT 来源，
 不重新访问官网。
@@ -84,7 +84,7 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
 
 ## 7. 测试与 CI
 
-当前完整回归：`254 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+当前完整回归：`261 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
 
@@ -102,4 +102,4 @@ SQLite Production Source of Truth 的完整阶段计划（Contracts → Writer �
 Cutover → PRIMARY）见 `docs/MASTER_DEVELOPMENT_PLAN.md`；当前完成了 Writer、接线和 Read
 Repository，尚未完成真实 Shadow 三次对账和 PRIMARY 切换。
 Image Foundation 的 Phase 9–13（Contracts → Foundation → Slice → Full Sync → With-Images Export）
-已完成 Contracts、Foundation 和 With-Images Export 实现，真实全量同步/性能基线待执行。
+已完成 Contracts、Foundation、ES/ZH With-Images Export 和 Template 1 中文嵌图实现，真实全量同步/性能基线待执行。

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import openpyxl
+from openpyxl.drawing.image import Image as ExcelImage
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -28,13 +29,18 @@ def write_template1_xlsx(
     history_dates: tuple[str, ...],
     es_rows: list[dict[str, Any]],
     zh_rows: list[dict[str, Any]],
-) -> None:
+    image_root: Path | None = None,
+    embed_zh_images: bool = False,
+) -> dict[str, int]:
     workbook = openpyxl.Workbook()
     first = workbook.active
     first.title = "商品上下架明细"
     _write_history_sheet(first, history_rows, history_dates)
     _write_catalog_sheet(workbook.create_sheet("今日西班牙语清单"), es_rows)
-    _write_catalog_sheet(workbook.create_sheet("今日中文清单"), zh_rows)
+    image_stats = _write_catalog_sheet(
+        workbook.create_sheet("今日中文清单"), zh_rows,
+        image_root=image_root, embed_images=embed_zh_images,
+    )
 
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.stem}.tmp.xlsx")
@@ -45,6 +51,7 @@ def write_template1_xlsx(
         workbook.close()
         if temporary.exists():
             temporary.unlink()
+    return image_stats
 
 
 def write_history_xlsx(
@@ -71,7 +78,10 @@ def write_history_xlsx(
             temporary.unlink()
 
 
-def verify_template1_xlsx(path: Path, *, export_date: str, current_skus: set[str]) -> dict[str, Any]:
+def verify_template1_xlsx(
+    path: Path, *, export_date: str, current_skus: set[str],
+    expect_images: bool = False, expected_image_count: int = 0,
+) -> dict[str, Any]:
     workbook = openpyxl.load_workbook(path, read_only=False, data_only=True)
     try:
         expected_names = ["商品上下架明细", "今日西班牙语清单", "今日中文清单"]
@@ -98,7 +108,21 @@ def verify_template1_xlsx(path: Path, *, export_date: str, current_skus: set[str
             sheet = workbook[name]
             if sheet.freeze_panes != "A2" or not sheet.auto_filter.ref:
                 raise ValueError(f"TEMPLATE1_FORMAT_MISMATCH: {name}")
-        return {"history_sku_count": history.max_row - 1, "current_sku_count": len(current_skus), "presence_one_count": len(ones)}
+        zh_images = len(getattr(workbook["今日中文清单"], "_images", ()))
+        es_images = len(getattr(workbook["今日西班牙语清单"], "_images", ()))
+        history_images = len(getattr(history, "_images", ()))
+        if es_images or history_images:
+            raise ValueError("TEMPLATE1_UNEXPECTED_IMAGES")
+        if expect_images and zh_images != expected_image_count:
+            raise ValueError("TEMPLATE1_IMAGE_COUNT_MISMATCH")
+        if not expect_images and zh_images:
+            raise ValueError("TEMPLATE1_UNEXPECTED_ZH_IMAGES")
+        return {
+            "history_sku_count": history.max_row - 1,
+            "current_sku_count": len(current_skus),
+            "presence_one_count": len(ones),
+            "zh_image_embedded_count": zh_images,
+        }
     finally:
         workbook.close()
 
@@ -141,7 +165,13 @@ def _write_history_audit_sheet(ws: Any, source_stats: tuple[Any, ...]) -> None:
                 ws.cell(row=row_no, column=index).number_format = "@"
 
 
-def _write_catalog_sheet(ws: Any, rows: list[dict[str, Any]]) -> None:
+def _write_catalog_sheet(
+    ws: Any,
+    rows: list[dict[str, Any]],
+    *,
+    image_root: Path | None = None,
+    embed_images: bool = False,
+) -> dict[str, int]:
     ws.append(list(CATALOG_HEADERS))
     for row in rows:
         ws.append([row.get(header) for header in CATALOG_HEADERS])
@@ -151,11 +181,26 @@ def _write_catalog_sheet(ws: Any, rows: list[dict[str, Any]]) -> None:
         col = headers.index(header) + 1
         for row_no in range(2, ws.max_row + 1):
             _set_hyperlink(ws.cell(row=row_no, column=col))
+    embedded_count = 0
+    missing_count = 0
     for row_no in range(2, ws.max_row + 1):
         for header in ("折后价", "原价"):
             cell = ws.cell(row=row_no, column=headers.index(header) + 1)
             if cell.value is not None:
                 cell.number_format = "€#,##0.00"
+        if embed_images:
+            sku = str(rows[row_no - 2].get("编号") or "").strip()
+            image_path = image_root / f"{sku}.png" if image_root and sku else None
+            if image_path and image_path.exists():
+                image = ExcelImage(str(image_path))
+                image.width = 250
+                image.height = 250
+                ws.add_image(image, f"A{row_no}")
+                ws.row_dimensions[row_no].height = max(ws.row_dimensions[row_no].height or 20, 190)
+                embedded_count += 1
+            else:
+                missing_count += 1
+    return {"embedded_count": embedded_count, "missing_count": missing_count}
 
 
 def _format_sheet(ws: Any, *, wrap_columns: set[str]) -> None:

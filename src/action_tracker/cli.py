@@ -47,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     e.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
     t = sub.add_parser("export-template1", help="导出 Template 1 三表版本")
+    t.add_argument("--with-images", action="store_true", help="仅在今日中文清单嵌入本地 250x250 图片")
     t.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     t.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
     he = sub.add_parser("export-history", help="导出历史 Presence 上下架矩阵")
@@ -147,7 +148,10 @@ def main(argv=None) -> int:
     if args.command == "export-template1":
         from .exporting.template1_service import export_template1
         try:
-            result = export_template1(cfg, export_date=args.date, run_id=args.run_id)
+            result = export_template1(
+                cfg, export_date=args.date, run_id=args.run_id,
+                with_images=bool(args.with_images),
+            )
         except (ValueError, OSError) as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2

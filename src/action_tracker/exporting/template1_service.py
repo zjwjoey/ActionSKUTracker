@@ -20,8 +20,15 @@ from .service import (
 from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, verify_template1_xlsx, write_template1_xlsx
 
 
-def export_template1(cfg: dict[str, Any], *, export_date: str, run_id: str | None = None) -> dict[str, Any]:
-    """生成 Template 1 第一版三表工作簿；当前图片列保留为空。"""
+def export_template1(
+    cfg: dict[str, Any], *, export_date: str, run_id: str | None = None,
+    with_images: bool = False,
+) -> dict[str, Any]:
+    """生成 Template 1 三表工作簿。
+
+    带图模式只在“今日中文清单”嵌入本地 250×250 白底衍生图；
+    历史上下架矩阵和今日西班牙语清单保持无图，避免重复资产和体积膨胀。
+    """
     try:
         from .profiles import load_profile
         profile = load_profile(cfg, language="es", no_images=True)
@@ -52,11 +59,29 @@ def export_template1(cfg: dict[str, Any], *, export_date: str, run_id: str | Non
         raise ExportValidationError("TEMPLATE1_PRESENCE_SET_MISMATCH")
 
     date_compact = export_date.replace("-", "")
-    output = Path(cfg["paths"]["exports"]) / f"{date_compact}Action商品全量_三表版_不带图.xlsx"
+    suffix = "带图" if with_images else "不带图"
+    output = Path(cfg["paths"]["exports"]) / f"{date_compact}Action商品全量_三表版_{suffix}.xlsx"
     temporary = output.with_name(f".{output.stem}.preview.xlsx")
-    write_template1_xlsx(temporary, history_rows=history_rows, history_dates=history.dates + ((export_date,) if export_date not in history.dates else ()), es_rows=es_rows, zh_rows=zh_rows)
+    image_root = None
+    if with_images:
+        image_cfg = cfg.get("images") or {}
+        raw_root = image_cfg.get("derivative_root")
+        image_base = Path((cfg.get("paths") or {}).get("images") or Path(cfg["project_root"]) / "runtime" / "images")
+        image_root = Path(str(raw_root)) if raw_root else image_base / "derivatives"
+        if not image_root.is_absolute():
+            image_root = Path(cfg["project_root"]) / image_root
+        image_root = image_root / "excel_250"
+    image_stats = write_template1_xlsx(
+        temporary, history_rows=history_rows,
+        history_dates=history.dates + ((export_date,) if export_date not in history.dates else ()),
+        es_rows=es_rows, zh_rows=zh_rows,
+        image_root=image_root, embed_zh_images=with_images,
+    )
     try:
-        verification = verify_template1_xlsx(temporary, export_date=export_date, current_skus=current_skus)
+        verification = verify_template1_xlsx(
+            temporary, export_date=export_date, current_skus=current_skus,
+            expect_images=with_images, expected_image_count=image_stats["embedded_count"],
+        )
         temporary.replace(output)
     finally:
         if temporary.exists():
@@ -77,8 +102,8 @@ def export_template1(cfg: dict[str, Any], *, export_date: str, run_id: str | Non
         "es_sku_count": len(es_rows),
         "zh_sku_count": len(zh_rows),
         "es_zh_sku_set_equal": True,
-        "zh_image_embedded_count": 0,
-        "zh_image_missing_count": len(zh_rows),
+        "zh_image_embedded_count": image_stats["embedded_count"],
+        "zh_image_missing_count": image_stats["missing_count"],
         "dictionary_fallback_counts": fallback_counts,
         "history_source_stats": [stat.__dict__ for stat in history.source_stats],
         "history_seed_path": history.seed_path,
@@ -87,7 +112,13 @@ def export_template1(cfg: dict[str, Any], *, export_date: str, run_id: str | Non
         "validation_results": {"history": "PASS", "cross_sheet": "PASS", "workbook": "PASS"},
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    return {"output": str(output), "manifest": str(manifest_path), "run_id": source.run_id, "sku_count": len(current_skus), "history_sku_count": len(history_rows), "profile": "action_full_template_1"}
+    return {
+        "output": str(output), "manifest": str(manifest_path), "run_id": source.run_id,
+        "sku_count": len(current_skus), "history_sku_count": len(history_rows),
+        "profile": "action_full_template_1", "with_images": with_images,
+        "image_embedded_count": image_stats["embedded_count"],
+        "image_missing_count": image_stats["missing_count"],
+    }
 
 
 def _hash_records(records: list[dict[str, Any]]) -> str:
