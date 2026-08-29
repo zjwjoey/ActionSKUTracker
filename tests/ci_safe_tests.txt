@@ -18,6 +18,7 @@ tests/test_review_queue.py
 tests/test_term_candidates.py
 tests/test_exporting.py
 tests/test_template1.py
+tests/test_history_export.py
 tests/test_lifecycle.py
 tests/test_lifecycle_state.py
 tests/test_long_term_master.py

@@ -47,6 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
     t = sub.add_parser("export-template1", help="导出 Template 1 三表版本")
     t.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     t.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
+    he = sub.add_parser("export-history", help="导出历史 Presence 上下架矩阵")
+    he.add_argument("--date", required=True, help="导出标记日期（YYYY-MM-DD）")
     dc = sub.add_parser("dictionary-coverage", help="统计 CURRENT 的 AI-Free 字典覆盖率")
     dc.add_argument("--date", help="业务日期（YYYY-MM-DD）")
     dc.add_argument("--run-id", help="可选：指定正式 observation run_id")
@@ -133,6 +135,15 @@ def main(argv=None) -> int:
         try:
             result = export_template1(cfg, export_date=args.date, run_id=args.run_id)
         except (ValueError, OSError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "export-history":
+        from .exporting.history_export import HistoryExportError, export_history
+        try:
+            result = export_history(cfg, export_date=args.date)
+        except (HistoryExportError, OSError, ValueError) as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False))

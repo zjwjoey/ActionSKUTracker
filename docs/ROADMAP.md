@@ -75,9 +75,9 @@
 
 ## 4. 后续阶段：STEP 7 + Template 1
 
-### 4.1 历史 Presence 服务
+### 4.1 历史 Presence 服务（已实现独立导出）
 
-需要实现：
+已实现基础服务与独立 `export-history` CLI；后续只需做真实来源验收：
 
 1. 读取 `config/history_sources.yaml`；
 2. 校验每个来源文件、工作表和 SKU 列；

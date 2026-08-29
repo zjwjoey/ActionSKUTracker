@@ -44,6 +44,23 @@ def write_template1_xlsx(
             temporary.unlink()
 
 
+def write_history_xlsx(path: Path, *, history_rows: list[dict[str, Any]], history_dates: tuple[str, ...]) -> None:
+    """Write the standalone historical Presence workbook using Template 1 formatting."""
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "商品上下架明细"
+    _write_history_sheet(sheet, history_rows, history_dates)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.stem}.tmp.xlsx")
+    try:
+        workbook.save(temporary)
+        temporary.replace(path)
+    finally:
+        workbook.close()
+        if temporary.exists():
+            temporary.unlink()
+
+
 def verify_template1_xlsx(path: Path, *, export_date: str, current_skus: set[str]) -> dict[str, Any]:
     workbook = openpyxl.load_workbook(path, read_only=False, data_only=True)
     try:

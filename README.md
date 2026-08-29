@@ -115,9 +115,11 @@ Template 1 无图三表已经可以从正式 run 生成；现有基础无图文�
 ```powershell
 python -m action_tracker export --lang es --no-images --date YYYY-MM-DD
 python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
+# 导出历史 Presence 矩阵（只读历史来源，不访问官网）
+python -m action_tracker export-history --date YYYY-MM-DD
 ```
 
-历史 Presence 和中文图片嵌入属于后续独立阶段。详见
+中文图片嵌入仍属于后续独立阶段；历史 Presence 已可独立导出。详见
 [Export 落地计划](docs/EXPORT_IMPLEMENTATION_PLAN.md)。
 
 ## 主要目录

@@ -61,7 +61,7 @@ Export 绝对不得：
 | --- | --- | --- |
 | Template 1 无图 | 已提交到当前功能分支并通过回归测试，待用户验收 | 一个 Excel、三张工作表 |
 | 基础 ES/ZH 无图 Profile | 已提交到当前功能分支并通过回归测试，待真实日常验收 | 两个独立 Excel |
-| 独立历史 Presence Export | 已完成设计、尚未实现 | 与 Template 1 第一张表复用同一 Presence 构建服务 |
+| 独立历史 Presence Export | 已实现并通过 fixture 回归，待真实来源验收 | 与 Template 1 第一张表复用同一 Presence 构建服务 |
 
 Template 1 的完整字段契约见 `docs/EXPORT_PROFILE.md`。
 
@@ -144,7 +144,7 @@ src/action_tracker/exporting/
 截至 2026-08-27：
 
 - ES/ZH 两个独立无图文件已经可以从正式来源导出；
-- Template 1 无图三表、第一张表当日列和新 SKU union 已实现；
+- Template 1 无图三表、第一张表当日列和新 SKU union 已实现；独立历史 Presence Export 也已实现；
 - 中文表图片嵌入尚未实现，继续独立冻结；
 - Profile、基础导出和 Template 1 无图三表已实现并通过回归，正式来源仍必须来自 QA/FULL_COMMIT；
 - 图片下载仍是独立任务，Export 只消费已经存在的本地图片。

@@ -35,6 +35,30 @@ class PresenceHistory:
     seed_row_count: int
 
 
+def build_history_only_rows(history: PresenceHistory) -> list[dict[str, Any]]:
+    """Build the historical SKU union without inventing a current observation."""
+    if not history.dates:
+        raise HistoryExportError("HISTORY_DATES_EMPTY")
+    rows: list[dict[str, Any]] = []
+    for sku in sorted(history.presence_by_sku, key=_sku_key):
+        latest = history.latest_by_sku.get(sku, {})
+        seed = history.seed_by_sku.get(sku, {})
+        presence = history.presence_by_sku.get(sku, {})
+        row: dict[str, Any] = {
+            "编号": sku,
+            "中文品名": _first(seed.get("name_zh"), latest.get("name_zh")),
+            "图片链接": _first(latest.get("image_url"), seed.get("image_url")),
+            "商品链接": _first(latest.get("product_url"), seed.get("product_url")),
+        }
+        for date in history.dates:
+            value = presence.get(date, 0)
+            if value not in (0, 1):
+                raise HistoryExportError(f"HISTORY_BAD_PRESENCE: {sku}/{date}")
+            row[date] = int(value)
+        rows.append(row)
+    return rows
+
+
 _DATE_HEADER_RE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{2})$")
 
 
