@@ -4,7 +4,7 @@
 分支：`feat/sqlite-data-foundation-v1`
 输入 Master：`F:\ActionSKUTracker\runtime\master\Action_Master.xlsx`
 Mirror：`F:\ActionSKUTracker\runtime\db\action_tracker.db`
-Migration ID：待本次最终两项修复后的真实重建回写
+Migration ID：`20260829T171646Z_7ba5618b`
 
 ## 1. 执行边界
 
@@ -12,7 +12,12 @@ Migration ID：待本次最终两项修复后的真实重建回写
 没有在本闭环中运行 `daily-run`，没有写入 Excel Master、State、Dictionary，也没有改变 Listing、
 Sitemap、Lifecycle、Detail 或 QA 主链。Master 迁移前后 SHA-256 均为：
 
-`a1a5adde31225b093b627cd1e2413c369b5ea9b737ef428b50b13f21d03c5da3`
+`85ecd94656fc0e3997368fe561933cbd9991d863d7f386b0815f742340094ef5`
+
+生产安全基线（Mirror 前后核对）：`known_skus.csv` =
+`c472cb342dcaa8438be3dcf0552c06a2a21b54cc292c47ba5f9e057fe3c52bf1`；
+`offline_skus.csv` = `babdaef1192bd6cede5c31c01b043ffd1c29df49ac10a1a0b08505cf0639fadf`。
+三者在 Mirror 操作后均未变化。
 
 ## 2. 实际源数据与目标数量
 
@@ -20,13 +25,13 @@ Sitemap、Lifecycle、Detail 或 QA 主链。Master 迁移前后 SHA-256 均为�
 | --- | ---: | ---: | --- |
 | 正式商品 `products` | 8,680 | 8,680 | 一致 |
 | 中文本地化记录 | 8,680 | 8,680 | 逐字段一致 |
-| ZH CURRENT | 5,431 | 5,431 | exact set 一致 |
-| ES CURRENT | 5,431 | 5,431 | exact set 一致 |
-| `03_PRICE_HISTORY` 有正式 SKU | 14,042 | 14,042 | 逐字段一致 |
-| `04_EVENT_HISTORY` 有正式 SKU | 21,000 | 21,000 | 逐字段一致 |
-| `05_RUN_LOG` | 18 | 18 | 逐字段一致 |
-| `06_REVIEW_QUEUE` | 516 | 516 | 全部保留 |
-| `source_records`（10 张 Sheet 非空行） | 70,933 | 70,933 | 行号、Raw、Hash 全一致 |
+| ZH CURRENT | 5,396 | 5,396 | exact set 一致 |
+| ES CURRENT | 5,396 | 5,396 | exact set 一致 |
+| `03_PRICE_HISTORY` 有正式 SKU | 14,043 | 14,043 | 逐字段一致 |
+| `04_EVENT_HISTORY` 有正式 SKU | 21,004 | 21,004 | 逐字段一致 |
+| `05_RUN_LOG` | 19 | 19 | 逐字段一致 |
+| `06_REVIEW_QUEUE` | 517 | 517 | 全部保留 |
+| `source_records`（10 张 Sheet 非空行） | 70,870 | 70,870 | 行号、Raw、Hash 全一致 |
 | observations | 无可证明来源 | 0 | 未伪造每日 observation |
 
 ## 3. H1 字段级对账
@@ -48,12 +53,12 @@ Sitemap、Lifecycle、Detail 或 QA 主链。Master 迁移前后 SHA-256 均为�
 
 | Sheet | 源行数 | 证据行数 | 结果 |
 | --- | ---: | ---: | --- |
-| 01_SKU_ZH_CURRENT | 5,431 | 5,431 | PASS |
-| 02_SKU_ES_CURRENT | 5,431 | 5,431 | PASS |
-| 03_PRICE_HISTORY | 15,012 | 15,012 | PASS |
-| 04_EVENT_HISTORY | 22,940 | 22,940 | PASS |
-| 05_RUN_LOG | 18 | 18 | PASS |
-| 06_REVIEW_QUEUE | 516 | 516 | PASS |
+| 01_SKU_ZH_CURRENT | 5,396 | 5,396 | PASS |
+| 02_SKU_ES_CURRENT | 5,396 | 5,396 | PASS |
+| 03_PRICE_HISTORY | 15,013 | 15,013 | PASS |
+| 04_EVENT_HISTORY | 22,944 | 22,944 | PASS |
+| 05_RUN_LOG | 19 | 19 | PASS |
+| 06_REVIEW_QUEUE | 517 | 517 | PASS |
 | 07_APRIL_ARCHIVE | 5,993 | 5,993 | PASS |
 | 08_LONG_TERM_MASTER | 9,580 | 9,580 | PASS |
 | 09_APRIL_MATCH_AUDIT | 5,993 | 5,993 | PASS |
@@ -71,7 +76,7 @@ M1 当前事实边界：`02_SKU_ES_CURRENT` 覆盖当前 SKU 的名称、一级/
 - Schema family：`ACTION_SQLITE_MIRROR`；version：`1.0.0`；
 - 旧库形状被 `db-init` 识别为 `LEGACY_DB_REBUILD_REQUIRED`，不原地升级；V1 新库初始化可重复；
 - `PRAGMA foreign_keys=1`；`integrity_check=ok`；`foreign_key_check=[]`；
-- ZH CURRENT = ES CURRENT = DB CURRENT，三个集合均为 5,431；ES `Canonical_ID` 精确匹配长期实体；
+- ZH CURRENT = ES CURRENT = DB CURRENT，三个集合均为 5,396；ES `Canonical_ID` 精确匹配长期实体；
 - 迁移前、迁移后、promotion 前 final Master hash 全相同；
 - staging 通过全部校验后才原子替换；promotion 后完整性、foreign key、schema family、schema version、migration_id 校验 PASS；
 - 旧 Mirror 在 promotion 失败或 promotion 后校验失败时可由备份恢复；
@@ -90,7 +95,7 @@ M1 当前事实边界：`02_SKU_ES_CURRENT` 覆盖当前 SKU 的名称、一级/
 
 ## 7. 报告文件与结论
 
-报告目录：`F:\ActionSKUTracker\runtime\db\reports\20260829T164012Z_89075793\`
+报告目录：`F:\ActionSKUTracker\runtime\db\reports\20260829T171646Z_7ba5618b\`
 
 - `migration_report.json`
 - `validation_report.json`
