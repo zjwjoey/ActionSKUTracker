@@ -4,12 +4,12 @@
 分支：`feat/sqlite-data-foundation-v1`
 输入 Master：`F:\ActionSKUTracker\runtime\master\Action_Master.xlsx`
 Mirror：`F:\ActionSKUTracker\runtime\db\action_tracker.db`
-Migration ID：`20260829T164012Z_89075793`
+Migration ID：待本次最终两项修复后的真实重建回写
 
 ## 1. 执行边界
 
 本次只执行 Excel Master → SQLite staging → 校验 → 原子替换 Mirror。没有访问 Action 官网，
-没有运行 `daily-run`，没有写入 Excel Master、State、Dictionary，也没有改变 Listing、
+没有在本闭环中运行 `daily-run`，没有写入 Excel Master、State、Dictionary，也没有改变 Listing、
 Sitemap、Lifecycle、Detail 或 QA 主链。Master 迁移前后 SHA-256 均为：
 
 `a1a5adde31225b093b627cd1e2413c369b5ea9b737ef428b50b13f21d03c5da3`
@@ -64,12 +64,16 @@ Sitemap、Lifecycle、Detail 或 QA 主链。Master 迁移前后 SHA-256 均为�
 
 ## 5. M1/M2/M3 安全 Gate
 
+M1 当前事实边界：`02_SKU_ES_CURRENT` 覆盖当前 SKU 的名称、一级/二级类目、规格、描述、详情、
+图片、当前价格和商品链接；`08_LONG_TERM_MASTER` 仍拥有 canonical_id、历史价格、状态、首次/最后
+观察日期及来源字段。历史 SKU 不因缺少 02 行而被清空或改写。定向 fixture 覆盖测试已验证该边界。
+
 - Schema family：`ACTION_SQLITE_MIRROR`；version：`1.0.0`；
 - 旧库形状被 `db-init` 识别为 `LEGACY_DB_REBUILD_REQUIRED`，不原地升级；V1 新库初始化可重复；
 - `PRAGMA foreign_keys=1`；`integrity_check=ok`；`foreign_key_check=[]`；
 - ZH CURRENT = ES CURRENT = DB CURRENT，三个集合均为 5,431；ES `Canonical_ID` 精确匹配长期实体；
 - 迁移前、迁移后、promotion 前 final Master hash 全相同；
-- staging 通过全部校验后才原子替换；promotion 后完整性/schema/migration_id 最小校验 PASS；
+- staging 通过全部校验后才原子替换；promotion 后完整性、foreign key、schema family、schema version、migration_id 校验 PASS；
 - 旧 Mirror 在 promotion 失败或 promotion 后校验失败时可由备份恢复；
 - 离线 fixture 与全量回归测试通过，未触发官网或生产主链。
 

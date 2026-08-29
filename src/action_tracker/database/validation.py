@@ -78,7 +78,7 @@ def _expected(rows: dict[str, list[tuple[int, list[str], list[Any]]]]) -> dict[s
     for _, headers, values in rows["02_SKU_ES_CURRENT"]:
         sku = _text(_get(headers, values, "SKU"))
         if sku in products:
-            products[sku].update({"description_es": _text(_get(headers, values, "描述（西语）")), "details_es": _text(_get(headers, values, "产品详情（西语）")), "image_url": _text(_get(headers, values, "图片链接")), "current_price": _maybe_float(_get(headers, values, "当前售价 (€)")), "product_url": _text(_get(headers, values, "商品链接"))})
+            products[sku].update({"name_es": _text(_get(headers, values, "西班牙语品名")), "cat1_es": _text(_get(headers, values, "一级类目（西语）")), "cat2_es": _text(_get(headers, values, "二级类目（西语）")), "spec_es": _text(_get(headers, values, "规格（西语）")), "description_es": _text(_get(headers, values, "描述（西语）")), "details_es": _text(_get(headers, values, "产品详情（西语）")), "image_url": _text(_get(headers, values, "图片链接")), "current_price": _maybe_float(_get(headers, values, "当前售价 (€)")), "product_url": _text(_get(headers, values, "商品链接"))})
     prices, events = [], []
     for _, headers, values in rows["03_PRICE_HISTORY"]:
         sku = _text(_get(headers, values, "SKU"))

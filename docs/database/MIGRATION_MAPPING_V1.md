@@ -75,13 +75,20 @@
 
 ### 3.3 `02_SKU_ES_CURRENT` → `products` / parity
 
+`08_LONG_TERM_MASTER` is the long-term identity/history baseline. For SKUs present in
+`02_SKU_ES_CURRENT`, that sheet is authoritative for the current Spanish fact fields
+`name_es`, `cat1_es`, `cat2_es`, `spec_es`, `description_es`, `details_es`, `image_url`,
+`current_price`, and `product_url`. It must not overwrite `canonical_id`, historical
+min/max prices, lifecycle status, first/last-seen dates, or provenance columns from the
+long-term baseline. SKUs absent from the current sheet retain their 08 values.
+
 | Excel 列 | DB 列 | 处理 |
 | --- | --- | --- |
 | `SKU` | products.sku | 必须命中 products |
 | `Canonical_ID` | products.canonical_id | 与长期表对账 |
-| `西班牙语品名` | products.name_es | 原文事实 |
-| `一级类目（西语）`、`二级类目（西语）` | products.cat1_es/cat2_es | 原文事实 |
-| `规格（西语）` | products.spec_es | 原文事实 |
+| `西班牙语品名` | products.name_es | 当前 SKU 以 02 为权威；历史保留 08 |
+| `一级类目（西语）`、`二级类目（西语）` | products.cat1_es/cat2_es | 当前 SKU 以 02 为权威；历史保留 08 |
+| `规格（西语）` | products.spec_es | 当前 SKU 以 02 为权威；历史保留 08 |
 | `当前售价 (€)`、`原价 (€)`、`上次售价 (€)` | products/price history | current/original 进入事实或审计；历史变价以 03 为准 |
 | `商品链接`、`图片链接` | products.product_url/image_url | 原文迁移 |
 | `描述（西语）`、`产品详情（西语）` | product source evidence | 本 V1 可放 raw source / product detail extension；不翻译 |

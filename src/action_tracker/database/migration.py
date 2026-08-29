@@ -266,7 +266,9 @@ def migrate_master(master_path: Path, staging_path: Path, migration_id: str) -> 
                     _source_issue(db, migration_id, ws.title, row_no, "ORPHAN_CURRENT_ES", sku, raw)
                     counts["source_issues"] += 1
                     continue
-                db.execute("UPDATE products SET description_es=?,details_es=?,image_url=?,current_price=?,product_url=?,updated_at=CURRENT_TIMESTAMP WHERE sku=?", (
+                db.execute("""UPDATE products SET name_es=?,cat1_es=?,cat2_es=?,spec_es=?,description_es=?,details_es=?,image_url=?,current_price=?,product_url=?,updated_at=CURRENT_TIMESTAMP WHERE sku=?""", (
+                    _text(values[_map(headers, "西班牙语品名")]), _text(values[_map(headers, "一级类目（西语）")]),
+                    _text(values[_map(headers, "二级类目（西语）")]), _text(values[_map(headers, "规格（西语）")]),
                     _text(values[_map(headers, "描述（西语）")]), _text(values[_map(headers, "产品详情（西语）")]),
                     _text(values[_map(headers, "图片链接")]), _maybe_float(values[_map(headers, "当前售价 (€)")]),
                     _text(values[_map(headers, "商品链接")]), sku,

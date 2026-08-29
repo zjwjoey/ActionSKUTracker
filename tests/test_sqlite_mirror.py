@@ -85,6 +85,47 @@ def test_fixture_mirror_parity_and_master_unchanged(tmp_path):
     assert validation["checks"]["es_canonical_exact"] is True
 
 
+def test_current_spanish_facts_override_long_term_values_without_rewriting_history(tmp_path):
+    master = tmp_path / "Master.xlsx"
+    db = tmp_path / "action.db"
+    make_fixture(master)
+    wb = load_workbook(master)
+    long_term = wb["08_LONG_TERM_MASTER"]
+    long_headers = {long_term.cell(7, col).value: col for col in range(1, long_term.max_column + 1)}
+    long_values = {
+        "西班牙语品名": "Nombre histórico",
+        "一级类目（西语）": "Categoría histórica",
+        "规格（西语）": "Especificación histórica",
+        "当前售价 (€)": 1.5,
+        "商品链接": "https://example/old-100",
+    }
+    for header, value in long_values.items():
+        long_term.cell(8, long_headers[header]).value = value
+    current = wb["02_SKU_ES_CURRENT"]
+    current_headers = {current.cell(1, col).value: col for col in range(1, current.max_column + 1)}
+    current_values = {
+        "西班牙语品名": "Nombre actual",
+        "一级类目（西语）": "Categoría actual",
+        "二级类目（西语）": "Subcategoría actual",
+        "规格（西语）": "Especificación actual",
+        "当前售价 (€)": 2.5,
+        "商品链接": "https://example/current-100",
+    }
+    for header, value in current_values.items():
+        current.cell(2, current_headers[header]).value = value
+    wb.save(master)
+
+    result = build_mirror(master, db, tmp_path / "reports")
+    assert result["status"] == "PASS", result
+    with connect(db, read_only=True) as conn:
+        row = conn.execute(
+            "SELECT name_es,cat1_es,cat2_es,spec_es,current_price,product_url,historical_min_price,historical_max_price,source_sheet FROM products WHERE sku='100'"
+        ).fetchone()
+    assert tuple(row[:6]) == tuple(current_values[h] for h in ("西班牙语品名", "一级类目（西语）", "二级类目（西语）", "规格（西语）", "当前售价 (€)", "商品链接"))
+    assert row[6] == 1.0 and row[7] == 3.0
+    assert row[8] == "08_LONG_TERM_MASTER"
+
+
 def test_validation_rejects_current_set_mismatch(tmp_path):
     master = tmp_path / "Master.xlsx"
     db = tmp_path / "action.db"
@@ -261,6 +302,31 @@ def test_post_promotion_validation_failure_restores_backup(tmp_path, monkeypatch
     result = build_mirror(master, db, tmp_path / "reports")
     assert result["status"] == "FAIL"
     assert result["validation"]["failure_reason"] == "POST_PROMOTION_VALIDATION_FAILED"
+    assert result["validation"]["rollback_restored_old_mirror"] is True
+    assert db.read_bytes() == old_bytes
+
+
+def test_wrong_schema_version_after_promotion_rolls_back(tmp_path, monkeypatch):
+    master, db = tmp_path / "Master.xlsx", tmp_path / "action.db"
+    make_fixture(master)
+    old_bytes = b"old mirror"
+    db.write_bytes(old_bytes)
+    original = mirror_module._post_promotion_validate
+
+    def corrupt_schema_version(path, migration_id):
+        conn = connect(path)
+        try:
+            conn.execute("UPDATE schema_metadata SET value='0.9.0' WHERE key='schema_version'")
+            conn.commit()
+        finally:
+            conn.close()
+        return original(path, migration_id)
+
+    monkeypatch.setattr(mirror_module, "_post_promotion_validate", corrupt_schema_version)
+    result = build_mirror(master, db, tmp_path / "reports")
+    assert result["status"] == "FAIL"
+    assert result["validation"]["failure_reason"] == "POST_PROMOTION_VALIDATION_FAILED"
+    assert result["validation"]["post_promotion_validation"]["checks"]["schema_version"] is False
     assert result["validation"]["rollback_restored_old_mirror"] is True
     assert db.read_bytes() == old_bytes
 

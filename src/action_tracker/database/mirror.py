@@ -10,6 +10,7 @@ from typing import Any
 
 from .connection import connect
 from .migration import SHEET_CONFIG, migrate_master, sha256_file
+from .schema import SCHEMA_FAMILY, SCHEMA_VERSION
 from .validation import validate_mirror
 
 
@@ -26,7 +27,8 @@ def _post_promotion_validate(path: Path, migration_id: str) -> dict[str, Any]:
         checks = {
             "integrity_check": integrity == "ok",
             "foreign_key_check": not fk,
-            "schema_family": metadata.get("schema_family") == "ACTION_SQLITE_MIRROR",
+            "schema_family": metadata.get("schema_family") == SCHEMA_FAMILY,
+            "schema_version": metadata.get("schema_version") == SCHEMA_VERSION,
             "migration_id": metadata.get("migration_id") == migration_id,
         }
         return {"status": "PASS" if all(checks.values()) else "FAIL", "checks": checks, "integrity": integrity, "foreign_key_rows": [dict(row) for row in fk]}
