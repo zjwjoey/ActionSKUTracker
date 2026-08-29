@@ -2,12 +2,13 @@
 
 更新日期：2026-08-27
 项目目录：`F:\ActionSKUTracker`
-当前分支：`feat/export-dictionary-closure`
+当前分支：`feat/export-foundation-v1`
 
 ## 1. 生产主链边界
 
 Sitemap/Listing/补充入口 → Presence 冻结 → Lifecycle → QA → Snapshot/Staging →
-QA 通过且非 dry-run 才能写入 Master/State。SQLite 仍冻结，不参与生产主链。本轮没有修改
+QA 通过且非 dry-run 才能写入 Master/State。SQLite 当前仍冻结、不参与生产主链，但已纳入
+Export V1 之后的 SQLite PRIMARY 接管计划。本轮没有修改
 `monitor/listing.py`、`monitor/sitemap.py`、`monitor/sku_monitor.py`、`services/lifecycle.py`
 或 Presence/Cloudflare/QA 核心语义。
 
@@ -66,13 +67,13 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
 
 ## 5. Export 状态
 
-基础 ES/ZH 无图导出和 Template 1 三表无图导出已在本地实现。Template 1 示例输出包含：
-历史 Presence union、当期 0/1 日期列、今日西语表、今日中文表；中文图片嵌入仍未启用，
+基础 ES/ZH 无图导出、Template 1 三表无图导出和独立历史 Presence 导出已在本地实现。
+历史 Presence 使用 `1/0/UNKNOWN` 三态并附历史来源审计；中文图片嵌入仍未启用，
 图片下载模块继续独立冻结。Export 只读取正式 QA/FULL_COMMIT 来源，不重新访问官网。
 
 ## 6. 测试与 CI
 
-当前完整回归：`224 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+当前完整回归：`240 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
 
@@ -81,6 +82,9 @@ runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 wor
 1. Dictionary Apply 正式写 Master 尚未启用；Gate 已完整实现，但生产配置仍关闭。
 2. 74 个 Review Required 和 7 个 Source Blocked 需要人工/可信西语证据处理；已分别生成
    `review_closure_report.csv` 与 `source_blocked_review.csv`，不使用中文反推西语。
-3. 术语 scope、图片下载与带图 Export、export-history 独立功能尚未进入生产主链。
+3. 术语 scope、图片下载与带图 Export 尚未进入生产主链；历史 export-history 已实现，待正式发布验收。
 4. 工作区仍有此前 Template 1 与字典功能的待提交改动，提交时必须按功能拆分，不能混入
    runtime、报告、图片或密钥。
+
+SQLite Production Source of Truth 的完整阶段计划（Contracts → Writer → Shadow → Read →
+Cutover → PRIMARY）见 `docs/MASTER_DEVELOPMENT_PLAN.md`，目前尚未开始生产接管实现。

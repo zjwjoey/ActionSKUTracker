@@ -2,6 +2,10 @@
 
 更新日期：2026-08-27
 
+统一开发计划见 [`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。该计划把
+Export Foundation V1 正式发布和 SQLite Production Source of Truth 接管纳入同一总目标，
+但仍按阶段门禁推进。
+
 ## 1. 总原则
 
 - 不重写已经稳定的采集、Presence、生命周期和 QA 主链；
@@ -73,6 +77,23 @@
 
 详细计划见 `EXPORT_IMPLEMENTATION_PLAN.md`。基础版本验收前不开始图片和三表合一。
 
+## 3.1 Export V1 之后的 SQLite 接管计划
+
+SQLite 生产接管已经纳入统一开发计划，执行顺序为：
+
+| 阶段 | 目标 | 当前状态 |
+|---|---|---|
+| Phase 2 | Production Contracts、Writer Inventory、Schema V2 契约 | 待开发 |
+| Phase 3 | Schema V2、CommitBundle、事务 Writer | 待开发 |
+| Phase 4 | `SQLITE_SHADOW`，连续 3 次真实 parity | 待开发 |
+| Phase 5 | DB Read Path，Excel 暂时继续写 | 待开发 |
+| Phase 6 | Cutover Candidate、备份、回滚和重建验证 | 待开发 |
+| Phase 7 | `SQLITE_PRIMARY` 正式接管 | 待开发 |
+| Phase 8 | Excel/CSV 降级为 Generated View | 待开发 |
+
+因此当前“SQLite 冻结”只表示**尚未接入生产主链**，不是取消数据库接管计划。详细设计见
+[`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。
+
 ## 4. 后续阶段：STEP 7 + Template 1
 
 ### 4.1 历史 Presence 服务（已实现独立导出）
@@ -83,7 +104,7 @@
 2. 校验每个来源文件、工作表和 SKU 列；
 3. 每批次按 SKU 去重；
 4. 建立长期 SKU union；
-5. 写日期 0/1；
+5. 按来源能力写日期 `1/0/UNKNOWN`；
 6. 保存原始行数、唯一 SKU 数、重复数和来源 hash；
 7. 为 Template 1 和独立 `export-history` 提供同一服务。
 
@@ -189,7 +210,9 @@ term-candidates --run-id ...
 
 ### SQLite
 
-继续冻结。当前正式 daily-run 仍以 Excel/CSV 为主链。本路线不包含数据库迁移。
+当前阶段继续冻结生产写入。Export V1 发布后按统一计划进入 Phase 2–8，经过
+`SQLITE_SHADOW → DB Read Path → SQLITE_PRIMARY`，不直接硬切。当前正式 daily-run 仍以
+Excel/CSV 为主链。
 
 ### 图片下载
 
