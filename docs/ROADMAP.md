@@ -1,6 +1,6 @@
 # Action SKU Tracker 路线图
 
-更新日期：2026-08-27
+更新日期：2026-08-30
 
 统一开发计划见 [`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。该计划把
 Export Foundation V1 正式发布和 SQLite Production Source of Truth 接管纳入同一总目标，
@@ -100,6 +100,13 @@ SQLite 生产接管已经纳入统一开发计划，执行顺序为：
 因此当前 `EXCEL_PRIMARY` 只表示**尚未切换生产主链**，不是取消数据库接管计划。SQLite V2
 Writer、Shadow/Primary 接线和 Read Repository 已实现；真实 Shadow 对账、基线迁移和切换门禁仍待完成。详细设计见
 [`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。
+
+## 3.2 Knowledge Production V1（P3–P6）
+
+已完成统一合同和离线安全基础：六字段 source hash、字段级 Resolver、增量 Translation Queue、
+Candidate Validator、Auto-Approval Shadow，以及 SQLite resolution/queue/candidate/audit 表和
+localization provenance 字段。生产 Apply、真实 AI、Scoped Dictionary 审批和 Auto-Approval 仍由
+feature gate 关闭；详见 `docs/knowledge/` 下的八份合同文档。第三轮 SQLite Shadow 暂缓到本阶段审查后。
 
 图片也已纳入同一总计划；Contracts、增量同步、标准化、QA、Derivatives 和带图 Export 已在本地实现，
 真实全量图片同步/性能基线仍待执行，`image_assets` 元数据仅在 SQLite PRIMARY 配置下接入；Template 1 带图命令已可用。

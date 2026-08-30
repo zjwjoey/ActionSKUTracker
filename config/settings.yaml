@@ -129,6 +129,25 @@ dictionary_apply:
   # 即使导出/覆盖率暂时允许临时品牌，正式回填默认仍要求品牌已确认。
   require_confirmed_brands_for_apply: true
 
+# ---- Knowledge Production V1（P3-P6）----
+# Contracts and offline preview may be used during development; production
+# localization writes and model/auto-approval paths stay explicitly closed.
+knowledge:
+  production_apply_enabled: false
+  fallback_to_spanish: true
+
+scoped_dictionary:
+  enabled: false
+
+translation:
+  ai_enabled: false
+  provider: null
+  model: null
+  max_batch_size: 20
+  max_retries: 3
+  auto_approval_enabled: false
+  auto_approval_policy: auto_approval_v1
+
 # ---- AI（预留）：后续翻译用 AI API 配置，不接外部翻译服务 ----
 # 密钥不落盘：运行时从环境变量 ACTION_AI_API_KEY 读取
 ai:

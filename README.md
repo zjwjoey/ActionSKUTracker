@@ -103,6 +103,8 @@ python scripts/publish_dictionary_baseline.py
 
 增量字典、审核队列、术语候选和 Resolver 已实现为本地离线能力；Dictionary Apply Gate 已实现，生产写入由 YAML 布尔值 `dictionary_apply.production_enabled: false` 明确关闭（字符串配置会安全报错）。正式 Apply 还要求字典与已发布基线逐文件 hash 一致、审计未过期、全部 SKU 为 AUTO_READY，且默认不允许 PROVISIONAL 品牌。具体状态见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
+Knowledge Production V1（P3–P6）的统一合同、SQLite resolution/queue/candidate/audit 表、字段级 Resolver、增量队列、候选 Validator 和 Auto-Approval Shadow 已完成；生产 Apply、AI provider、Scoped Dictionary 审批和 Auto-Approval 仍由配置门禁关闭。合同文档见 [`docs/knowledge/`](docs/knowledge/)。
+
 ## 导出
 
 目标 Template 1 是一个 Excel、三张工作表：

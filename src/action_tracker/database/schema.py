@@ -157,6 +157,72 @@ CREATE TABLE IF NOT EXISTS image_assets (
 CREATE VIEW IF NOT EXISTS events AS
  SELECT id,canonical_id,official_sku,occurred_at,event_type,old_value,new_value,run_id,evidence,event_key
  FROM event_history;
+
+CREATE TABLE IF NOT EXISTS translation_resolution (
+ resolution_id TEXT PRIMARY KEY,
+ official_sku TEXT NOT NULL,
+ language TEXT NOT NULL DEFAULT 'zh',
+ source_hash TEXT NOT NULL,
+ base_commit_id TEXT,
+ dictionary_hash TEXT,
+ readiness TEXT NOT NULL,
+ fields_json TEXT NOT NULL,
+ reasons_json TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ UNIQUE(official_sku, language, source_hash),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS translation_queue (
+ queue_id TEXT PRIMARY KEY,
+ official_sku TEXT NOT NULL,
+ language TEXT NOT NULL DEFAULT 'zh',
+ source_hash TEXT NOT NULL,
+ requested_fields TEXT NOT NULL,
+ reason TEXT NOT NULL,
+ priority TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'PENDING',
+ retry_count INTEGER NOT NULL DEFAULT 0,
+ last_error TEXT,
+ run_id TEXT,
+ created_at TEXT NOT NULL,
+ claimed_at TEXT,
+ completed_at TEXT,
+ UNIQUE(official_sku, language, source_hash, requested_fields),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS translation_candidates (
+ candidate_id TEXT PRIMARY KEY,
+ queue_id TEXT NOT NULL,
+ official_sku TEXT NOT NULL,
+ language TEXT NOT NULL DEFAULT 'zh',
+ source_hash TEXT NOT NULL,
+ model_provider TEXT,
+ model_name TEXT,
+ prompt_version TEXT NOT NULL,
+ fields_json TEXT NOT NULL,
+ confidence REAL,
+ validation_status TEXT NOT NULL,
+ approval_status TEXT NOT NULL DEFAULT 'PENDING',
+ created_at TEXT NOT NULL,
+ UNIQUE(queue_id, prompt_version, model_name),
+ FOREIGN KEY (queue_id) REFERENCES translation_queue(queue_id),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS translation_approval_audit (
+ decision_id TEXT PRIMARY KEY,
+ candidate_id TEXT NOT NULL,
+ official_sku TEXT NOT NULL,
+ field_name TEXT NOT NULL,
+ decision TEXT NOT NULL,
+ policy_version TEXT NOT NULL,
+ rules_passed TEXT NOT NULL,
+ rules_failed TEXT NOT NULL,
+ source_hash TEXT NOT NULL,
+ decided_at TEXT NOT NULL,
+ UNIQUE(candidate_id, field_name, policy_version),
+ FOREIGN KEY (candidate_id) REFERENCES translation_candidates(candidate_id),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
 '''
 
 
@@ -177,6 +243,28 @@ def migrate_v2(path, *, role: str = "SHADOW"):
         ):
             try:
                 db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+            except Exception as exc:
+                if "duplicate column" not in str(exc).lower():
+                    raise
+        # Additive localization provenance/freshness columns.  Existing V2
+        # databases remain readable and are upgraded in-place without
+        # rewriting any product facts.
+        for column, definition in (
+            ("source_hash", "TEXT"),
+            ("resolution_status", "TEXT"),
+            ("name_source", "TEXT"),
+            ("cat1_source", "TEXT"),
+            ("cat2_source", "TEXT"),
+            ("spec_source", "TEXT"),
+            ("description_source", "TEXT"),
+            ("details_source", "TEXT"),
+            ("freshness_status", "TEXT"),
+            ("approved_by", "TEXT"),
+            ("approved_at", "TEXT"),
+            ("applied_commit_id", "TEXT"),
+        ):
+            try:
+                db.execute(f"ALTER TABLE product_localizations ADD COLUMN {column} {definition}")
             except Exception as exc:
                 if "duplicate column" not in str(exc).lower():
                     raise

@@ -185,13 +185,21 @@ class ProductionWriter:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
             language = str(r.get("language") or "zh")
             db.execute(
-                """INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,last_commit_id)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-                ON CONFLICT(official_sku,language) DO UPDATE SET name=excluded.name,cat1=excluded.cat1,cat2=excluded.cat2,spec=excluded.spec,
-                description=excluded.description,details=excluded.details,source=excluded.source,review_status=excluded.review_status,
-                updated_at=excluded.updated_at,last_commit_id=excluded.last_commit_id""",
+                """INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,last_commit_id,
+                 source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
+                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 ON CONFLICT(official_sku,language) DO UPDATE SET name=excluded.name,cat1=excluded.cat1,cat2=excluded.cat2,spec=excluded.spec,
+                 description=excluded.description,details=excluded.details,source=excluded.source,review_status=excluded.review_status,
+                 updated_at=excluded.updated_at,last_commit_id=excluded.last_commit_id,source_hash=excluded.source_hash,
+                 resolution_status=excluded.resolution_status,name_source=excluded.name_source,cat1_source=excluded.cat1_source,
+                 cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,description_source=excluded.description_source,
+                 details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,
+                 approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""",
                 (sku, language, r.get("name"), r.get("cat1"), r.get("cat2"), r.get("spec"), r.get("description"), r.get("details"),
-                 r.get("source"), r.get("review_status"), now, commit_id),
+                 r.get("source"), r.get("review_status"), now, commit_id, r.get("source_hash"),
+                 r.get("resolution_status"), r.get("name_source"), r.get("cat1_source"), r.get("cat2_source"),
+                 r.get("spec_source"), r.get("description_source"), r.get("details_source"), r.get("freshness_status"),
+                 r.get("approved_by"), r.get("approved_at"), r.get("applied_commit_id") or commit_id),
             )
 
     @staticmethod

@@ -84,9 +84,19 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
 
 ## 7. 测试与 CI
 
-当前完整回归：`262 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+当前完整回归：`276 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
+
+## 7.1 Knowledge Production V1（P3–P6）
+
+已完成合同与离线安全基础：统一六字段 source hash、字段级 Resolver、增量翻译队列去重、
+SOURCE_BLOCKED 排除、候选 Validator、字段级 Auto-Approval Shadow，以及 SQLite 的
+`translation_resolution`、`translation_queue`、`translation_candidates`、
+`translation_approval_audit` 表和 localization provenance 字段。配置中的
+`knowledge.production_apply_enabled`、`translation.ai_enabled`、
+`translation.auto_approval_enabled` 和 `scoped_dictionary.enabled` 均保持关闭。
+生产 Apply、真实 AI provider、Scoped Dictionary 审批和 Auto-Approval 正式开启尚未执行。
 
 ## 8. 未完成/风险
 
