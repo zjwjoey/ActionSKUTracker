@@ -15,6 +15,11 @@ from ..database.production import database_status, validate_production_database
 class OperationsService:
     def __init__(self, db_path: Path, *, reports_root: Path | None = None, lock_path: Path | None = None, config: dict[str, Any] | None = None):
         self.db_path = Path(db_path); self.reports_root = Path(reports_root or self.db_path.parent.parent / "reports" / "daily"); self.lock_path = Path(lock_path or self.db_path.parent.parent / "state" / "daily-run.lock"); self.config = config or {}
+        if self.db_path.exists():
+            # Additive operational metadata only; never creates a product
+            # mirror or changes business rows.
+            with connect(self.db_path) as db:
+                db.execute("CREATE TABLE IF NOT EXISTS operations_actions (action_id TEXT PRIMARY KEY, action TEXT NOT NULL, target_run_id TEXT, parameters_json TEXT NOT NULL, result_json TEXT NOT NULL, created_at TEXT NOT NULL)")
 
     def system_status(self) -> dict[str, Any]:
         if not self.db_path.exists():

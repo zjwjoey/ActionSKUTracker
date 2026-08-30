@@ -74,6 +74,13 @@ class RunLock:
             return
         age = datetime.now().timestamp() - self.path.stat().st_mtime
         if age > self.stale_after.total_seconds() or pid is not None:
+            # Preserve evidence before reclaiming a dead lock; reclamation is
+            # never a silent delete from the operator's perspective.
+            audit = self.path.with_name(f"stale_lock_{int(datetime.now().timestamp())}.json")
+            try:
+                audit.write_text(json.dumps({"lock_path": str(self.path), "metadata": data, "reclaimed_at": datetime.now().isoformat()}), encoding="utf-8")
+            except OSError:
+                pass
             self.path.unlink(missing_ok=True)
 
 
