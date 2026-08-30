@@ -9,6 +9,8 @@ from action_tracker.knowledge.queue import build_queue
 from action_tracker.knowledge.resolver import resolve
 from action_tracker.knowledge.validator import validate_candidate
 from action_tracker.knowledge.storage import KnowledgeStore
+from action_tracker.knowledge.scoped import ScopedRule, match_scoped, blast_radius
+from action_tracker.knowledge.ai import ProviderResult, candidate_cache_key, run_candidates
 
 
 def _record(**overrides):
@@ -177,3 +179,65 @@ def test_knowledge_store_cannot_demote_primary_database(tmp_path: Path):
         raise AssertionError("knowledge store silently demoted a PRIMARY database")
     with connect(db_path) as db:
         assert db.execute("SELECT value FROM schema_metadata WHERE key='database_role'").fetchone()[0] == "PRIMARY"
+
+
+def test_scoped_dictionary_uses_specificity_and_current_spanish_categories():
+    record = _record(cat1_es="Hogar", cat2_es="Cajas")
+    rules = [ScopedRule("g", "GLOBAL", None, "name", "Caja", "通用盒子", "HUMAN_APPROVED"),
+             ScopedRule("c", "CAT2", "Cajas", "name", "Caja", "收纳盒", "HUMAN_APPROVED"),
+             ScopedRule("p", "PRODUCT", "1001", "name", "Caja", "产品盒", "HUMAN_APPROVED")]
+    assert match_scoped({**record, "source_term": "Caja"}, "name", rules).value == "产品盒"
+
+
+def test_scoped_dictionary_same_level_conflict_fails_closed():
+    record = {**_record(cat2_es="Cajas"), "source_term": "Caja"}
+    rules = [ScopedRule("a", "CAT2", "Cajas", "name", "Caja", "A", "HUMAN_APPROVED"),
+             ScopedRule("b", "CAT2", "Cajas", "name", "Caja", "B", "HUMAN_APPROVED")]
+    result = match_scoped(record, "name", rules)
+    assert result.conflict and not result.value
+
+
+def test_scoped_dictionary_requires_human_approval_and_reports_blast_radius():
+    rule = ScopedRule("r", "CAT1", "Hogar", "name", None, "家居", "PENDING")
+    assert not match_scoped(_record(cat1_es="Hogar"), "name", [rule]).value
+    approved = ScopedRule("r", "CAT1", "Hogar", "name", None, "家居", "HUMAN_APPROVED")
+    report = blast_radius([_record(cat1_es="Hogar"), _record(sku="1002", cat1_es="DIY")], approved)
+    assert report["matched_sku_count"] == 1
+
+
+def test_ai_runner_is_candidate_only_and_isolates_failures():
+    record = _record()
+    queue = [{"queue_id": "q", "sku": "1001", "source_hash": source_hash(record), "requested_fields": ("name",), "status": "PENDING"}]
+    result = run_candidates(queue, {"1001": record}, lambda _r, _f: ProviderResult({"name": "盒子"}, .99))
+    assert result[0]["status"] == "CANDIDATE" and result[0]["validation_status"] == "PASS"
+    assert "product_localizations" not in result[0]
+    assert candidate_cache_key("1001", "h", "v1", ("name",)) != candidate_cache_key("1001", "h", "v2", ("name",))
+
+
+def test_ai_runner_retries_and_marks_permanent_failure():
+    record = _record()
+    queue = [{"queue_id": "q", "sku": "1001", "source_hash": source_hash(record), "requested_fields": ("name",), "status": "PENDING"}]
+    result = run_candidates(queue, {"1001": record}, lambda _r, _f: (_ for _ in ()).throw(RuntimeError("offline")), max_retries=2)
+    assert result[0]["status"] == "FAILED" and result[0]["retry_count"] == 2
+
+
+def test_field_level_apply_preserves_unmentioned_localization_and_requires_gate(tmp_path: Path):
+    db_path = tmp_path / "primary.db"
+    migrate_v2(db_path, role="PRIMARY")
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('ACT1001','1001','CURRENT')")
+        db.execute("INSERT INTO product_localizations(official_sku,language,name,spec,updated_at) VALUES('1001','zh','旧名','旧规格','now')")
+    store = KnowledgeStore(db_path, role="PRIMARY")
+    record = _record()
+    candidate = {"sku": "1001", "source_hash": source_hash(record), "fields": {"name": "新名"}, "approval_status": "HUMAN_APPROVED", "provenance": "human_approved_ai"}
+    assert store.preview_apply([candidate], {"1001": record})[0]["old_value"] == "旧名"
+    try:
+        store.apply_localizations([candidate], {"1001": record})
+    except PermissionError:
+        pass
+    else:
+        raise AssertionError("disabled apply was not blocked")
+    assert store.apply_localizations([candidate], {"1001": record}, enabled=True, commit_id="c1") == 1
+    with connect(db_path) as db:
+        row = db.execute("SELECT name,spec,name_source FROM product_localizations WHERE official_sku='1001' AND language='zh'").fetchone()
+    assert tuple(row) == ("新名", "旧规格", "human_approved_ai")

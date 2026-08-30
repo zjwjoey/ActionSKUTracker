@@ -15,7 +15,7 @@ from typing import Any, Iterable
 from ..database.connection import connect
 from ..database.schema import migrate_v2
 from .approval import ApprovalDecision
-from .contracts import Resolution
+from .contracts import Resolution, source_hash
 
 
 class KnowledgeStore:
@@ -94,3 +94,59 @@ class KnowledgeStore:
                 )
                 count += 1
         return count
+
+    def preview_apply(self, candidates: Iterable[dict[str, Any]], records: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+        """Create a field-level, read-only apply plan against current facts."""
+        preview: list[dict[str, Any]] = []
+        with connect(self.path) as db:
+            for candidate in candidates:
+                sku = str(candidate.get("sku") or "")
+                record = records.get(sku)
+                if not record or str(candidate.get("source_hash") or "") != source_hash(record):
+                    preview.append({"sku": sku, "decision": "REJECT", "reason": "STALE_TRANSLATION_PREVIEW"})
+                    continue
+                old = db.execute("SELECT * FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone()
+                for field, value in (candidate.get("fields") or {}).items():
+                    if field not in {"name", "cat1", "cat2", "spec", "description", "details"} or not isinstance(value, str):
+                        continue
+                    preview.append({"sku": sku, "field": field, "old_value": (old[field] if old else None),
+                                    "new_value": value, "source_hash": candidate["source_hash"],
+                                    "provenance": candidate.get("provenance", "human_approved_ai"),
+                                    "decision": "APPLY"})
+        return preview
+
+    def apply_localizations(self, candidates: Iterable[dict[str, Any]], records: dict[str, dict[str, Any]], *,
+                            enabled: bool = False, commit_id: str | None = None) -> int:
+        """Apply approved candidate fields to PRIMARY SQLite only.
+
+        This is intentionally explicit and field-level; it never touches
+        products, lifecycle, prices, events, Master.xlsx, or exports.
+        """
+        if not enabled:
+            raise PermissionError("KNOWLEDGE_PRODUCTION_APPLY_DISABLED")
+        with connect(self.path) as db:
+            role = db.execute("SELECT value FROM schema_metadata WHERE key='database_role'").fetchone()
+            if not role or role[0] != "PRIMARY":
+                raise PermissionError("KNOWLEDGE_APPLY_REQUIRES_PRIMARY")
+            applied = 0
+            for candidate in candidates:
+                sku = str(candidate.get("sku") or "")
+                record = records.get(sku)
+                if not record or str(candidate.get("source_hash") or "") != source_hash(record):
+                    raise ValueError("STALE_TRANSLATION_PREVIEW")
+                if str(candidate.get("approval_status") or "APPROVED").upper() not in {"APPROVED", "HUMAN_APPROVED", "AUTO_APPROVED"}:
+                    raise PermissionError("CANDIDATE_NOT_APPROVED")
+                existing = db.execute("SELECT * FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone()
+                current = dict(existing) if existing else {}
+                values = {field: current.get(field) for field in ("name", "cat1", "cat2", "spec", "description", "details")}
+                sources = {field: current.get(f"{field}_source") for field in values}
+                for field, value in (candidate.get("fields") or {}).items():
+                    if field in values and isinstance(value, str):
+                        values[field] = value
+                        sources[field] = candidate.get("provenance", "human_approved_ai")
+                db.execute("""INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,last_commit_id,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(official_sku,language) DO UPDATE SET name=excluded.name,cat1=excluded.cat1,cat2=excluded.cat2,spec=excluded.spec,description=excluded.description,details=excluded.details,source=excluded.source,review_status=excluded.review_status,updated_at=excluded.updated_at,last_commit_id=excluded.last_commit_id,source_hash=excluded.source_hash,resolution_status=excluded.resolution_status,name_source=excluded.name_source,cat1_source=excluded.cat1_source,cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,description_source=excluded.description_source,details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""",
+                    (sku, "zh", values["name"], values["cat1"], values["cat2"], values["spec"], values["description"], values["details"], "KNOWLEDGE", "APPROVED", datetime.now(timezone.utc).isoformat(), commit_id, candidate["source_hash"], "APPLIED", sources["name"], sources["cat1"], sources["cat2"], sources["spec"], sources["description"], sources["details"], "CURRENT", "MANUAL", datetime.now(timezone.utc).isoformat(), commit_id))
+                applied += 1
+            return applied
