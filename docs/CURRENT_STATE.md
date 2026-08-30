@@ -2,8 +2,8 @@
 
 更新日期：2026-08-30
 项目目录：`F:\ActionSKUTracker`
-当前收口基线：`fix/p0-p1-final-closure`（`origin/main=dd0fa61` + `bcb8709` hotfix）；
-当前 P2 分支：`feat/image-foundation-v1`（HEAD `1ba4e78`）。
+当前收口基线：P0/P1 已合并到 `origin/main=c015bfe`，CI 通过；
+当前 P2 分支：`feat/image-foundation-v1`（最终代码 HEAD `8b8aa5d`）。
 
 ## 1. 生产主链边界
 
@@ -82,11 +82,12 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
   正式切换后的数据库校验也通过。
 - 图片：`image-sync` 支持低并发、超时、指数退避、staging 原子 promotion、Manifest checkpoint、
   失败隔离和 SQLite PRIMARY 元数据镜像；2026-08-30 已完成 5,396 CURRENT 全量同步，全部 AVAILABLE，
-  并完成 ES/ZH/Template1 带图导出验收。
+  并完成 ES/ZH/Template1 带图导出验收。P2 最终修复还加入了 derivative 闭环、stale-source eligibility
+  门禁和图片行高保护。
 
 ## 7. 测试与 CI
 
-当前 P2 分支完整回归：`297 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+当前 P2 分支完整回归：`303 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
 

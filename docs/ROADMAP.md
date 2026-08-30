@@ -63,10 +63,10 @@ Export Foundation V1 正式发布和 SQLite Production Source of Truth 接管纳
 - 人工批准后才进入正式术语字典；
 - 尚待单独代码提交。
 
-## 3. 当前阶段：先发布基础 Export
+## 3. 当前阶段：基础 Export 与 SQLite 已收口，等待 P2 合并确认
 
-ES/ZH 独立无图导出、历史 Presence 和带图 Export 已在本地实现；正式发布仍需独立提交、
-真实来源预览和用户验收。基础导出的稳定验收已完成本地验证：
+ES/ZH 独立无图导出、历史 Presence、SQLite PRIMARY 和带图 Export 已完成验收；P0/P1 已合并到
+`main`，P2 已完成最终 MEDIUM 修复并推送功能分支，等待用户确认合并。基础导出的稳定验收已完成：
 
 1. 隔离并审查现有 exporting 代码；
 2. 冻结两个无图基础 Profile；
@@ -92,10 +92,10 @@ SQLite 生产接管已经纳入统一开发计划，执行顺序为：
 | Phase 7 | `SQLITE_PRIMARY` 正式接管 | 已完成正式切换；首轮完整性与 parity PASS |
 | Phase 8 | Excel/CSV 降级为 Generated View | PRIMARY 已从 SQLite head 生成兼容投影；仍需长期运行观察 |
 | Phase 9 | Image Contracts、AssetRecord、目录和状态冻结 | 已实现 |
-| Phase 10 | Image Foundation：下载、标准化、QA、缓存、Derivative | 已实现并有 fixture 测试 |
+| Phase 10 | Image Foundation：下载、标准化、QA、缓存、Derivative | 已实现并完成闭环修复 |
 | Phase 11 | 20–50 SKU 真实图片切片 | 已完成，50/50 AVAILABLE |
 | Phase 12 | Full CURRENT 增量图片同步和性能基线 | 已完成，5,396/5,396 AVAILABLE |
-| Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | 已完成，SKU/业务事实 parity 0 mismatch |
+| Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | 已完成，SKU/业务事实 parity 0 mismatch；M-01/M-02/M-03 CLOSED |
 
 当前生产配置已为 `SQLITE_PRIMARY`；Excel/CSV 作为由 SQLite head 生成的兼容投影。SQLite V2
 Writer、Shadow/Primary 接线、Read Repository、三轮 Shadow 对账、基线迁移和正式切换均已完成。详细设计见

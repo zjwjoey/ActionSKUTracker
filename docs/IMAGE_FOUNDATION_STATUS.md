@@ -20,6 +20,8 @@
 - ES/ZH 带图 Export 使用与无图版本完全相同的字段和 SKU 集合，只读取本地衍生图；
 - Template 1 带图版本已接通：仅“今日中文清单”嵌入图片，历史上下架矩阵与今日西语清单不嵌图；
 - SQLite PRIMARY 模式下可把 Manifest 元数据镜像到 `image_assets`，不存图片二进制。
+- Image Sync 正式闭环包含 derivative 生成/复用/重建统计；带图导出通过当前 URL、master hash 和 derivative cache key 做 eligibility 校验，不能仅因文件存在就嵌入旧图。
+- ES/ZH 带图 Writer 在文本布局后保留图片行高下限 190；图片失败只增加 missing，不删除商品 SKU。
 
 ## 真实验收现状
 
@@ -32,6 +34,7 @@
 - 带图/无图 SKU 集合与业务事实 parity 均为 0 mismatch；
 - SQLite `image_assets` 已镜像 5,396 条元数据，不存图片 BLOB；
 - 所有工作簿已 reopen 验证，冻结首行、筛选范围和图片对象数正常。
+- 独立审计 M-01/M-02/M-03 已全部 CLOSED；真实 re-acceptance 证据位于 `runtime/temp/p2_final_reacceptance_20260830/`，eligible image 5,396/5,396，带图导出嵌入数 5,396/5,396。
 
 ## 验收结论
 

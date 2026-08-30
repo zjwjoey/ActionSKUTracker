@@ -3,7 +3,7 @@
 日期：2026-08-30  
 分支：`feat/image-foundation-v1`  
 Parent：`f5e5aac`  
-代码 HEAD：`90039c1`
+代码 HEAD：`8b8aa5d`
 
 ## Full CURRENT 图片同步
 
@@ -48,6 +48,16 @@ Parent：`f5e5aac`
 机器证据：`runtime/temp/p2_image_scale_20260830/full_result.json`、`runtime/temp/p2_image_scale_20260830/manifests/image_manifest.csv`、`runtime/temp/p2_final_acceptance_20260830/p2_export_parity.json`。
 
 ## Gate 与结论
+
+## Final Independent Audit Closure
+
+本轮重新审查的三个 MEDIUM 已关闭：
+
+- **M-01 Derivative lifecycle：CLOSED** — Image Sync 在 master 成功或复用后自动生成/复用/重建 `excel_250` derivative，并记录生成统计；仅 derivative 缺失或损坏时重建，不重新下载 master。
+- **M-02 Stale source export：CLOSED** — 带图导出必须同时满足 Manifest 当前 URL、AVAILABLE、master hash 和 derivative cache key 一致；URL 变更下载失败时保留 SKU 与旧 master，但不嵌入旧图。导出全程无网络。
+- **M-03 Image row height：CLOSED** — ES/ZH 带图写入器在文本布局后仍保证图片行高至少 190；保存后重新打开工作簿验证图片对象和行高。
+
+重新验收证据目录：`runtime/temp/p2_final_reacceptance_20260830/`。本次真实生产 CURRENT 为 5,396 条，eligible image 5,396 条，ES/ZH 带图各嵌入 5,396 张，Template 1 今日中文清单嵌入 5,396 张；SKU 与业务事实 parity 均为 0 mismatch。
 
 P3–P6（Dictionary Production、Scoped Dictionary、AI Translation、Auto Approval）保持关闭；`images.enabled` 仍为 false，图片作为独立 Enrichment/Asset Layer，不成为 Product Commit 条件。
 
