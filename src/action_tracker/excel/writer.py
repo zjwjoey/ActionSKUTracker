@@ -120,6 +120,34 @@ def _append_rows(wb, title: str, rows: list[dict], headers: list[str]) -> None:
     _resize_tables(ws)
 
 
+def _replace_run_log_rows(wb, revisions: dict[str, dict] | None) -> int:
+    """Apply field-level corrections to existing immutable run-log rows.
+
+    Compatibility projection rebuilds must not append a duplicate run merely to
+    correct a derived count that was repaired in SQLite.
+    """
+    if not revisions:
+        return 0
+    _ensure_sheet(wb, "05_RUN_LOG", RUN_LOG_HEADERS)
+    ws = wb["05_RUN_LOG"]
+    headers = [cell.value for cell in ws[1]]
+    if headers != RUN_LOG_HEADERS:
+        raise RuntimeError("05_RUN_LOG header mismatch")
+    index = {header: offset + 1 for offset, header in enumerate(headers)}
+    updated = 0
+    for row in ws.iter_rows(min_row=2):
+        run_id = str(row[0].value or "").strip()
+        revision = revisions.get(run_id)
+        if not revision:
+            continue
+        for header, value in revision.items():
+            if header in index:
+                ws.cell(row=row[0].row, column=index[header]).value = _cell(value)
+        updated += 1
+    _resize_tables(ws)
+    return updated
+
+
 def _resize_tables(ws, header_row: int = 1) -> None:
     """Extend existing Excel table filters through the current used rows."""
     if ws.max_row < header_row or ws.max_column < 1:
@@ -302,6 +330,7 @@ def stage_master(
     price_events: list[dict],
     event_events: list[dict],
     run_log_row: dict | None = None,
+    run_log_revisions: dict[str, dict] | None = None,
     review_rows: list[dict] | None = None,
     return_backup: bool = False,
     compatibility_projection: bool = False,
@@ -343,6 +372,7 @@ def stage_master(
 
             # 05_RUN_LOG / 06_REVIEW_QUEUE（规范 §十；不存在则创建，无行也要有表）
             _ensure_sheet(wb, "05_RUN_LOG", RUN_LOG_HEADERS)
+            _replace_run_log_rows(wb, run_log_revisions)
             if run_log_row:
                 _append_rows(wb, "05_RUN_LOG", [run_log_row], RUN_LOG_HEADERS)
             _ensure_sheet(wb, "06_REVIEW_QUEUE", REVIEW_HEADERS)

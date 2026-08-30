@@ -71,6 +71,20 @@ class ProductionRepository:
             raise ProductionRepositoryError("DB_SCHEMA_IDENTITY_MISMATCH")
 
     def load_current_products(self) -> dict[str, dict[str, Any]]:
+        """Return the complete CURRENT baseline used by the daily monitor.
+
+        The PRIMARY monitor needs the same fact projection as exports.  Reading
+        ``products`` alone loses the ES localization fields, which in turn
+        makes complete products look like ``MISSING_FIELD`` candidates.
+        """
+        return {
+            str(record["sku"]): record
+            for record in self.load_current_export_records()
+            if str(record.get("sku") or "").strip()
+        }
+
+    def load_current_product_rows(self) -> dict[str, dict[str, Any]]:
+        """Legacy products-table-only projection, retained for diagnostics."""
         with connect(self.path) as db:
             self._check_v2(db)
             rows = db.execute(

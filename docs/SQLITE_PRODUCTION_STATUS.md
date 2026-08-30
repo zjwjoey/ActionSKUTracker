@@ -54,5 +54,5 @@ Master/State 对账和 `export_sync` 均通过；正式提升后该命令会因�
 
 - 测试：`tests/test_database_schema.py`、`tests/test_database_production.py`、
   `tests/test_database_integration.py`；
-- 命令：`python -m action_tracker db-status`；当前 runtime 为 V2 PRIMARY，products/lifecycle 各 6,046 条；
+- 命令：`python -m action_tracker db-status`；当前 runtime 为 V2 PRIMARY，products 8,680 条、lifecycle 6,046 条；
 - 正式旧 V1 镜像已保存在上述备份目录，可用于回滚，不再作为运行时主库。

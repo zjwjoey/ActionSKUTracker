@@ -11,7 +11,7 @@ Export Foundation V1 正式发布和 SQLite Production Source of Truth 接管纳
 - 不重写已经稳定的采集、Presence、生命周期和 QA 主链；
 - 新字典和 Export 通过独立模块接入；
 - 先冻结数据契约，再实现，再 dry-run，最后正式发布；
-- SQLite 和图片下载主链继续冻结；
+- SQLite PRIMARY 生产主链已冻结；图片下载保持独立 Enrichment/Asset Layer；
 - 每一步都区分“本地已实现”“已提交”“已发布”。
 
 ## 2. 已完成阶段
@@ -88,13 +88,13 @@ SQLite 生产接管已经纳入统一开发计划，执行顺序为：
 | Phase 3 | Schema V2、CommitBundle、事务 Writer | 已实现并有回归测试 |
 | Phase 4 | `SQLITE_SHADOW`，连续 3 次真实 parity | 已完成 3/3，三轮均 0 mismatch |
 | Phase 5 | DB Read Path，Excel 暂时继续写 | PRIMARY Read Repository 已实现 |
-| Phase 6 | Cutover Candidate、备份、回滚和重建验证 | 下一阶段，待执行 |
+| Phase 6 | Cutover Candidate、备份、回滚和重建验证 | 已完成 |
 | Phase 7 | `SQLITE_PRIMARY` 正式接管 | 已完成正式切换；首轮完整性与 parity PASS |
 | Phase 8 | Excel/CSV 降级为 Generated View | PRIMARY 已从 SQLite head 生成兼容投影；仍需长期运行观察 |
 | Phase 9 | Image Contracts、AssetRecord、目录和状态冻结 | 已实现 |
 | Phase 10 | Image Foundation：下载、标准化、QA、缓存、Derivative | 已实现并有 fixture 测试 |
-| Phase 11 | 20–50 SKU 真实图片切片 | 待开发 |
-| Phase 12 | Full CURRENT 增量图片同步和性能基线 | 待开发 |
+| Phase 11 | 20–50 SKU 真实图片切片 | P2 当前阶段 |
+| Phase 12 | Full CURRENT 增量图片同步和性能基线 | P2 待切片通过后执行 |
 | Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | ES/ZH 带图 Export 与 Template 1 中文嵌图均已实现 |
 
 当前生产配置已为 `SQLITE_PRIMARY`；Excel/CSV 作为由 SQLite head 生成的兼容投影。SQLite V2
@@ -110,6 +110,8 @@ feature gate 关闭；详见 `docs/knowledge/` 下的八份合同文档。第三
 
 图片也已纳入同一总计划；Contracts、增量同步、标准化、QA、Derivatives 和带图 Export 已在本地实现，
 真实全量图片同步/性能基线仍待执行，`image_assets` 元数据仅在 SQLite PRIMARY 配置下接入；Template 1 带图命令已可用。
+
+P0 Export Foundation 与 P1 SQLite Production 已进入冻结状态；后续只接受 BUG、SECURITY 或 DATA INTEGRITY 修复。
 
 ## 4. 后续阶段：STEP 7 + Template 1
 

@@ -6,6 +6,7 @@ bundle atomically.
 """
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import os
@@ -73,9 +74,10 @@ class ProductionWriter:
     enabled explicitly once cutover acceptance is complete.
     """
 
-    def __init__(self, path: Path, *, role: str = "SHADOW") -> None:
+    def __init__(self, path: Path, *, role: str = "SHADOW", localization_drop_threshold: float = 0.5) -> None:
         self.path = Path(path)
         self.role = role
+        self.localization_drop_threshold = float(localization_drop_threshold)
         if self.path.exists():
             try:
                 with sqlite3.connect(self.path) as raw:
@@ -106,6 +108,7 @@ class ProductionWriter:
                 raise ProductionDatabaseError("BASELINE_CHANGED_BEFORE_COMMIT")
             try:
                 db.execute("BEGIN IMMEDIATE")
+                self._validate_localization_coverage(db, bundle)
                 self._insert_run(db, bundle, now)
                 self._upsert_products(db, bundle.current_products, commit_id, now)
                 self._upsert_localizations(db, bundle.localization_updates, commit_id, now)
@@ -131,6 +134,49 @@ class ProductionWriter:
                 db.rollback()
                 raise
         return commit_id
+
+    def _validate_localization_coverage(self, db: sqlite3.Connection, bundle: CommitBundle) -> None:
+        """Reject catastrophic localization coverage loss before any write.
+
+        A compatibility projection bug can otherwise turn a complete baseline
+        into thousands of empty fields while Presence QA still passes.  This
+        compares the existing PRIMARY rows with the incoming bundle and only
+        blocks a material drop; ordinary single-SKU changes remain allowed.
+        """
+        current_skus = {
+            str(row.get("sku") or row.get("official_sku") or "").strip()
+            for row in bundle.current_products
+            if not row.get("_historical_minimal") and str(row.get("sku") or row.get("official_sku") or "").strip()
+        }
+        if not current_skus:
+            return
+        incoming: dict[tuple[str, str], dict[str, Any]] = {}
+        for row in bundle.localization_updates:
+            sku = str(row.get("sku") or row.get("official_sku") or "").strip()
+            language = str(row.get("language") or "zh").strip()
+            if sku in current_skus and language in {"es", "zh"}:
+                incoming[(sku, language)] = row
+        if not incoming:
+            return
+        existing_rows = db.execute(
+            "SELECT official_sku,language,cat1,cat2,spec,description,details "
+            "FROM product_localizations WHERE language IN ('es','zh')"
+        ).fetchall()
+        existing: dict[tuple[str, str], sqlite3.Row] = {
+            (str(row[0]), str(row[1])): row for row in existing_rows if str(row[0]) in current_skus
+        }
+        field_pairs = (("cat1", "cat1"), ("cat2", "cat2"), ("spec", "spec"),
+                       ("description", "description"), ("details", "details"))
+        for language in ("es", "zh"):
+            for db_field, incoming_field in field_pairs:
+                old_count = sum(1 for (sku, lang), row in existing.items()
+                                if lang == language and row[2 + field_pairs.index((db_field, incoming_field))] not in (None, ""))
+                new_count = sum(1 for (sku, lang), row in incoming.items()
+                                if lang == language and row.get(incoming_field) not in (None, ""))
+                if old_count and (old_count - new_count) / old_count > self.localization_drop_threshold:
+                    raise ProductionDatabaseError(
+                        f"DB_LOCALIZATION_COVERAGE_REGRESSION:{language}.{db_field}:{old_count}->{new_count}"
+                    )
 
     def _check_identity(self, db: sqlite3.Connection) -> None:
         values = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
@@ -344,6 +390,207 @@ def backup_database(source: Path, destination: Path) -> dict[str, Any]:
         raise ProductionDatabaseError("DB_BACKUP_INTEGRITY_FAILED")
     return {"source": str(source), "destination": str(destination), "integrity": "PASS",
             "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()}
+
+
+_LOCALIZATION_RESTORE_FIELDS = {
+    "es": {
+        "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es",
+        "description": "desc_es", "details": "details_es",
+    },
+    "zh": {
+        "cat1": "cat1_zh", "cat2": "cat2_zh", "spec": "spec_zh",
+        "description": "desc_zh", "details": "details_zh",
+    },
+}
+
+
+def repair_primary_localization_regression(
+    path: Path,
+    *,
+    trusted_snapshot: Path,
+    run_id: str,
+) -> dict[str, Any]:
+    """Repair a confirmed PRIMARY localization-loss incident atomically.
+
+    Only empty localization fields are restored from a trusted prior formal
+    snapshot.  Current listing facts and any detail values successfully fetched
+    in the affected run are left untouched.  The affected run's derived
+    ``CONTENT_CHANGE`` events are then rebuilt from the repaired records.
+    """
+    path = Path(path)
+    trusted_snapshot = Path(trusted_snapshot)
+    if not path.exists():
+        raise ProductionDatabaseError("DB_MISSING")
+    if not trusted_snapshot.exists():
+        raise ProductionDatabaseError("TRUSTED_SNAPSHOT_MISSING")
+
+    with trusted_snapshot.open("r", encoding="utf-8-sig", newline="") as handle:
+        snapshot_rows = {
+            str(row.get("sku") or "").strip(): row
+            for row in csv.DictReader(handle)
+            if str(row.get("sku") or "").strip()
+        }
+    if not snapshot_rows:
+        raise ProductionDatabaseError("TRUSTED_SNAPSHOT_EMPTY")
+
+    from ..services.hashing import content_hash, localization_source_hash
+
+    def present(value: Any) -> bool:
+        return value is not None and str(value).strip() != ""
+
+    restored: dict[str, int] = {"es": 0, "zh": 0}
+    restored_by_field: dict[str, int] = {
+        f"{language}.{field}": 0
+        for language, fields in _LOCALIZATION_RESTORE_FIELDS.items()
+        for field in fields
+    }
+    with connect(path) as db:
+        metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
+        if metadata.get("schema_family") != "ACTION_SQLITE_DATA" or metadata.get("database_role") != "PRIMARY":
+            raise ProductionDatabaseError("PRIMARY_V2_DATABASE_REQUIRED")
+        affected = [str(row[0]) for row in db.execute(
+            "SELECT official_sku FROM products WHERE status='CURRENT' ORDER BY official_sku"
+        )]
+        if not affected:
+            raise ProductionDatabaseError("PRIMARY_CURRENT_EMPTY")
+        missing_snapshot = sorted(set(affected) - set(snapshot_rows))
+        if missing_snapshot:
+            raise ProductionDatabaseError("TRUSTED_SNAPSHOT_SKU_MISMATCH")
+        commit_row = db.execute(
+            "SELECT commit_id,event_count FROM commit_batches WHERE run_id=?", (run_id,)
+        ).fetchone()
+        if commit_row is None:
+            raise ProductionDatabaseError("AFFECTED_RUN_COMMIT_MISSING")
+        event_count_before = int(commit_row[1] or 0)
+
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            for sku in affected:
+                source = snapshot_rows[sku]
+                for language, fields in _LOCALIZATION_RESTORE_FIELDS.items():
+                    row = db.execute(
+                        "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+                        "WHERE official_sku=? AND language=?", (sku, language)
+                    ).fetchone()
+                    if row is None:
+                        raise ProductionDatabaseError("PRIMARY_LOCALIZATION_ROW_MISSING")
+                    values = dict(row)
+                    changes: dict[str, Any] = {}
+                    for column, source_field in fields.items():
+                        candidate = source.get(source_field)
+                        if not present(values.get(column)) and present(candidate):
+                            changes[column] = candidate
+                            restored[language] += 1
+                            restored_by_field[f"{language}.{column}"] += 1
+                    if changes:
+                        assignments = ", ".join(f"{column}=?" for column in changes)
+                        db.execute(
+                            f"UPDATE product_localizations SET {assignments}, updated_at=CURRENT_TIMESTAMP "
+                            "WHERE official_sku=? AND language=?",
+                            (*changes.values(), sku, language),
+                        )
+
+            # The source hash is a contract over the ES fact fields, so it must
+            # be recomputed after a field-level recovery.  Both language rows
+            # share that ES fact hash.
+            es_rows = db.execute(
+                "SELECT p.official_sku,es.name,es.cat1,es.cat2,es.spec,es.description,es.details "
+                "FROM products p JOIN product_localizations es "
+                "ON es.official_sku=p.official_sku AND es.language='es' WHERE p.status='CURRENT'"
+            ).fetchall()
+            for row in es_rows:
+                fact = {
+                    "name_es": row[1], "cat1_es": row[2], "cat2_es": row[3], "spec_es": row[4],
+                    "desc_es": row[5], "details_es": row[6],
+                }
+                db.execute(
+                    "UPDATE product_localizations SET source_hash=? WHERE official_sku=? AND language IN ('es','zh')",
+                    (localization_source_hash(fact), row[0]),
+                )
+
+            # Rebuild only the derived content events for the affected run;
+            # price and badge events were computed from independent Listing
+            # evidence and are deliberately preserved.
+            deleted_events = db.execute(
+                "DELETE FROM event_history WHERE run_id=? AND event_type='CONTENT_CHANGE'", (run_id,)
+            ).rowcount
+            current_rows = db.execute(
+                """SELECT p.canonical_id,p.official_sku,p.name_es,p.product_url,p.image_url,
+                   es.name,es.cat1,es.cat2,es.spec,es.description,es.details
+                   FROM products p JOIN product_localizations es
+                   ON es.official_sku=p.official_sku AND es.language='es'
+                   WHERE p.status='CURRENT' ORDER BY p.official_sku"""
+            ).fetchall()
+            rebuilt_events = 0
+            for row in current_rows:
+                sku = str(row[1])
+                before = _snapshot_fact_record(snapshot_rows[sku])
+                after = {
+                    "name_es": row[5] or row[2], "cat1_es": row[6], "cat2_es": row[7],
+                    "spec_es": row[8], "desc_es": row[9], "details_es": row[10],
+                    "product_url": row[3], "image_url": row[4],
+                }
+                if content_hash(before) == content_hash(after):
+                    continue
+                event = {
+                    "canonical_id": row[0], "sku": sku, "date": _run_date(run_id),
+                    "event_type": "CONTENT_CHANGE", "old_value": content_hash(before)[:12],
+                    "new_value": content_hash(after)[:12], "evidence": run_id, "run_id": run_id,
+                }
+                key = _event_key(run_id, event, "event")
+                db.execute(
+                    "INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type,old_value,new_value,run_id,evidence,event_key) "
+                    "VALUES(?,?,?,?,?,?,?,?,?)",
+                    (event["canonical_id"], sku, event["date"], event["event_type"], event["old_value"],
+                     event["new_value"], run_id, event["evidence"], key),
+                )
+                rebuilt_events += 1
+
+            event_count_after = db.execute(
+                "SELECT COUNT(*) FROM event_history WHERE run_id=?", (run_id,)
+            ).fetchone()[0]
+            db.execute(
+                "UPDATE commit_batches SET event_count=? WHERE commit_id=?",
+                (event_count_after, commit_row[0]),
+            )
+
+            evidence = json.dumps({
+                "run_id": run_id, "trusted_snapshot": str(trusted_snapshot), "current_sku_count": len(affected),
+                "restored": restored, "restored_by_field": restored_by_field,
+                "content_events_deleted": deleted_events, "content_events_rebuilt": rebuilt_events,
+                "commit_event_count_before": event_count_before, "commit_event_count_after": event_count_after,
+            }, ensure_ascii=False, sort_keys=True)
+            db.execute(
+                "INSERT INTO migration_source_issues(source_name,issue_type,entity_id,details) VALUES(?,?,?,?)",
+                ("sqlite_primary_recovery", "LOCALIZATION_REGRESSION_REPAIRED", run_id, evidence),
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+    return {
+        "status": "REPAIRED", "run_id": run_id, "trusted_snapshot": str(trusted_snapshot),
+        "current_sku_count": len(affected), "restored": restored, "restored_by_field": restored_by_field,
+        "content_events_deleted": deleted_events, "content_events_rebuilt": rebuilt_events,
+        "commit_event_count_before": event_count_before, "commit_event_count_after": event_count_after,
+    }
+
+
+def _snapshot_fact_record(row: Mapping[str, Any]) -> dict[str, Any]:
+    """Map a normalized snapshot CSV row to the content-hash fact contract."""
+    return {
+        key: (row.get(key) or None)
+        for key in ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es", "product_url", "image_url")
+    }
+
+
+def _run_date(run_id: str) -> str:
+    value = str(run_id).split("_", 1)[0]
+    try:
+        datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise ProductionDatabaseError("RUN_ID_DATE_INVALID") from exc
+    return value
 
 
 def promote_database_role(path: Path, *, target_role: str = "PRIMARY") -> dict[str, str]:
