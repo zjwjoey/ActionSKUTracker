@@ -312,6 +312,25 @@ def test_minimal_historical_rows_do_not_clear_official_facts(tmp_path: Path):
         assert db.execute("SELECT status FROM products WHERE official_sku='1001'").fetchone()[0] == "MISSING"
 
 
+def test_absent_observation_keeps_offline_product_projection(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    first = _bundle(cfg, run_id="2026-08-30_010000")
+    commit_daily_bundle(cfg, first, mode="SQLITE_PRIMARY")
+    statuses = {"1001": _status("1001", "ABSENT", present=False)}
+    known = {"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "OFFLINE"}}
+    second = build_daily_bundle(
+        run_id="2026-08-31_010000", observation_date="2026-08-31", qa_state="PASS",
+        today_records={}, baseline={}, statuses=statuses, known=known,
+        transition={"known": {"1001": {**known["1001"], "current_status": "OFFLINE"}}, "offline": []},
+        today_set=set(), observation_complete=True,
+        price_events=[], event_events=[], review_rows=[], run_record={"dry_run": False}, snapshot_path=None,
+    )
+    commit_daily_bundle(cfg, second, mode="SQLITE_PRIMARY")
+    from action_tracker.database.connection import connect
+    with connect(cfg["storage"]["db_path"]) as db:
+        assert db.execute("SELECT status FROM products WHERE official_sku='1001'").fetchone()[0] == "OFFLINE"
+
+
 def test_primary_export_source_comes_from_sqlite_head(tmp_path: Path):
     cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
     record = {"sku": "1001", "canonical_id": "ACT0001001", "name_es": "Producto",

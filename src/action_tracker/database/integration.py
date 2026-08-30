@@ -103,7 +103,17 @@ def build_daily_bundle(
         source = dict(baseline.get(sku) or known.get(sku) or {})
         source.setdefault("sku", sku)
         source.setdefault("canonical_id", getattr(status, "canonical_id", f"ACT{sku.zfill(7)}"))
-        source["status"] = _product_status(getattr(status, "status", None), source.get("status"))
+        # The lifecycle transition is authoritative for historical identities.
+        # A post-OFFLINE absence is classified as ABSENT by the observation
+        # state machine (meaning "no new transition"), but the product
+        # projection must remain OFFLINE so CURRENT/export and operations
+        # health do not diverge from lifecycle_state.
+        lifecycle_row = transition_known.get(sku) or {}
+        source["status"] = _product_status(
+            lifecycle_row.get("current_status")
+            or getattr(status, "status", None),
+            source.get("status"),
+        )
         source["_historical_minimal"] = True
         product_by_sku[sku] = source
     # A known identity can be absent from the current status map in older
