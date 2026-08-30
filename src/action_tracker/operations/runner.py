@@ -54,9 +54,9 @@ class ProductionRunner:
                     result = raw if isinstance(raw, StepResult) else StepResult("SUCCESS", dict(raw or {}))
                 except Exception as exc:
                     result = StepResult("FAILED", {}, False, type(exc).__name__)
-                    errors.append({"step": step, "code": result.error_code, "message": str(exc), "retryable": result.retryable})
                 state["steps"][step].update({"status": result.status, "details": result.details, "retryable": result.retryable, "error_code": result.error_code, "finished_at": datetime.now().isoformat()})
                 if result.status in {"FAILED", "BLOCKED"}:
+                    errors.append({"step": step, "code": result.error_code or result.status, "message": str(result.details.get("error") or result.details.get("reason") or result.status), "retryable": result.retryable})
                     if step in NON_BLOCKING_STEPS and "DB_COMMIT" in state["steps"] and state["steps"]["DB_COMMIT"].get("status") == "SUCCESS":
                         state["state"] = RunState.DEGRADED.value
                     else:

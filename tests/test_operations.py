@@ -43,6 +43,7 @@ def test_export_failure_after_commit_is_degraded_and_resume_does_not_repeat_comm
         return StepResult("FAILED", error_code="EXPORT_FAILED") if calls["export"] == 1 else StepResult("SUCCESS")
     runner = ProductionRunner(root=tmp_path / "reports", business_date="2026-08-30", run_id="r1", steps=_steps(DB_COMMIT=commit, EXPORT=export), lock_dir=tmp_path / "locks")
     first = runner.run(); assert first["state"] == "DEGRADED" and calls["commit"] == 1
+    assert any(error["code"] == "EXPORT_FAILED" for error in first["errors"])
     second = runner.run(resume=True); assert second["state"] == "SUCCESS" and calls["commit"] == 1 and calls["export"] == 2
 
 
