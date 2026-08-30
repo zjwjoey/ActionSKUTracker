@@ -45,6 +45,10 @@
 随后第 1 轮真实隔离 Shadow（`2026-08-30_031120`）已通过：QA/FULL_COMMIT、SQLite COMMITTED、
 兼容导出同步 SUCCESS，CURRENT 与 lifecycle parity 均为 0 mismatch，计为 Shadow 1/3。
 
+第 2 轮真实隔离 Shadow（`2026-08-30_042701`）也已通过：QA/FULL_COMMIT、SQLite COMMITTED、
+兼容导出同步 SUCCESS，CURRENT 与 lifecycle parity 均为 0 mismatch，计为 Shadow 2/3。
+两轮均使用独立临时 Master/State/SQLite，未修改生产文件。
+
 ## 3. 正式 Excel 输出验收
 
 使用正式 run `2026-08-29_184646`（QA PASS、FULL_COMMIT）生成并核验：
@@ -77,6 +81,6 @@
 
 1. 备份 Master、State 和旧 runtime 数据库；
 2. 对正式目标库执行 `db-migrate-baseline`；
-3. 再完成 2 轮（累计 3 轮）`SQLITE_SHADOW` 真实 run，要求每轮 parity 均为 0 mismatch；
+3. 再完成 1 轮（累计 3 轮）`SQLITE_SHADOW` 真实 run，要求每轮 parity 均为 0 mismatch；
 4. 完成恢复/回滚演练后，才显式 `db-promote-primary` 与修改 `storage.mode`；
 5. 执行正式图片的切片、全量同步和性能基线，再补视觉抽检。
