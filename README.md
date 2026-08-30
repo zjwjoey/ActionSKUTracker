@@ -15,7 +15,7 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 - ES/ZH 两个独立无图导出，以及 Template 1 三表无图导出；
 - ES/ZH 带图导出（只读取本地 250×250 白底衍生图，缺图保留 SKU）；
 - 图片资产增量同步、断点 Manifest、标准化和质量状态；
-- SQLite V2 事务 Writer、PRIMARY 只读 Repository、Shadow/Primary 模式接线（默认仍为 Excel 主链）；
+- SQLite V2 事务 Writer、PRIMARY 只读 Repository、Shadow/Primary 模式接线（当前正式主链为 SQLite PRIMARY）；
 - AI-Free 字典覆盖率、字段级 Resolver、Dictionary Apply 预览与正式 Gate（生产写入默认关闭）、统一审核队列和术语候选。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
@@ -127,7 +127,7 @@ python -m action_tracker export-template1 --date YYYY-MM-DD --with-images
 # 图片同步（只针对正式 CURRENT 的 image_url）
 python -m action_tracker image-sync --date YYYY-MM-DD
 python -m action_tracker image-status
-# SQLite 状态、完整性和兼容导出确认
+# SQLite 状态、完整性和兼容导出确认（SQLite PRIMARY）
 python -m action_tracker db-status
 python -m action_tracker db-validate-production
 python -m action_tracker sync-exports
@@ -163,7 +163,8 @@ python -m action_tracker export-history --date YYYY-MM-DD
 - 不绕过 CAPTCHA、Cloudflare 或其他网站安全机制；
 - 不每天全量抓详情、全量翻译或全量下载图片；
 - 不使用 Sitemap-only SKU 冒充当日有效在售商品；
-- 当前 `storage.mode: EXCEL_PRIMARY`，SQLite 不自动接管生产；切换前必须完成基线迁移、Shadow 对账和回滚验收。
+- 当前 `storage.mode: SQLITE_PRIMARY`；SQLite 保存 Product/Lifecycle Structured Truth，Excel/CSV 是由 SQLite HEAD 生成的兼容投影。
+- SQLite PRIMARY 提交前包含本地化覆盖率防回退门禁；经审计确认的数据回退只能使用 `db-repair-localization-regression` 定向恢复。
 
 开发和提交规则见 [AGENTS.md](AGENTS.md)。
 

@@ -2,7 +2,7 @@
 
 更新日期：2026-08-30
 项目目录：`F:\ActionSKUTracker`
-当前分支：`feat/export-foundation-v1`
+当前分支：`fix/p0-p1-final-closure`（基于 `origin/main=dd0fa61`，带入 `bcb8709` hotfix）
 
 ## 1. 生产主链边界
 
@@ -80,11 +80,11 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
   `runtime/backups/formal_cutover_20260830_120733`。三轮隔离 `SQLITE_SHADOW` 均为 parity 0，
   正式切换后的数据库校验也通过。
 - 图片：`image-sync` 支持低并发、超时、指数退避、staging 原子 promotion、Manifest checkpoint、
-  失败隔离和 SQLite PRIMARY 元数据镜像；当前配置不自动下载图片，Manifest 为空属于当前运行状态。
+  失败隔离和 SQLite PRIMARY 元数据镜像；当前配置不自动下载图片，真实全量同步与性能验收属于 P2。
 
 ## 7. 测试与 CI
 
-当前完整回归：`283 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+当前完整回归：`293 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
 
@@ -105,8 +105,7 @@ SOURCE_BLOCKED 排除、候选 Validator、字段级 Auto-Approval Shadow，以�
    `review_closure_report.csv` 与 `source_blocked_review.csv`，不使用中文反推西语。
 3. 图片尚未进入自动 daily 主链；需要基于正式 CURRENT 单独运行 `image-sync`，再运行带图 Export。
    当前已完成 fixture/结构验收，真实全量图片性能基线仍待执行。
-4. 工作区仍有此前 Template 1 与字典功能的待提交改动，提交时必须按功能拆分，不能混入
-   runtime、报告、图片或密钥。
+4. P0/P1 已冻结；后续只接受 BUG、SECURITY 或 DATA INTEGRITY 修复，不再进行架构重写。
 
 SQLite Production Source of Truth 的完整阶段计划（Contracts → Writer → Shadow → Read →
 Cutover → PRIMARY）见 `docs/MASTER_DEVELOPMENT_PLAN.md`；当前完成了 Writer、接线、Read

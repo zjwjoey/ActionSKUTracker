@@ -2,7 +2,7 @@
 
 **审计日期：** 2026-08-30  
 **仓库：** `F:\ActionSKUTracker`  
-**分支：** `feat/export-foundation-v1`  
+**分支：** `fix/p0-p1-final-closure`（Stage A 收口分支）
 **审计范围：** SQLite PRIMARY 正式切换、数据完整性、恢复、兼容导出和旧写入器封锁。未启用图片、翻译、Scoped Dictionary 或 Knowledge Production。
 
 ## 结论摘要
@@ -68,7 +68,7 @@ SQLite Backup API 已加入 `backup_database()`，并实际生成：
 - `baseline.build_baseline()`、旧 Master writer、详情回写和 Dictionary Apply 通过旧 writer 入口时，在 `SQLITE_PRIMARY` 下拒绝；兼容导出使用显式 projection 标记。
 - `known_skus.csv` 仅为 SQLite lifecycle 的兼容视图；`offline_skus.csv` 由 lifecycle 派生。
 - `images.enabled=false`、`dictionary_apply.production_enabled=false`、`knowledge.production_apply_enabled=false`、`scoped_dictionary.enabled=false`、`translation.ai_enabled=false`、`translation.auto_approval_enabled=false`。
-- PRIMARY 下再次执行 `db-cutover-check` 会安全返回 `CUTOVER_CONFIG_MUST_REMAIN_EXCEL_PRIMARY`，不会重复切换。
+- PRIMARY 下再次执行 `db-cutover-check` 会安全拒绝重复切换（配置已是 `SQLITE_PRIMARY`），不会改变数据库。
 
 ## Findings
 
@@ -93,7 +93,7 @@ SQLite Backup API 已加入 `backup_database()`，并实际生成：
 ## 测试与提交
 
 - targeted database/lifecycle/export tests：84 passed。
-- full regression：295 passed，0 failed，0 error。
+- 原切换验收 full regression：295 passed，0 failed，0 error；Stage A 分支当前完整回归：293 passed，0 failed，0 error。
 - 审计相关修改对应的 GitHub Actions run `33293801264` 已完成且 success；未执行 main merge。
 
 ## Final Verdict
