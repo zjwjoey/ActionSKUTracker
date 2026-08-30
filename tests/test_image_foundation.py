@@ -139,6 +139,11 @@ def test_derivative_cache_rebuilds_when_master_changes(tmp_path: Path):
     assert metadata.exists()
     service.excel_250(master, "1001")
     assert output.stat().st_mtime_ns == first_mtime
+    output.write_bytes(b"corrupt")
+    service.excel_250(master, "1001")
+    with Image.open(output) as repaired:
+        assert repaired.format == "PNG"
+        assert repaired.size == (250, 250)
     Image.open(BytesIO(_png((60, 60), (200, 10, 10, 255)))).save(master)
     service.excel_250(master, "1001")
     assert output.stat().st_mtime_ns >= first_mtime

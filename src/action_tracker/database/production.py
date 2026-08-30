@@ -423,6 +423,27 @@ def repair_primary_localization_regression(
         raise ProductionDatabaseError("DB_MISSING")
     if not trusted_snapshot.exists():
         raise ProductionDatabaseError("TRUSTED_SNAPSHOT_MISSING")
+    if trusted_snapshot.name != "products_normalized.csv":
+        raise ProductionDatabaseError("TRUSTED_SNAPSHOT_NOT_FORMAL")
+
+    # A filename alone is not evidence that the CSV came from a completed
+    # formal run. Require the sibling run/QA reports and bind their identity to
+    # the snapshot directory before allowing any PRIMARY mutation.
+    report_path = trusted_snapshot.parent / "run_report.json"
+    qa_path = trusted_snapshot.parent / "qa_report.json"
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        qa = json.loads(qa_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ProductionDatabaseError("TRUSTED_SNAPSHOT_EVIDENCE_MISSING") from exc
+    if not isinstance(report, dict) or not isinstance(qa, dict):
+        raise ProductionDatabaseError("TRUSTED_SNAPSHOT_EVIDENCE_INVALID")
+    if (str(report.get("run_id") or "") != trusted_snapshot.parent.name
+            or str(report.get("commit_status") or "") != "FULL_COMMIT"
+            or bool(report.get("dry_run"))
+            or qa.get("passed") is not True
+            or qa.get("state") not in {"PASS", "PASS_PRESENCE_ONLY"}):
+        raise ProductionDatabaseError("TRUSTED_SNAPSHOT_NOT_FORMAL")
 
     with trusted_snapshot.open("r", encoding="utf-8-sig", newline="") as handle:
         snapshot_rows = {
@@ -446,7 +467,9 @@ def repair_primary_localization_regression(
     }
     with connect(path) as db:
         metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
-        if metadata.get("schema_family") != "ACTION_SQLITE_DATA" or metadata.get("database_role") != "PRIMARY":
+        if (metadata.get("schema_family") != "ACTION_SQLITE_DATA"
+                or metadata.get("schema_version") != "2.0.0"
+                or metadata.get("database_role") != "PRIMARY"):
             raise ProductionDatabaseError("PRIMARY_V2_DATABASE_REQUIRED")
         affected = [str(row[0]) for row in db.execute(
             "SELECT official_sku FROM products WHERE status='CURRENT' ORDER BY official_sku"

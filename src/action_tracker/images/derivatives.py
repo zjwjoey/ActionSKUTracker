@@ -4,7 +4,22 @@ import hashlib
 import json
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+
+
+def _valid_excel_derivative(path: Path) -> bool:
+    """Return whether a cached derivative is a complete expected PNG."""
+    try:
+        with Image.open(path) as image:
+            image.load()
+            return (
+                image.format == "PNG"
+                and image.size == (250, 250)
+                and image.mode == "RGB"
+                and path.stat().st_size > 64
+            )
+    except (OSError, UnidentifiedImageError):
+        return False
 
 
 class ImageDerivativeService:
@@ -23,7 +38,7 @@ class ImageDerivativeService:
         if target.exists() and metadata.exists():
             try:
                 cached = json.loads(metadata.read_text(encoding="utf-8"))
-                if cached.get("cache_key") == cache_key:
+                if cached.get("cache_key") == cache_key and _valid_excel_derivative(target):
                     return target
             except (OSError, ValueError, TypeError):
                 pass
