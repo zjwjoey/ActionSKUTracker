@@ -92,6 +92,11 @@ def _persist_fatal_run_evidence(cfg: dict[str, Any], context: dict, error: BaseE
 
 def _finalized_run(fn):
     def wrapped(cfg: dict[str, Any], dry_run: bool = True, **kwargs):
+        # The production operations wrapper owns the process lock while it
+        # delegates to this established business chain.  Keep the default
+        # lock behavior for direct daily-run callers, but allow one explicit
+        # internal hand-off to avoid nested self-locking.
+        skip_lock = bool(kwargs.pop("_skip_lock", False))
         start_dt = madrid_now()
         run_date = observation_date()
         run_id = f"{run_date}_{start_dt.strftime('%H%M%S')}"
@@ -99,7 +104,8 @@ def _finalized_run(fn):
         lock = RunLock(paths["state"], stale_minutes=cfg["run"].get("lock_stale_minutes", 180))
         context = {"run_id": run_id, "run_date": run_date, "started_at": start_dt.isoformat(),
                    "dry_run": dry_run, "snap_dir": paths["snapshots"] / run_date / run_id}
-        lock.acquire(run_id, command="daily-run --dry-run" if dry_run else "daily-run")
+        if not skip_lock:
+            lock.acquire(run_id, command="daily-run --dry-run" if dry_run else "daily-run")
         context["snap_dir"].mkdir(parents=True, exist_ok=True)
         result = None
         try:
@@ -108,7 +114,8 @@ def _finalized_run(fn):
             _persist_fatal_run_evidence(cfg, context, error)
             raise
         finally:
-            lock.release()
+            if not skip_lock:
+                lock.release()
             # The report is written before finally so it can survive cleanup
             # failures; now record the verified lock outcome independently.
             if result and result.get("run_report"):

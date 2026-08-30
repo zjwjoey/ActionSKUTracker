@@ -155,6 +155,14 @@ CREATE TABLE IF NOT EXISTS image_assets (
  error_type TEXT,
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
+CREATE TABLE IF NOT EXISTS operations_actions (
+ action_id TEXT PRIMARY KEY,
+ action TEXT NOT NULL,
+ target_run_id TEXT,
+ parameters_json TEXT NOT NULL,
+ result_json TEXT NOT NULL,
+ created_at TEXT NOT NULL
+);
 CREATE VIEW IF NOT EXISTS events AS
  SELECT id,canonical_id,official_sku,occurred_at,event_type,old_value,new_value,run_id,evidence,event_key
  FROM event_history;

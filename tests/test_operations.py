@@ -65,3 +65,5 @@ def test_operations_service_is_read_model_and_health(tmp_path: Path):
     assert service.health()["state"] == "HEALTHY"
     assert service.safe_action("retry-export-sync")["status"] == "CONFIRMATION_REQUIRED"
     assert service.safe_action("retry-export-sync", confirmed=True)["status"] == "READY"
+    with connect(db) as conn:
+        assert conn.execute("SELECT count(*) FROM operations_actions").fetchone()[0] == 1

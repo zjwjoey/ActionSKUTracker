@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import shutil
+import hashlib
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +17,8 @@ class OperationsService:
         self.db_path = Path(db_path); self.reports_root = Path(reports_root or self.db_path.parent.parent / "reports" / "daily"); self.lock_path = Path(lock_path or self.db_path.parent.parent / "state" / "daily-run.lock"); self.config = config or {}
 
     def system_status(self) -> dict[str, Any]:
+        if not self.db_path.exists():
+            return {"state": "UNHEALTHY", "current_sku": 0, "database": {"exists": False, "path": str(self.db_path)}, "reviews_open": 0, "translation_queue_pending": 0, "translation_candidates": 0, "images": {}, "active_lock": self.lock_path.exists()}
         status = database_status(self.db_path)
         with connect(self.db_path) as db:
             current = db.execute("SELECT count(*) FROM products WHERE status='CURRENT'").fetchone()[0]
@@ -27,17 +31,20 @@ class OperationsService:
         return {"state": state, "current_sku": current, "database": status, "reviews_open": reviews, "translation_queue_pending": queue, "translation_candidates": candidates, "images": images, "active_lock": self.lock_path.exists()}
 
     def latest_run(self) -> dict[str, Any] | None:
+        if not self.db_path.exists(): return None
         with connect(self.db_path) as db:
             row = db.execute("SELECT run_id,run_date,status,qa_state,dry_run,started_at,ended_at FROM runs ORDER BY started_at DESC LIMIT 1").fetchone()
         return dict(row) if row else None
 
     def run_history(self, limit: int = 30) -> list[dict[str, Any]]:
+        if not self.db_path.exists(): return []
         with connect(self.db_path) as db:
             rows = db.execute("SELECT run_id,run_date,status,qa_state,dry_run,started_at,ended_at FROM runs ORDER BY started_at DESC LIMIT ?", (max(1, min(int(limit), 90)),)).fetchall()
         return [dict(row) for row in rows]
 
     def run_detail(self, run_id: str) -> dict[str, Any]:
         result = {"run_id": run_id, "database": None, "artifacts": {}}
+        if not self.db_path.exists(): return result
         with connect(self.db_path) as db:
             row = db.execute("SELECT * FROM runs WHERE run_id=?", (run_id,)).fetchone()
             if row: result["database"] = dict(row)
@@ -48,6 +55,7 @@ class OperationsService:
         return result
 
     def data_quality(self) -> dict[str, Any]:
+        if not self.db_path.exists(): return {"current": 0, "duplicate_sku": 0, "invalid_price": 0, "missing_product_url": 0, "presence_unknown": 0, "lifecycle_exceptions": 0, "integrity": "missing", "foreign_key_errors": 0}
         with connect(self.db_path) as db:
             return {"current": db.execute("SELECT count(*) FROM products WHERE status='CURRENT'").fetchone()[0],
                     "duplicate_sku": db.execute("SELECT count(*)-count(DISTINCT official_sku) FROM products").fetchone()[0],
@@ -58,6 +66,7 @@ class OperationsService:
                     "integrity": db.execute("PRAGMA integrity_check").fetchone()[0], "foreign_key_errors": len(db.execute("PRAGMA foreign_key_check").fetchall())}
 
     def export_status(self) -> dict[str, Any]:
+        if not self.db_path.exists(): return {"statuses": {}, "error": "DB_MISSING"}
         with connect(self.db_path) as db:
             rows = db.execute("SELECT status,count(*) FROM export_sync GROUP BY status").fetchall()
         return {"statuses": {str(row[0]): row[1] for row in rows}}
@@ -81,4 +90,10 @@ class OperationsService:
         if not confirmed: return {"status": "CONFIRMATION_REQUIRED", "action": action, "command": allowed[action]}
         # V1 does not execute writes from the read-only console; operators use
         # the existing CLI contract after seeing the confirmation prompt.
-        return {"status": "READY", "action": action, "command": allowed[action], "run_id": run_id}
+        result = {"status": "READY", "action": action, "command": allowed[action], "run_id": run_id}
+        action_id = hashlib.sha256(json.dumps([action, run_id, result], sort_keys=True).encode()).hexdigest()
+        with connect(self.db_path) as db:
+            db.execute("INSERT OR REPLACE INTO operations_actions(action_id,action,target_run_id,parameters_json,result_json,created_at) VALUES(?,?,?,?,?,?)",
+                       (action_id, action, run_id, json.dumps({"confirmed": True}, ensure_ascii=False), json.dumps(result, ensure_ascii=False), datetime.now(timezone.utc).isoformat()))
+        result["action_id"] = action_id
+        return result

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 import uuid
 from datetime import datetime
 from typing import Any
@@ -24,6 +25,17 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
         if existing:
             run_id = existing[0].parent.name
     run_id = run_id or f"{business_date}_{datetime.now().strftime('%H%M%S')}_{uuid.uuid4().hex[:6]}"
+    delegated: dict[str, Any] = {}
+    if resume:
+        prior_state = report_root / business_date / str(run_id) / "state.json"
+        if prior_state.exists():
+            try:
+                prior = json.loads(prior_state.read_text(encoding="utf-8"))
+                details = prior.get("steps", {}).get("COLLECTION", {}).get("details", {})
+                if details.get("delegated_run_id"):
+                    delegated["result"] = {"run_id": details["delegated_run_id"], "commit_status": details.get("commit_status", "")}
+            except (OSError, json.JSONDecodeError):
+                pass
     def collect_existing_chain() -> StepResult:
         if no_network:
             return StepResult("BLOCKED", {"reason": "NETWORK_DISABLED"})
@@ -31,25 +43,58 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
         # business chain. Operations wraps it; it never creates a second
         # crawler or product writer.
         from ..orchestrator.daily import run_daily
-        result = run_daily(cfg, dry_run=dry_run, fetch_details=True)
+        result = run_daily(cfg, dry_run=dry_run, fetch_details=True, _skip_lock=True)
+        delegated["result"] = result
         qa = result.get("qa") or {}
         commit_status = str(result.get("commit_status") or "")
         if not bool(qa.get("passed")) and not dry_run:
             return StepResult("BLOCKED", {"delegated_run_id": result.get("run_id"), "commit_status": commit_status, "qa": qa})
-        return StepResult("SUCCESS", {"delegated_run_id": result.get("run_id"), "commit_status": commit_status, "qa": qa})
+        return StepResult("SUCCESS", {"delegated": True, "delegated_run_id": result.get("run_id"), "commit_status": commit_status, "qa": qa})
+
+    def delegated_run_id() -> str | None:
+        result = delegated.get("result") or {}
+        return str(result.get("run_id") or "") or None
+
+    def image_step() -> StepResult:
+        if not bool((cfg.get("run") or {}).get("image_download_enabled", False)):
+            return StepResult("SKIPPED", {"reason": "IMAGE_SYNC_DISABLED", "optional": True})
+        rid = delegated_run_id()
+        if not rid or dry_run:
+            return StepResult("SKIPPED", {"reason": "NO_FORMAL_COMMIT", "optional": True})
+        from ..images.service import sync_formal_current
+        result = sync_formal_current(cfg, export_date=business_date, run_id=rid)
+        failed = int(result.get("download_failed_count", 0) or result.get("derivative_failed_count", 0) or 0)
+        return StepResult("FAILED" if failed else "SUCCESS", result, retryable=bool(failed), error_code="IMAGE_SYNC_FAILED" if failed else None)
+
+    def knowledge_step() -> StepResult:
+        rid = delegated_run_id()
+        if not rid or dry_run:
+            return StepResult("SKIPPED", {"reason": "NO_FORMAL_COMMIT", "optional": True})
+        from ..dictionary_enrichment import enrich_dictionary
+        try:
+            return StepResult("SUCCESS", enrich_dictionary(cfg, run_id=rid))
+        except Exception as exc:
+            return StepResult("FAILED", {}, retryable=False, error_code=type(exc).__name__)
+
+    def review_step() -> StepResult:
+        rid = delegated_run_id()
+        if not rid or dry_run:
+            return StepResult("SKIPPED", {"reason": "NO_FORMAL_COMMIT", "optional": True})
+        from ..review_queue import build_review_queue
+        return StepResult("SUCCESS", build_review_queue(cfg, run_id=rid))
 
     steps: dict[str, Any] = {
         "PREFLIGHT": lambda: StepResult("SUCCESS", {"database": validate_production_database(db), "code_version": git_commit_info()}),
         "BACKUP": lambda: StepResult("SUCCESS", backup_sqlite(db, Path(cfg["paths"]["backups"]) / business_date / f"{run_id}.sqlite3", run_id=run_id, code_version=git_commit_info())),
         "COLLECTION": collect_existing_chain,
-        "QA": lambda: StepResult("SKIPPED", {"reason": "included in delegated daily-run chain"}),
-        "DB_COMMIT": lambda: StepResult("SKIPPED", {"reason": "included in delegated daily-run chain"}),
-        "EXPORT": lambda: StepResult("SKIPPED", {"reason": "compatibility export handled by delegated chain"}),
-        "IMAGE": lambda: StepResult("SKIPPED", {"reason": "explicit image-sync remains separate"}),
-        "KNOWLEDGE": lambda: StepResult("SKIPPED", {"reason": "queue-only knowledge stage remains gated"}),
+        "QA": lambda: StepResult("SUCCESS", {"delegated": True, "reason": "included in delegated daily-run chain"}),
+        "DB_COMMIT": lambda: StepResult("SUCCESS", {"delegated": True, "reason": "included in delegated daily-run chain"}),
+        "EXPORT": lambda: StepResult("SUCCESS", {"delegated": True, "reason": "compatibility export handled by delegated chain"}),
+        "IMAGE": image_step,
+        "KNOWLEDGE": knowledge_step,
         "AI": lambda: StepResult("SKIPPED", {"reason": "AI_DISABLED"}),
         "AUTO_APPROVAL": lambda: StepResult("SKIPPED", {"reason": "AUTO_APPROVAL_DISABLED"}),
-        "REVIEW": lambda: StepResult("SKIPPED", {"reason": "review queue is read-only aggregation"}),
+        "REVIEW": review_step,
         "REPORT": lambda: StepResult("SUCCESS"),
     }
     runner = ProductionRunner(root=root, business_date=business_date, run_id=run_id, steps=steps, lock_dir=Path(cfg["paths"]["state"]))

@@ -47,6 +47,19 @@ class RunLock:
             self.path.unlink(missing_ok=True)
             self.acquired = False
 
+    def heartbeat(self) -> None:
+        """Refresh the lock lease without changing its owner identity."""
+        if not self.acquired or not self.path.exists():
+            return
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+        except Exception:
+            data = {"run_id": "unknown", "pid": os.getpid(), "hostname": socket.gethostname()}
+        data["heartbeat_at"] = datetime.now().isoformat()
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data), encoding="utf-8")
+        tmp.replace(self.path)
+
     def _reclaim_stale(self) -> None:
         if not self.path.exists():
             return

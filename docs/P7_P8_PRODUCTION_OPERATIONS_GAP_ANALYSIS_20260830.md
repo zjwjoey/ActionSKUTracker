@@ -13,8 +13,8 @@ Baseline: `main` `83e86ba`; P0–P6 regression 309 passed; SQLite PRIMARY integr
 | P8 read model | `status`, `db-status`, image/QA commands existed | Added `OperationsService` aggregating actual SQLite/runtime data | CLOSED |
 | P8 CLI | No unified ops namespace | Added `ops status/health/runs/run/serve` | CLOSED |
 | P8 dashboard | No control center | Added minimal stdlib localhost-only JSON dashboard service; no React/Vue/Node | CLOSED |
-| P8 safe actions | No common action contract | Added confirmation-only action gateway returning existing CLI commands; no direct product updates | CLOSED |
+| P8 safe actions | No common action contract | Added confirmation-only action gateway returning existing CLI commands plus `operations_actions` audit rows; no direct product updates | CLOSED |
 | P8 health | DB validation existed | Added DB/FK/disk/writable/lock/export health aggregation | CLOSED |
 | Failure injection | Existing P0–P6 tests | Added duplicate lock, collection stop, export degraded/resume and read-parity fixture tests | CLOSED |
 
-P7/P8 code is fixture-safe and does not enable a real Scheduler automatically. A real full production run and three-run Scheduler shadow period remain operational rollout steps, not claims of this code-only acceptance.
+P7/P8 code is fixture-safe and does not enable a real Scheduler automatically. The production entry now holds one outer lock and delegates the established `run_daily` chain with an explicit internal lock hand-off; it no longer self-deadlocks. A real full production run and three-run Scheduler shadow period remain operational rollout steps, not claims of this code-only acceptance.

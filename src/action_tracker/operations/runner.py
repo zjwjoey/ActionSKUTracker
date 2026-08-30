@@ -34,7 +34,7 @@ class ProductionRunner:
             raise ValueError("UNKNOWN_FROM_STEP")
         self.run_dir.mkdir(parents=True, exist_ok=True)
         state = self._load_state() if resume else self._new_state()
-        if resume and state.get("state") in {RunState.SUCCESS.value, RunState.FAILED.value}:
+        if resume and state.get("state") == RunState.SUCCESS.value:
             return state
         self.lock.acquire(self.run_id, command="production-run")
         errors = list(state.get("errors", [])); started = state.get("started_at") or datetime.now().isoformat()
@@ -46,6 +46,7 @@ class ProductionRunner:
                 previous = state["steps"].get(step)
                 if resume and previous and previous.get("status") == "SUCCESS": continue
                 state["state"] = RunState.PREFLIGHT.value if step == "PREFLIGHT" else RunState.RUNNING.value
+                self.lock.heartbeat()
                 state["steps"][step] = {"status": "RUNNING", "started_at": datetime.now().isoformat()}
                 self._save(state)
                 try:
