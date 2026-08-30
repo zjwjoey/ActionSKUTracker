@@ -2,7 +2,8 @@
 
 更新日期：2026-08-30
 项目目录：`F:\ActionSKUTracker`
-当前分支：`fix/p0-p1-final-closure`（基于 `origin/main=dd0fa61`，带入 `bcb8709` hotfix）
+当前收口基线：`fix/p0-p1-final-closure`（`origin/main=dd0fa61` + `bcb8709` hotfix）；
+当前 P2 分支：`feat/image-foundation-v1`（HEAD `1ba4e78`）。
 
 ## 1. 生产主链边界
 
@@ -80,11 +81,12 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
   `runtime/backups/formal_cutover_20260830_120733`。三轮隔离 `SQLITE_SHADOW` 均为 parity 0，
   正式切换后的数据库校验也通过。
 - 图片：`image-sync` 支持低并发、超时、指数退避、staging 原子 promotion、Manifest checkpoint、
-  失败隔离和 SQLite PRIMARY 元数据镜像；当前配置不自动下载图片，真实全量同步与性能验收属于 P2。
+  失败隔离和 SQLite PRIMARY 元数据镜像；2026-08-30 已完成 5,396 CURRENT 全量同步，全部 AVAILABLE，
+  并完成 ES/ZH/Template1 带图导出验收。
 
 ## 7. 测试与 CI
 
-当前完整回归：`293 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+当前 P2 分支完整回归：`297 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
 
@@ -103,12 +105,13 @@ SOURCE_BLOCKED 排除、候选 Validator、字段级 Auto-Approval Shadow，以�
 1. Dictionary Apply 正式写 Master 尚未启用；Gate 已完整实现，但生产配置仍关闭。
 2. 74 个 Review Required 和 7 个 Source Blocked 需要人工/可信西语证据处理；已分别生成
    `review_closure_report.csv` 与 `source_blocked_review.csv`，不使用中文反推西语。
-3. 图片尚未进入自动 daily 主链；需要基于正式 CURRENT 单独运行 `image-sync`，再运行带图 Export。
-   当前已完成 fixture/结构验收，真实全量图片性能基线仍待执行。
+3. 图片仍不自动进入 daily 主链（`images.enabled=false`）；正式 CURRENT 的独立同步、带图导出和性能基线
+   已完成，后续按需单独运行 `image-sync`。
 4. P0/P1 已冻结；后续只接受 BUG、SECURITY 或 DATA INTEGRITY 修复，不再进行架构重写。
 
 SQLite Production Source of Truth 的完整阶段计划（Contracts → Writer → Shadow → Read →
 Cutover → PRIMARY）见 `docs/MASTER_DEVELOPMENT_PLAN.md`；当前完成了 Writer、接线、Read
 Repository、三轮真实 Shadow 对账以及隔离副本的迁移/备份/恢复/Primary 演练，下一步是正式切换窗口评审。
 Image Foundation 的 Phase 9–13（Contracts → Foundation → Slice → Full Sync → With-Images Export）
-已完成 Contracts、Foundation、ES/ZH With-Images Export 和 Template 1 中文嵌图实现，真实全量同步/性能基线待执行。
+已完成真实切片、100/500/1000/FULL 增量同步、SQLite image_assets 镜像、ES/ZH With-Images Export、
+Template 1 中文嵌图和 parity 验收；详见 `docs/P2_IMAGE_FOUNDATION_FINAL_ACCEPTANCE_20260830.md`。

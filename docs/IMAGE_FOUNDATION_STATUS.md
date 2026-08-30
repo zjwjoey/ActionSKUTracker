@@ -23,18 +23,23 @@
 
 ## 真实验收现状
 
-2026-08-29 正式 run `2026-08-29_184646` 已生成 ES/ZH 无图和带图四份导出：
+2026-08-30 正式 SQLite CURRENT（run `2026-08-30_074743`）已完成 P2 全量验收：
 
-- 每份 5,396 个 SKU；
-- 表头 14 列、冻结首行 `A2`、筛选范围 `A1:N5397`；
-- 当前本地图片 Manifest 为空，因此带图版本为 `embedded=0 / missing=5396`，这是缺少本地图片资产的真实结果，不是删除 SKU。
+- CURRENT 5,396 个 SKU；Manifest 5,396 条，全部 `AVAILABLE`；
+- 全量下载 4,396、从分级阶段复用 1,000，0 缺 URL、0 失败；
+- 源图实际解码均为 WEBP 1080×1080；master 为 PNG，derivative 为 250×250 RGB 白底；
+- ES/ZH 无图与带图导出各 5,396 SKU，带图各嵌入 5,396 张；Template 1 今日中文清单嵌入 5,396 张；
+- 带图/无图 SKU 集合与业务事实 parity 均为 0 mismatch；
+- SQLite `image_assets` 已镜像 5,396 条元数据，不存图片 BLOB；
+- 所有工作簿已 reopen 验证，冻结首行、筛选范围和图片对象数正常。
 
-## 尚待执行
+## 验收结论
 
-- 对正式 CURRENT 做一次 20–50 SKU 真实图片切片；
-- 再执行 50、500、1000、FULL 规模性能基线；
-- 确认图片源 URL 可访问后运行 `image-sync --date YYYY-MM-DD`，再生成带图导出。
-- Template 1 带图命令：`python -m action_tracker export-template1 --date YYYY-MM-DD --with-images`。
+- 20–50、100、500、1000、FULL 切片/增量/性能基线均已完成；
+- FULL 同步支持复用与中断后继续，图片失败不会删除或阻断 Product/Lifecycle；
+- 通过 `docs/P2_IMAGE_FOUNDATION_FINAL_ACCEPTANCE_20260830.md` 与 `runtime/temp/p2_final_acceptance_20260830/p2_export_parity.json` 复核后，P2 Image Foundation V1 = RELEASED。
+
+后续运行仍可使用：`python -m action_tracker image-sync --date YYYY-MM-DD`；Template 1 带图命令：`python -m action_tracker export-template1 --date YYYY-MM-DD --with-images`。
 
 ## 证据
 

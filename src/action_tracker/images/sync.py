@@ -56,6 +56,8 @@ class ImageSyncService:
                 continue
             target = self.asset_root / sku / "master.png"
             if previous and previous.source_image_url == url and previous.available and target.exists() and _sha256(target) == previous.master_hash:
+                if not previous.first_downloaded_at and previous.last_downloaded_at:
+                    previous.first_downloaded_at = previous.last_downloaded_at
                 counts["reused_count"] += 1
                 counts["available_count"] += 1
                 continue
