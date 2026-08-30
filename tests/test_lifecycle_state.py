@@ -419,6 +419,24 @@ def test_commit_phase_offline_skus_contains_offline(tmp_path):
     assert "1001" in offline and offline["1001"]["last_status"] == "OFFLINE"
 
 
+def test_primary_commit_projects_compatibility_state_from_sqlite_head(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg["storage"] = {"mode": "SQLITE_PRIMARY", "db_path": tmp_path / "action.db"}
+    _build_master(cfg["paths"]["master"])
+    run_log = _run_log_row()
+    run_log["QA状态"] = "PASS"
+    rc = daily_mod._commit_phase(
+        cfg, statuses={"1001": _sku(status="ACTIVE")}, known=_known(),
+        run_date="2026-08-14", run_id="R-PRIMARY", offline_runs=3,
+        today_records={"1001": {"sku": "1001", "current_price": 9.99}},
+        price_events=[], event_events=[], run_log_row=run_log, review_rows=[])
+    assert rc == "FULL_COMMIT"
+    # The committed SQLite head is the source used to generate both
+    # compatibility state and the CURRENT sheets.
+    assert (cfg["paths"]["state"] / "known_skus.csv").exists()
+    assert (cfg["paths"]["state"] / "offline_skus.csv").exists()
+
+
 def test_stage_master_does_not_replace(tmp_path):
     cfg = _cfg(tmp_path)
     _build_master(cfg["paths"]["master"])

@@ -21,6 +21,8 @@ from .contracts import Resolution
 class KnowledgeStore:
     def __init__(self, path: Path, *, role: str = "SHADOW") -> None:
         self.path = Path(path)
+        if role not in {"SHADOW", "PRIMARY"}:
+            raise ValueError("DB_ROLE_INVALID")
         migrate_v2(self.path, role=role)
 
     def save_resolutions(self, resolutions: Iterable[Resolution]) -> int:

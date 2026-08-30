@@ -39,7 +39,12 @@ def evaluate_candidate(
     gate is disabled it never becomes AUTO_APPROVED.
     """
     fields = candidate.get("fields") if isinstance(candidate.get("fields"), Mapping) else {}
-    confidence = float(candidate.get("confidence") or 0)
+    try:
+        confidence = float(candidate.get("confidence") or 0)
+    except (TypeError, ValueError):
+        # Keep approval a fail-closed decision function even when called with
+        # an unvalidated external candidate.
+        confidence = 0.0
     decisions: list[ApprovalDecision] = []
     for field in KNOWLEDGE_FIELDS:
         if field not in fields:

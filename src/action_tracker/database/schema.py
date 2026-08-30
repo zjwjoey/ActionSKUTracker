@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 from .connection import connect
 
 DDL = '''
@@ -228,6 +229,22 @@ CREATE TABLE IF NOT EXISTS translation_approval_audit (
 
 def migrate_v2(path, *, role: str = "SHADOW"):
     """Additive V2 production tables while preserving the frozen V1 mirror schema."""
+    if role not in {"SHADOW", "PRIMARY"}:
+        raise ValueError("DB_ROLE_INVALID")
+    # A migration is allowed to create a role on a new database, but it must
+    # never silently change the role of an existing V2 database.  Promotion is
+    # an explicit operation handled by ``promote_database_role``.
+    existing_role = None
+    if Path(path).exists():
+        try:
+            with connect(path) as existing:
+                existing_role = existing.execute(
+                    "SELECT value FROM schema_metadata WHERE key='database_role'"
+                ).fetchone()
+        except Exception:
+            existing_role = None
+    if existing_role and str(existing_role[0]) != role:
+        raise ValueError("DB_ROLE_MISMATCH_REQUIRES_EXPLICIT_CUTOVER")
     migrate(path)
     with connect(path) as db:
         db.executescript(V2_DDL)

@@ -92,3 +92,20 @@ gap 0.3%，无 CF/429/异常。三轮均使用隔离 Master/State/SQLite，累�
 3. 三轮 `SQLITE_SHADOW` 已完成且每轮 parity 均为 0 mismatch；
 4. 目标库迁移、备份/恢复和 Primary 角色演练已在副本完成；正式切换仍需明确窗口、责任人和回滚确认，才可显式 `db-promote-primary` 与修改 `storage.mode`；
 5. 执行正式图片的切片、全量同步和性能基线，再补视觉抽检。
+
+## 7. 正式切换补充记录（2026-08-30）
+
+经用户授权，已完成正式 SQLite 切换。旧 V1 镜像先备份至
+`runtime/backups/formal_cutover_20260830_120733`，随后从正式 Master/State 构建 V2
+基线。由于旧 V1 的 `products`/`runs` 表定义与 V2 不兼容，迁移采用临时 V2 库成功后
+原子替换的方式完成。
+
+- 基线 commit：`2026-08-30_BASELINE_2026-08-30_20d2c26b81b1`；
+- products/lifecycle：6,046 / 6,046；CURRENT：5,396；
+- integrity、foreign keys、Presence：PASS；parity mismatch：0；
+- export_sync：SUCCESS，pending：0；
+- 正式数据库角色：`PRIMARY`；配置：`storage.mode=SQLITE_PRIMARY`；
+- 切换后全量回归：`283 passed`。
+
+本节记录的是原第 6 节之后的正式切换结果；图片全量同步和 Knowledge Production 正式
+Apply 仍未开启。

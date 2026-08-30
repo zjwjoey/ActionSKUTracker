@@ -30,3 +30,14 @@
 
 正式目标库仍保持旧 V1 镜像，生产角色仍未提升。正式切换前仍需人工确认切换窗口、
 回滚责任人和 Primary 下的首轮运行监控。
+
+## 预检与投影路径复验（V2）
+
+隔离目录：`F:\ActionSKUTracker\runtime\temp\primary_cutover_rehearsal_20260830_v2`
+
+- 新增只读 `db-cutover-check` 预检：PASS；
+- 基线 commit：`2026-08-30_BASELINE_2026-08-30_fb702d94e86a`；
+- products/observations：6,046 / 6,046；integrity、FK、Presence：全部 PASS；
+- Excel/SQLite parity：PASS，mismatch：0；兼容导出同步：SUCCESS；
+- 副本 SHADOW → PRIMARY：PROMOTED；提升后完整性复核：PASS；
+- 正式配置与正式数据库未修改。

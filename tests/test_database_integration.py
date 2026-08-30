@@ -101,6 +101,27 @@ def test_role_promotion_is_explicit_and_shadow_writer_cannot_demote(tmp_path: Pa
         raise AssertionError("a shadow writer demoted a primary database")
 
 
+def test_cutover_preflight_is_read_only_and_requires_shadow(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_SHADOW")
+    cfg["paths"]["master"].write_bytes(b"master")
+    (cfg["paths"]["state"] / "known_skus.csv").write_bytes(b"known")
+    (cfg["paths"]["state"] / "offline_skus.csv").write_bytes(b"offline")
+    commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_SHADOW")
+    from action_tracker.database.production import ProductionDatabaseError, cutover_preflight
+    # This synthetic fixture has an unacknowledged export, so the preflight is
+    # expected to fail before parity; importantly it must not promote or mutate
+    # the role.
+    try:
+        cutover_preflight(cfg["storage"]["db_path"], master=cfg["paths"]["master"],
+                          known=cfg["paths"]["state"] / "known_skus.csv",
+                          offline=cfg["paths"]["state"] / "offline_skus.csv")
+    except ProductionDatabaseError as exc:
+        assert "CUTOVER_EXPORT_SYNC_PENDING" in str(exc)
+    else:
+        raise AssertionError("invalid cutover fixture unexpectedly passed")
+    assert database_status(cfg["storage"]["db_path"])["metadata"]["database_role"] == "SHADOW"
+
+
 def test_primary_repository_matches_compatibility_shapes(tmp_path: Path):
     cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
     commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
@@ -110,6 +131,15 @@ def test_primary_repository_matches_compatibility_shapes(tmp_path: Path):
     assert set(current) == {"1001"}
     assert set(known) == {"1001", "1002"}
     assert known["1002"]["last_status"] == "MISSING"
+
+
+def test_primary_repository_projection_is_read_only_and_current_only(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
+    repo = ProductionRepository(cfg["storage"]["db_path"])
+    rows = repo.load_current_export_records()
+    assert [row["sku"] for row in rows] == ["1001"]
+    assert rows[0]["name_es"] == "Producto"
 
 
 def test_bundle_preserves_last_run_id_for_untouched_historical_rows(tmp_path: Path):

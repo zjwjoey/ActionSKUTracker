@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -439,6 +441,37 @@ def validate_production_database(path: Path) -> dict[str, Any]:
                 "commits": db.execute("SELECT COUNT(*) FROM commit_batches").fetchone()[0]}
 
 
+def cutover_preflight(path: Path, *, master: Path, known: Path, offline: Path) -> dict[str, Any]:
+    """Read-only gate for a Shadow database before an explicit cutover.
+
+    This deliberately does not promote, migrate, or rewrite any file.  The
+    caller must still choose the cutover window and perform the explicit
+    promotion after this check passes.
+    """
+    validation = validate_production_database(Path(path))
+    with connect(Path(path)) as db:
+        role = db.execute("SELECT value FROM schema_metadata WHERE key='database_role'").fetchone()
+        pending = db.execute("SELECT COUNT(*) FROM export_sync WHERE status != 'SUCCESS'").fetchone()[0]
+    if not role or role[0] != "SHADOW":
+        raise ProductionDatabaseError("CUTOVER_REQUIRES_SHADOW_DATABASE")
+    if pending:
+        raise ProductionDatabaseError("CUTOVER_EXPORT_SYNC_PENDING")
+    for label, candidate in (("master", master), ("known", known), ("offline", offline)):
+        if not Path(candidate).exists():
+            raise ProductionDatabaseError(f"CUTOVER_PROJECTION_MISSING:{label}")
+    from .parity import compare_with_legacy_files
+    parity = compare_with_legacy_files(
+        {"paths": {"master": Path(master), "state": Path(known).parent}},
+        db_path=Path(path),
+    )
+    if parity["status"] != "PASS":
+        raise ProductionDatabaseError("CUTOVER_PARITY_FAILED")
+    return {
+        "status": "PASS", "database_role": "SHADOW", "pending_export_sync": pending,
+        "validation": validation, "parity": parity,
+    }
+
+
 def import_legacy_baseline_v2(db_path: Path, *, master_path: Path, state_dir: Path, observed_at: str) -> str:
     """Build a V2 baseline from the legacy read-only Master/State files.
 
@@ -477,4 +510,34 @@ def import_legacy_baseline_v2(db_path: Path, *, master_path: Path, state_dir: Pa
                             "presence_state": "PRESENT", "observation_complete": True, "absence_capable": True} for r in products),
         run_record={"dry_run": False, "source": "legacy_baseline"}, snapshot_path=str(master_path),
     )
-    return ProductionWriter(Path(db_path)).commit(bundle)
+    target = Path(db_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # The shipped V1 mirror uses incompatible ``products``/``runs`` schemas;
+    # SQLite cannot upgrade those tables with CREATE IF NOT EXISTS.  Build a
+    # new V2 database beside the target and atomically replace it only after a
+    # complete commit.  The caller is responsible for keeping the old target
+    # backup (the CLI cutover workflow does this first).
+    staged: Path | None = None
+    if target.exists() and not _is_v2_database(target):
+        staged = target.with_name(f".{target.name}.{uuid.uuid4().hex}.v2")
+    commit_path = staged or target
+    try:
+        commit_id = ProductionWriter(commit_path).commit(bundle)
+        if staged is not None:
+            os.replace(staged, target)
+        return commit_id
+    finally:
+        if staged is not None:
+            staged.unlink(missing_ok=True)
+
+
+def _is_v2_database(path: Path) -> bool:
+    """Return whether a database carries the V2 identity metadata."""
+    try:
+        with connect(Path(path)) as db:
+            row = db.execute(
+                "SELECT value FROM schema_metadata WHERE key='schema_family'"
+            ).fetchone()
+    except sqlite3.Error:
+        return False
+    return bool(row and row[0] == "ACTION_SQLITE_DATA")

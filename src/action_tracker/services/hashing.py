@@ -34,6 +34,19 @@ def content_hash(rec: dict[str, Any]) -> str:
     )
 
 
+def localization_source_hash(rec: dict[str, Any]) -> str:
+    """Canonical hash for the six Spanish localization fact fields.
+
+    This is deliberately separate from ``content_hash``: the latter is the
+    product/update hash and also includes stable URLs, while this hash binds
+    only the source text that can invalidate a Chinese localization.
+    """
+    return _h(
+        rec.get("name_es"), rec.get("cat1_es"), rec.get("cat2_es"),
+        rec.get("spec_es"), rec.get("desc_es"), rec.get("details_es"),
+    )
+
+
 def price_hash(rec: dict[str, Any]) -> str:
     """价格+促销+折扣哈希。不变则不生成价格任务。"""
     return _h(

@@ -78,3 +78,35 @@ def test_database_boolean_parser_does_not_treat_false_text_as_true():
     assert _to_bool("false") is False
     assert _to_bool("0") is False
     assert _to_bool("true") is True
+
+
+def test_legacy_baseline_rebuilds_incompatible_v1_database_atomically(tmp_path: Path):
+    db = tmp_path / "legacy.db"
+    master = tmp_path / "master.xlsx"
+    state = tmp_path / "state"
+    state.mkdir()
+    # Simulate the old mirror identity; the V2 schema cannot reuse these
+    # table definitions in place.
+    with connect(db) as conn:
+        conn.executescript("CREATE TABLE products (sku TEXT PRIMARY KEY); CREATE TABLE runs (run_id TEXT PRIMARY KEY, run_date TEXT NOT NULL);")
+    master.write_bytes(b"not-used")
+    # Use the existing reader fixtures indirectly by replacing the call with a
+    # minimal valid workbook/state setup below.
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "01_SKU_ZH_CURRENT"
+    ws.append(["Canonical_ID", "SKU", "中文品名", "当前售价 (€)"])
+    ws.append(["ACT0001001", "1001", "商品", 2.5])
+    es = wb.create_sheet("02_SKU_ES_CURRENT")
+    es.append(["Canonical_ID", "SKU", "西班牙语品名", "当前售价 (€)"])
+    es.append(["ACT0001001", "1001", "Producto", 2.5])
+    wb.save(master)
+    (state / "known_skus.csv").write_text("canonical_id,official_sku,first_seen_date,last_seen_date,last_status,missing_count,last_missing_date,offline_date,last_state_observation_date,ever_offline,last_run_id,updated_at\nACT0001001,1001,2026-08-29,2026-08-30,ACTIVE,0,,,,false,,2026-08-30\n", encoding="utf-8-sig")
+    (state / "offline_skus.csv").write_text("canonical_id,official_sku,offline_date,last_seen_date,last_status\n", encoding="utf-8-sig")
+    commit_id = import_legacy_baseline_v2(db, master_path=master, state_dir=state, observed_at="2026-08-30")
+    assert commit_id
+    from action_tracker.database.production import database_status
+    status = database_status(db)
+    assert status["metadata"]["schema_family"] == "ACTION_SQLITE_DATA"
+    assert status["products"] == 1

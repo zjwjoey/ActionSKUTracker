@@ -7,9 +7,8 @@
 ## 1. 生产主链边界
 
 Sitemap/Listing/补充入口 → Presence 冻结 → Lifecycle → QA → Snapshot/Staging →
-QA 通过且非 dry-run 才能写入 Master/State。当前 `storage.mode=EXCEL_PRIMARY`，因此 Excel/CSV
-仍是生产主链；SQLite V2 已有事务接线、Shadow/Primary Writer 和 PRIMARY Read Repository，
-但尚未切换生产主链。本轮没有修改
+QA 通过且非 dry-run 才能提交 SQLite PRIMARY，再生成兼容 Master/State。当前
+`storage.mode=SQLITE_PRIMARY`，SQLite 是生产主链，Excel/CSV 是兼容投影。本轮没有修改
 `monitor/listing.py`、`monitor/sitemap.py`、`monitor/sku_monitor.py`、`services/lifecycle.py`
 或 Presence/Cloudflare/QA 核心语义。
 
@@ -77,15 +76,15 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
 
 - SQLite V2：`CommitBundle`、`BEGIN IMMEDIATE`、外键/完整性检查、幂等 run、`base_commit_id`
   乐观门禁、`export_sync`、`sync-exports` 和 PRIMARY Read Repository 已实现并有 fixture 测试。
-- 当前真实 runtime 数据库仍是 `ACTION_SQLITE_MIRROR 1.0.0` 旧镜像；正式接管前需显式执行
-  `db-migrate-baseline --date YYYY-MM-DD` 到受控数据库，并完成备份/恢复演练。三轮隔离
-  `SQLITE_SHADOW` 已连续通过，均为 parity 0 mismatch，但尚未执行 Primary 切换。
+- 正式 runtime 数据库已完成 V2 baseline、parity 校验和 PRIMARY 切换；旧 V1 镜像与配置备份位于
+  `runtime/backups/formal_cutover_20260830_120733`。三轮隔离 `SQLITE_SHADOW` 均为 parity 0，
+  正式切换后的数据库校验也通过。
 - 图片：`image-sync` 支持低并发、超时、指数退避、staging 原子 promotion、Manifest checkpoint、
   失败隔离和 SQLite PRIMARY 元数据镜像；当前配置不自动下载图片，Manifest 为空属于当前运行状态。
 
 ## 7. 测试与 CI
 
-当前完整回归：`276 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+当前完整回归：`283 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
 

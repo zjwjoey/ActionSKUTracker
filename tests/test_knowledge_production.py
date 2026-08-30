@@ -2,6 +2,7 @@ from pathlib import Path
 
 from action_tracker.database.connection import connect
 from action_tracker.database.schema import migrate_v2
+from action_tracker.services.hashing import localization_source_hash
 from action_tracker.knowledge.approval import evaluate_candidate
 from action_tracker.knowledge.contracts import KNOWLEDGE_FIELDS, source_hash
 from action_tracker.knowledge.queue import build_queue
@@ -24,6 +25,7 @@ def test_source_hash_is_stable_and_only_uses_six_spanish_fields():
     second = source_hash(_record(current_price=9.0, name_zh="仍不参与"))
     assert first == second
     assert first == source_hash(_record())
+    assert first == localization_source_hash(_record())
 
 
 def test_resolver_is_field_level_and_manual_wins():
@@ -75,6 +77,12 @@ def test_queue_detects_source_change_and_missing_localization():
     assert "spec" in rows[0]["requested_fields"]
 
 
+def test_queue_treats_missing_source_hash_as_stale():
+    record = _record()
+    rows = build_queue([record], localizations={"1001": {"name": "旧名"}}, run_id="r1")
+    assert rows[0]["reason"] == "SOURCE_HASH_CHANGED"
+
+
 def test_candidate_validator_rejects_sku_hash_and_url_contamination():
     record = _record()
     result = validate_candidate({"sku": "other", "source_hash": "old", "fields": {"name": "https://bad"}}, record)
@@ -106,6 +114,15 @@ def test_auto_approval_requires_validator_and_blocks_conflicts():
     good = validate_candidate(candidate, record)
     conflict = evaluate_candidate(candidate, good, human_conflict=True)[0]
     assert conflict.decision == "REVIEW_REQUIRED"
+
+
+def test_auto_approval_invalid_confidence_fails_closed():
+    record = _record()
+    candidate = {"sku": "1001", "source_hash": source_hash(record), "fields": {"cat1": "家居布置"}, "confidence": "not-a-number"}
+    validation = validate_candidate(candidate, record)
+    decision = evaluate_candidate(candidate, validation)[0]
+    assert decision.decision == "REVIEW_REQUIRED"
+    assert "CONFIDENCE_INVALID" in decision.rules_failed
 
 
 def test_schema_contains_knowledge_production_tables_and_provenance(tmp_path: Path):
@@ -147,3 +164,16 @@ def test_knowledge_store_persists_preview_queue_candidate_and_audit_idempotently
         assert db.execute("SELECT COUNT(*) FROM translation_queue").fetchone()[0] == 1
         assert db.execute("SELECT COUNT(*) FROM translation_candidates").fetchone()[0] == 1
         assert db.execute("SELECT COUNT(*) FROM translation_approval_audit").fetchone()[0] == 1
+
+
+def test_knowledge_store_cannot_demote_primary_database(tmp_path: Path):
+    db_path = tmp_path / "primary.db"
+    migrate_v2(db_path, role="PRIMARY")
+    try:
+        KnowledgeStore(db_path, role="SHADOW")
+    except ValueError as exc:
+        assert "EXPLICIT_CUTOVER" in str(exc)
+    else:
+        raise AssertionError("knowledge store silently demoted a PRIMARY database")
+    with connect(db_path) as db:
+        assert db.execute("SELECT value FROM schema_metadata WHERE key='database_role'").fetchone()[0] == "PRIMARY"

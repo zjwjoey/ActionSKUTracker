@@ -6,6 +6,8 @@ import json
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from ..services.hashing import localization_source_hash
+
 SPANISH_FIELDS = ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")
 KNOWLEDGE_FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
 FIELD_TO_ES = dict(zip(KNOWLEDGE_FIELDS, SPANISH_FIELDS))
@@ -23,9 +25,7 @@ FIELD_SOURCES = frozenset({
 
 def source_hash(record: Mapping[str, Any]) -> str:
     """Hash only the six Spanish fact fields, using stable JSON encoding."""
-    payload = [str(record.get(field) or "").strip() for field in SPANISH_FIELDS]
-    encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
+    return localization_source_hash(dict(record))
 
 
 @dataclass(frozen=True)

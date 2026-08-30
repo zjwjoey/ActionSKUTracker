@@ -58,6 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("image-status", help="查看本地图片资产状态")
     sub.add_parser("db-status", help="查看 SQLite V2 数据库状态")
     sub.add_parser("db-validate-production", help="验证 SQLite V2 完整性和外键")
+    sub.add_parser("db-cutover-check", help="只读检查 SQLite Shadow 是否满足切换前置条件")
     dbm = sub.add_parser("db-migrate-baseline", help="从只读 Master/State 建立 SQLite V2 基线")
     dbm.add_argument("--date", required=True, help="基线日期（YYYY-MM-DD）")
     dbp = sub.add_parser("db-promote-primary", help="显式将已验证的 SQLite Shadow 数据库提升为 Primary")
@@ -195,6 +196,22 @@ def main(argv=None) -> int:
             result = validate_production_database(db_path)
         except ProductionDatabaseError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "db-cutover-check":
+        from .database.integration import database_path
+        from .database.production import ProductionDatabaseError, cutover_preflight
+        try:
+            if str((cfg.get("storage") or {}).get("mode") or "EXCEL_PRIMARY").upper() != "EXCEL_PRIMARY":
+                raise ProductionDatabaseError("CUTOVER_CONFIG_MUST_REMAIN_EXCEL_PRIMARY")
+            state_dir = Path(cfg["paths"]["state"])
+            result = cutover_preflight(
+                database_path(cfg), master=Path(cfg["paths"]["master"]),
+                known=state_dir / "known_skus.csv", offline=state_dir / "offline_skus.csv",
+            )
+        except (ProductionDatabaseError, OSError, ValueError) as exc:
+            print(json.dumps({"status": "FAIL", "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False))
         return 0

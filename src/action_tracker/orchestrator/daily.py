@@ -723,10 +723,38 @@ def _commit_phase(
             if mode == "SQLITE_PRIMARY":
                 known_tmp.unlink(missing_ok=True)
                 return "DB_COMMIT_FAILED"
+    # In PRIMARY mode the compatibility files must be projected from the
+    # committed SQLite head, never from the pre-commit in-memory payload.  This
+    # keeps Excel/CSV as a verifiable compatibility view of the DB source of
+    # truth and makes a partial in-memory result impossible to publish.
+    projection_records = today_records
+    projection_offline = transition["offline"]
+    if mode == "SQLITE_PRIMARY" and sqlite_bundle is not None:
+        try:
+            from ..database.integration import database_path
+            from ..database.repository import ProductionRepository
+
+            repository = ProductionRepository(database_path(cfg))
+            projection_records = {
+                str(record.get("sku")): record
+                for record in repository.load_current_export_records()
+                if str(record.get("sku") or "").strip()
+            }
+            projection_known = repository.load_known_skus()
+            projection_offline = repository.load_offline_skus()
+            # Replace the already staged state temp with the committed DB
+            # projection before any compatibility file is replaced.
+            known_tmp.unlink(missing_ok=True)
+            known_tmp, known_path = st.stage_known_skus(state_dir, projection_known)
+        except Exception as e:
+            known_tmp.unlink(missing_ok=True)
+            diagnostics.update({"status": "FAILED", "error": f"{type(e).__name__}: {e}"})
+            log.error("SQLite PRIMARY 兼容投影读取失败: %s", e)
+            return "DB_PROJECTION_FAILED"
     # 2) 暂存 Master（内部完成备份 + 旧表迁移 + 验证）
     try:
         master_tmp = stage_master(
-            cfg, updated_records=today_records, price_events=price_events,
+            cfg, updated_records=projection_records, price_events=price_events,
             event_events=event_events, run_log_row=run_log_row, review_rows=review_rows)
     except Exception as e:
         known_tmp.unlink(missing_ok=True)
@@ -741,7 +769,7 @@ def _commit_phase(
         return "PARTIAL_COMMIT"
     # 4) 由 known_skus 重生成 offline_skus（原子写）
     try:
-        st.save_offline_skus(state_dir, transition["offline"])
+        st.save_offline_skus(state_dir, projection_offline)
     except Exception as e:
         log.error("STATE_WRITE_FAILED: offline_skus 重生成失败 %s", e)
         return "STATE_WRITE_FAILED"

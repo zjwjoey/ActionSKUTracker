@@ -58,7 +58,7 @@ paths:
   temp: runtime/temp
 
 storage:
-  mode: EXCEL_PRIMARY
+  mode: SQLITE_PRIMARY
   db_path: runtime/db/action_tracker.db
 
 images:
