@@ -67,6 +67,7 @@ class ImageSyncService:
         # this caller thread so the checkpoint is deterministic and atomic.
         def fetch(item: tuple[str, str, Path, str, bool]) -> ImageAssetRecord:
             sku, url, target, canonical_id, source_changed = item
+            previous = self.manifest.records.get(sku)
             try:
                 record = self._sync_one(sku, url, target, canonical_id, run_id)
             except Exception as exc:  # defensive worker isolation
@@ -77,6 +78,8 @@ class ImageSyncService:
                     error_type=type(exc).__name__, error_message=str(exc),
                 )
             record.source_changed = source_changed
+            if record.last_downloaded_at:
+                record.first_downloaded_at = (previous.first_downloaded_at if previous and previous.first_downloaded_at else record.last_downloaded_at)
             if source_changed and record.download_status == "DOWNLOAD_FAILED":
                 # Preserve the failure reason while retaining the fact that the
                 # source changed in the explicit boolean audit field.
