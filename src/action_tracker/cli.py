@@ -65,6 +65,9 @@ def build_parser() -> argparse.ArgumentParser:
     dbv = sub.add_parser("db-parity", help="对账 SQLite V2 与当前 Excel/CSV 兼容投影")
     dbe = sub.add_parser("sync-exports", help="重试 SQLite 提交对应的 Excel/CSV 兼容导出确认")
     dbe.add_argument("--commit-id", help="可选：只同步指定 commit_id")
+    dbr = sub.add_parser("db-repair-localization-regression", help="修复经审计确认的 PRIMARY 本地化字段回退")
+    dbr.add_argument("--run-id", required=True, help="受影响的正式 run_id")
+    dbr.add_argument("--trusted-snapshot", required=True, help="用于字段级恢复的正式 products_normalized.csv")
     dc = sub.add_parser("dictionary-coverage", help="统计 CURRENT 的 AI-Free 字典覆盖率")
     dc.add_argument("--date", help="业务日期（YYYY-MM-DD）")
     dc.add_argument("--run-id", help="可选：指定正式 observation run_id")
@@ -241,6 +244,18 @@ def main(argv=None) -> int:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps({"database": str(db_path), "results": result}, ensure_ascii=False))
+        return 0
+    if args.command == "db-repair-localization-regression":
+        from .database.integration import database_path
+        from .database.production import ProductionDatabaseError, repair_primary_localization_regression
+        try:
+            result = repair_primary_localization_regression(
+                database_path(cfg), trusted_snapshot=Path(args.trusted_snapshot), run_id=args.run_id,
+            )
+        except (ProductionDatabaseError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
         return 0
     if args.command == "db-promote-primary":
         from .database.integration import database_path
