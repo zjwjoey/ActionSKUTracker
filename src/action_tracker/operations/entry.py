@@ -24,13 +24,27 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
         if existing:
             run_id = existing[0].parent.name
     run_id = run_id or f"{business_date}_{datetime.now().strftime('%H%M%S')}_{uuid.uuid4().hex[:6]}"
+    def collect_existing_chain() -> StepResult:
+        if no_network:
+            return StepResult("BLOCKED", {"reason": "NETWORK_DISABLED"})
+        # Reuse the established collector/QA/SQLite writer as one atomic
+        # business chain. Operations wraps it; it never creates a second
+        # crawler or product writer.
+        from ..orchestrator.daily import run_daily
+        result = run_daily(cfg, dry_run=dry_run, fetch_details=True)
+        qa = result.get("qa") or {}
+        commit_status = str(result.get("commit_status") or "")
+        if not bool(qa.get("passed")) and not dry_run:
+            return StepResult("BLOCKED", {"delegated_run_id": result.get("run_id"), "commit_status": commit_status, "qa": qa})
+        return StepResult("SUCCESS", {"delegated_run_id": result.get("run_id"), "commit_status": commit_status, "qa": qa})
+
     steps: dict[str, Any] = {
         "PREFLIGHT": lambda: StepResult("SUCCESS", {"database": validate_production_database(db), "code_version": git_commit_info()}),
         "BACKUP": lambda: StepResult("SUCCESS", backup_sqlite(db, Path(cfg["paths"]["backups"]) / business_date / f"{run_id}.sqlite3", run_id=run_id, code_version=git_commit_info())),
-        "COLLECTION": lambda: StepResult("BLOCKED", {"reason": "NETWORK_DISABLED"}) if no_network else StepResult("SKIPPED", {"reason": "use existing daily-run entry for live collection"}),
-        "QA": lambda: StepResult("SKIPPED", {"reason": "collection delegated to daily-run"}),
-        "DB_COMMIT": lambda: StepResult("SKIPPED", {"reason": "collection delegated to daily-run"}),
-        "EXPORT": lambda: StepResult("SKIPPED", {"reason": "collection delegated to daily-run"}),
+        "COLLECTION": collect_existing_chain,
+        "QA": lambda: StepResult("SKIPPED", {"reason": "included in delegated daily-run chain"}),
+        "DB_COMMIT": lambda: StepResult("SKIPPED", {"reason": "included in delegated daily-run chain"}),
+        "EXPORT": lambda: StepResult("SKIPPED", {"reason": "compatibility export handled by delegated chain"}),
         "IMAGE": lambda: StepResult("SKIPPED", {"reason": "explicit image-sync remains separate"}),
         "KNOWLEDGE": lambda: StepResult("SKIPPED", {"reason": "queue-only knowledge stage remains gated"}),
         "AI": lambda: StepResult("SKIPPED", {"reason": "AI_DISABLED"}),
