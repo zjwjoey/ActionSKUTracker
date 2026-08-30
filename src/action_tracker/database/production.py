@@ -208,6 +208,14 @@ class ProductionWriter:
                 # facts.  A minimal lifecycle-only row must never null out
                 # those facts or reset badges/prices during an absence run.
                 if db.execute("SELECT 1 FROM products WHERE official_sku=?", (sku,)).fetchone():
+                    # Keep the product projection's status in lockstep with
+                    # lifecycle_state while preserving all official facts.
+                    # Without this narrow update, a missing/offline SKU could
+                    # remain visible to CURRENT exports indefinitely.
+                    db.execute(
+                        "UPDATE products SET status=?, consecutive_missing=?, last_checked_at=?, updated_at=? WHERE official_sku=?",
+                        (r.get("status") or "HISTORICAL", int(r.get("consecutive_missing", 0) or 0), r.get("last_checked_at", now), now, sku),
+                    )
                     continue
             db.execute(
                 """INSERT INTO products(canonical_id,official_sku,name_es,name_zh,current_price,original_price,unit_price_raw,raw_badges,

@@ -309,6 +309,7 @@ def test_minimal_historical_rows_do_not_clear_official_facts(tmp_path: Path):
     from action_tracker.database.connection import connect
     with connect(cfg["storage"]["db_path"]) as db:
         assert db.execute("SELECT name_es FROM products WHERE official_sku='1001'").fetchone()[0] == "Producto"
+        assert db.execute("SELECT status FROM products WHERE official_sku='1001'").fetchone()[0] == "MISSING"
 
 
 def test_primary_export_source_comes_from_sqlite_head(tmp_path: Path):
