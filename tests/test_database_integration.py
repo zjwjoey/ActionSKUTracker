@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -155,7 +156,15 @@ def test_primary_localization_recovery_restores_only_empty_fields_and_rebuilds_c
     cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
     run_id = "2026-08-30_010000"
     commit_daily_bundle(cfg, _bundle(cfg, run_id=run_id), mode="SQLITE_PRIMARY")
-    snapshot = tmp_path / "trusted_products_normalized.csv"
+    snapshot = tmp_path / "snapshots" / "2026-08-29" / "2026-08-29_010000" / "products_normalized.csv"
+    snapshot.parent.mkdir(parents=True)
+    snapshot.parent.joinpath("run_report.json").write_text(json.dumps({
+        "run_id": "2026-08-29_010000", "run_date": "2026-08-29",
+        "snapshot": str(snapshot.parent), "commit_status": "FULL_COMMIT", "dry_run": False,
+    }), encoding="utf-8")
+    snapshot.parent.joinpath("qa_report.json").write_text(json.dumps({
+        "passed": True, "state": "PASS",
+    }), encoding="utf-8")
     snapshot.write_text(
         "sku,name_es,cat1_es,cat2_es,spec_es,desc_es,details_es,cat1_zh,cat2_zh,spec_zh,desc_zh,details_zh,product_url,image_url\n"
         "1001,Producto,Hogar,Limpieza,1 unidad,Descripción,Detalles,家居,清洁,1件,中文描述,中文详情,,\n",
@@ -184,6 +193,36 @@ def test_primary_localization_recovery_restores_only_empty_fields_and_rebuilds_c
     with connect(cfg["storage"]["db_path"]) as db:
         assert db.execute("SELECT COUNT(*) FROM event_history WHERE run_id=? AND event_type='CONTENT_CHANGE'", (run_id,)).fetchone()[0] == 1
         assert db.execute("SELECT COUNT(*) FROM migration_source_issues WHERE issue_type='LOCALIZATION_REGRESSION_REPAIRED'").fetchone()[0] == 1
+
+
+def test_primary_localization_recovery_rejects_unproven_snapshot(tmp_path: Path):
+    import pytest
+
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
+    snapshot = tmp_path / "products_normalized.csv"
+    snapshot.write_text("sku,name_es\n1001,Producto\n", encoding="utf-8")
+    with pytest.raises(Exception, match="TRUSTED_SNAPSHOT_EVIDENCE_MISSING"):
+        repair_primary_localization_regression(cfg["storage"]["db_path"], trusted_snapshot=snapshot, run_id="r1")
+
+
+def test_primary_localization_recovery_rejects_non_v2_primary(tmp_path: Path):
+    import pytest
+
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
+    snapshot = tmp_path / "snapshots" / "2026-08-29" / "2026-08-29_010000" / "products_normalized.csv"
+    snapshot.parent.mkdir(parents=True)
+    snapshot.parent.joinpath("run_report.json").write_text(json.dumps({
+        "run_id": "2026-08-29_010000", "run_date": "2026-08-29",
+        "snapshot": str(snapshot.parent), "commit_status": "FULL_COMMIT", "dry_run": False,
+    }), encoding="utf-8")
+    snapshot.parent.joinpath("qa_report.json").write_text(json.dumps({"passed": True, "state": "PASS"}), encoding="utf-8")
+    snapshot.write_text("sku,name_es\n1001,Producto\n", encoding="utf-8")
+    with connect(cfg["storage"]["db_path"]) as db:
+        db.execute("UPDATE schema_metadata SET value='3.0.0' WHERE key='schema_version'")
+    with pytest.raises(Exception, match="PRIMARY_V2_DATABASE_REQUIRED"):
+        repair_primary_localization_regression(cfg["storage"]["db_path"], trusted_snapshot=snapshot, run_id="r1")
 
 
 def test_primary_writer_blocks_catastrophic_localization_coverage_drop(tmp_path: Path):

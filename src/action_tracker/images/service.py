@@ -18,6 +18,7 @@ def sync_formal_current(cfg: dict[str, Any], *, export_date: str, run_id: str | 
     service = ImageSyncService(
         asset_root=_resolve(cfg, image_cfg.get("asset_root"), root / "assets"),
         staging_root=_resolve(cfg, image_cfg.get("staging_root"), root / "staging"),
+        derivative_root=_resolve(cfg, image_cfg.get("derivative_root"), root / "derivatives"),
         manifest_path=_resolve(cfg, image_cfg.get("manifest_path"), root / "manifests" / "image_manifest.csv"),
         timeout_seconds=int(image_cfg.get("timeout_seconds", 20)),
         max_retries=int(image_cfg.get("max_retries", 3)),
@@ -43,7 +44,9 @@ def image_status(cfg: dict[str, Any]) -> dict[str, Any]:
     manifest = ImageManifest(_resolve(cfg, image_cfg.get("manifest_path"), root / "manifests" / "image_manifest.csv"))
     counts: dict[str, int] = {}
     for record in manifest.records.values():
-        key = "AVAILABLE" if record.available else record.download_status
+        key = "AVAILABLE" if record.available else (
+            "DERIVATIVE_FAILED" if record.derivative_status == "FAILED" else record.download_status
+        )
         counts[key] = counts.get(key, 0) + 1
     return {"total": len(manifest.records), "counts": counts, "manifest": str(manifest.path)}
 

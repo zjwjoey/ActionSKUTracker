@@ -1,10 +1,13 @@
 import json
+import hashlib
 from pathlib import Path
 
 import openpyxl
 from PIL import Image
 
 from action_tracker.exporting.template1_service import export_template1
+from action_tracker.images.assets import ImageAssetRecord, ImageManifest
+from action_tracker.images.derivatives import ImageDerivativeService
 
 from test_exporting import _cfg, _record, _run_log, _write_dictionary, _write_master, _write_snapshot
 
@@ -118,9 +121,17 @@ def test_template1_with_images_only_embeds_today_chinese_sheet(tmp_path):
         encoding="utf-8",
     )
     cfg["history_sources_path"] = history_config
-    derivative = cfg["paths"]["images"] / "derivatives" / "excel_250"
-    derivative.mkdir(parents=True)
-    Image.new("RGB", (250, 250), "white").save(derivative / "1001.png")
+    master = cfg["paths"]["images"] / "assets" / "1001" / "master.png"
+    master.parent.mkdir(parents=True)
+    Image.new("RGB", (250, 250), "white").save(master)
+    ImageDerivativeService(cfg["paths"]["images"] / "derivatives").excel_250(master, "1001")
+    manifest = ImageManifest(cfg["paths"]["images"] / "manifests" / "image_manifest.csv")
+    manifest.upsert(ImageAssetRecord(
+        sku="1001", canonical_id=record["canonical_id"], source_image_url=record["image_url"],
+        master_image_path=str(master), master_hash=hashlib.sha256(master.read_bytes()).hexdigest(),
+        download_status="AVAILABLE", normalize_status="PASS", qa_status="PASS", derivative_status="PASS",
+    ))
+    manifest.save()
 
     result = export_template1(cfg, export_date="2026-08-26", run_id=run_id, with_images=True)
     workbook = openpyxl.load_workbook(result["output"], data_only=True)

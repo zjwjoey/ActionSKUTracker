@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 import openpyxl
 from openpyxl.drawing.image import Image as ExcelImage
@@ -20,6 +20,7 @@ def write_catalog_xlsx(
     workbook_format: dict[str, Any],
     image_root: Path | None = None,
     embed_images: bool = False,
+    image_eligibility: Mapping[str, bool] | None = None,
 ) -> dict[str, int]:
     """原子写入单工作表商品清单。调用方负责所有业务校验。"""
     materialized = list(rows)
@@ -58,6 +59,7 @@ def write_catalog_xlsx(
     embedded_count = 0
     missing_count = 0
     for row_no in range(2, len(materialized) + 2):
+        image_embedded = False
         for header, col in index.items():
             cell = ws.cell(row=row_no, column=col)
             cell.alignment = Alignment(
@@ -77,12 +79,13 @@ def write_catalog_xlsx(
             sku = str(materialized[row_no - 2].get("编号") or "").strip()
             image_path = image_root / f"{sku}.png" if image_root and sku else None
             image_column = index.get("图片")
-            if image_column and image_path and image_path.exists():
+            eligible = image_eligibility is None or image_eligibility.get(sku, False)
+            if image_column and image_path and image_path.exists() and eligible:
                 image = ExcelImage(str(image_path))
                 image.width = 250
                 image.height = 250
                 ws.add_image(image, f"{get_column_letter(image_column)}{row_no}")
-                ws.row_dimensions[row_no].height = max(ws.row_dimensions[row_no].height or 20, 190)
+                image_embedded = True
                 embedded_count += 1
             elif image_column:
                 missing_count += 1
@@ -91,7 +94,14 @@ def write_catalog_xlsx(
              for header in ("描述", "产品详情") if header in index),
             default=1,
         )
-        ws.row_dimensions[row_no].height = min(max_row_height, max(20, 15 * description_lines + 4))
+        text_height = max(20, 15 * description_lines + 4)
+        image_height = 190 if image_embedded else 20
+        # Image rows must not be compressed by the later text-height pass.
+        # If a configured cap is below the image requirement, preserve the
+        # image minimum rather than producing an overlapping worksheet.
+        ws.row_dimensions[row_no].height = min(max_row_height, max(text_height, image_height, 20))
+        if image_embedded:
+            ws.row_dimensions[row_no].height = max(ws.row_dimensions[row_no].height, image_height)
 
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(prefix=f".{path.stem}.", suffix=".xlsx", dir=path.parent)

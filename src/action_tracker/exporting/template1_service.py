@@ -17,6 +17,7 @@ from .service import (
     validate_source_records,
     validate_spanish_source_fields,
     validate_zh_rows_against_source,
+    _resolve_image_eligibility,
 )
 from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, verify_template1_xlsx, write_template1_xlsx
 
@@ -79,11 +80,14 @@ def export_template1(
         if not image_root.is_absolute():
             image_root = Path(cfg["project_root"]) / image_root
         image_root = image_root / "excel_250"
+        image_eligibility = _resolve_image_eligibility(cfg, records, image_root)
+    else:
+        image_eligibility = None
     image_stats = write_template1_xlsx(
         temporary, history_rows=history_rows,
         history_dates=history.dates + ((export_date,) if export_date not in history.dates else ()),
         es_rows=es_rows, zh_rows=zh_rows,
-        image_root=image_root, embed_zh_images=with_images,
+        image_root=image_root, embed_zh_images=with_images, image_eligibility=image_eligibility,
     )
     try:
         verification = verify_template1_xlsx(

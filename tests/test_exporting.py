@@ -18,7 +18,10 @@ from action_tracker.dictionary import (
 )
 from action_tracker.excel.reader import ES_MAP, ZH_MAP
 from action_tracker.excel.writer import RUN_LOG_HEADERS
+from action_tracker.exporting.excel_writer import write_catalog_xlsx
 from action_tracker.exporting.service import ExportValidationError, export_catalog
+from action_tracker.images.assets import ImageAssetRecord, ImageManifest
+from action_tracker.images.derivatives import ImageDerivativeService
 
 
 def _cfg(tmp_path: Path) -> dict:
@@ -598,7 +601,17 @@ def test_with_images_export_reads_local_derivative_and_preserves_sku(tmp_path):
     cfg["paths"]["images"] = image_root
     derivative = image_root / "derivatives" / "excel_250"
     derivative.mkdir(parents=True)
-    Image.new("RGB", (250, 250), "white").save(derivative / "1001.png")
+    master = image_root / "assets" / "1001" / "master.png"
+    master.parent.mkdir(parents=True)
+    Image.new("RGB", (250, 250), "white").save(master)
+    ImageDerivativeService(image_root / "derivatives").excel_250(master, "1001")
+    manifest = ImageManifest(image_root / "manifests" / "image_manifest.csv")
+    manifest.upsert(ImageAssetRecord(
+        sku="1001", canonical_id=record["canonical_id"], source_image_url=record["image_url"],
+        master_image_path=str(master), master_hash=hashlib.sha256(master.read_bytes()).hexdigest(),
+        download_status="AVAILABLE", normalize_status="PASS", qa_status="PASS", derivative_status="PASS",
+    ))
+    manifest.save()
     result = export_catalog(cfg, language="es", export_date="2026-08-24", no_images=False)
     workbook = openpyxl.load_workbook(result["output"], data_only=True)
     try:
@@ -609,3 +622,58 @@ def test_with_images_export_reads_local_derivative_and_preserves_sku(tmp_path):
         workbook.close()
     assert result["image_embedded_count"] == 1
     assert result["image_missing_count"] == 0
+
+
+def test_with_image_writer_preserves_image_row_height_after_text_layout(tmp_path: Path):
+    image_root = tmp_path / "derivatives"
+    image_root.mkdir()
+    Image.new("RGB", (250, 250), "white").save(image_root / "1001.png")
+    output = tmp_path / "catalog.xlsx"
+    headers = ["图片", "编号", "描述", "产品详情"]
+    result = write_catalog_xlsx(
+        output, headers=headers,
+        rows=[{"图片": None, "编号": "1001", "描述": "短", "产品详情": "短"}],
+        workbook_format={"sheet_name": "商品全量", "freeze_panes": "A2", "auto_filter": True},
+        image_root=image_root, embed_images=True, image_eligibility={"1001": True},
+    )
+    assert result["embedded_count"] == 1
+    workbook = openpyxl.load_workbook(output, data_only=True)
+    try:
+        ws = workbook["商品全量"]
+        assert ws.row_dimensions[2].height >= 190
+        assert len(ws._images) == 1
+    finally:
+        workbook.close()
+
+
+def test_export_does_not_embed_stale_asset_after_source_url_change_failure(tmp_path: Path):
+    cfg = _cfg(tmp_path)
+    run_id = "2026-08-24_010000"
+    record = _record("1001")
+    record["image_url"] = "https://images.example/new.jpg"
+    _write_master(cfg["paths"]["master"], [_run_log(run_id, "2026-08-24")], [record])
+    _write_snapshot(cfg["paths"]["snapshots"], run_id, "2026-08-24", [record])
+    image_root = tmp_path / "images"
+    cfg["paths"]["images"] = image_root
+    master = image_root / "assets" / "1001" / "master.png"
+    master.parent.mkdir(parents=True)
+    Image.new("RGB", (250, 250), "white").save(master)
+    ImageDerivativeService(image_root / "derivatives").excel_250(master, "1001")
+    manifest = ImageManifest(image_root / "manifests" / "image_manifest.csv")
+    manifest.upsert(ImageAssetRecord(
+        sku="1001", canonical_id=record["canonical_id"], source_image_url=record["image_url"],
+        master_image_path=str(master), master_hash=hashlib.sha256(master.read_bytes()).hexdigest(),
+        download_status="DOWNLOAD_FAILED", normalize_status="FAILED", qa_status="FAILED",
+        source_changed=True,
+    ))
+    manifest.save()
+    result = export_catalog(cfg, language="es", export_date="2026-08-24", no_images=False)
+    workbook = openpyxl.load_workbook(result["output"], data_only=True)
+    try:
+        ws = workbook["商品全量"]
+        assert ws.cell(2, 2).value == "1001"
+        assert len(ws._images) == 0
+    finally:
+        workbook.close()
+    assert result["image_embedded_count"] == 0
+    assert result["image_missing_count"] == 1

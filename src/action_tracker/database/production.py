@@ -423,6 +423,39 @@ def repair_primary_localization_regression(
         raise ProductionDatabaseError("DB_MISSING")
     if not trusted_snapshot.exists():
         raise ProductionDatabaseError("TRUSTED_SNAPSHOT_MISSING")
+    if trusted_snapshot.name != "products_normalized.csv":
+        raise ProductionDatabaseError("TRUSTED_SNAPSHOT_NOT_FORMAL")
+
+    # A filename alone is not evidence that the CSV came from a completed
+    # formal run. Require the sibling run/QA reports and bind their identity to
+    # the snapshot directory before allowing any PRIMARY mutation.
+    report_path = trusted_snapshot.parent / "run_report.json"
+    qa_path = trusted_snapshot.parent / "qa_report.json"
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        qa = json.loads(qa_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ProductionDatabaseError("TRUSTED_SNAPSHOT_EVIDENCE_MISSING") from exc
+    if not isinstance(report, dict) or not isinstance(qa, dict):
+        raise ProductionDatabaseError("TRUSTED_SNAPSHOT_EVIDENCE_INVALID")
+    try:
+        report_snapshot_matches = (
+            Path(str(report.get("snapshot") or "")).resolve()
+            == trusted_snapshot.parent.resolve()
+        )
+    except (OSError, RuntimeError):
+        report_snapshot_matches = False
+    report_date_matches = (
+        str(report.get("run_date") or "") == trusted_snapshot.parent.parent.name
+    )
+    if (str(report.get("run_id") or "") != trusted_snapshot.parent.name
+            or not report_snapshot_matches
+            or not report_date_matches
+            or str(report.get("commit_status") or "") != "FULL_COMMIT"
+            or bool(report.get("dry_run"))
+            or qa.get("passed") is not True
+            or qa.get("state") not in {"PASS", "PASS_PRESENCE_ONLY"}):
+        raise ProductionDatabaseError("TRUSTED_SNAPSHOT_NOT_FORMAL")
 
     with trusted_snapshot.open("r", encoding="utf-8-sig", newline="") as handle:
         snapshot_rows = {
@@ -446,7 +479,9 @@ def repair_primary_localization_regression(
     }
     with connect(path) as db:
         metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
-        if metadata.get("schema_family") != "ACTION_SQLITE_DATA" or metadata.get("database_role") != "PRIMARY":
+        if (metadata.get("schema_family") != "ACTION_SQLITE_DATA"
+                or metadata.get("schema_version") != "2.0.0"
+                or metadata.get("database_role") != "PRIMARY"):
             raise ProductionDatabaseError("PRIMARY_V2_DATABASE_REQUIRED")
         affected = [str(row[0]) for row in db.execute(
             "SELECT official_sku FROM products WHERE status='CURRENT' ORDER BY official_sku"
@@ -690,7 +725,9 @@ def persist_image_manifest(path: Path, manifest_path: Path) -> dict[str, int]:
                 (record.sku, record.canonical_id, record.source_image_url, record.master_image_path,
                  record.source_hash, record.master_hash, record.master_width or record.source_width,
                  record.master_height or record.source_height,
-                 "AVAILABLE" if record.available else record.download_status,
+                 "AVAILABLE" if record.available else (
+                     "DERIVATIVE_FAILED" if record.derivative_status == "FAILED" else record.download_status
+                 ),
                  record.first_downloaded_at or record.last_downloaded_at, record.last_checked_at,
                  datetime.now(timezone.utc).isoformat(), record.error_type or None),
             )

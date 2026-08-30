@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 import openpyxl
 from openpyxl.drawing.image import Image as ExcelImage
@@ -31,6 +31,7 @@ def write_template1_xlsx(
     zh_rows: list[dict[str, Any]],
     image_root: Path | None = None,
     embed_zh_images: bool = False,
+    image_eligibility: Mapping[str, bool] | None = None,
 ) -> dict[str, int]:
     workbook = openpyxl.Workbook()
     first = workbook.active
@@ -39,7 +40,7 @@ def write_template1_xlsx(
     _write_catalog_sheet(workbook.create_sheet("今日西班牙语清单"), es_rows)
     image_stats = _write_catalog_sheet(
         workbook.create_sheet("今日中文清单"), zh_rows,
-        image_root=image_root, embed_images=embed_zh_images,
+        image_root=image_root, embed_images=embed_zh_images, image_eligibility=image_eligibility,
     )
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -171,6 +172,7 @@ def _write_catalog_sheet(
     *,
     image_root: Path | None = None,
     embed_images: bool = False,
+    image_eligibility: Mapping[str, bool] | None = None,
 ) -> dict[str, int]:
     ws.append(list(CATALOG_HEADERS))
     for row in rows:
@@ -191,7 +193,8 @@ def _write_catalog_sheet(
         if embed_images:
             sku = str(rows[row_no - 2].get("编号") or "").strip()
             image_path = image_root / f"{sku}.png" if image_root and sku else None
-            if image_path and image_path.exists():
+            eligible = image_eligibility is None or image_eligibility.get(sku, False)
+            if image_path and image_path.exists() and eligible:
                 image = ExcelImage(str(image_path))
                 image.width = 250
                 image.height = 250

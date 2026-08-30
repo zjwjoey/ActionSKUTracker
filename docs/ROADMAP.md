@@ -27,21 +27,21 @@ Export Foundation V1 正式发布和 SQLite Production Source of Truth 接管纳
 
 - 定义字段所有权、正式来源、14 列结构和 manifest；
 - 当前需求已升级为 Template 1 三表工作簿；
-- 文档契约已冻结，机器配置仍待同步升级。
+- 文档契约与机器配置已冻结并通过回归。
 
 ### STEP 2：ES 无图最小导出
 
 - 本地工作区已实现；
 - 只读取正式来源；
 - 包含 SKU、价格、URL、来源和只读校验；
-- 尚待单独代码提交和远端发布。
+- 已在 Stage A 收口分支提交并通过 CI。
 
 ### STEP 3：ZH 无图字典 Join
 
 - 本地工作区已实现；
 - 字段级优先级、source hash 和 fallback 已覆盖；
 - 与 ES SKU 集合对账；
-- 尚待单独代码提交和远端发布。
+- 已在 Stage A 收口分支提交并通过 CI。
 
 ### STEP 4：新 SKU 增量标准化
 
@@ -63,10 +63,10 @@ Export Foundation V1 正式发布和 SQLite Production Source of Truth 接管纳
 - 人工批准后才进入正式术语字典；
 - 尚待单独代码提交。
 
-## 3. 当前阶段：先发布基础 Export
+## 3. 当前阶段：基础 Export 与 SQLite 已收口，等待 P2 合并确认
 
-ES/ZH 独立无图导出、历史 Presence 和带图 Export 已在本地实现；正式发布仍需独立提交、
-真实来源预览和用户验收。基础导出的稳定验收已完成本地验证：
+ES/ZH 独立无图导出、历史 Presence、SQLite PRIMARY 和带图 Export 已完成验收；P0/P1 已合并到
+`main`，P2 已完成最终 MEDIUM 修复并推送功能分支，等待用户确认合并。基础导出的稳定验收已完成：
 
 1. 隔离并审查现有 exporting 代码；
 2. 冻结两个无图基础 Profile；
@@ -92,10 +92,10 @@ SQLite 生产接管已经纳入统一开发计划，执行顺序为：
 | Phase 7 | `SQLITE_PRIMARY` 正式接管 | 已完成正式切换；首轮完整性与 parity PASS |
 | Phase 8 | Excel/CSV 降级为 Generated View | PRIMARY 已从 SQLite head 生成兼容投影；仍需长期运行观察 |
 | Phase 9 | Image Contracts、AssetRecord、目录和状态冻结 | 已实现 |
-| Phase 10 | Image Foundation：下载、标准化、QA、缓存、Derivative | 已实现并有 fixture 测试 |
-| Phase 11 | 20–50 SKU 真实图片切片 | P2 当前阶段 |
-| Phase 12 | Full CURRENT 增量图片同步和性能基线 | P2 待切片通过后执行 |
-| Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | ES/ZH 带图 Export 与 Template 1 中文嵌图均已实现 |
+| Phase 10 | Image Foundation：下载、标准化、QA、缓存、Derivative | 已实现并完成闭环修复 |
+| Phase 11 | 20–50 SKU 真实图片切片 | 已完成，50/50 AVAILABLE |
+| Phase 12 | Full CURRENT 增量图片同步和性能基线 | 已完成，5,396/5,396 AVAILABLE |
+| Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | 已完成，SKU/业务事实 parity 0 mismatch；M-01/M-02/M-03 CLOSED |
 
 当前生产配置已为 `SQLITE_PRIMARY`；Excel/CSV 作为由 SQLite head 生成的兼容投影。SQLite V2
 Writer、Shadow/Primary 接线、Read Repository、三轮 Shadow 对账、基线迁移和正式切换均已完成。详细设计见
@@ -108,8 +108,8 @@ Candidate Validator、Auto-Approval Shadow，以及 SQLite resolution/queue/cand
 localization provenance 字段。生产 Apply、真实 AI、Scoped Dictionary 审批和 Auto-Approval 仍由
 feature gate 关闭；详见 `docs/knowledge/` 下的八份合同文档。第三轮 SQLite Shadow 暂缓到本阶段审查后。
 
-图片也已纳入同一总计划；Contracts、增量同步、标准化、QA、Derivatives 和带图 Export 已在本地实现，
-真实全量图片同步/性能基线仍待执行，`image_assets` 元数据仅在 SQLite PRIMARY 配置下接入；Template 1 带图命令已可用。
+图片也已纳入同一总计划；Contracts、增量同步、标准化、QA、Derivatives、真实切片、FULL 同步、
+性能基线和带图 Export 均已完成，`image_assets` 元数据已镜像到 SQLite PRIMARY；Template 1 带图命令已验收。
 
 P0 Export Foundation 与 P1 SQLite Production 已进入冻结状态；后续只接受 BUG、SECURITY 或 DATA INTEGRITY 修复。
 
@@ -229,9 +229,7 @@ term-candidates --run-id ...
 
 ### SQLite
 
-当前阶段继续冻结生产写入。Export V1 发布后按统一计划进入 Phase 2–8，经过
-`SQLITE_SHADOW → DB Read Path → SQLITE_PRIMARY`，不直接硬切。当前正式 daily-run 仍以
-Excel/CSV 为主链。
+SQLite PRIMARY 已完成正式接管并冻结；Excel/CSV 仅作为由 SQLite HEAD 生成的兼容视图。
 
 ### 图片下载
 
