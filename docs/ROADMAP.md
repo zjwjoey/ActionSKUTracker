@@ -86,9 +86,9 @@ SQLite 生产接管已经纳入统一开发计划，执行顺序为：
 |---|---|---|
 | Phase 2 | Production Contracts、Writer Inventory、Schema V2 契约 | 契约和状态文档已具备 |
 | Phase 3 | Schema V2、CommitBundle、事务 Writer | 已实现并有回归测试 |
-| Phase 4 | `SQLITE_SHADOW`，连续 3 次真实 parity | Writer/接线已实现；真实 3 次 parity 待执行 |
+| Phase 4 | `SQLITE_SHADOW`，连续 3 次真实 parity | 已完成 3/3，三轮均 0 mismatch |
 | Phase 5 | DB Read Path，Excel 暂时继续写 | PRIMARY Read Repository 已实现 |
-| Phase 6 | Cutover Candidate、备份、回滚和重建验证 | 待开发 |
+| Phase 6 | Cutover Candidate、备份、回滚和重建验证 | 下一阶段，待执行 |
 | Phase 7 | `SQLITE_PRIMARY` 正式接管 | 代码路径与 Read Repository 已实现；生产切换待门禁 |
 | Phase 8 | Excel/CSV 降级为 Generated View | 待开发 |
 | Phase 9 | Image Contracts、AssetRecord、目录和状态冻结 | 已实现 |
@@ -98,7 +98,7 @@ SQLite 生产接管已经纳入统一开发计划，执行顺序为：
 | Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | ES/ZH 带图 Export 与 Template 1 中文嵌图均已实现 |
 
 因此当前 `EXCEL_PRIMARY` 只表示**尚未切换生产主链**，不是取消数据库接管计划。SQLite V2
-Writer、Shadow/Primary 接线和 Read Repository 已实现；真实 Shadow 对账、基线迁移和切换门禁仍待完成。详细设计见
+Writer、Shadow/Primary 接线、Read Repository 和三轮 Shadow 对账已完成；基线迁移、回滚演练和切换门禁仍待完成。详细设计见
 [`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。
 
 ## 3.2 Knowledge Production V1（P3–P6）

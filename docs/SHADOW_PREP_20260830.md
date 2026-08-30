@@ -64,13 +64,29 @@ SQLite commit：`2026-08-30_2026-08-30_042701_b76fc2d3ee76`
 
 该 run 使用第 1 轮结果作为隔离基线，未修改生产文件，计为合格 Shadow **2/3**。
 
-## 尚未计入的内容
+## 第 3 轮真实 Shadow 结果
 
-候选库基线本身不能代替真实 Shadow run；当前第 2 轮已通过，但正式 Shadow 还需要：
+隔离目录：`F:\ActionSKUTracker\runtime\temp\shadow_run3_20260830`
+隔离 run：`2026-08-30_050908`
+SQLite commit：`2026-08-30_2026-08-30_050908_90ca37f10fdb`
+
+- QA：PASS；提交：FULL_COMMIT；SQLite：COMMITTED；兼容导出同步：SUCCESS；
+- Sitemap：5,396；Listing：5,382；Listing gap：0.3%；异常：0；CF/429：0；
+- CURRENT Excel / DB：5,396 / 5,396；Known lifecycle Excel / DB：6,046 / 6,046；
+- SQLite integrity：PASS；foreign keys：PASS；Presence 状态约束：PASS；
+- fact mismatch：0；lifecycle mismatch：0；总 parity mismatch：0；
+- 本轮 observations：24,184；commit_batches：4（含 baseline 与前两轮 Shadow）。
+
+该 run 使用第 2 轮结果作为隔离基线，未修改生产文件，计为合格 Shadow **3/3**。
+
+## 后续生产切换门禁
+
+三轮真实 Shadow 均已通过，下一阶段不再是继续 Shadow，而是受控的生产切换评审：
 
 1. 使用同一份正式 daily observation 同时完成 Excel 提交和 SQLite 写入；
 2. 对该 run 记录 `commit_id`、`base_commit_id`、QA、来源 hash 和导出确认；
 3. 对账 CURRENT、生命周期、事实字段和事件，要求 0 mismatch；
-4. 再完成 1 轮真实 Shadow（累计 3 轮）后，才进入备份/回滚复核和 Primary 切换评审。
+4. 先完成备份、恢复/回滚演练和目标库迁移复核；
+5. 经单独授权后，才可执行 `db-promote-primary` 并修改 `storage.mode`。
 
 当前 `config/settings.yaml` 仍保持 `storage.mode: EXCEL_PRIMARY`，生产数据库也仍为旧 V1 镜像。

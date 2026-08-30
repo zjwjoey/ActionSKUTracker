@@ -78,7 +78,8 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
 - SQLite V2：`CommitBundle`、`BEGIN IMMEDIATE`、外键/完整性检查、幂等 run、`base_commit_id`
   乐观门禁、`export_sync`、`sync-exports` 和 PRIMARY Read Repository 已实现并有 fixture 测试。
 - 当前真实 runtime 数据库仍是 `ACTION_SQLITE_MIRROR 1.0.0` 旧镜像；正式接管前需显式执行
-  `db-migrate-baseline --date YYYY-MM-DD` 到受控数据库，并完成连续 Shadow 对账。
+  `db-migrate-baseline --date YYYY-MM-DD` 到受控数据库，并完成备份/恢复演练。三轮隔离
+  `SQLITE_SHADOW` 已连续通过，均为 parity 0 mismatch，但尚未执行 Primary 切换。
 - 图片：`image-sync` 支持低并发、超时、指数退避、staging 原子 promotion、Manifest checkpoint、
   失败隔离和 SQLite PRIMARY 元数据镜像；当前配置不自动下载图片，Manifest 为空属于当前运行状态。
 
@@ -109,7 +110,7 @@ SOURCE_BLOCKED 排除、候选 Validator、字段级 Auto-Approval Shadow，以�
    runtime、报告、图片或密钥。
 
 SQLite Production Source of Truth 的完整阶段计划（Contracts → Writer → Shadow → Read →
-Cutover → PRIMARY）见 `docs/MASTER_DEVELOPMENT_PLAN.md`；当前完成了 Writer、接线和 Read
-Repository，尚未完成真实 Shadow 三次对账和 PRIMARY 切换。
+Cutover → PRIMARY）见 `docs/MASTER_DEVELOPMENT_PLAN.md`；当前完成了 Writer、接线、Read
+Repository 和三轮真实 Shadow 对账，下一步是受控迁移、备份/回滚演练和 PRIMARY 切换评审。
 Image Foundation 的 Phase 9–13（Contracts → Foundation → Slice → Full Sync → With-Images Export）
 已完成 Contracts、Foundation、ES/ZH With-Images Export 和 Template 1 中文嵌图实现，真实全量同步/性能基线待执行。
