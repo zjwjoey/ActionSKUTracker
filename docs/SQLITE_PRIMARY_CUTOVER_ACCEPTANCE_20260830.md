@@ -15,8 +15,8 @@
 
 | 项目 | 结果 |
 |---|---|
-| Git HEAD | `e308836745d997eb66f905240acc3958a55c1e74` |
-| CI | GitHub Actions run `33293771076` PASS |
+| Git HEAD | `aeb1656c5b3dbb6c4afef37a0175f6fa42a64c6b` |
+| CI | GitHub Actions run `33293801264` PASS |
 | `storage.mode` | `SQLITE_PRIMARY` |
 | schema family | `ACTION_SQLITE_DATA` |
 | schema version | `2.0.0` |
@@ -94,7 +94,7 @@ SQLite Backup API 已加入 `backup_database()`，并实际生成：
 
 - targeted database/lifecycle/export tests：84 passed。
 - full regression：295 passed，0 failed，0 error。
-- 审计相关修改对应的 GitHub Actions run `33293771076` 已完成且 success；未执行 main merge。
+- 审计相关修改对应的 GitHub Actions run `33293801264` 已完成且 success；未执行 main merge。
 
 ## Final Verdict
 
