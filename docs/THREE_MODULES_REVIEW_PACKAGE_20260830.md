@@ -83,7 +83,7 @@ python -m action_tracker image-status
 
 ## 5. 回归与提交
 
-- 全量测试：`261 passed`；
+- 全量测试：`262 passed`；
 - Template 1 图片回归：验证中文表独占嵌图、ES/历史表无图、缺图计数；
 - SQLite 临时基线：integrity/FK/parity 全部通过；
 - 最近相关提交：

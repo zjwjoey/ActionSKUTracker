@@ -84,7 +84,7 @@ Resolver、CURRENT 集合、运行时字典/基线逐文件 hash、并发 hash�
 
 ## 7. 测试与 CI
 
-当前完整回归：`261 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
+当前完整回归：`262 passed`。新增 Resolver、Coverage、Apply、Review Queue、Term Candidate、
 Export 和 Template 1 测试已加入 CI-safe 白名单；CI 仅使用临时 fixture，不访问官网、不写生产
 runtime、不发布字典基线。GitHub Actions 远端结果仍需以实际 workflow run 为准。
 

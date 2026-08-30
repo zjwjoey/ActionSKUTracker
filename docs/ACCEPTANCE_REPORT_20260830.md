@@ -19,7 +19,7 @@
 
 - 验收分支：`feat/export-foundation-v1`；
 - 最新相关提交：`91ce719`；
-- 完整回归：`261 passed in 17.74s`；
+- 完整回归：`262 passed in 17.97s`；
 - `git diff --check` 无格式错误；
 - 工作区存在字典、报告、assets/outputs 等既有未提交改动，本次验收未修改、未提交这些文件。
 
@@ -41,6 +41,9 @@
 
 当前生产 `runtime/db/action_tracker.db` 仍是旧 `ACTION_SQLITE_MIRROR / 1.0.0`，因此
 `db-validate-production` 对它拒绝为 V2 是预期安全行为。
+
+随后第 1 轮真实隔离 Shadow（`2026-08-30_031120`）已通过：QA/FULL_COMMIT、SQLite COMMITTED、
+兼容导出同步 SUCCESS，CURRENT 与 lifecycle parity 均为 0 mismatch，计为 Shadow 1/3。
 
 ## 3. 正式 Excel 输出验收
 
@@ -74,6 +77,6 @@
 
 1. 备份 Master、State 和旧 runtime 数据库；
 2. 对正式目标库执行 `db-migrate-baseline`；
-3. 连续 3 轮 `SQLITE_SHADOW` 真实 run，要求 parity 均为 0 mismatch；
+3. 再完成 2 轮（累计 3 轮）`SQLITE_SHADOW` 真实 run，要求每轮 parity 均为 0 mismatch；
 4. 完成恢复/回滚演练后，才显式 `db-promote-primary` 与修改 `storage.mode`；
 5. 执行正式图片的切片、全量同步和性能基线，再补视觉抽检。
