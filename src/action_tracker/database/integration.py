@@ -9,6 +9,7 @@ drifting apart.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from pathlib import Path
 from typing import Any, Mapping
@@ -202,7 +203,8 @@ def commit_daily_bundle(cfg: Mapping[str, Any], bundle: CommitBundle, *, mode: s
     resolved_mode = mode or storage_mode(cfg)
     role = "PRIMARY" if resolved_mode == "SQLITE_PRIMARY" else "SHADOW"
     path = database_path(cfg)
-    writer = ProductionWriter(path, role=role)
+    threshold = float((cfg.get("qa") or {}).get("max_localization_coverage_drop", 0.5))
+    writer = ProductionWriter(path, role=role, localization_drop_threshold=threshold)
     if bundle.base_commit_id is None:
         # The writer performs the actual optimistic check.  This branch merely
         # makes the intent explicit and keeps first-commit behavior deterministic.
@@ -247,10 +249,11 @@ def regenerate_compatibility_exports(cfg: Mapping[str, Any], commit_id: str) -> 
     state_dir = Path(cfg["paths"]["state"])
     known_path = state_dir / "known_skus.csv"
     offline_path = state_dir / "offline_skus.csv"
+    run_log_revisions = _run_log_revisions(db_path, commit_id)
     master_tmp, master_backup = stage_master(
         dict(cfg), updated_records={str(r["sku"]): r for r in records},
         price_events=[], event_events=[], return_backup=True,
-        compatibility_projection=True,
+        compatibility_projection=True, run_log_revisions=run_log_revisions,
     )
     known_tmp, _ = st.stage_known_skus(state_dir, known)
     offline_tmp, _ = st.stage_offline_skus(state_dir, offline)
@@ -271,8 +274,46 @@ def regenerate_compatibility_exports(cfg: Mapping[str, Any], commit_id: str) -> 
                 os.replace(restore_tmp, path)
         raise
     result = mark_export_sync(db_path, commit_id, master=master, known=known_path, offline=offline_path)
-    result["rebuild"] = {"current": len(records), "known": len(known), "offline": len(offline)}
+    result["rebuild"] = {"current": len(records), "known": len(known), "offline": len(offline),
+                         "run_log_revisions": len(run_log_revisions)}
     return result
+
+
+def _run_log_revisions(db_path: Path, commit_id: str) -> dict[str, dict[str, Any]]:
+    """Project corrected derived event counts back into an existing run log."""
+    with connect(db_path) as db:
+        row = db.execute(
+            """SELECT c.run_id,e.evidence_json FROM commit_batches c
+               JOIN run_evidence e ON e.run_id=c.run_id WHERE c.commit_id=?""",
+            (commit_id,),
+        ).fetchone()
+        if row is None:
+            return {}
+        try:
+            stored = json.loads(row[1] or "{}")
+        except json.JSONDecodeError:
+            return {}
+        original = stored.get("run_log")
+        if not isinstance(original, dict):
+            return {}
+        run_id = str(row[0])
+        revised = dict(original)
+        event_counts = {
+            str(event_type): int(count)
+            for event_type, count in db.execute(
+                "SELECT event_type,COUNT(*) FROM event_history WHERE run_id=? GROUP BY event_type", (run_id,)
+            )
+        }
+        revised.update({
+            "PROMO_START": event_counts.get("PROMO_START", 0),
+            "PROMO_END": event_counts.get("PROMO_END", 0),
+            "NEW_BADGE_ON": event_counts.get("ACTION_NEW_BADGE_ON", 0),
+            "NEW_BADGE_OFF": event_counts.get("ACTION_NEW_BADGE_OFF", 0),
+            "CONTENT_CHANGE": event_counts.get("CONTENT_CHANGE", 0),
+            "PRICE_UP": int(db.execute("SELECT COUNT(*) FROM price_history WHERE run_id=? AND change_type='UP'", (run_id,)).fetchone()[0]),
+            "PRICE_DOWN": int(db.execute("SELECT COUNT(*) FROM price_history WHERE run_id=? AND change_type='DOWN'", (run_id,)).fetchone()[0]),
+        })
+    return {run_id: revised}
 
 
 def regenerate_pending_exports(cfg: Mapping[str, Any], *, commit_id: str | None = None) -> list[dict[str, Any]]:

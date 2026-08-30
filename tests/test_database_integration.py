@@ -7,7 +7,8 @@ from action_tracker.database.integration import (
     commit_daily_bundle,
     storage_mode,
 )
-from action_tracker.database.production import database_status
+from action_tracker.database.production import database_status, repair_primary_localization_regression
+from action_tracker.database.connection import connect
 from action_tracker.database.repository import ProductionRepository
 
 
@@ -125,10 +126,18 @@ def test_cutover_preflight_is_read_only_and_requires_shadow(tmp_path: Path):
 def test_primary_repository_matches_compatibility_shapes(tmp_path: Path):
     cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
     commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
+    with connect(cfg["storage"]["db_path"]) as db:
+        db.execute(
+            "UPDATE product_localizations SET cat1=?,cat2=?,spec=?,description=?,details=? "
+            "WHERE official_sku=? AND language='es'",
+            ("Hogar", "Limpieza", "1 unidad", "Descripción", "Detalles", "1001"),
+        )
     repo = ProductionRepository(cfg["storage"]["db_path"])
     current = repo.load_current_products()
     known = repo.load_known_skus()
     assert set(current) == {"1001"}
+    assert current["1001"]["cat2_es"] == "Limpieza"
+    assert current["1001"]["desc_es"] == "Descripción"
     assert set(known) == {"1001", "1002"}
     assert known["1002"]["last_status"] == "MISSING"
 
@@ -140,6 +149,73 @@ def test_primary_repository_projection_is_read_only_and_current_only(tmp_path: P
     rows = repo.load_current_export_records()
     assert [row["sku"] for row in rows] == ["1001"]
     assert rows[0]["name_es"] == "Producto"
+
+
+def test_primary_localization_recovery_restores_only_empty_fields_and_rebuilds_content_events(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    run_id = "2026-08-30_010000"
+    commit_daily_bundle(cfg, _bundle(cfg, run_id=run_id), mode="SQLITE_PRIMARY")
+    snapshot = tmp_path / "trusted_products_normalized.csv"
+    snapshot.write_text(
+        "sku,name_es,cat1_es,cat2_es,spec_es,desc_es,details_es,cat1_zh,cat2_zh,spec_zh,desc_zh,details_zh,product_url,image_url\n"
+        "1001,Producto,Hogar,Limpieza,1 unidad,Descripción,Detalles,家居,清洁,1件,中文描述,中文详情,,\n",
+        encoding="utf-8",
+    )
+    with connect(cfg["storage"]["db_path"]) as db:
+        db.execute(
+            "UPDATE product_localizations SET details=? WHERE official_sku=? AND language='es'",
+            ("Detalle actual", "1001"),
+        )
+        db.execute(
+            "INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type,run_id,evidence,event_key) VALUES(?,?,?,?,?,?,?)",
+            ("ACT0001001", "1001", "2026-08-30", "CONTENT_CHANGE", run_id, run_id, "bad-event"),
+        )
+    result = repair_primary_localization_regression(
+        cfg["storage"]["db_path"], trusted_snapshot=snapshot, run_id=run_id,
+    )
+    assert result["status"] == "REPAIRED"
+    assert result["restored"]["es"] == 4
+    assert result["restored"]["zh"] == 5
+    assert result["commit_event_count_before"] == 0
+    assert result["commit_event_count_after"] == 1
+    current = ProductionRepository(cfg["storage"]["db_path"]).load_current_products()["1001"]
+    assert current["cat2_es"] == "Limpieza"
+    assert current["details_es"] == "Detalle actual"
+    with connect(cfg["storage"]["db_path"]) as db:
+        assert db.execute("SELECT COUNT(*) FROM event_history WHERE run_id=? AND event_type='CONTENT_CHANGE'", (run_id,)).fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM migration_source_issues WHERE issue_type='LOCALIZATION_REGRESSION_REPAIRED'").fetchone()[0] == 1
+
+
+def test_primary_writer_blocks_catastrophic_localization_coverage_drop(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    first = _bundle(cfg, run_id="2026-08-29_010000")
+    # Seed a complete Spanish detail projection.
+    seed = dict(next(iter(first.current_products)))
+    seed.update({"cat1_es": "Hogar", "cat2_es": "Limpieza", "spec_es": "1 unidad",
+                 "desc_es": "Descripción", "details_es": "Detalles"})
+    first = build_daily_bundle(
+        run_id=first.run_id, observation_date=first.observation_date, qa_state=first.qa_state,
+        today_records={"1001": seed}, baseline={"1001": seed},
+        statuses={"1001": _status("1001", "ACTIVE")},
+        known={"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "ACTIVE"}},
+        transition={"known": {"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "ACTIVE"}}, "offline": []},
+        today_set={"1001"}, observation_complete=True, price_events=[], event_events=[], review_rows=[], run_record={"dry_run": False}, snapshot_path=None,
+    )
+    commit_daily_bundle(cfg, first, mode="SQLITE_PRIMARY")
+    broken = dict(seed)
+    for field in ("cat1_es", "cat2_es", "spec_es", "desc_es", "details_es"):
+        broken[field] = ""
+    second = build_daily_bundle(
+        run_id="2026-08-30_010000", observation_date="2026-08-30", qa_state="PASS",
+        today_records={"1001": broken}, baseline={"1001": seed},
+        statuses={"1001": _status("1001", "ACTIVE")},
+        known={"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "ACTIVE"}},
+        transition={"known": {"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "ACTIVE"}}, "offline": []},
+        today_set={"1001"}, observation_complete=True, price_events=[], event_events=[], review_rows=[], run_record={"dry_run": False}, snapshot_path=None,
+    )
+    import pytest
+    with pytest.raises(Exception, match="DB_LOCALIZATION_COVERAGE_REGRESSION"):
+        commit_daily_bundle(cfg, second, mode="SQLITE_PRIMARY")
 
 
 def test_bundle_preserves_last_run_id_for_untouched_historical_rows(tmp_path: Path):

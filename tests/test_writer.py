@@ -134,3 +134,26 @@ def test_writer_updates_row_count(tmp_path):
     rows = list(ws.iter_rows(min_row=2, values_only=True))
     wb.close()
     assert len(rows) == 2  # 原 1001 更新 + 2002 追加
+
+
+def test_stage_master_revises_existing_run_log_without_duplicate(tmp_path):
+    cfg = _cfg(tmp_path)
+    _build_master(cfg["paths"]["master"])
+    wb = openpyxl.load_workbook(cfg["paths"]["master"])
+    row = {header: None for header in writer.RUN_LOG_HEADERS}
+    row.update({"Run ID": "R1", "CONTENT_CHANGE": 99, "PROMO_START": 8})
+    wb["05_RUN_LOG"].append([row[header] for header in writer.RUN_LOG_HEADERS])
+    wb.save(cfg["paths"]["master"])
+    wb.close()
+
+    tmp = writer.stage_master(
+        cfg, updated_records={}, price_events=[], event_events=[],
+        run_log_revisions={"R1": {"CONTENT_CHANGE": 4, "PROMO_START": 1}},
+    )
+    writer.commit_master(tmp, cfg["paths"]["master"])
+    wb = openpyxl.load_workbook(cfg["paths"]["master"], data_only=True)
+    rows = list(wb["05_RUN_LOG"].iter_rows(values_only=True))
+    wb.close()
+    assert len(rows) == 2
+    assert rows[1][writer.RUN_LOG_HEADERS.index("CONTENT_CHANGE")] == 4
+    assert rows[1][writer.RUN_LOG_HEADERS.index("PROMO_START")] == 1

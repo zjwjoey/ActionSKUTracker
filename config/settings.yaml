@@ -106,6 +106,8 @@ qa:
   price_max: 1000.0
   # 单日进入 REVIEW_QUEUE 的异常价格上限，超过判定为大规模异常
   max_anomaly_count: 20
+  # SQLite 提交前禁止本地化字段覆盖率发生灾难性回退
+  max_localization_coverage_drop: 0.5
 
 # ---- 运行策略 ----
 run:
