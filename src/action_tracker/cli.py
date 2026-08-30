@@ -129,7 +129,11 @@ def main(argv=None) -> int:
         return 0
     if args.command == "init-baseline":
         from . import baseline
-        res = baseline.build_baseline(cfg, force=args.force)
+        try:
+            res = baseline.build_baseline(cfg, force=args.force)
+        except (RuntimeError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
         print(json.dumps(res, ensure_ascii=False))
         return 0
     if args.command == "qa":
@@ -228,18 +232,11 @@ def main(argv=None) -> int:
         print(json.dumps({"database": str(db_path), "commit_id": commit_id}, ensure_ascii=False))
         return 0
     if args.command == "sync-exports":
-        from .database.integration import database_path
-        from .database.production import ProductionDatabaseError, sync_pending_exports
+        from .database.integration import database_path, regenerate_pending_exports
+        from .database.production import ProductionDatabaseError
         db_path = database_path(cfg)
-        state_dir = Path(cfg["paths"]["state"])
         try:
-            result = sync_pending_exports(
-                db_path,
-                master=Path(cfg["paths"]["master"]),
-                known=state_dir / "known_skus.csv",
-                offline=state_dir / "offline_skus.csv",
-                commit_id=args.commit_id,
-            )
+            result = regenerate_pending_exports(cfg, commit_id=args.commit_id)
         except (ProductionDatabaseError, OSError) as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2

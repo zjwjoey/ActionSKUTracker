@@ -755,14 +755,15 @@ def _commit_phase(
     try:
         master_tmp = stage_master(
             cfg, updated_records=projection_records, price_events=price_events,
-            event_events=event_events, run_log_row=run_log_row, review_rows=review_rows)
+            event_events=event_events, run_log_row=run_log_row, review_rows=review_rows,
+            compatibility_projection=(mode == "SQLITE_PRIMARY"))
     except Exception as e:
         known_tmp.unlink(missing_ok=True)
         log.error("STATE_WRITE_FAILED: Master 暂存失败 %s", e)
         return "STATE_WRITE_FAILED"
     # 3) 统一提交 Master + known_skus
     try:
-        commit_master(master_tmp, master)
+        commit_master(master_tmp, master, compatibility_projection=(mode == "SQLITE_PRIMARY"))
         st.commit_state_file(known_tmp, known_path)
     except Exception as e:
         log.error("PARTIAL_COMMIT: 提交中途失败 %s（Master 或 known_skus 可能已替换，见备份）", e)

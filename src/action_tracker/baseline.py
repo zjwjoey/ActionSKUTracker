@@ -23,6 +23,9 @@ def _today() -> str:
 
 
 def build_baseline(cfg: dict[str, Any], master_path: Path | None = None, force: bool = False) -> dict:
+    mode = str((cfg.get("storage") or {}).get("mode") or "EXCEL_PRIMARY").strip().upper()
+    if mode == "SQLITE_PRIMARY":
+        raise RuntimeError("LEGACY_STATE_WRITER_BLOCKED_SQLITE_PRIMARY")
     state_dir: Path = cfg["paths"]["state"]
     master_path = master_path or cfg["paths"]["master"]
     if not master_path.exists():
