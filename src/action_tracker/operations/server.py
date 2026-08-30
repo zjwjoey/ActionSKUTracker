@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
+import re
 
 from .service import OperationsService
 
@@ -26,6 +27,8 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                 return self._send_html(html)
             if path == "/api/status": return self._send(svc.system_status())
             if path == "/api/runs": return self._send(svc.run_history())
+            match = re.fullmatch(r"/api/runs/([^/]+)", path)
+            if match: return self._send(svc.run_detail(match.group(1)))
             if path == "/api/health": return self._send(svc.health())
             if path == "/api/quality": return self._send(svc.data_quality())
             self.send_error(404)

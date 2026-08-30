@@ -49,6 +49,19 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
         commit_status = str(result.get("commit_status") or "")
         if not bool(qa.get("passed")) and not dry_run:
             return StepResult("BLOCKED", {"delegated_run_id": result.get("run_id"), "commit_status": commit_status, "qa": qa})
+        # A passed QA report is not sufficient evidence that the formal write
+        # completed.  The delegated daily chain can fail while building the
+        # SQLite bundle, projecting compatibility files, or replacing state.
+        # Only these two statuses mean the chain reached its commit boundary;
+        # export-pending is deliberately allowed through so EXPORT can make
+        # the outer run DEGRADED and retain a retryable error.
+        if not dry_run and commit_status not in {"FULL_COMMIT", "DB_COMMITTED_EXPORT_PENDING"}:
+            return StepResult("BLOCKED", {
+                "delegated_run_id": result.get("run_id"),
+                "commit_status": commit_status,
+                "qa": qa,
+                "reason": "FORMAL_COMMIT_NOT_CONFIRMED",
+            }, error_code="FORMAL_COMMIT_NOT_CONFIRMED")
         return StepResult("SUCCESS", {"delegated": True, "delegated_run_id": result.get("run_id"), "commit_status": commit_status, "qa": qa})
 
     def delegated_run_id() -> str | None:
@@ -83,13 +96,33 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
         from ..review_queue import build_review_queue
         return StepResult("SUCCESS", build_review_queue(cfg, run_id=rid))
 
+    def qa_step() -> StepResult:
+        if dry_run:
+            return StepResult("SKIPPED", {"reason": "DRY_RUN_NO_FORMAL_QA_COMMIT"})
+        qa = (delegated.get("result") or {}).get("qa") or {}
+        return StepResult("SUCCESS" if bool(qa.get("passed")) else "BLOCKED", {"delegated": True, "qa": qa}, error_code=None if qa.get("passed") else "QA_FAILED")
+
+    def db_commit_step() -> StepResult:
+        if dry_run:
+            return StepResult("SKIPPED", {"reason": "DRY_RUN_NO_FORMAL_COMMIT"})
+        status = str((delegated.get("result") or {}).get("commit_status") or "")
+        return StepResult("SUCCESS", {"delegated": True, "commit_status": status})
+
+    def export_step() -> StepResult:
+        if dry_run:
+            return StepResult("SKIPPED", {"reason": "DRY_RUN_NO_FORMAL_EXPORT"})
+        status = str((delegated.get("result") or {}).get("commit_status") or "")
+        if status == "DB_COMMITTED_EXPORT_PENDING":
+            return StepResult("FAILED", {"reason": "COMPATIBILITY_EXPORT_PENDING", "commit_status": status}, retryable=True, error_code="EXPORT_PENDING")
+        return StepResult("SUCCESS", {"delegated": True, "commit_status": status, "reason": "compatibility export handled by delegated chain"})
+
     steps: dict[str, Any] = {
         "PREFLIGHT": lambda: StepResult("SUCCESS", {"database": validate_production_database(db), "code_version": git_commit_info()}),
         "BACKUP": lambda: StepResult("SUCCESS", backup_sqlite(db, Path(cfg["paths"]["backups"]) / business_date / f"{run_id}.sqlite3", run_id=run_id, code_version=git_commit_info())),
         "COLLECTION": collect_existing_chain,
-        "QA": lambda: StepResult("SUCCESS", {"delegated": True, "reason": "included in delegated daily-run chain"}),
-        "DB_COMMIT": lambda: StepResult("SUCCESS", {"delegated": True, "reason": "included in delegated daily-run chain"}),
-        "EXPORT": lambda: StepResult("SUCCESS", {"delegated": True, "reason": "compatibility export handled by delegated chain"}),
+        "QA": qa_step,
+        "DB_COMMIT": db_commit_step,
+        "EXPORT": export_step,
         "IMAGE": image_step,
         "KNOWLEDGE": knowledge_step,
         "AI": lambda: StepResult("SKIPPED", {"reason": "AI_DISABLED"}),

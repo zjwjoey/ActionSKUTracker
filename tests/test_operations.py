@@ -5,6 +5,7 @@ from action_tracker.database.schema import migrate_v2
 from action_tracker.operations.contracts import StepResult
 from action_tracker.operations.runner import ProductionRunner
 from action_tracker.operations.service import OperationsService
+from action_tracker.operations import entry
 
 
 def _steps(**overrides):
@@ -68,3 +69,55 @@ def test_operations_service_is_read_model_and_health(tmp_path: Path):
     assert service.safe_action("retry-export-sync", confirmed=True)["status"] == "READY"
     with connect(db) as conn:
         assert conn.execute("SELECT count(*) FROM operations_actions").fetchone()[0] == 1
+
+
+def test_production_entry_blocks_when_delegated_commit_is_not_confirmed(tmp_path: Path, monkeypatch):
+    db = tmp_path / "db.sqlite"
+    monkeypatch.setattr(entry, "database_path", lambda _cfg: db)
+    monkeypatch.setattr(entry, "validate_production_database", lambda _db: {"integrity": "PASS", "foreign_keys": "PASS"})
+    monkeypatch.setattr(entry, "backup_sqlite", lambda *_args, **_kwargs: {"status": "SUCCESS"})
+    monkeypatch.setattr(entry, "git_commit_info", lambda: "test")
+    from action_tracker.orchestrator import daily
+    monkeypatch.setattr(daily, "run_daily", lambda *_args, **_kwargs: {
+        "run_id": "inner-1", "qa": {"passed": True, "state": "PASS"}, "commit_status": "DB_COMMIT_FAILED",
+    })
+    cfg = {"project_root": str(tmp_path), "paths": {"state": tmp_path / "state", "backups": tmp_path / "backups"}}
+    result = entry.run_production(cfg, business_date="2026-08-30")
+    assert result["state"] == "BLOCKED"
+    assert result["steps"]["COLLECTION"]["error_code"] == "FORMAL_COMMIT_NOT_CONFIRMED"
+    assert any(error["code"] == "FORMAL_COMMIT_NOT_CONFIRMED" for error in result["errors"])
+
+
+def test_production_entry_marks_export_pending_as_degraded(tmp_path: Path, monkeypatch):
+    db = tmp_path / "db.sqlite"
+    monkeypatch.setattr(entry, "database_path", lambda _cfg: db)
+    monkeypatch.setattr(entry, "validate_production_database", lambda _db: {"integrity": "PASS", "foreign_keys": "PASS"})
+    monkeypatch.setattr(entry, "backup_sqlite", lambda *_args, **_kwargs: {"status": "SUCCESS"})
+    monkeypatch.setattr(entry, "git_commit_info", lambda: "test")
+    from action_tracker.orchestrator import daily
+    monkeypatch.setattr(daily, "run_daily", lambda *_args, **_kwargs: {
+        "run_id": "inner-1", "qa": {"passed": True, "state": "PASS"}, "commit_status": "DB_COMMITTED_EXPORT_PENDING",
+    })
+    cfg = {"project_root": str(tmp_path), "paths": {"state": tmp_path / "state", "backups": tmp_path / "backups"}}
+    result = entry.run_production(cfg, business_date="2026-08-30")
+    assert result["state"] == "DEGRADED"
+    assert result["steps"]["DB_COMMIT"]["status"] == "SUCCESS"
+    assert result["steps"]["EXPORT"]["error_code"] == "EXPORT_PENDING"
+
+
+def test_operations_service_links_outer_and_delegated_run(tmp_path: Path):
+    db = tmp_path / "db.sqlite"
+    migrate_v2(db, role="PRIMARY")
+    with connect(db) as conn:
+        conn.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run) VALUES('inner-1','2026-08-30','COMMITTED','PASS',0)")
+    reports = tmp_path / "reports" / "2026-08-30" / "outer-1"
+    reports.mkdir(parents=True)
+    (reports / "state.json").write_text('{"run_id":"outer-1","business_date":"2026-08-30","state":"SUCCESS","steps":{"COLLECTION":{"details":{"delegated_run_id":"inner-1","qa":{"state":"PASS"}}}}}', encoding="utf-8")
+    (reports / "summary.json").write_text('{"run_id":"outer-1"}', encoding="utf-8")
+    service = OperationsService(db, reports_root=tmp_path / "reports")
+    history = service.run_history()
+    assert any(row["run_id"] == "outer-1" and row["delegated_run_id"] == "inner-1" for row in history)
+    outer = service.run_detail("outer-1")
+    assert outer["delegated_run_id"] == "inner-1" and outer["database"]["run_id"] == "inner-1"
+    inner = service.run_detail("inner-1")
+    assert inner["operations_run_id"] == "outer-1" and "summary.json" in inner["artifacts"]

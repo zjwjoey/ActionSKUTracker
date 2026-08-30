@@ -45,18 +45,73 @@ class OperationsService:
         if not self.db_path.exists(): return []
         with connect(self.db_path) as db:
             rows = db.execute("SELECT run_id,run_date,status,qa_state,dry_run,started_at,ended_at FROM runs ORDER BY started_at DESC LIMIT ?", (max(1, min(int(limit), 90)),)).fetchall()
-        return [dict(row) for row in rows]
+        history = [dict(row) for row in rows]
+        # The operations wrapper has its own resumable run id while the
+        # delegated daily chain owns the product/database run id.  Expose the
+        # wrapper alongside its delegated id so the control center has one
+        # navigable history instead of two disconnected timelines.
+        seen = {str(item["run_id"]) for item in history}
+        if self.reports_root.exists():
+            for state_path in self.reports_root.glob("*/*/state.json"):
+                try:
+                    state = json.loads(state_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                outer_id = str(state.get("run_id") or state_path.parent.name)
+                if outer_id in seen:
+                    continue
+                collection = (state.get("steps") or {}).get("COLLECTION") or {}
+                details = collection.get("details") or {}
+                history.append({
+                    "run_id": outer_id,
+                    "delegated_run_id": details.get("delegated_run_id"),
+                    "run_date": state.get("business_date"),
+                    "status": state.get("state"),
+                    "qa_state": (details.get("qa") or {}).get("state"),
+                    "dry_run": None,
+                    "started_at": state.get("started_at"),
+                    "ended_at": state.get("finished_at"),
+                    "source": "operations",
+                })
+        history.sort(key=lambda item: str(item.get("started_at") or ""), reverse=True)
+        return history[:max(1, min(int(limit), 90))]
 
     def run_detail(self, run_id: str) -> dict[str, Any]:
-        result = {"run_id": run_id, "database": None, "artifacts": {}}
+        result = {"run_id": run_id, "operations_run_id": None, "delegated_run_id": None, "database": None, "artifacts": {}}
         if not self.db_path.exists(): return result
         with connect(self.db_path) as db:
             row = db.execute("SELECT * FROM runs WHERE run_id=?", (run_id,)).fetchone()
             if row: result["database"] = dict(row)
-        for path in self.reports_root.glob(f"*/{run_id}/*.json"):
+        report_dir = None
+        direct_dirs = list(self.reports_root.glob(f"*/{run_id}"))
+        if direct_dirs:
+            report_dir = direct_dirs[0]
+            result["operations_run_id"] = run_id
+        else:
+            # A database run id is the delegated id. Find its operations
+            # wrapper by the persisted COLLECTION details.
+            for state_path in self.reports_root.glob("*/*/state.json"):
+                try:
+                    state = json.loads(state_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                details = ((state.get("steps") or {}).get("COLLECTION") or {}).get("details") or {}
+                if str(details.get("delegated_run_id") or "") == str(run_id):
+                    report_dir = state_path.parent
+                    result["operations_run_id"] = str(state.get("run_id") or report_dir.name)
+                    break
+        if report_dir is not None:
+            collection = json.loads((report_dir / "state.json").read_text(encoding="utf-8")) if (report_dir / "state.json").exists() else {}
+            details = ((collection.get("steps") or {}).get("COLLECTION") or {}).get("details") or {}
+            result["delegated_run_id"] = details.get("delegated_run_id")
+        for path in ((report_dir.glob("*.json") if report_dir is not None else [])):
             if path.name in {"summary.json", "steps.json", "errors.json"}:
                 try: result["artifacts"][path.name] = json.loads(path.read_text(encoding="utf-8"))
                 except (OSError, json.JSONDecodeError): pass
+        if result["database"] is None and result["delegated_run_id"]:
+            with connect(self.db_path) as db:
+                row = db.execute("SELECT * FROM runs WHERE run_id=?", (result["delegated_run_id"],)).fetchone()
+                if row: result["database"] = dict(row)
         return result
 
     def data_quality(self) -> dict[str, Any]:
