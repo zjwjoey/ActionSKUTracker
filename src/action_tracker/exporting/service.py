@@ -22,6 +22,7 @@ from ..services.normalization import parse_bool_zh, parse_price
 from .dictionary_join import (
     DictionaryJoinError,
     build_zh_rows,
+    build_zh_rows_from_localized_source,
     load_dictionary_context,
     unresolved_brand_ids_for_records,
 )
@@ -76,6 +77,8 @@ def export_catalog(
     if language == "es":
         validate_spanish_source_fields(source.records)
         rows = build_es_rows(source.records)
+    elif language == "zh" and source.kind == "SQLITE_CURRENT":
+        rows, fallback_counts = build_zh_rows_from_localized_source(source.records)
     elif language == "zh":
         try:
             dictionary = load_dictionary_context(cfg)
@@ -97,8 +100,15 @@ def export_catalog(
     # 避免验证失败或 manifest 写入失败时留下半套导出物。
     preview_path = output_path.with_name(f".{output_path.stem}.preview.xlsx")
     try:
-        write_catalog_xlsx(preview_path, headers=headers, rows=rows, workbook_format=profile.workbook_format)
-        _verify_written_workbook(preview_path, headers=headers, expected_skus=expected_skus)
+        image_stats = write_catalog_xlsx(
+            preview_path, headers=headers, rows=rows, workbook_format=profile.workbook_format,
+            image_root=(Path(cfg["paths"]["images"]) / "derivatives" / "excel_250") if not no_images else None,
+            embed_images=not no_images,
+        )
+        _verify_written_workbook(preview_path, headers=headers, expected_skus=expected_skus,
+                                 expect_images=not no_images, expected_image_count=image_stats["embedded_count"])
+        if not no_images and image_stats["embedded_count"] + image_stats["missing_count"] != len(rows):
+            raise ExportValidationError("EXPORT_IMAGE_COVERAGE_MISMATCH")
         source_hash = canonical_source_hash(source.records)
         manifest = {
             "run_id": source.run_id,
@@ -118,6 +128,9 @@ def export_catalog(
                 "workbook": "PASS",
             },
             "detail_retry_ids": _detail_retry_ids(source),
+            "image_profile": "excel_250_white_v1" if not no_images else None,
+            "image_embedded_count": image_stats["embedded_count"],
+            "image_missing_count": image_stats["missing_count"],
         }
         if language == "zh":
             manifest["dictionary_hash"] = dictionary_hash
@@ -135,6 +148,8 @@ def export_catalog(
         "sku_count": len(rows),
         "source_kind": source.kind,
         "profile": profile.profile_id,
+        "image_embedded_count": image_stats["embedded_count"],
+        "image_missing_count": image_stats["missing_count"],
     }
 
 
@@ -146,6 +161,16 @@ def resolve_formal_source(
     profile: ExportProfile,
 ) -> ExportSource:
     """解析唯一正式 run；最新正式 run 才允许直接读取 Master CURRENT。"""
+    # Once SQLite PRIMARY is active, the latest committed DB head is the
+    # authoritative CURRENT source for that date. Historical dates continue to
+    # use immutable formal snapshots because the DB is append-only and does not
+    # expose a time-travel CURRENT view yet.
+    if str((cfg.get("storage") or {}).get("mode") or "EXCEL_PRIMARY").upper() == "SQLITE_PRIMARY":
+        sqlite_source = _resolve_sqlite_current_source(
+            cfg, export_date=export_date, requested_run_id=requested_run_id,
+        )
+        if sqlite_source is not None:
+            return sqlite_source
     candidates = _formal_snapshot_candidates(Path(cfg["paths"]["snapshots"]), export_date, profile.source_policy)
     if requested_run_id:
         candidates = [candidate for candidate in candidates if candidate["run_id"] == requested_run_id]
@@ -179,6 +204,33 @@ def resolve_formal_source(
         records=records,
         source_master_file_hash=None,
         directory=selected["directory"],
+    )
+
+
+def _resolve_sqlite_current_source(
+    cfg: dict[str, Any], *, export_date: str, requested_run_id: str | None,
+) -> ExportSource | None:
+    from ..database.integration import database_path
+    from ..database.repository import ProductionRepository, ProductionRepositoryError
+
+    try:
+        repo = ProductionRepository(database_path(cfg))
+        info = repo.commit_info(requested_run_id) if requested_run_id else repo.latest_commit_info()
+    except ProductionRepositoryError as exc:
+        raise ExportValidationError(str(exc)) from exc
+    if not info or str(info.get("run_date") or "") != export_date:
+        return None
+    latest = repo.latest_commit_info()
+    if latest and info.get("run_id") != latest.get("run_id"):
+        # A historical commit cannot be reconstructed from the current DB
+        # projection; force the immutable snapshot path instead.
+        return None
+    records = tuple(repo.load_current_export_records())
+    if not records:
+        raise ExportValidationError("SQLITE_CURRENT_SOURCE_EMPTY")
+    return ExportSource(
+        export_date=export_date, run_id=str(info["run_id"]), kind="SQLITE_CURRENT",
+        records=records, source_master_file_hash=None, directory=None,
     )
 
 
@@ -358,7 +410,8 @@ def canonical_source_hash(records: Iterable[dict[str, Any]]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _verify_written_workbook(path: Path, *, headers: list[str], expected_skus: set[str]) -> None:
+def _verify_written_workbook(path: Path, *, headers: list[str], expected_skus: set[str],
+                             expect_images: bool = False, expected_image_count: int = 0) -> None:
     workbook = openpyxl.load_workbook(path, read_only=False, data_only=True)
     try:
         if workbook.sheetnames != ["商品全量"]:
@@ -373,6 +426,8 @@ def _verify_written_workbook(path: Path, *, headers: list[str], expected_skus: s
         actual_skus = {str(ws.cell(row=row, column=sku_column).value or "").strip() for row in range(2, ws.max_row + 1)}
         if actual_skus != expected_skus or len(actual_skus) != len(expected_skus):
             raise ExportValidationError("EXPORT_XLSX_SKU_SET_MISMATCH")
+        if expect_images and len(getattr(ws, "_images", ())) != expected_image_count:
+            raise ExportValidationError("EXPORT_XLSX_IMAGE_COUNT_MISMATCH")
     finally:
         workbook.close()
 

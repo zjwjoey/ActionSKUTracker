@@ -41,12 +41,30 @@ def build_parser() -> argparse.ArgumentParser:
     q = sub.add_parser("qa", help="重跑 QA（基于最近 snapshot）")
     e = sub.add_parser("export", help="导出已正式提交的商品清单")
     e.add_argument("--lang", choices=("es", "zh"), required=True, help="导出语言")
-    e.add_argument("--no-images", action="store_true", required=True, help="当前仅支持不嵌图的导出")
+    image_group = e.add_mutually_exclusive_group(required=True)
+    image_group.add_argument("--no-images", action="store_true", help="不嵌入本地图片")
+    image_group.add_argument("--with-images", dest="with_images", action="store_true", help="读取本地 250x250 图片并嵌入")
     e.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     e.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
     t = sub.add_parser("export-template1", help="导出 Template 1 三表版本")
+    t.add_argument("--with-images", action="store_true", help="仅在今日中文清单嵌入本地 250x250 图片")
     t.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     t.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
+    he = sub.add_parser("export-history", help="导出历史 Presence 上下架矩阵")
+    he.add_argument("--date", required=True, help="导出标记日期（YYYY-MM-DD）")
+    ims = sub.add_parser("image-sync", help="同步正式 CURRENT 的本地图片资产")
+    ims.add_argument("--date", required=True, help="业务日期（YYYY-MM-DD）")
+    ims.add_argument("--run-id", help="可选：指定正式 run")
+    sub.add_parser("image-status", help="查看本地图片资产状态")
+    sub.add_parser("db-status", help="查看 SQLite V2 数据库状态")
+    sub.add_parser("db-validate-production", help="验证 SQLite V2 完整性和外键")
+    sub.add_parser("db-cutover-check", help="只读检查 SQLite Shadow 是否满足切换前置条件")
+    dbm = sub.add_parser("db-migrate-baseline", help="从只读 Master/State 建立 SQLite V2 基线")
+    dbm.add_argument("--date", required=True, help="基线日期（YYYY-MM-DD）")
+    dbp = sub.add_parser("db-promote-primary", help="显式将已验证的 SQLite Shadow 数据库提升为 Primary")
+    dbv = sub.add_parser("db-parity", help="对账 SQLite V2 与当前 Excel/CSV 兼容投影")
+    dbe = sub.add_parser("sync-exports", help="重试 SQLite 提交对应的 Excel/CSV 兼容导出确认")
+    dbe.add_argument("--commit-id", help="可选：只同步指定 commit_id")
     dc = sub.add_parser("dictionary-coverage", help="统计 CURRENT 的 AI-Free 字典覆盖率")
     dc.add_argument("--date", help="业务日期（YYYY-MM-DD）")
     dc.add_argument("--run-id", help="可选：指定正式 observation run_id")
@@ -111,7 +129,11 @@ def main(argv=None) -> int:
         return 0
     if args.command == "init-baseline":
         from . import baseline
-        res = baseline.build_baseline(cfg, force=args.force)
+        try:
+            res = baseline.build_baseline(cfg, force=args.force)
+        except (RuntimeError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
         print(json.dumps(res, ensure_ascii=False))
         return 0
     if args.command == "qa":
@@ -121,7 +143,7 @@ def main(argv=None) -> int:
         try:
             result = export_catalog(
                 cfg, language=args.lang, export_date=args.date,
-                no_images=args.no_images, run_id=args.run_id,
+                no_images=not args.with_images, run_id=args.run_id,
             )
         except ExportValidationError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
@@ -131,12 +153,115 @@ def main(argv=None) -> int:
     if args.command == "export-template1":
         from .exporting.template1_service import export_template1
         try:
-            result = export_template1(cfg, export_date=args.date, run_id=args.run_id)
+            result = export_template1(
+                cfg, export_date=args.date, run_id=args.run_id,
+                with_images=bool(args.with_images),
+            )
         except (ValueError, OSError) as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False))
         return 0
+    if args.command == "export-history":
+        from .exporting.history_export import HistoryExportError, export_history
+        try:
+            result = export_history(cfg, export_date=args.date)
+        except (HistoryExportError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "image-sync":
+        from .images.service import sync_formal_current
+        try:
+            result = sync_formal_current(cfg, export_date=args.date, run_id=args.run_id)
+        except (ValueError, OSError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "image-status":
+        from .images.service import image_status
+        print(json.dumps(image_status(cfg), ensure_ascii=False))
+        return 0
+    if args.command == "db-status":
+        from .database.production import database_status
+        db_path = Path((cfg.get("storage") or {}).get("db_path") or Path(cfg["project_root"]) / "runtime" / "db" / "action_tracker.db")
+        if not db_path.is_absolute():
+            db_path = Path(cfg["project_root"]) / db_path
+        print(json.dumps(database_status(db_path), ensure_ascii=False))
+        return 0
+    if args.command == "db-validate-production":
+        from .database.production import ProductionDatabaseError, validate_production_database
+        db_path = Path((cfg.get("storage") or {}).get("db_path") or Path(cfg["project_root"]) / "runtime" / "db" / "action_tracker.db")
+        if not db_path.is_absolute():
+            db_path = Path(cfg["project_root"]) / db_path
+        try:
+            result = validate_production_database(db_path)
+        except ProductionDatabaseError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "db-cutover-check":
+        from .database.integration import database_path
+        from .database.production import ProductionDatabaseError, cutover_preflight
+        try:
+            if str((cfg.get("storage") or {}).get("mode") or "EXCEL_PRIMARY").upper() != "EXCEL_PRIMARY":
+                raise ProductionDatabaseError("CUTOVER_CONFIG_MUST_REMAIN_EXCEL_PRIMARY")
+            state_dir = Path(cfg["paths"]["state"])
+            result = cutover_preflight(
+                database_path(cfg), master=Path(cfg["paths"]["master"]),
+                known=state_dir / "known_skus.csv", offline=state_dir / "offline_skus.csv",
+            )
+        except (ProductionDatabaseError, OSError, ValueError) as exc:
+            print(json.dumps({"status": "FAIL", "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "db-migrate-baseline":
+        from .database.production import ProductionDatabaseError, import_legacy_baseline_v2
+        db_path = Path((cfg.get("storage") or {}).get("db_path") or Path(cfg["project_root"]) / "runtime" / "db" / "action_tracker.db")
+        if not db_path.is_absolute():
+            db_path = Path(cfg["project_root"]) / db_path
+        try:
+            commit_id = import_legacy_baseline_v2(db_path, master_path=Path(cfg["paths"]["master"]), state_dir=Path(cfg["paths"]["state"]), observed_at=args.date)
+        except (ProductionDatabaseError, ValueError, OSError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps({"database": str(db_path), "commit_id": commit_id}, ensure_ascii=False))
+        return 0
+    if args.command == "sync-exports":
+        from .database.integration import database_path, regenerate_pending_exports
+        from .database.production import ProductionDatabaseError
+        db_path = database_path(cfg)
+        try:
+            result = regenerate_pending_exports(cfg, commit_id=args.commit_id)
+        except (ProductionDatabaseError, OSError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps({"database": str(db_path), "results": result}, ensure_ascii=False))
+        return 0
+    if args.command == "db-promote-primary":
+        from .database.integration import database_path
+        from .database.production import ProductionDatabaseError, promote_database_role
+        try:
+            result = promote_database_role(database_path(cfg))
+        except ProductionDatabaseError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    if args.command == "db-parity":
+        from .database.parity import compare_with_legacy_files
+        from .database.repository import ProductionRepositoryError
+        try:
+            result = compare_with_legacy_files(cfg)
+        except (ProductionRepositoryError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False))
+        return 0 if result.get("status") == "PASS" else 3
     if args.command == "dictionary-coverage":
         from .dictionary_coverage import dictionary_coverage
         try:

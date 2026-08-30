@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import openpyxl
+from openpyxl.drawing.image import Image as ExcelImage
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -17,7 +18,9 @@ def write_catalog_xlsx(
     headers: list[str],
     rows: Iterable[dict[str, Any]],
     workbook_format: dict[str, Any],
-) -> None:
+    image_root: Path | None = None,
+    embed_images: bool = False,
+) -> dict[str, int]:
     """原子写入单工作表商品清单。调用方负责所有业务校验。"""
     materialized = list(rows)
     workbook = openpyxl.Workbook()
@@ -52,6 +55,8 @@ def write_catalog_xlsx(
         ws.column_dimensions[get_column_letter(col)].width = widths.get(header, 18)
 
     price_format = str((workbook_format.get("price") or {}).get("number_format") or "€#,##0.00")
+    embedded_count = 0
+    missing_count = 0
     for row_no in range(2, len(materialized) + 2):
         for header, col in index.items():
             cell = ws.cell(row=row_no, column=col)
@@ -68,6 +73,19 @@ def write_catalog_xlsx(
                 cell.value = str(hyperlink_labels.get(header) or target)
                 cell.hyperlink = target
                 cell.style = "Hyperlink"
+        if embed_images:
+            sku = str(materialized[row_no - 2].get("编号") or "").strip()
+            image_path = image_root / f"{sku}.png" if image_root and sku else None
+            image_column = index.get("图片")
+            if image_column and image_path and image_path.exists():
+                image = ExcelImage(str(image_path))
+                image.width = 250
+                image.height = 250
+                ws.add_image(image, f"{get_column_letter(image_column)}{row_no}")
+                ws.row_dimensions[row_no].height = max(ws.row_dimensions[row_no].height or 20, 190)
+                embedded_count += 1
+            elif image_column:
+                missing_count += 1
         description_lines = max(
             (_wrapped_line_count(ws.cell(row=row_no, column=index[header]).value, widths[header])
              for header in ("描述", "产品详情") if header in index),
@@ -86,6 +104,7 @@ def write_catalog_xlsx(
         workbook.close()
         if temp_path.exists():
             temp_path.unlink()
+    return {"embedded_count": embedded_count, "missing_count": missing_count}
 
 
 def _wrapped_line_count(value: Any, width: int) -> int:

@@ -143,9 +143,21 @@ def run_daily(
 
     # ---- 基线与状态 ----
     master = paths["master"]
-    baseline = excel_reader.load_current(master)
-    known = st.load_known_skus(paths["state"])
-    offline = st.load_offline_skus(paths["state"])
+    from ..database.integration import database_path, storage_mode
+    configured_storage_mode = storage_mode(cfg)
+    if configured_storage_mode == "SQLITE_PRIMARY":
+        # PRIMARY reads come from the same V2 database that will receive this
+        # run. Excel/CSV are compatibility projections and are not consulted
+        # for business decisions in this mode.
+        from ..database.repository import ProductionRepository
+        repository = ProductionRepository(database_path(cfg))
+        baseline = repository.load_current_products()
+        known = repository.load_known_skus()
+        offline = repository.load_offline_skus()
+    else:
+        baseline = excel_reader.load_current(master)
+        known = st.load_known_skus(paths["state"])
+        offline = st.load_offline_skus(paths["state"])
     trans = st.load_translation_state(paths["state"])
     log.info("baseline=%d known=%d offline=%d run_id=%s dry_run=%s", len(baseline), len(known), len(offline), run_id, dry_run)
 
@@ -441,6 +453,10 @@ def run_daily(
     write_staging(cfg, run_id, stage_data)
     # ---- 正式提交（只发生在 非 dry-run 且 QA PASS；否则 Master/known_skus/offline_skus 一律不动）----
     commit_status = "DRY_RUN"
+    sqlite_diagnostics: dict[str, Any] = {
+        "mode": str((cfg.get("storage") or {}).get("mode") or "EXCEL_PRIMARY").upper(),
+        "status": "NOT_USED",
+    }
     if not dry_run:
         if _should_commit(dry_run=dry_run, qa_passed=qa.passed, access_state=presence_access_state,
                           qa_state=qa.state):
@@ -450,12 +466,15 @@ def run_daily(
                 cfg, statuses=statuses, known=known, run_date=run_date, run_id=run_id,
                 offline_runs=cfg["lifecycle"]["offline_confirmation_runs"],
                 today_records=today_records, price_events=price_events, event_events=event_events,
-                run_log_row=run_log_row, review_rows=review_rows)
+                run_log_row=run_log_row, review_rows=review_rows,
+                baseline=baseline, today_set=today_set, observation_complete=observation_complete,
+                snapshot_path=snap_dir, sqlite_diagnostics=sqlite_diagnostics)
         else:
             commit_status = "QA_FAIL"
             log.error("QA 未通过（%s），禁止写 Master / known_skus / offline_skus", qa.state)
 
     run_report["commit_status"] = commit_status
+    run_report["sqlite"] = sqlite_diagnostics
     run_report["finished_at"] = madrid_now().isoformat()
     run_report["cleanup_status"] = "lock_release_pending"
     # Commit status and completion time are produced after the main snapshot.
@@ -650,6 +669,11 @@ def _commit_phase(
     event_events: list[dict],
     run_log_row: dict,
     review_rows: list[dict],
+    baseline: dict[str, dict] | None = None,
+    today_set: set[str] | None = None,
+    observation_complete: bool = True,
+    snapshot_path: Path | None = None,
+    sqlite_diagnostics: dict[str, Any] | None = None,
 ) -> str:
     """QA PASS 后的统一提交：known_skus + Master 先各自暂存验证，再原子替换，最后重生成 offline_skus。
 
@@ -658,9 +682,15 @@ def _commit_phase(
     """
     from .. import state as st
     from ..excel.writer import commit_master, stage_master
+    from ..database.integration import acknowledge_compatibility_exports, build_daily_bundle, commit_daily_bundle, storage_mode
 
     state_dir = cfg["paths"]["state"]
     master = cfg["paths"]["master"]
+    mode = storage_mode(cfg)
+    diagnostics = sqlite_diagnostics if sqlite_diagnostics is not None else {}
+    diagnostics.setdefault("mode", mode)
+    baseline = baseline or {}
+    today_set = today_set or set(today_records)
     # 1) 计算新状态并暂存 known_skus（失败则不触碰 Master）
     try:
         transition = st.apply_state_transition(known, statuses, run_date, run_id, offline_runs)
@@ -668,28 +698,103 @@ def _commit_phase(
     except Exception as e:
         log.error("STATE_WRITE_FAILED: known_skus 计算/暂存失败 %s", e)
         return "STATE_WRITE_FAILED"
+    # Build the exact same immutable payload for SQLite. PRIMARY commits it
+    # before compatibility files; SHADOW commits it after the existing Excel
+    # path. EXCEL_PRIMARY intentionally does not touch the database.
+    sqlite_bundle = None
+    if mode in {"SQLITE_SHADOW", "SQLITE_PRIMARY"}:
+        try:
+            sqlite_bundle = build_daily_bundle(
+                run_id=run_id, observation_date=run_date, qa_state=run_log_row.get("QA状态", "PASS"),
+                today_records=today_records, baseline=baseline, statuses=statuses, known=known,
+                transition=transition, today_set=today_set, observation_complete=observation_complete,
+                price_events=price_events, event_events=event_events, review_rows=review_rows,
+                run_record={"dry_run": False, "started_at": run_log_row.get("开始时间"),
+                            "finished_at": run_log_row.get("结束时间"), "run_log": run_log_row},
+                snapshot_path=snapshot_path,
+            )
+            if mode == "SQLITE_PRIMARY":
+                diagnostics["status"] = "COMMITTING"
+                diagnostics["commit_id"] = commit_daily_bundle(cfg, sqlite_bundle, mode=mode)
+                diagnostics["status"] = "COMMITTED"
+        except Exception as e:
+            diagnostics.update({"status": "FAILED", "error": f"{type(e).__name__}: {e}"})
+            log.error("SQLite %s 提交失败: %s", mode, e)
+            if mode == "SQLITE_PRIMARY":
+                known_tmp.unlink(missing_ok=True)
+                return "DB_COMMIT_FAILED"
+    # In PRIMARY mode the compatibility files must be projected from the
+    # committed SQLite head, never from the pre-commit in-memory payload.  This
+    # keeps Excel/CSV as a verifiable compatibility view of the DB source of
+    # truth and makes a partial in-memory result impossible to publish.
+    projection_records = today_records
+    projection_offline = transition["offline"]
+    if mode == "SQLITE_PRIMARY" and sqlite_bundle is not None:
+        try:
+            from ..database.integration import database_path
+            from ..database.repository import ProductionRepository
+
+            repository = ProductionRepository(database_path(cfg))
+            projection_records = {
+                str(record.get("sku")): record
+                for record in repository.load_current_export_records()
+                if str(record.get("sku") or "").strip()
+            }
+            projection_known = repository.load_known_skus()
+            projection_offline = repository.load_offline_skus()
+            # Replace the already staged state temp with the committed DB
+            # projection before any compatibility file is replaced.
+            known_tmp.unlink(missing_ok=True)
+            known_tmp, known_path = st.stage_known_skus(state_dir, projection_known)
+        except Exception as e:
+            known_tmp.unlink(missing_ok=True)
+            diagnostics.update({"status": "FAILED", "error": f"{type(e).__name__}: {e}"})
+            log.error("SQLite PRIMARY 兼容投影读取失败: %s", e)
+            return "DB_PROJECTION_FAILED"
     # 2) 暂存 Master（内部完成备份 + 旧表迁移 + 验证）
     try:
         master_tmp = stage_master(
-            cfg, updated_records=today_records, price_events=price_events,
-            event_events=event_events, run_log_row=run_log_row, review_rows=review_rows)
+            cfg, updated_records=projection_records, price_events=price_events,
+            event_events=event_events, run_log_row=run_log_row, review_rows=review_rows,
+            compatibility_projection=(mode == "SQLITE_PRIMARY"))
     except Exception as e:
         known_tmp.unlink(missing_ok=True)
         log.error("STATE_WRITE_FAILED: Master 暂存失败 %s", e)
         return "STATE_WRITE_FAILED"
     # 3) 统一提交 Master + known_skus
     try:
-        commit_master(master_tmp, master)
+        commit_master(master_tmp, master, compatibility_projection=(mode == "SQLITE_PRIMARY"))
         st.commit_state_file(known_tmp, known_path)
     except Exception as e:
         log.error("PARTIAL_COMMIT: 提交中途失败 %s（Master 或 known_skus 可能已替换，见备份）", e)
         return "PARTIAL_COMMIT"
     # 4) 由 known_skus 重生成 offline_skus（原子写）
     try:
-        st.save_offline_skus(state_dir, transition["offline"])
+        st.save_offline_skus(state_dir, projection_offline)
     except Exception as e:
         log.error("STATE_WRITE_FAILED: offline_skus 重生成失败 %s", e)
         return "STATE_WRITE_FAILED"
+    if mode == "SQLITE_SHADOW" and sqlite_bundle is not None:
+        try:
+            diagnostics["status"] = "COMMITTING"
+            diagnostics["commit_id"] = commit_daily_bundle(cfg, sqlite_bundle, mode=mode)
+            diagnostics["status"] = "COMMITTED"
+            diagnostics["export_sync"] = acknowledge_compatibility_exports(cfg, diagnostics["commit_id"])
+        except Exception as e:
+            # Shadow is deliberately non-blocking: Excel/CSV remain the
+            # production result and the failure is retained in run evidence.
+            diagnostics.update({"status": "FAILED", "error": f"{type(e).__name__}: {e}"})
+            log.error("SQLite SHADOW 提交失败（不影响 Excel 主链）: %s", e)
+    if mode == "SQLITE_PRIMARY" and diagnostics.get("commit_id"):
+        try:
+            diagnostics["export_sync"] = acknowledge_compatibility_exports(cfg, diagnostics["commit_id"])
+            if diagnostics["export_sync"].get("status") != "SUCCESS":
+                log.warning("SQLite PRIMARY 已提交，但兼容导出仍待同步: %s", diagnostics["export_sync"])
+                return "DB_COMMITTED_EXPORT_PENDING"
+        except Exception as e:
+            diagnostics.update({"export_sync": {"status": "PENDING", "error": f"{type(e).__name__}: {e}"}})
+            log.error("SQLite PRIMARY 兼容导出确认失败: %s", e)
+            return "DB_COMMITTED_EXPORT_PENDING"
     log.info("正式提交完成: Master + known_skus + offline_skus（FULL_COMMIT）")
     return "FULL_COMMIT"
 

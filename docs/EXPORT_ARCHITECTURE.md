@@ -61,7 +61,7 @@ Export 绝对不得：
 | --- | --- | --- |
 | Template 1 无图 | 已提交到当前功能分支并通过回归测试，待用户验收 | 一个 Excel、三张工作表 |
 | 基础 ES/ZH 无图 Profile | 已提交到当前功能分支并通过回归测试，待真实日常验收 | 两个独立 Excel |
-| 独立历史 Presence Export | 已完成设计、尚未实现 | 与 Template 1 第一张表复用同一 Presence 构建服务 |
+| 独立历史 Presence Export | 已实现并通过 fixture 回归，待真实来源验收 | 与 Template 1 第一张表复用同一 Presence 构建服务 |
 
 Template 1 的完整字段契约见 `docs/EXPORT_PROFILE.md`。
 
@@ -73,7 +73,7 @@ Template 1 的完整字段契约见 `docs/EXPORT_PROFILE.md`。
 - 中文全量无图。
 
 基础版本包含正式来源解析、14 列结构、ES/ZH 对账、manifest 和只读保护。Template 1
-当前已完成历史 union、三表合一和 0/1 Presence；中文图片嵌入仍是后续独立阶段。
+当前已完成历史 union、三表合一和 0/1 Presence；ES/ZH 带图 Export 也已实现，图片同步仍作为独立任务运行。
 
 完整顺序和验收条件见 `docs/EXPORT_IMPLEMENTATION_PLAN.md`。
 
@@ -141,13 +141,14 @@ src/action_tracker/exporting/
 
 ## 9. 当前实现状态
 
-截至 2026-08-27：
+截至 2026-08-30：
 
 - ES/ZH 两个独立无图文件已经可以从正式来源导出；
-- Template 1 无图三表、第一张表当日列和新 SKU union 已实现；
-- 中文表图片嵌入尚未实现，继续独立冻结；
+- Template 1 无图三表、第一张表当日列和新 SKU union 已实现；独立历史 Presence Export 也已实现，
+  历史 Presence 使用 `1/0/UNKNOWN` 三态并附来源审计；
+- ES/ZH 带图 Export 已实现，缺图时保留 SKU；
 - Profile、基础导出和 Template 1 无图三表已实现并通过回归，正式来源仍必须来自 QA/FULL_COMMIT；
-- 图片下载仍是独立任务，Export 只消费已经存在的本地图片。
+- 图片下载仍是独立任务，Export 只消费已经存在的本地 250×250 白底衍生图。
 
 ## 10. CI 与导出验证边界
 

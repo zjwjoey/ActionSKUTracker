@@ -1,6 +1,10 @@
 # Action SKU Tracker 路线图
 
-更新日期：2026-08-27
+更新日期：2026-08-30
+
+统一开发计划见 [`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。该计划把
+Export Foundation V1 正式发布和 SQLite Production Source of Truth 接管纳入同一总目标，
+但仍按阶段门禁推进。
 
 ## 1. 总原则
 
@@ -61,8 +65,8 @@
 
 ## 3. 当前阶段：先发布基础 Export
 
-虽然 ES/ZH 两个独立无图导出已经在本地工作区实现，但它们尚未完成独立提交、真实
-正式来源预览和用户验收。当前优先级是先把基础导出变成可日常使用的稳定功能：
+ES/ZH 独立无图导出、历史 Presence 和带图 Export 已在本地实现；正式发布仍需独立提交、
+真实来源预览和用户验收。基础导出的稳定验收已完成本地验证：
 
 1. 隔离并审查现有 exporting 代码；
 2. 冻结两个无图基础 Profile；
@@ -71,19 +75,53 @@
 5. 完整测试并独立提交；
 6. 用户确认基础导出可用。
 
-详细计划见 `EXPORT_IMPLEMENTATION_PLAN.md`。基础版本验收前不开始图片和三表合一。
+详细计划见 `EXPORT_IMPLEMENTATION_PLAN.md`。带图 Export 虽已独立实现，仍不自动触发图片下载，
+并且不改变基础无图导出的业务事实。
+
+## 3.1 Export V1 之后的 SQLite 接管计划
+
+SQLite 生产接管已经纳入统一开发计划，执行顺序为：
+
+| 阶段 | 目标 | 当前状态 |
+|---|---|---|
+| Phase 2 | Production Contracts、Writer Inventory、Schema V2 契约 | 契约和状态文档已具备 |
+| Phase 3 | Schema V2、CommitBundle、事务 Writer | 已实现并有回归测试 |
+| Phase 4 | `SQLITE_SHADOW`，连续 3 次真实 parity | 已完成 3/3，三轮均 0 mismatch |
+| Phase 5 | DB Read Path，Excel 暂时继续写 | PRIMARY Read Repository 已实现 |
+| Phase 6 | Cutover Candidate、备份、回滚和重建验证 | 下一阶段，待执行 |
+| Phase 7 | `SQLITE_PRIMARY` 正式接管 | 已完成正式切换；首轮完整性与 parity PASS |
+| Phase 8 | Excel/CSV 降级为 Generated View | PRIMARY 已从 SQLite head 生成兼容投影；仍需长期运行观察 |
+| Phase 9 | Image Contracts、AssetRecord、目录和状态冻结 | 已实现 |
+| Phase 10 | Image Foundation：下载、标准化、QA、缓存、Derivative | 已实现并有 fixture 测试 |
+| Phase 11 | 20–50 SKU 真实图片切片 | 待开发 |
+| Phase 12 | Full CURRENT 增量图片同步和性能基线 | 待开发 |
+| Phase 13 | ES/ZH 带图 Export、Template 1 中文嵌图 | ES/ZH 带图 Export 与 Template 1 中文嵌图均已实现 |
+
+当前生产配置已为 `SQLITE_PRIMARY`；Excel/CSV 作为由 SQLite head 生成的兼容投影。SQLite V2
+Writer、Shadow/Primary 接线、Read Repository、三轮 Shadow 对账、基线迁移和正式切换均已完成。详细设计见
+[`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。
+
+## 3.2 Knowledge Production V1（P3–P6）
+
+已完成统一合同和离线安全基础：六字段 source hash、字段级 Resolver、增量 Translation Queue、
+Candidate Validator、Auto-Approval Shadow，以及 SQLite resolution/queue/candidate/audit 表和
+localization provenance 字段。生产 Apply、真实 AI、Scoped Dictionary 审批和 Auto-Approval 仍由
+feature gate 关闭；详见 `docs/knowledge/` 下的八份合同文档。第三轮 SQLite Shadow 暂缓到本阶段审查后。
+
+图片也已纳入同一总计划；Contracts、增量同步、标准化、QA、Derivatives 和带图 Export 已在本地实现，
+真实全量图片同步/性能基线仍待执行，`image_assets` 元数据仅在 SQLite PRIMARY 配置下接入；Template 1 带图命令已可用。
 
 ## 4. 后续阶段：STEP 7 + Template 1
 
-### 4.1 历史 Presence 服务
+### 4.1 历史 Presence 服务（已实现独立导出）
 
-需要实现：
+已实现基础服务与独立 `export-history` CLI；后续只需做真实来源验收：
 
 1. 读取 `config/history_sources.yaml`；
 2. 校验每个来源文件、工作表和 SKU 列；
 3. 每批次按 SKU 去重；
 4. 建立长期 SKU union；
-5. 写日期 0/1；
+5. 按来源能力写日期 `1/0/UNKNOWN`；
 6. 保存原始行数、唯一 SKU 数、重复数和来源 hash；
 7. 为 Template 1 和独立 `export-history` 提供同一服务。
 
@@ -189,7 +227,9 @@ term-candidates --run-id ...
 
 ### SQLite
 
-继续冻结。当前正式 daily-run 仍以 Excel/CSV 为主链。本路线不包含数据库迁移。
+当前阶段继续冻结生产写入。Export V1 发布后按统一计划进入 Phase 2–8，经过
+`SQLITE_SHADOW → DB Read Path → SQLITE_PRIMARY`，不直接硬切。当前正式 daily-run 仍以
+Excel/CSV 为主链。
 
 ### 图片下载
 

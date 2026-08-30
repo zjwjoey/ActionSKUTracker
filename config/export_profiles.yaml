@@ -130,7 +130,7 @@ profiles:
 
   full_es_with_images:
     profile_version: 1
-    implementation_status: defined_not_implemented
+    implementation_status: implemented
     language: es
     filename_pattern: "{date_compact}Action商品全量_西班牙语版_带图.xlsx"
     include_embedded_images: true
@@ -138,7 +138,7 @@ profiles:
 
   full_zh_with_images:
     profile_version: 1
-    implementation_status: defined_not_implemented
+    implementation_status: implemented
     language: zh
     filename_pattern: "{date_compact}Action商品全量_中文版_带图.xlsx"
     include_embedded_images: true

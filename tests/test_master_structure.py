@@ -121,6 +121,14 @@ def test_writer_migrates_legacy_sheets(tmp_path):
     assert (cfg["paths"]["backups"] / "legacy_source_summary.csv").exists()
 
 
+def test_legacy_master_writer_is_blocked_in_sqlite_primary(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg["storage"] = {"mode": "SQLITE_PRIMARY"}
+    _build_master(cfg["paths"]["master"])
+    with pytest.raises(RuntimeError, match="LEGACY_MASTER_WRITER_BLOCKED"):
+        writer.stage_master(cfg, updated_records={}, price_events=[], event_events=[])
+
+
 def test_writer_migrate_idempotent(tmp_path):
     cfg = _cfg(tmp_path)
     _build_master(cfg["paths"]["master"], legacy=True)

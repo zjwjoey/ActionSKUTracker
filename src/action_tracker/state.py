@@ -69,6 +69,25 @@ def stage_known_skus(state_dir: Path, known: dict[str, dict]) -> tuple[Path, Pat
     return tmp, path
 
 
+def stage_offline_skus(state_dir: Path, offline) -> tuple[Path, Path]:
+    """Stage an ``offline_skus.csv`` projection without replacing the file."""
+    path = state_dir / "offline_skus.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    rows = list(offline.values()) if isinstance(offline, dict) else list(offline)
+    rows = sorted(rows, key=lambda r: r.get("official_sku", ""))
+    with tmp.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=OFFLINE_HEADERS, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    with tmp.open("r", encoding="utf-8-sig", newline="") as f:
+        n = sum(1 for _ in csv.reader(f)) - 1
+    if n != len(rows):
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(f"offline_skus 暂存验证失败: 期望 {len(rows)} 行实际 {n} 行")
+    return tmp, path
+
+
 def commit_state_file(tmp: Path, final: Path) -> None:
     """原子替换正式状态文件（配合 stage_* 使用）。"""
     os.replace(tmp, final)

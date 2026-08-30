@@ -37,10 +37,8 @@ def _profile_path(cfg: dict[str, Any]) -> Path:
 
 
 def load_profile(cfg: dict[str, Any], *, language: str, no_images: bool) -> ExportProfile:
-    """返回一个已冻结的 Profile；当前只允许无图 ES / ZH Profile。"""
-    if not no_images:
-        raise ExportProfileError("当前仅定义无图导出；请使用 --no-images")
-    profile_id = f"full_{language}_no_images"
+    """返回已冻结的 ES/ZH Profile；图片版只读取本地资产。"""
+    profile_id = f"full_{language}_{'no_images' if no_images else 'with_images'}"
     path = _profile_path(cfg)
     if not path.exists():
         raise ExportProfileError(f"EXPORT_PROFILE_CONFIG_MISSING: {path}")

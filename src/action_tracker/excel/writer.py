@@ -304,6 +304,7 @@ def stage_master(
     run_log_row: dict | None = None,
     review_rows: list[dict] | None = None,
     return_backup: bool = False,
+    compatibility_projection: bool = False,
 ) -> Path | tuple[Path, Path]:
     """暂存新的 Master 到 temp：备份 → 复制 → 更新 → 保存 → 完整验证。
 
@@ -312,6 +313,9 @@ def stage_master(
     ``return_backup=True`` 时同时返回本次已验证的备份路径，供调用方在
     替换后校验失败时执行确定性恢复。
     """
+    mode = str((cfg.get("storage") or {}).get("mode") or "EXCEL_PRIMARY").upper()
+    if mode == "SQLITE_PRIMARY" and not compatibility_projection:
+        raise RuntimeError("LEGACY_MASTER_WRITER_BLOCKED_SQLITE_PRIMARY")
     master: Path = cfg["paths"]["master"]
     if not master.exists():
         raise FileNotFoundError(f"Master 不存在: {master}")
@@ -357,7 +361,7 @@ def stage_master(
     return (tmp, backup) if return_backup else tmp
 
 
-def commit_master(tmp: Path, master: Path) -> Path:
+def commit_master(tmp: Path, master: Path, *, compatibility_projection: bool = False) -> Path:
     """原子替换正式 Master（tmp 必须已通过 _validate）。"""
     os.replace(tmp, master)
     log.info("正式 Master 已更新: %s", master)

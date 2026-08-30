@@ -13,6 +13,9 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 - 商品、品牌、类目、术语、人工覆盖和模型结果字典；
 - 增量字典标准化、统一 Review Queue、术语候选管线；
 - ES/ZH 两个独立无图导出，以及 Template 1 三表无图导出；
+- ES/ZH 带图导出（只读取本地 250×250 白底衍生图，缺图保留 SKU）；
+- 图片资产增量同步、断点 Manifest、标准化和质量状态；
+- SQLite V2 事务 Writer、PRIMARY 只读 Repository、Shadow/Primary 模式接线（默认仍为 Excel 主链）；
 - AI-Free 字典覆盖率、字段级 Resolver、Dictionary Apply 预览与正式 Gate（生产写入默认关闭）、统一审核队列和术语候选。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
@@ -100,6 +103,8 @@ python scripts/publish_dictionary_baseline.py
 
 增量字典、审核队列、术语候选和 Resolver 已实现为本地离线能力；Dictionary Apply Gate 已实现，生产写入由 YAML 布尔值 `dictionary_apply.production_enabled: false` 明确关闭（字符串配置会安全报错）。正式 Apply 还要求字典与已发布基线逐文件 hash 一致、审计未过期、全部 SKU 为 AUTO_READY，且默认不允许 PROVISIONAL 品牌。具体状态见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
+Knowledge Production V1（P3–P6）的统一合同、SQLite resolution/queue/candidate/audit 表、字段级 Resolver、增量队列、候选 Validator 和 Auto-Approval Shadow 已完成；生产 Apply、AI provider、Scoped Dictionary 审批和 Auto-Approval 仍由配置门禁关闭。合同文档见 [`docs/knowledge/`](docs/knowledge/)。
+
 ## 导出
 
 目标 Template 1 是一个 Excel、三张工作表：
@@ -108,16 +113,31 @@ python scripts/publish_dictionary_baseline.py
 2. `今日西班牙语清单`；
 3. `今日中文清单`。
 
-第一张表按日期写 0/1；第二、三张表只包含当日有效 CURRENT SKU；只有中文表允许嵌入本地 250×250 白底图片，当前先输出不带图版本。当日数量以正式 Listing/CURRENT 有效集合为准，不以 Sitemap 原始数量为准。
+第一张表按日期写 0/1；第二、三张表只包含当日有效 CURRENT SKU；只有中文表允许嵌入本地 250×250 白底图片。当日数量以正式 Listing/CURRENT 有效集合为准，不以 Sitemap 原始数量为准。
 
 Template 1 无图三表已经可以从正式 run 生成；现有基础无图文件仍可单独导出：
 
 ```powershell
 python -m action_tracker export --lang es --no-images --date YYYY-MM-DD
 python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
+# 读取本地图片并导出带图版本（不会触发网络下载）
+python -m action_tracker export --lang zh --with-images --date YYYY-MM-DD
+# Template 1：只有“今日中文清单”嵌入本地图片，另外两张表保持无图
+python -m action_tracker export-template1 --date YYYY-MM-DD --with-images
+# 图片同步（只针对正式 CURRENT 的 image_url）
+python -m action_tracker image-sync --date YYYY-MM-DD
+python -m action_tracker image-status
+# SQLite 状态、完整性和兼容导出确认
+python -m action_tracker db-status
+python -m action_tracker db-validate-production
+python -m action_tracker sync-exports
+# 仅在 Shadow 对账、备份与回滚验收完成后显式提升（不会自动发生）
+python -m action_tracker db-promote-primary
+# 导出历史 Presence 矩阵（只读历史来源，不访问官网）
+python -m action_tracker export-history --date YYYY-MM-DD
 ```
 
-历史 Presence 和中文图片嵌入属于后续独立阶段。详见
+图片同步与带图导出已经实现为独立阶段；历史 Presence 已可独立导出。详见
 [Export 落地计划](docs/EXPORT_IMPLEMENTATION_PLAN.md)。
 
 ## 主要目录
@@ -143,7 +163,7 @@ python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
 - 不绕过 CAPTCHA、Cloudflare 或其他网站安全机制；
 - 不每天全量抓详情、全量翻译或全量下载图片；
 - 不使用 Sitemap-only SKU 冒充当日有效在售商品；
-- SQLite 继续冻结，不是生产主链。
+- 当前 `storage.mode: EXCEL_PRIMARY`，SQLite 不自动接管生产；切换前必须完成基线迁移、Shadow 对账和回滚验收。
 
 开发和提交规则见 [AGENTS.md](AGENTS.md)。
 
