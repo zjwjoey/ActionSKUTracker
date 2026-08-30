@@ -35,3 +35,4 @@ tests/test_translation.py
 tests/test_refine_dictionary_translations.py
 tests/test_writer.py
 tests/test_knowledge_production.py
+tests/test_operations.py

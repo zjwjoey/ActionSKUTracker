@@ -89,6 +89,16 @@ def build_parser() -> argparse.ArgumentParser:
     tc = sub.add_parser("term-candidates", help="从正式 run 的增量 SKU 提取术语候选，绝不自动入库")
     tc.add_argument("--run-id", required=True, help="必须已有同 run 的 dictionary-enrich 正式证据")
     tc.add_argument("--min-sku-count", type=int, default=2, help="候选至少覆盖的 SKU 数，默认 2")
+    pr = sub.add_parser("production-run", help="统一生产运行入口（运营编排层）")
+    pr.add_argument("--date", help="业务日期；默认 Europe/Madrid 当日")
+    pr.add_argument("--resume", action="store_true")
+    pr.add_argument("--from-step", choices=("PREFLIGHT", "BACKUP", "COLLECTION", "QA", "DB_COMMIT", "EXPORT", "IMAGE", "KNOWLEDGE", "AI", "AUTO_APPROVAL", "REVIEW", "REPORT"))
+    pr.add_argument("--dry-run", action="store_true")
+    pr.add_argument("--no-network", action="store_true")
+    ops = sub.add_parser("ops", help="本机运营状态/控制台")
+    ops_sub = ops.add_subparsers(dest="ops_command", required=True)
+    ops_sub.add_parser("status"); ops_sub.add_parser("health"); ops_sub.add_parser("runs"); ops_run = ops_sub.add_parser("run"); ops_run.add_argument("run_id")
+    ops_serve = ops_sub.add_parser("serve"); ops_serve.add_argument("--host", default="127.0.0.1"); ops_serve.add_argument("--port", type=int, default=8787)
     return p
 
 
@@ -329,6 +339,24 @@ def main(argv=None) -> int:
             return 2
         print(json.dumps(result, ensure_ascii=False))
         return 0
+    if args.command == "production-run":
+        from .operations.entry import run_production
+        from .services.runtime import observation_date
+        try:
+            result = run_production(cfg, business_date=args.date or observation_date(), resume=args.resume, from_step=args.from_step, dry_run=args.dry_run, no_network=args.no_network)
+        except Exception as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr); return 30
+        print(json.dumps(result, ensure_ascii=False)); return int(result.get("exit_code") or 0)
+    if args.command == "ops":
+        from .database.integration import database_path
+        from .operations.service import OperationsService
+        svc = OperationsService(database_path(cfg), reports_root=Path(cfg["paths"]["temp"]).parent / "reports" / "daily", lock_path=Path(cfg["paths"]["state"]) / "daily-run.lock", config=cfg)
+        if args.ops_command == "status": print(json.dumps(svc.system_status(), ensure_ascii=False)); return 0
+        if args.ops_command == "health": print(json.dumps(svc.health(), ensure_ascii=False)); return 0
+        if args.ops_command == "runs": print(json.dumps(svc.run_history(), ensure_ascii=False)); return 0
+        if args.ops_command == "run": print(json.dumps(svc.run_detail(args.run_id), ensure_ascii=False)); return 0
+        from .operations.server import serve
+        serve(svc, host=args.host, port=args.port); return 0
     return 0
 
 
