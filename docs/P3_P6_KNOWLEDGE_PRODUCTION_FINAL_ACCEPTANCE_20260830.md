@@ -18,6 +18,7 @@ Read-only audit source: `F:\ActionSKUTracker\runtime\db\action_tracker.db`.
 - Field coverage: name 5,396; cat1 5,396; cat2 5,379; spec 5,396; description 5,378; details 5,379.
 - Freshness: 5,396 `CURRENT` rows as stored; no stale mismatch was detected (the product table has no populated source hash, so future runs must populate/compare the six-field hash).
 - Queue: 0 persisted pending rows; candidates: 0 persisted rows.
+- Real SQLite field-level preview: 5,396 candidate SKUs, 32,324 field rows, 0 rejects, 0 stale rows. This preview was read-only and did not change the database.
 - Live provider: not configured/validated; this is intentionally not represented as a successful live pilot.
 
 Full JSON evidence: `F:\ActionSKUTracker\runtime\temp\knowledge_audit_20260830.json`.
@@ -49,5 +50,6 @@ Knowledge writes are limited to the six Chinese localization fields. Spanish fac
 - HIGH: 0
 - MEDIUM: 0
 - LOW: live provider pilot not run; product source hash population should be monitored before enabling production localization apply.
+- LOW: the legacy Excel-oriented `dictionary-apply` command rejects this PRIMARY dataset on its historical Master SKU-order gate; it was not used for Knowledge apply. The new SQLite field-level gate is the production path and passed the read-only real preview above.
 
 P3–P6 are ready for user review on this branch. This task does **not** merge the Knowledge branch into main.
