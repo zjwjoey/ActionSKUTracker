@@ -128,7 +128,10 @@ def build_daily_bundle(
         row = dict(record)
         row.setdefault("sku", sku)
         row.setdefault("canonical_id", record.get("canonical_id") or f"ACT{str(sku).zfill(7)}")
-        row["last_run_id"] = run_id
+        # ``apply_state_transition`` already updates last_run_id only for
+        # identities that participated in this observation.  Do not stamp
+        # untouched historical/offline rows with the current run: doing so
+        # makes the SQLite lifecycle projection diverge from known_skus.csv.
         lifecycle.append(row)
     # If there is no transition entry (e.g. a fixture or a future partial
     # writer), seed a safe lifecycle row from the status itself.

@@ -112,6 +112,25 @@ def test_primary_repository_matches_compatibility_shapes(tmp_path: Path):
     assert known["1002"]["last_status"] == "MISSING"
 
 
+def test_bundle_preserves_last_run_id_for_untouched_historical_rows(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_SHADOW")
+    statuses = {"1001": _status("1001", "ACTIVE")}
+    known = {
+        "1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "ACTIVE", "last_run_id": "new-run"},
+        "1002": {"official_sku": "1002", "canonical_id": "ACT0001002", "last_status": "OFFLINE", "last_run_id": "historical-run"},
+    }
+    bundle = build_daily_bundle(
+        run_id="new-run", observation_date="2026-08-30", qa_state="PASS",
+        today_records={"1001": {"sku": "1001", "canonical_id": "ACT0001001", "name_es": "Producto", "current_price": 2.5, "status": "CURRENT"}},
+        baseline={}, statuses=statuses, known=known,
+        transition={"known": known, "offline": []}, today_set={"1001"}, observation_complete=True,
+        price_events=[], event_events=[], review_rows=[], run_record={"dry_run": False}, snapshot_path=None,
+    )
+    lifecycle = {str(row["sku"]): row for row in bundle.lifecycle_updates}
+    assert lifecycle["1001"]["last_run_id"] == "new-run"
+    assert lifecycle["1002"]["last_run_id"] == "historical-run"
+
+
 def test_image_manifest_metadata_mirrors_without_bytes(tmp_path: Path):
     cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
     commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
