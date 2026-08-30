@@ -19,7 +19,7 @@ KNOWLEDGE_STATES = frozenset({
 FIELD_SOURCES = frozenset({
     "manual_override", "product_dictionary", "scoped_dictionary",
     "category_dictionary", "term_dictionary", "model_cache", "ai_candidate",
-    "spanish_fallback", "source_blocked", "missing",
+    "spanish_fallback", "source_blocked", "missing", "human_approved_ai", "auto_approved_ai",
 })
 
 

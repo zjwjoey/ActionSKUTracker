@@ -9,6 +9,7 @@ from typing import Any
 from .contracts import KNOWLEDGE_FIELDS
 
 _URL_RE = re.compile(r"(?:https?://|www\.)", re.IGNORECASE)
+_NUMBER_RE = re.compile(r"(?<![A-Za-z])\d+(?:[.,]\d+)?")
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,15 @@ def validate_candidate(candidate: Mapping[str, Any], record: Mapping[str, Any]) 
             reasons.append(f"{field.upper()}_TOO_LONG")
         elif _URL_RE.search(value):
             reasons.append(f"{field.upper()}_URL_CONTAMINATION")
+        else:
+            # A translation may change language, but it must not silently
+            # drop numeric facts from the corresponding Spanish field.
+            source_field = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es",
+                            "spec": "spec_es", "description": "desc_es", "details": "details_es"}[field]
+            expected = set(_NUMBER_RE.findall(str(record.get(source_field) or "")))
+            found = set(_NUMBER_RE.findall(value))
+            if expected - found:
+                reasons.append(f"{field.upper()}_NUMBER_DROPPED")
     confidence = candidate.get("confidence")
     if confidence is not None:
         try:

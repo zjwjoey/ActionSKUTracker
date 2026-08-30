@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from .contracts import FIELD_TO_ES, KNOWLEDGE_FIELDS, Resolution, ResolutionField, source_hash
+from .scoped import match_scoped
 
 
 def _value(mapping: Mapping[str, Any] | None, field: str) -> str:
@@ -23,6 +24,17 @@ def _source_quality(record: Mapping[str, Any]) -> str:
     return str(record.get("source_quality") or record.get("source_quality_status") or "OK").upper()
 
 
+def _approved(mapping: Mapping[str, Any] | str | None, field: str) -> str:
+    if not mapping:
+        return ""
+    if isinstance(mapping, str):
+        return mapping.strip()
+    status = str(mapping.get("review_status") or mapping.get("approval_status") or "").upper()
+    if status and status not in {"APPROVED", "HUMAN_APPROVED", "CONFIRMED", "LOCKED"}:
+        return ""
+    return _value(mapping, field)
+
+
 def resolve(
     record: Mapping[str, Any],
     *,
@@ -31,6 +43,7 @@ def resolve(
     scoped: Mapping[str, Any] | None = None,
     dictionaries: Mapping[str, Any] | None = None,
     model_cache: Mapping[str, Any] | None = None,
+    ai_candidate: Mapping[str, Any] | None = None,
     base_commit_id: str | None = None,
     dictionary_hash: str | None = None,
 ) -> Resolution:
@@ -49,12 +62,22 @@ def resolve(
     cache_valid = bool(model_cache and cache_hash == h and str((model_cache or {}).get("validation_status") or "").upper() == "PASS")
 
     for field in KNOWLEDGE_FIELDS:
+        scoped_value = ""
+        if isinstance(scoped, Mapping):
+            scoped_value = _approved(scoped, field)
+        elif scoped:
+            match = match_scoped(record, field, scoped)  # type: ignore[arg-type]
+            if match.conflict:
+                reasons.append(f"{field.upper()}_SCOPED_CONFLICT")
+            scoped_value = match.value
+        dictionary_value = _approved((dictionaries or {}).get(field) if dictionaries else None, field)
         candidates = (
             ("manual_override", _value(manual, field)),
-            ("product_dictionary", _value(product, field)),
-            ("scoped_dictionary", _value(scoped, field)),
-            ("term_dictionary", _value((dictionaries or {}).get(field) if dictionaries else None, field)),
+            ("product_dictionary", _approved(product, field)),
+            ("scoped_dictionary", scoped_value),
+            ("term_dictionary", dictionary_value),
             ("model_cache", _value(model_cache, field) if cache_valid else ""),
+            ("ai_candidate", _value(ai_candidate, field) if ai_candidate else ""),
         )
         selected_source, selected = next(((src, val) for src, val in candidates if val), ("missing", ""))
         if selected:
@@ -74,6 +97,8 @@ def resolve(
     if blocked:
         readiness = "SOURCE_BLOCKED"
         reasons.insert(0, "SOURCE_BLOCKED")
+    elif any("_SCOPED_CONFLICT" in reason for reason in reasons):
+        readiness = "REVIEW_REQUIRED"
     elif all(item.status == "READY" for item in fields.values()):
         readiness = "AUTO_READY"
     else:
