@@ -9,10 +9,12 @@ drifting apart.
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 from typing import Any, Mapping
 
-from .production import CommitBundle, ProductionWriter, mark_export_sync
+from .production import CommitBundle, ProductionWriter, ProductionDatabaseError, mark_export_sync
+from .connection import connect
 from ..knowledge.contracts import source_hash as knowledge_source_hash
 
 
@@ -219,6 +221,71 @@ def acknowledge_compatibility_exports(cfg: Mapping[str, Any], commit_id: str) ->
         known=state / "known_skus.csv",
         offline=state / "offline_skus.csv",
     )
+
+
+def regenerate_compatibility_exports(cfg: Mapping[str, Any], commit_id: str) -> dict[str, Any]:
+    """Rebuild Master/State projections from the current SQLite PRIMARY head.
+
+    All files are staged and validated before publication.  If a later
+    replacement fails, the previous bytes are restored so a committed DB is
+    never paired with a half-written compatibility view.
+    """
+    if storage_mode(cfg) != "SQLITE_PRIMARY":
+        raise ProductionDatabaseError("EXPORT_SYNC_REQUIRES_SQLITE_PRIMARY")
+    from .repository import ProductionRepository
+    from .. import state as st
+    from ..excel.writer import commit_master, restore_master_from_backup, stage_master
+
+    db_path = database_path(cfg)
+    repo = ProductionRepository(db_path)
+    if repo.current_head() != commit_id:
+        raise ProductionDatabaseError("EXPORT_SYNC_COMMIT_NOT_CURRENT_HEAD")
+    records = repo.load_current_export_records()
+    known = repo.load_known_skus()
+    offline = repo.load_offline_skus()
+    master = Path(cfg["paths"]["master"])
+    state_dir = Path(cfg["paths"]["state"])
+    known_path = state_dir / "known_skus.csv"
+    offline_path = state_dir / "offline_skus.csv"
+    master_tmp, master_backup = stage_master(
+        dict(cfg), updated_records={str(r["sku"]): r for r in records},
+        price_events=[], event_events=[], return_backup=True,
+        compatibility_projection=True,
+    )
+    known_tmp, _ = st.stage_known_skus(state_dir, known)
+    offline_tmp, _ = st.stage_offline_skus(state_dir, offline)
+    previous = {p: (p.read_bytes() if p.exists() else None) for p in (known_path, offline_path)}
+    try:
+        commit_master(master_tmp, master, compatibility_projection=True)
+        st.commit_state_file(known_tmp, known_path)
+        st.commit_state_file(offline_tmp, offline_path)
+    except Exception:
+        if master_backup.exists():
+            restore_master_from_backup(master_backup, master)
+        for path, payload in previous.items():
+            if payload is None:
+                path.unlink(missing_ok=True)
+            else:
+                restore_tmp = path.with_name(path.name + ".restore")
+                restore_tmp.write_bytes(payload)
+                os.replace(restore_tmp, path)
+        raise
+    result = mark_export_sync(db_path, commit_id, master=master, known=known_path, offline=offline_path)
+    result["rebuild"] = {"current": len(records), "known": len(known), "offline": len(offline)}
+    return result
+
+
+def regenerate_pending_exports(cfg: Mapping[str, Any], *, commit_id: str | None = None) -> list[dict[str, Any]]:
+    """Rebuild every pending compatibility projection, or one requested commit."""
+    db_path = database_path(cfg)
+    with connect(db_path) as db:
+        query = "SELECT commit_id FROM export_sync WHERE status != 'SUCCESS'"
+        args: tuple[Any, ...] = ()
+        if commit_id:
+            query += " AND commit_id=?"
+            args = (commit_id,)
+        ids = [str(row[0]) for row in db.execute(query, args).fetchall()]
+    return [regenerate_compatibility_exports(cfg, value) for value in ids]
 
 
 def _with_base_commit(bundle: CommitBundle, base: str) -> CommitBundle:
