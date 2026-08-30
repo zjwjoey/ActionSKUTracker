@@ -55,3 +55,90 @@ def test_derivative_is_250_white_and_aspect_preserving(tmp_path: Path):
         assert image.size == (250, 250)
         assert image.mode == "RGB"
         assert image.getpixel((0, 0)) == (255, 255, 255)
+
+
+def test_image_sync_refreshes_changed_url_and_retries(tmp_path: Path):
+    calls = []
+
+    def download(url, timeout):
+        calls.append(url)
+        if len(calls) == 1:
+            raise TimeoutError("temporary")
+        return _png((40, 80))
+
+    service = ImageSyncService(
+        asset_root=tmp_path / "assets", staging_root=tmp_path / "staging",
+        manifest_path=tmp_path / "manifest.csv", downloader=download,
+        max_retries=1,
+    )
+    first = service.sync([{"sku": "1001", "image_url": "https://a/1.webp"}], run_id="r1")
+    assert first["downloaded_count"] == 1
+    second = service.sync([{"sku": "1001", "image_url": "https://a/2.webp"}], run_id="r2")
+    assert second["changed_count"] == 1
+    assert second["downloaded_count"] == 1
+    assert service.manifest.records["1001"].source_changed is True
+    assert len(calls) == 3  # one failed attempt + retry, then changed URL
+
+
+def test_image_sync_redownloads_corrupt_local_master_and_resumes(tmp_path: Path):
+    payload = _png()
+    calls = []
+
+    def download(url, timeout):
+        calls.append(url)
+        return payload
+
+    service = ImageSyncService(
+        asset_root=tmp_path / "assets", staging_root=tmp_path / "staging",
+        manifest_path=tmp_path / "manifest.csv", downloader=download,
+        max_retries=0,
+    )
+    service.sync([{"sku": "1001", "image_url": "https://a/1.png"}], run_id="r1")
+    target = tmp_path / "assets" / "1001" / "master.png"
+    target.write_bytes(b"corrupt")
+    resumed = ImageSyncService(
+        asset_root=tmp_path / "assets", staging_root=tmp_path / "staging",
+        manifest_path=tmp_path / "manifest.csv", downloader=download,
+        max_retries=0,
+    ).sync([{"sku": "1001", "image_url": "https://a/1.png"}], run_id="r2")
+    assert resumed["downloaded_count"] == 1
+    assert len(calls) == 2
+    with Image.open(target) as image:
+        assert image.format == "PNG"
+
+
+def test_image_sync_rejects_fully_transparent_without_overwriting_master(tmp_path: Path):
+    good = _png((30, 30), (10, 20, 30, 255))
+    blank = _png((30, 30), (10, 20, 30, 0))
+    payloads = iter((good, blank))
+
+    def download(url, timeout):
+        return next(payloads)
+
+    service = ImageSyncService(
+        asset_root=tmp_path / "assets", staging_root=tmp_path / "staging",
+        manifest_path=tmp_path / "manifest.csv", downloader=download,
+        max_retries=0,
+    )
+    service.sync([{"sku": "1001", "image_url": "https://a/1.png"}], run_id="r1")
+    target = tmp_path / "assets" / "1001" / "master.png"
+    before = target.read_bytes()
+    failed = service.sync([{"sku": "1001", "image_url": "https://a/2.png"}], run_id="r2")
+    assert failed["download_failed_count"] == 1
+    assert service.manifest.records["1001"].qa_status == "QA_FAILED"
+    assert target.read_bytes() == before
+
+
+def test_derivative_cache_rebuilds_when_master_changes(tmp_path: Path):
+    master = tmp_path / "master.png"
+    Image.open(BytesIO(_png((100, 50)))).save(master)
+    service = ImageDerivativeService(tmp_path / "derivatives")
+    output = service.excel_250(master, "1001")
+    metadata = output.with_suffix(".json")
+    first_mtime = output.stat().st_mtime_ns
+    assert metadata.exists()
+    service.excel_250(master, "1001")
+    assert output.stat().st_mtime_ns == first_mtime
+    Image.open(BytesIO(_png((60, 60), (200, 10, 10, 255)))).save(master)
+    service.excel_250(master, "1001")
+    assert output.stat().st_mtime_ns >= first_mtime

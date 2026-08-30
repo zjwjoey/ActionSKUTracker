@@ -126,12 +126,15 @@ class ImageSyncService:
             record.master_hash = _sha256(stage)
             record.master_filesize = stage.stat().st_size
             target.parent.mkdir(parents=True, exist_ok=True)
-            stage.replace(target)
-            record.qa_status = "PASS" if _validate_master(target) else "QA_FAILED"
+            # Validate the staged artifact before it can replace a prior master.
+            # A failed QA must never promote a corrupt/empty image into assets.
+            record.qa_status = "PASS" if _validate_master(stage) else "QA_FAILED"
+            if record.qa_status == "PASS":
+                stage.replace(target)
+            else:
+                record.download_status = "QA_FAILED"
             record.last_downloaded_at = datetime.now(timezone.utc).isoformat()
             record.last_checked_at = record.last_downloaded_at
-            if record.qa_status != "PASS":
-                record.download_status = "QA_FAILED"
         except UnidentifiedImageError as exc:
             record.download_status = "INVALID_CONTENT"; record.normalize_status = "FAILED"; record.qa_status = "FAILED"; record.error_type = "INVALID_CONTENT"; record.error_message = str(exc)
         except (OSError, urllib.error.URLError, ImageSyncError, ValueError) as exc:
@@ -170,7 +173,14 @@ def _validate_master(path: Path) -> bool:
     try:
         with Image.open(path) as image:
             image.load()
-            return image.format == "PNG" and image.width > 0 and image.height > 0 and path.stat().st_size > 64
+            if image.format != "PNG" or image.width <= 0 or image.height <= 0 or path.stat().st_size <= 64:
+                return False
+            # Reject HTML/error payloads that happen to decode and fully
+            # transparent canvases that are unusable in an export.
+            alpha = image.convert("RGBA").getchannel("A")
+            extrema = alpha.getextrema()
+            alpha.close()
+            return extrema is not None and extrema[1] > 0
     except (OSError, UnidentifiedImageError):
         return False
 
