@@ -725,7 +725,9 @@ def persist_image_manifest(path: Path, manifest_path: Path) -> dict[str, int]:
                 (record.sku, record.canonical_id, record.source_image_url, record.master_image_path,
                  record.source_hash, record.master_hash, record.master_width or record.source_width,
                  record.master_height or record.source_height,
-                 "AVAILABLE" if record.available else record.download_status,
+                 "AVAILABLE" if record.available else (
+                     "DERIVATIVE_FAILED" if record.derivative_status == "FAILED" else record.download_status
+                 ),
                  record.first_downloaded_at or record.last_downloaded_at, record.last_checked_at,
                  datetime.now(timezone.utc).isoformat(), record.error_type or None),
             )

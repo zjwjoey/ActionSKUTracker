@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 from PIL import Image, UnidentifiedImageError
 
 from .assets import ImageAssetRecord, ImageManifest
+from .derivatives import ImageDerivativeService
 
 
 class ImageSyncError(RuntimeError):
@@ -23,7 +24,7 @@ class ImageSyncError(RuntimeError):
 class ImageSyncService:
     """Incremental, resumable image sync isolated from product collection."""
 
-    def __init__(self, *, asset_root: Path, manifest_path: Path, staging_root: Path, timeout_seconds: int = 20, max_retries: int = 3, download_workers: int = 1, downloader: Callable[[str, int], bytes] | None = None):
+    def __init__(self, *, asset_root: Path, manifest_path: Path, staging_root: Path, derivative_root: Path | None = None, timeout_seconds: int = 20, max_retries: int = 3, download_workers: int = 1, downloader: Callable[[str, int], bytes] | None = None):
         self.asset_root = Path(asset_root)
         self.staging_root = Path(staging_root)
         self.timeout_seconds = timeout_seconds
@@ -31,10 +32,11 @@ class ImageSyncService:
         self.download_workers = max(1, int(download_workers))
         self.downloader = downloader or self._download
         self.manifest = ImageManifest(manifest_path)
+        self.derivative_service = ImageDerivativeService(Path(derivative_root)) if derivative_root else None
 
     def sync(self, rows: list[dict[str, Any]], *, run_id: str) -> dict[str, Any]:
         started = datetime.now(timezone.utc).isoformat()
-        counts = {key: 0 for key in ("source_sku_count", "available_count", "missing_source_url_count", "download_failed_count", "downloaded_count", "reused_count", "changed_count")}
+        counts = {key: 0 for key in ("source_sku_count", "available_count", "missing_source_url_count", "download_failed_count", "downloaded_count", "reused_count", "changed_count", "derivative_generated_count", "derivative_reused_count", "derivative_rebuilt_count", "derivative_failed_count")}
         seen_skus: set[str] = set()
         for row in rows:
             sku = str(row.get("sku") or row.get("编号") or "").strip()
@@ -55,11 +57,14 @@ class ImageSyncService:
                 counts["missing_source_url_count"] += 1
                 continue
             target = self.asset_root / sku / "master.png"
-            if previous and previous.source_image_url == url and previous.available and target.exists() and _sha256(target) == previous.master_hash:
+            if previous and previous.source_image_url == url and target.exists() and _master_reusable(target, previous.master_hash):
                 if not previous.first_downloaded_at and previous.last_downloaded_at:
                     previous.first_downloaded_at = previous.last_downloaded_at
+                previous.last_checked_at = datetime.now(timezone.utc).isoformat()
+                self._ensure_derivative(previous, counts, reused_master=True)
                 counts["reused_count"] += 1
-                counts["available_count"] += 1
+                if previous.available:
+                    counts["available_count"] += 1
                 continue
             if previous and previous.source_image_url and previous.source_image_url != url:
                 counts["changed_count"] += 1
@@ -91,18 +96,42 @@ class ImageSyncService:
         with ThreadPoolExecutor(max_workers=self.download_workers) as pool:
             records = list(pool.map(fetch, pending))
         for record in records:
+            self._ensure_derivative(record, counts)
             self.manifest.upsert(record)
+            if (record.download_status == "AVAILABLE"
+                    and record.normalize_status == "PASS"
+                    and record.qa_status == "PASS"):
+                counts["downloaded_count"] += 1
             if record.available:
                 counts["available_count"] += 1
-                counts["downloaded_count"] += 1
             else:
-                counts["download_failed_count"] += 1
+                if record.derivative_status == "FAILED":
+                    counts["derivative_failed_count"] += 1
+                else:
+                    counts["download_failed_count"] += 1
         self.manifest.save()
         counts["run_id"] = run_id
         counts["started_at"] = started
         counts["finished_at"] = datetime.now(timezone.utc).isoformat()
         counts["manifest_hash"] = self.manifest.hash()
         return counts
+
+    def _ensure_derivative(self, record: ImageAssetRecord, counts: dict[str, int], *, reused_master: bool = False) -> None:
+        if self.derivative_service is None or not (
+                record.download_status == "AVAILABLE"
+                and record.normalize_status == "PASS"
+                and record.qa_status == "PASS"):
+            return
+        try:
+            _, action = self.derivative_service.ensure_excel_250(Path(record.master_image_path), record.sku)
+            if reused_master and action == "generated":
+                action = "rebuilt"
+            record.derivative_status = "PASS"
+            counts[f"derivative_{action}_count"] += 1
+        except Exception as exc:  # derivative failure must not damage master
+            record.derivative_status = "FAILED"
+            record.error_type = "DERIVATIVE_FAILED"
+            record.error_message = str(exc)
 
     def _sync_one(self, sku: str, url: str, target: Path, canonical_id: str, run_id: str) -> ImageAssetRecord:
         record = ImageAssetRecord(sku=sku, canonical_id=canonical_id, source_image_url=url, master_image_path=str(target), source_changed=True)
@@ -192,3 +221,10 @@ def _validate_master(path: Path) -> bool:
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _master_reusable(path: Path, expected_hash: str) -> bool:
+    """Reuse a known-good master even when only its derivative was broken."""
+    if not expected_hash or not path.exists() or _sha256(path) != expected_hash:
+        return False
+    return _validate_master(path)

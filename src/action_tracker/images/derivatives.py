@@ -29,6 +29,11 @@ class ImageDerivativeService:
         self.root = Path(root)
 
     def excel_250(self, master_path: Path, sku: str) -> Path:
+        target, _ = self.ensure_excel_250(master_path, sku)
+        return target
+
+    def ensure_excel_250(self, master_path: Path, sku: str) -> tuple[Path, str]:
+        """Build or reuse a derivative and report the cache action."""
         target = self.root / "excel_250" / f"{sku}.png"
         target.parent.mkdir(parents=True, exist_ok=True)
         master_hash = hashlib.sha256(Path(master_path).read_bytes()).hexdigest()
@@ -39,9 +44,10 @@ class ImageDerivativeService:
             try:
                 cached = json.loads(metadata.read_text(encoding="utf-8"))
                 if cached.get("cache_key") == cache_key and _valid_excel_derivative(target):
-                    return target
+                    return target, "reused"
             except (OSError, ValueError, TypeError):
                 pass
+        action = "rebuilt" if target.exists() else "generated"
         image = Image.open(master_path).convert("RGBA")
         image.thumbnail((250, 250), Image.Resampling.LANCZOS)
         canvas = Image.new("RGB", (250, 250), "white")
@@ -55,7 +61,7 @@ class ImageDerivativeService:
         metadata_tmp = metadata.with_name(f".{metadata.name}.tmp")
         metadata_tmp.write_text(json.dumps({"cache_key": cache_key, "master_hash": master_hash, "profile_version": profile_version}, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
         metadata_tmp.replace(metadata)
-        return target
+        return target, action
 
     @staticmethod
     def cache_key(master_hash: str, profile_version: str = "excel_250_v1") -> str:

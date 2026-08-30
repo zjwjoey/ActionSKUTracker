@@ -34,6 +34,49 @@ def test_image_sync_normalizes_and_reuses(tmp_path: Path):
     assert len(calls) == 1
 
 
+def test_image_sync_builds_derivative_for_new_available_asset(tmp_path: Path):
+    service = ImageSyncService(
+        asset_root=tmp_path / "assets", staging_root=tmp_path / "staging",
+        derivative_root=tmp_path / "derivatives", manifest_path=tmp_path / "manifest.csv",
+        downloader=lambda url, timeout: _png(), max_retries=0,
+    )
+    result = service.sync([{"sku": "1001", "image_url": "https://asset.action.com/1001.webp"}], run_id="run-1")
+    assert result["derivative_generated_count"] == 1
+    derivative = tmp_path / "derivatives" / "excel_250" / "1001.png"
+    assert derivative.exists()
+    with Image.open(derivative) as image:
+        assert image.size == (250, 250)
+
+
+def test_image_sync_rebuilds_missing_derivative_without_redownload(tmp_path: Path):
+    calls = []
+
+    def download(url, timeout):
+        calls.append(url)
+        return _png()
+
+    kwargs = {
+        "asset_root": tmp_path / "assets", "staging_root": tmp_path / "staging",
+        "derivative_root": tmp_path / "derivatives", "manifest_path": tmp_path / "manifest.csv",
+        "downloader": download, "max_retries": 0,
+    }
+    first = ImageSyncService(**kwargs).sync([{"sku": "1001", "image_url": "https://a/1.png"}], run_id="r1")
+    derivative = tmp_path / "derivatives" / "excel_250" / "1001.png"
+    derivative.unlink()
+    derivative.with_suffix(".json").unlink()
+
+    def no_download(url, timeout):
+        raise AssertionError("master should not be redownloaded")
+
+    kwargs["downloader"] = no_download
+    second = ImageSyncService(**kwargs).sync([{"sku": "1001", "image_url": "https://a/1.png"}], run_id="r2")
+    assert first["derivative_generated_count"] == 1
+    assert second["reused_count"] == 1
+    assert second["derivative_rebuilt_count"] == 1
+    assert len(calls) == 1
+    assert derivative.exists()
+
+
 def test_image_sync_tracks_missing_and_bad_content(tmp_path: Path):
     def download(url, timeout):
         return b"not-an-image"

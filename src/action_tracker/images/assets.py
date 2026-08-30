@@ -36,13 +36,19 @@ class ImageAssetRecord:
     first_downloaded_at: str = ""
     last_downloaded_at: str = ""
     last_checked_at: str = ""
+    derivative_status: str = ""
     source_changed: bool = False
     error_type: str = ""
     error_message: str = ""
 
     @property
     def available(self) -> bool:
-        return self.download_status == "AVAILABLE" and self.normalize_status == "PASS" and self.qa_status == "PASS"
+        return (
+            self.download_status == "AVAILABLE"
+            and self.normalize_status == "PASS"
+            and self.qa_status == "PASS"
+            and self.derivative_status not in {"FAILED", "MISSING"}
+        )
 
 
 class ImageManifest:

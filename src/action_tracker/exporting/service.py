@@ -16,6 +16,7 @@ from typing import Any, Iterable
 from urllib.parse import urlparse
 
 import openpyxl
+from PIL import Image, UnidentifiedImageError
 
 from ..excel.reader import load_current
 from ..services.normalization import parse_bool_zh, parse_price
@@ -96,14 +97,17 @@ def export_catalog(
     output_path = Path(cfg["paths"]["exports"]) / profile.filename_for(date_compact)
     headers = [str(column["header"]) for column in profile.columns]
     expected_skus = {str(r["编号"]) for r in rows}
+    image_root = (Path(cfg["paths"]["images"]) / "derivatives" / "excel_250") if not no_images else None
+    image_eligibility = _resolve_image_eligibility(cfg, source.records, image_root) if image_root else None
     # 先写入并验证旁路临时文件；工作簿和 manifest 通过校验后成对发布，
     # 避免验证失败或 manifest 写入失败时留下半套导出物。
     preview_path = output_path.with_name(f".{output_path.stem}.preview.xlsx")
     try:
         image_stats = write_catalog_xlsx(
             preview_path, headers=headers, rows=rows, workbook_format=profile.workbook_format,
-            image_root=(Path(cfg["paths"]["images"]) / "derivatives" / "excel_250") if not no_images else None,
+            image_root=image_root,
             embed_images=not no_images,
+            image_eligibility=image_eligibility,
         )
         _verify_written_workbook(preview_path, headers=headers, expected_skus=expected_skus,
                                  expect_images=not no_images, expected_image_count=image_stats["embedded_count"])
@@ -131,6 +135,7 @@ def export_catalog(
             "image_profile": "excel_250_white_v1" if not no_images else None,
             "image_embedded_count": image_stats["embedded_count"],
             "image_missing_count": image_stats["missing_count"],
+            "image_eligible_count": sum(1 for eligible in (image_eligibility or {}).values() if eligible),
         }
         if language == "zh":
             manifest["dictionary_hash"] = dictionary_hash
@@ -150,6 +155,7 @@ def export_catalog(
         "profile": profile.profile_id,
         "image_embedded_count": image_stats["embedded_count"],
         "image_missing_count": image_stats["missing_count"],
+        "image_eligible_count": sum(1 for eligible in (image_eligibility or {}).values() if eligible),
     }
 
 
@@ -437,6 +443,50 @@ def _read_csv_records(path: Path) -> list[dict[str, Any]]:
         return []
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         return [dict(row) for row in csv.DictReader(handle)]
+
+
+def _resolve_image_eligibility(
+    cfg: dict[str, Any], records: Iterable[dict[str, Any]], image_root: Path,
+) -> dict[str, bool]:
+    """Resolve current-image eligibility without network access.
+
+    A derivative is exportable only when the manifest says the current URL is
+    available and its cache metadata is bound to the current master hash.
+    Presence of a PNG file by itself is deliberately insufficient.
+    """
+    from ..images.assets import ImageManifest
+    from ..images.derivatives import ImageDerivativeService
+
+    image_cfg = cfg.get("images") or {}
+    raw_manifest = image_cfg.get("manifest_path")
+    manifest_path = Path(str(raw_manifest)) if raw_manifest else Path(cfg["paths"]["images"]) / "manifests" / "image_manifest.csv"
+    if not manifest_path.is_absolute():
+        manifest_path = Path(cfg["project_root"]) / manifest_path
+    manifest = ImageManifest(manifest_path)
+    eligibility: dict[str, bool] = {}
+    for record in records:
+        sku = str(record.get("sku") or "").strip()
+        current_url = str(record.get("image_url") or "").strip()
+        asset = manifest.records.get(sku)
+        eligible = bool(asset and current_url and asset.source_image_url == current_url and asset.available)
+        if eligible:
+            master = Path(asset.master_image_path)
+            if not master.is_absolute():
+                master = Path(cfg["project_root"]) / master
+            derivative = image_root / f"{sku}.png"
+            metadata = derivative.with_suffix(".json")
+            try:
+                master_hash = hashlib.sha256(master.read_bytes()).hexdigest()
+                cached = json.loads(metadata.read_text(encoding="utf-8"))
+                expected_key = ImageDerivativeService.cache_key(master_hash, "excel_250_white_v1")
+                with Image.open(derivative) as image:
+                    image.load()
+                    valid_png = image.format == "PNG" and image.size == (250, 250) and image.mode == "RGB"
+                eligible = valid_png and asset.master_hash == master_hash and cached.get("cache_key") == expected_key
+            except (OSError, ValueError, TypeError, UnidentifiedImageError, json.JSONDecodeError):
+                eligible = False
+        eligibility[sku] = eligible
+    return eligibility
 
 
 _DETAIL_EXPORT_FIELDS = ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es", "product_url", "image_url")
