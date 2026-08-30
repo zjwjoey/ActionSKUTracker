@@ -3,7 +3,7 @@
 日期：2026-08-30  
 分支：`feat/image-foundation-v1`  
 Parent：`f5e5aac`  
-代码 HEAD：`6df1008`
+代码 HEAD：`9760b91`
 
 ## Full CURRENT 图片同步
 
@@ -33,6 +33,7 @@ Parent：`f5e5aac`
 - 1000：1000/1000 AVAILABLE，复用 500、下载 500，200.523 秒；
 - 相同 URL、hash 和 QA PASS 会复用；URL 变化、损坏 master 会重下；失败会留在 Manifest，不删除 SKU；
 - 下载、解码、标准化和 QA 均在 staging 完成后才原子晋级；图片流程不修改 Product/Lifecycle/Presence/价格/事件。
+- 审查收口：PRIMARY 本地化恢复现在强制校验 SQLite V2.0.0、正式 `FULL_COMMIT` + QA PASS 快照证据；Excel derivative 缓存命中前会重新验证 PNG 可解码、250×250、RGB 完整性，损坏缓存自动重建。
 
 ## 带图导出与 parity
 

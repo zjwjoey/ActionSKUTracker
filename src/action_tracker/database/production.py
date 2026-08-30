@@ -438,7 +438,19 @@ def repair_primary_localization_regression(
         raise ProductionDatabaseError("TRUSTED_SNAPSHOT_EVIDENCE_MISSING") from exc
     if not isinstance(report, dict) or not isinstance(qa, dict):
         raise ProductionDatabaseError("TRUSTED_SNAPSHOT_EVIDENCE_INVALID")
+    try:
+        report_snapshot_matches = (
+            Path(str(report.get("snapshot") or "")).resolve()
+            == trusted_snapshot.parent.resolve()
+        )
+    except (OSError, RuntimeError):
+        report_snapshot_matches = False
+    report_date_matches = (
+        str(report.get("run_date") or "") == trusted_snapshot.parent.parent.name
+    )
     if (str(report.get("run_id") or "") != trusted_snapshot.parent.name
+            or not report_snapshot_matches
+            or not report_date_matches
             or str(report.get("commit_status") or "") != "FULL_COMMIT"
             or bool(report.get("dry_run"))
             or qa.get("passed") is not True

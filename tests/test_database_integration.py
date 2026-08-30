@@ -159,7 +159,8 @@ def test_primary_localization_recovery_restores_only_empty_fields_and_rebuilds_c
     snapshot = tmp_path / "snapshots" / "2026-08-29" / "2026-08-29_010000" / "products_normalized.csv"
     snapshot.parent.mkdir(parents=True)
     snapshot.parent.joinpath("run_report.json").write_text(json.dumps({
-        "run_id": "2026-08-29_010000", "commit_status": "FULL_COMMIT", "dry_run": False,
+        "run_id": "2026-08-29_010000", "run_date": "2026-08-29",
+        "snapshot": str(snapshot.parent), "commit_status": "FULL_COMMIT", "dry_run": False,
     }), encoding="utf-8")
     snapshot.parent.joinpath("qa_report.json").write_text(json.dumps({
         "passed": True, "state": "PASS",
@@ -213,7 +214,8 @@ def test_primary_localization_recovery_rejects_non_v2_primary(tmp_path: Path):
     snapshot = tmp_path / "snapshots" / "2026-08-29" / "2026-08-29_010000" / "products_normalized.csv"
     snapshot.parent.mkdir(parents=True)
     snapshot.parent.joinpath("run_report.json").write_text(json.dumps({
-        "run_id": "2026-08-29_010000", "commit_status": "FULL_COMMIT", "dry_run": False,
+        "run_id": "2026-08-29_010000", "run_date": "2026-08-29",
+        "snapshot": str(snapshot.parent), "commit_status": "FULL_COMMIT", "dry_run": False,
     }), encoding="utf-8")
     snapshot.parent.joinpath("qa_report.json").write_text(json.dumps({"passed": True, "state": "PASS"}), encoding="utf-8")
     snapshot.write_text("sku,name_es\n1001,Producto\n", encoding="utf-8")
