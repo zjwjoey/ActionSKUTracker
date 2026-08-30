@@ -61,6 +61,10 @@ storage:
   mode: SQLITE_PRIMARY
   db_path: runtime/db/action_tracker.db
 
+operations:
+  # Minimum free space required on every production data volume.
+  min_free_disk_bytes: 2147483648
+
 images:
   enabled: false
   asset_root: runtime/images/assets

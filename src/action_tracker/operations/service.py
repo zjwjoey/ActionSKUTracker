@@ -10,6 +10,7 @@ from typing import Any
 
 from ..database.connection import connect
 from ..database.production import database_status, validate_production_database
+from .preflight import production_preflight
 
 
 class OperationsService:
@@ -23,7 +24,7 @@ class OperationsService:
 
     def system_status(self) -> dict[str, Any]:
         if not self.db_path.exists():
-            return {"state": "UNHEALTHY", "current_sku": 0, "database": {"exists": False, "path": str(self.db_path)}, "reviews_open": 0, "translation_queue_pending": 0, "translation_candidates": 0, "images": {}, "active_lock": self.lock_path.exists()}
+            return {"state": "UNHEALTHY", "current_sku": 0, "database": {"exists": False, "path": str(self.db_path)}, "reviews_open": 0, "translation_queue_pending": 0, "translation_candidates": 0, "images": {}, "lifecycle_projection_mismatch": None, "active_lock": self.lock_path.exists()}
         status = database_status(self.db_path)
         with connect(self.db_path) as db:
             current = db.execute("SELECT count(*) FROM products WHERE status='CURRENT'").fetchone()[0]
@@ -31,9 +32,14 @@ class OperationsService:
             queue = db.execute("SELECT count(*) FROM translation_queue WHERE status IN ('PENDING','RETRY','RUNNING')").fetchone()[0]
             candidates = db.execute("SELECT count(*) FROM translation_candidates").fetchone()[0]
             images = {str(row[0]): row[1] for row in db.execute("SELECT status,count(*) FROM image_assets GROUP BY status")}
+            mismatch = db.execute("""SELECT count(*) FROM products p JOIN lifecycle_state l ON l.official_sku=p.official_sku
+                WHERE p.status <> CASE l.current_status WHEN 'ACTIVE' THEN 'CURRENT' WHEN 'MISSING' THEN 'MISSING'
+                WHEN 'OFFLINE' THEN 'OFFLINE' ELSE l.current_status END""").fetchone()[0]
         state = "HEALTHY" if status.get("pending_export_sync", 0) == 0 else "DEGRADED"
         if self.lock_path.exists(): state = "RUNNING"
-        return {"state": state, "current_sku": current, "database": status, "reviews_open": reviews, "translation_queue_pending": queue, "translation_candidates": candidates, "images": images, "active_lock": self.lock_path.exists()}
+        if mismatch:
+            state = "DEGRADED"
+        return {"state": state, "current_sku": current, "database": status, "reviews_open": reviews, "translation_queue_pending": queue, "translation_candidates": candidates, "images": images, "lifecycle_projection_mismatch": mismatch, "active_lock": self.lock_path.exists()}
 
     def latest_run(self) -> dict[str, Any] | None:
         if not self.db_path.exists(): return None
@@ -140,8 +146,17 @@ class OperationsService:
         checks["latest_run"] = self.latest_run()
         checks["lock"] = {"active": self.lock_path.exists()}
         checks["export"] = self.export_status()
+        status = self.system_status()
+        checks["lifecycle_projection_mismatch"] = status.get("lifecycle_projection_mismatch")
+        if self.config:
+            try:
+                checks["preflight"] = production_preflight(self.config, self.db_path, self.reports_root)
+            except Exception as exc:
+                checks["preflight"] = {"status": "FAIL", "error": str(exc)}
         overall = "HEALTHY" if checks["database"].get("integrity") == "PASS" and checks["database"].get("foreign_keys") == "PASS" else "UNHEALTHY"
         if checks["export"].get("statuses", {}).get("FAILED") or checks["export"].get("statuses", {}).get("PENDING"): overall = "DEGRADED"
+        if checks.get("lifecycle_projection_mismatch") not in (0, None): overall = "DEGRADED"
+        if checks.get("preflight", {}).get("status") == "FAIL": overall = "UNHEALTHY"
         return {"state": overall, "checks": checks}
 
     def safe_action(self, action: str, *, confirmed: bool = False, run_id: str | None = None) -> dict[str, Any]:

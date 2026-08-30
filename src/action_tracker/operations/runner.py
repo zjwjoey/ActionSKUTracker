@@ -43,6 +43,8 @@ class ProductionRunner:
             self._check_dependencies(state, start_index, resume)
             for index, step in enumerate(STEP_ORDER):
                 if index < start_index: continue
+                if step == "REPORT":
+                    continue
                 previous = state["steps"].get(step)
                 if resume and previous and previous.get("status") == "SUCCESS": continue
                 state["state"] = RunState.PREFLIGHT.value if step == "PREFLIGHT" else RunState.RUNNING.value
@@ -63,15 +65,39 @@ class ProductionRunner:
                         state["state"] = RunState.BLOCKED.value if result.status == "BLOCKED" else RunState.FAILED.value
                         self._save(state); break
                 self._save(state)
-            if state["state"] not in {RunState.FAILED.value, RunState.BLOCKED.value}:
-                failed = [s for s in state["steps"].values() if s.get("status") in {"FAILED", "BLOCKED"}]
-                state["state"] = RunState.DEGRADED.value if failed else RunState.SUCCESS.value
-            state["errors"] = errors; state["finished_at"] = datetime.now().isoformat(); state["exit_code"] = EXIT_CODES[state["state"]]
-            self._save(state)
-            write_daily_report(self.root, self.business_date, self.run_id, {k: state[k] for k in ("run_id", "business_date", "state", "started_at", "finished_at", "exit_code")}, [{"step": k, **v} for k, v in state["steps"].items()], errors)
+            self._run_report_step(state, errors)
             return state
         finally:
             self.lock.release()
+
+    def _run_report_step(self, state: dict, errors: list[dict]) -> None:
+        """Generate reports as a real, persisted step of the run graph."""
+        now = datetime.now().isoformat()
+        state["steps"]["REPORT"] = {"status": "RUNNING", "started_at": now}
+        self.lock.heartbeat()
+        self._save(state)
+        if state["state"] not in {RunState.FAILED.value, RunState.BLOCKED.value}:
+            failed = [s for name, s in state["steps"].items() if name != "REPORT" and s.get("status") in {"FAILED", "BLOCKED"}]
+            state["state"] = RunState.DEGRADED.value if failed else RunState.SUCCESS.value
+        state["errors"] = errors
+        state["finished_at"] = datetime.now().isoformat()
+        state["exit_code"] = EXIT_CODES[state["state"]]
+        state["steps"]["REPORT"].update({"status": "SUCCESS", "details": {}, "retryable": False, "error_code": None, "finished_at": datetime.now().isoformat()})
+        try:
+            write_daily_report(
+                self.root, self.business_date, self.run_id,
+                {k: state[k] for k in ("run_id", "business_date", "state", "started_at", "finished_at", "exit_code")},
+                [{"step": k, **v} for k, v in state["steps"].items()], errors,
+            )
+        except Exception as exc:
+            errors.append({"step": "REPORT", "code": "REPORT_WRITE_FAILED", "message": str(exc), "retryable": True})
+            state["steps"]["REPORT"].update({"status": "FAILED", "details": {"error": str(exc)}, "retryable": True, "error_code": "REPORT_WRITE_FAILED", "finished_at": datetime.now().isoformat()})
+            if state["state"] in {RunState.SUCCESS.value, RunState.DEGRADED.value}:
+                state["state"] = RunState.DEGRADED.value if state["steps"].get("DB_COMMIT", {}).get("status") == "SUCCESS" else RunState.FAILED.value
+            state["finished_at"] = datetime.now().isoformat()
+            state["exit_code"] = EXIT_CODES[state["state"]]
+        state["errors"] = errors
+        self._save(state)
 
     def _new_state(self) -> dict:
         return {"run_id": self.run_id, "business_date": self.business_date, "state": RunState.CREATED.value, "started_at": None, "finished_at": None, "exit_code": None, "steps": {}, "errors": [], "pid": os.getpid(), "hostname": socket.gethostname()}

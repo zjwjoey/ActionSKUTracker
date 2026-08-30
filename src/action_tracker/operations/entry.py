@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import os
 import uuid
 from datetime import datetime
 from typing import Any
@@ -11,19 +12,20 @@ from ..database.production import validate_production_database
 from ..services.gitutil import git_commit_info
 from .backup import backup_sqlite
 from .contracts import StepResult
+from .preflight import production_preflight
 from .runner import ProductionRunner
 
 
 def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = False, from_step: str | None = None,
-                   dry_run: bool = False, no_network: bool = False) -> dict[str, Any]:
+                   dry_run: bool = False, no_network: bool = False, run_id: str | None = None) -> dict[str, Any]:
     root = Path(cfg["project_root"]) / "runtime" / "reports" / "daily"
     db = database_path(cfg)
     report_root = Path(cfg["project_root"]) / "runtime" / "reports" / "daily"
-    run_id = None
+    auto_selected = False
+    if run_id and not resume:
+        raise ValueError("RUN_ID_ONLY_ALLOWED_WITH_RESUME")
     if resume:
-        existing = sorted((report_root / business_date).glob("*/state.json"), key=lambda p: p.stat().st_mtime, reverse=True) if (report_root / business_date).exists() else []
-        if existing:
-            run_id = existing[0].parent.name
+        run_id, auto_selected = _resolve_resume_run(report_root, business_date, run_id)
     run_id = run_id or f"{business_date}_{datetime.now().strftime('%H%M%S')}_{uuid.uuid4().hex[:6]}"
     delegated: dict[str, Any] = {}
     if resume:
@@ -117,7 +119,7 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
         return StepResult("SUCCESS", {"delegated": True, "commit_status": status, "reason": "compatibility export handled by delegated chain"})
 
     steps: dict[str, Any] = {
-        "PREFLIGHT": lambda: StepResult("SUCCESS", {"database": validate_production_database(db), "code_version": git_commit_info()}),
+        "PREFLIGHT": lambda: StepResult("SUCCESS", {**production_preflight(cfg, db, report_root), "code_version": git_commit_info()}),
         "BACKUP": lambda: StepResult("SUCCESS", backup_sqlite(db, Path(cfg["paths"]["backups"]) / business_date / f"{run_id}.sqlite3", run_id=run_id, code_version=git_commit_info())),
         "COLLECTION": collect_existing_chain,
         "QA": qa_step,
@@ -133,4 +135,59 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
     runner = ProductionRunner(root=root, business_date=business_date, run_id=run_id, steps=steps, lock_dir=Path(cfg["paths"]["state"]))
     # Backup artifact needs the generated run id in its manifest; runner's
     # backup step is still safe if the destination is fixed per business date.
-    return runner.run(resume=resume, from_step=from_step)
+    result = runner.run(resume=resume, from_step=from_step)
+    if auto_selected:
+        selection = {"code": "AUTO_SELECTED_RESUME_RUN", "run_id": run_id}
+        result["resume_selection"] = selection
+        state_path = report_root / business_date / str(run_id) / "state.json"
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            state["resume_selection"] = selection
+            tmp = state_path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+            tmp.replace(state_path)
+        except (OSError, json.JSONDecodeError):
+            # The run result remains usable; the selection is still explicit
+            # in stdout even if evidence persistence is unavailable.
+            pass
+    return result
+
+
+_RESUMABLE_STATES = {"DEGRADED", "FAILED", "BLOCKED", "RECOVERY_REQUIRED", "RUNNING"}
+
+
+def _resolve_resume_run(report_root: Path, business_date: str, requested: str | None) -> tuple[str, bool]:
+    day_root = report_root / business_date
+    if requested:
+        state_path = day_root / requested / "state.json"
+        if not state_path.exists():
+            raise FileNotFoundError("RUN_STATE_MISSING")
+        return requested, False
+    candidates: list[tuple[str, str, float]] = []
+    if day_root.exists():
+        for state_path in day_root.glob("*/state.json"):
+            try:
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            status = str(state.get("state") or "")
+            if status not in _RESUMABLE_STATES:
+                continue
+            if status == "RUNNING" and _pid_alive(state.get("pid")):
+                continue
+            candidates.append((str(state.get("started_at") or ""), state_path.parent.name, state_path.stat().st_mtime))
+    if not candidates:
+        raise FileNotFoundError("RUN_STATE_MISSING")
+    candidates.sort(key=lambda item: (item[0], item[2]), reverse=True)
+    return candidates[0][1], True
+
+
+def _pid_alive(pid: Any) -> bool:
+    try:
+        value = int(pid)
+        if value <= 0:
+            return False
+        os.kill(value, 0)
+        return True
+    except (TypeError, ValueError, OSError):
+        return False

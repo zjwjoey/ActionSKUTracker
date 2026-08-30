@@ -92,6 +92,7 @@ def build_parser() -> argparse.ArgumentParser:
     pr = sub.add_parser("production-run", help="统一生产运行入口（运营编排层）")
     pr.add_argument("--date", help="业务日期；默认 Europe/Madrid 当日")
     pr.add_argument("--resume", action="store_true")
+    pr.add_argument("--run-id", help="恢复时指定精确的 operations run ID")
     pr.add_argument("--from-step", choices=("PREFLIGHT", "BACKUP", "COLLECTION", "QA", "DB_COMMIT", "EXPORT", "IMAGE", "KNOWLEDGE", "AI", "AUTO_APPROVAL", "REVIEW", "REPORT"))
     pr.add_argument("--dry-run", action="store_true")
     pr.add_argument("--no-network", action="store_true")
@@ -343,7 +344,7 @@ def main(argv=None) -> int:
         from .operations.entry import run_production
         from .services.runtime import observation_date
         try:
-            result = run_production(cfg, business_date=args.date or observation_date(), resume=args.resume, from_step=args.from_step, dry_run=args.dry_run, no_network=args.no_network)
+            result = run_production(cfg, business_date=args.date or observation_date(), resume=args.resume, run_id=args.run_id, from_step=args.from_step, dry_run=args.dry_run, no_network=args.no_network)
         except Exception as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr); return 30
         print(json.dumps(result, ensure_ascii=False)); return int(result.get("exit_code") or 0)
