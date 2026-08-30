@@ -3,7 +3,7 @@
 日期：2026-08-30  
 分支：`feat/image-foundation-v1`  
 Parent：`f5e5aac`  
-代码 HEAD：`9760b91`
+代码 HEAD：`90039c1`
 
 ## Full CURRENT 图片同步
 
