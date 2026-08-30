@@ -111,6 +111,6 @@ SOURCE_BLOCKED 排除、候选 Validator、字段级 Auto-Approval Shadow，以�
 
 SQLite Production Source of Truth 的完整阶段计划（Contracts → Writer → Shadow → Read →
 Cutover → PRIMARY）见 `docs/MASTER_DEVELOPMENT_PLAN.md`；当前完成了 Writer、接线、Read
-Repository 和三轮真实 Shadow 对账，下一步是受控迁移、备份/回滚演练和 PRIMARY 切换评审。
+Repository、三轮真实 Shadow 对账以及隔离副本的迁移/备份/恢复/Primary 演练，下一步是正式切换窗口评审。
 Image Foundation 的 Phase 9–13（Contracts → Foundation → Slice → Full Sync → With-Images Export）
 已完成 Contracts、Foundation、ES/ZH With-Images Export 和 Template 1 中文嵌图实现，真实全量同步/性能基线待执行。

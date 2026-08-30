@@ -90,3 +90,9 @@ SQLite commit：`2026-08-30_2026-08-30_050908_90ca37f10fdb`
 5. 经单独授权后，才可执行 `db-promote-primary` 并修改 `storage.mode`。
 
 当前 `config/settings.yaml` 仍保持 `storage.mode: EXCEL_PRIMARY`，生产数据库也仍为旧 V1 镜像。
+
+## Cutover rehearsal
+
+已完成正式文件备份、隔离 V2 baseline migration、备份恢复哈希校验、兼容导出确认和
+Primary 角色提升演练；详见 `docs/CUTOVER_REHEARSAL_20260830.md`。这些操作均针对副本，
+正式配置和生产数据库未改变。

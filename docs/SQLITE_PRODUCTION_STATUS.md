@@ -27,14 +27,18 @@ storage:
 - PRIMARY Read Repository：`load_current_products()`、`load_known_skus()`、离线派生；
 - `image_assets` 只保存图片元数据，不保存二进制。
 
-## 真实运行前仍需完成
+## 当前切换状态
 
-1. 对当前旧的 `ACTION_SQLITE_MIRROR 1.0.0` 数据库执行一次受控 V2 基线迁移；
-2. 使用同一批正式 run 连续完成至少 3 次 Shadow parity（CURRENT、事实、Lifecycle、Presence、
-   价格、事件、Review 和派生状态）；
-3. 完成备份、恢复、导出失败重试和回滚演练；
-4. 确认没有未登记的 legacy direct writer 后，运行 `db-promote-primary`，再把配置切为
-   `SQLITE_PRIMARY`。
+受控 V2 baseline migration、三轮 Shadow parity、备份恢复校验、兼容导出确认和副本 Primary
+角色演练均已完成。正式生产仍为 `EXCEL_PRIMARY`；正式目标库尚未迁移、尚未 promote。
+
+正式切换前仍需：
+
+1. 选择切换窗口并确认回滚责任人；
+2. 在窗口内对正式旧库执行受控 V2 baseline migration，并复核 hash/parity；
+3. 确认没有未登记的 legacy direct writer；
+4. 单独授权后运行 `db-promote-primary`，再把配置切为 `SQLITE_PRIMARY`；
+5. 观察首轮 PRIMARY run 和 `export_sync` 状态。
 
 ## 证据
 

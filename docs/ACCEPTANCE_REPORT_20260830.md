@@ -53,6 +53,10 @@
 兼容导出同步 SUCCESS，CURRENT 与 lifecycle parity 均为 0 mismatch；Sitemap 5,396、Listing 5,382、
 gap 0.3%，无 CF/429/异常。三轮均使用隔离 Master/State/SQLite，累计 Shadow 3/3。
 
+随后完成切换演练：正式 Master/State/旧 SQLite/config/Git HEAD 已备份并做恢复哈希校验；
+隔离目标库完成 V2 baseline migration、integrity/FK/Presence/parity 检查（全部 PASS，mismatch 0），
+兼容导出确认 SUCCESS；Primary 角色提升也仅在目标库副本上演练通过。正式生产仍未 promote。
+
 ## 3. 正式 Excel 输出验收
 
 使用正式 run `2026-08-29_184646`（QA PASS、FULL_COMMIT）生成并核验：
@@ -86,5 +90,5 @@ gap 0.3%，无 CF/429/异常。三轮均使用隔离 Master/State/SQLite，累�
 1. 备份 Master、State 和旧 runtime 数据库；
 2. 对正式目标库执行 `db-migrate-baseline`；
 3. 三轮 `SQLITE_SHADOW` 已完成且每轮 parity 均为 0 mismatch；
-4. 完成目标库迁移、备份及恢复/回滚演练后，才显式 `db-promote-primary` 与修改 `storage.mode`；
+4. 目标库迁移、备份/恢复和 Primary 角色演练已在副本完成；正式切换仍需明确窗口、责任人和回滚确认，才可显式 `db-promote-primary` 与修改 `storage.mode`；
 5. 执行正式图片的切片、全量同步和性能基线，再补视觉抽检。
