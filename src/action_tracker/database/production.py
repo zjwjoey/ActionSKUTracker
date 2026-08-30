@@ -14,7 +14,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 from .connection import connect
 from .schema import migrate_v2
@@ -313,6 +313,39 @@ def database_status(path: Path) -> dict[str, Any]:
                 "pending_export_sync": pending, "products": products, "lifecycle": lifecycle}
 
 
+def backup_database(source: Path, destination: Path) -> dict[str, Any]:
+    """Create a WAL-safe SQLite backup using the SQLite Backup API.
+
+    A raw ``copy`` of a live WAL database can miss frames that have not yet
+    been checkpointed.  The Backup API takes a consistent snapshot while the
+    source remains open and is therefore the only supported production backup
+    primitive.
+    """
+    source = Path(source)
+    destination = Path(destination)
+    if not source.exists():
+        raise ProductionDatabaseError("DB_MISSING")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.unlink(missing_ok=True)
+    src = sqlite3.connect(source)
+    dst = sqlite3.connect(destination)
+    try:
+        src.backup(dst)
+        dst.commit()
+    finally:
+        dst.close()
+        src.close()
+    check = sqlite3.connect(destination)
+    try:
+        integrity = check.execute("PRAGMA integrity_check").fetchone()[0]
+    finally:
+        check.close()
+    if integrity != "ok":
+        raise ProductionDatabaseError("DB_BACKUP_INTEGRITY_FAILED")
+    return {"source": str(source), "destination": str(destination), "integrity": "PASS",
+            "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()}
+
+
 def promote_database_role(path: Path, *, target_role: str = "PRIMARY") -> dict[str, str]:
     """Explicitly promote a validated V2 database; never called implicitly."""
     if target_role != "PRIMARY":
@@ -479,7 +512,7 @@ def import_legacy_baseline_v2(db_path: Path, *, master_path: Path, state_dir: Pa
     source files are never modified and the resulting bundle is committed once
     with an auditable BASELINE run id.
     """
-    from ..excel.reader import load_current
+    from ..excel.reader import load_current, load_long_term_official, read_price_history, read_event_history
     from ..state import load_known_skus
 
     current = load_current(Path(master_path))
@@ -487,6 +520,21 @@ def import_legacy_baseline_v2(db_path: Path, *, master_path: Path, state_dir: Pa
     product_by_sku = {str(r.get("sku") or "").strip(): dict(r) for r in current.values() if str(r.get("sku") or "").strip()}
     for sku, record in known.items():
         product_by_sku.setdefault(sku, {"sku": sku, "canonical_id": record.get("canonical_id"), "status": record.get("last_status", "OFFLINE"), "last_seen": record.get("last_seen_date")})
+    # Preserve every official long-term identity so historical price/event
+    # rows never become orphaned merely because the SKU is not in today's
+    # known_skus projection.  These identities do not receive observations or
+    # lifecycle rows unless they are present in known_skus.
+    try:
+        long_term = load_long_term_official(Path(master_path))
+    except (KeyError, ValueError):
+        long_term = {}
+    for sku, record in long_term.items():
+        product_by_sku.setdefault(sku, {
+            "sku": sku, "canonical_id": record.get("canonical_id"),
+            "name_es": record.get("name_es"), "name_zh": record.get("name_zh"),
+            "product_url": record.get("product_url"), "first_seen": record.get("first_seen"),
+            "last_seen": record.get("last_seen"), "status": record.get("status") or "HISTORICAL",
+        })
     products = tuple(product_by_sku.values())
     lifecycle = []
     for sku, record in known.items():
@@ -503,11 +551,28 @@ def import_legacy_baseline_v2(db_path: Path, *, master_path: Path, state_dir: Pa
             "ever_offline": record.get("ever_offline", False),
             "last_run_id": record.get("last_run_id"),
         })
+    baseline_run_id = f"BASELINE_{observed_at}"
+    try:
+        price_rows = read_price_history(Path(master_path))
+    except KeyError:
+        price_rows = []
+    try:
+        event_rows = read_event_history(Path(master_path))
+    except KeyError:
+        event_rows = []
+    prices = tuple(_legacy_price_event(row, baseline_run_id) for row in price_rows
+                   if str(row.get("SKU") or "").strip())
+    events = tuple(_legacy_event(row, baseline_run_id) for row in event_rows
+                   if str(row.get("SKU") or "").strip())
+    reviews = tuple(_review_row(row, baseline_run_id, index) for index, row in enumerate(_read_master_sheet(Path(master_path), "06_REVIEW_QUEUE"), start=2))
+    current_sku_set = set(current)
     bundle = CommitBundle(
-        run_id=f"BASELINE_{observed_at}", observation_date=observed_at, qa_state="PASS",
+        run_id=baseline_run_id, observation_date=observed_at, qa_state="PASS",
         current_products=tuple(products), lifecycle_updates=tuple(lifecycle),
-        observations=tuple({"run_id": f"BASELINE_{observed_at}", "sku": str(r.get("sku")), "observation_date": observed_at,
-                            "presence_state": "PRESENT", "observation_complete": True, "absence_capable": True} for r in products),
+        observations=tuple({"run_id": baseline_run_id, "sku": str(r.get("sku")), "observation_date": observed_at,
+                            "presence_state": "PRESENT", "observation_complete": True, "absence_capable": True}
+                           for r in products if str(r.get("sku") or "") in current_sku_set),
+        price_events=prices, event_events=events, review_rows=reviews,
         run_record={"dry_run": False, "source": "legacy_baseline"}, snapshot_path=str(master_path),
     )
     target = Path(db_path)
@@ -523,6 +588,8 @@ def import_legacy_baseline_v2(db_path: Path, *, master_path: Path, state_dir: Pa
     commit_path = staged or target
     try:
         commit_id = ProductionWriter(commit_path).commit(bundle)
+        _import_master_run_log(commit_path, master_path, baseline_run_id)
+        _record_unmatched_event_rows(commit_path, event_rows)
         if staged is not None:
             os.replace(staged, target)
         return commit_id
@@ -541,3 +608,87 @@ def _is_v2_database(path: Path) -> bool:
     except sqlite3.Error:
         return False
     return bool(row and row[0] == "ACTION_SQLITE_DATA")
+
+
+def _read_master_sheet(path: Path, sheet: str) -> list[dict[str, Any]]:
+    """Read a legacy Master sheet as dictionaries without mutating the file."""
+    from openpyxl import load_workbook
+
+    wb = load_workbook(Path(path), read_only=True, data_only=True)
+    try:
+        if sheet not in wb.sheetnames:
+            return []
+        ws = wb[sheet]
+        header = [cell.value for cell in ws[1]]
+        return [dict(zip(header, row)) for row in ws.iter_rows(min_row=2, values_only=True)]
+    finally:
+        wb.close()
+
+
+def _review_row(row: Mapping[str, Any], run_id: str, source_row: int = 0) -> dict[str, Any]:
+    payload = {**dict(row), "_source_row": source_row}
+    return {"review_id": _event_key(run_id, payload, "review"),
+            "sku": str(row.get("SKU") or "").strip(),
+            "issue_type": row.get("问题类型") or "DATA_INCONSISTENCY",
+            "evidence": row.get("证据"), "suggested_action": row.get("建议动作")}
+
+
+def _legacy_price_event(row: Mapping[str, Any], run_id: str) -> dict[str, Any]:
+    return {"canonical_id": row.get("Canonical_ID"), "sku": row.get("SKU"),
+            "date": row.get("日期"), "old_price": row.get("旧售价 (€)"),
+            "new_price": row.get("新售价 (€)"), "change_type": row.get("变化类型"),
+            "run_id": run_id}
+
+
+def _legacy_event(row: Mapping[str, Any], run_id: str) -> dict[str, Any]:
+    return {"canonical_id": row.get("Canonical_ID"), "sku": row.get("SKU"),
+            "date": row.get("日期"), "event_type": row.get("事件类型"),
+            "old_value": row.get("旧值"), "new_value": row.get("新值"),
+            "evidence": row.get("备注"), "run_id": run_id}
+
+
+def _import_master_run_log(path: Path, master_path: Path, baseline_run_id: str) -> None:
+    """Import historical run metadata and preserve source statistics in evidence."""
+    rows = _read_master_sheet(Path(master_path), "05_RUN_LOG")
+    if not rows:
+        return
+    with connect(Path(path)) as db:
+        for row in rows:
+            run_id = str(row.get("Run ID") or "").strip()
+            if not run_id:
+                continue
+            run_date = _date_text(row.get("运行日期"))
+            started = _join_datetime(run_date, row.get("开始时间"))
+            ended = _join_datetime(run_date, row.get("结束时间"))
+            db.execute(
+                "INSERT OR IGNORE INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES(?,?,?,?,?,?,?,?)",
+                (run_id, run_date, "COMMITTED", row.get("QA状态") or "PASS", 0, started, ended, "2.0.0"),
+            )
+            evidence = json.dumps({"source": "legacy_master", "source_sheet": "05_RUN_LOG", "row": row},
+                                  ensure_ascii=False, sort_keys=True, default=str)
+            db.execute("INSERT OR IGNORE INTO run_evidence(run_id,snapshot_path,snapshot_hash,evidence_json) VALUES(?,?,?,?)",
+                       (run_id, str(master_path), None, evidence))
+
+
+def _record_unmatched_event_rows(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
+    """Retain audit evidence for archive events without an official SKU."""
+    with connect(Path(path)) as db:
+        for row in rows:
+            if str(row.get("SKU") or "").strip():
+                continue
+            details = json.dumps(dict(row), ensure_ascii=False, sort_keys=True, default=str)
+            db.execute(
+                "INSERT INTO migration_source_issues(source_name,issue_type,entity_id,details) VALUES(?,?,?,?)",
+                ("04_EVENT_HISTORY", "OFFICIAL_SKU_UNMATCHED", row.get("Canonical_ID"), details),
+            )
+
+
+def _date_text(value: Any) -> str:
+    if hasattr(value, "date"):
+        value = value.date()
+    return str(value or "")[:10]
+
+
+def _join_datetime(run_date: str, value: Any) -> str:
+    text = str(value or "")
+    return f"{run_date}T{text}" if run_date and text and "T" not in text else (text or run_date)

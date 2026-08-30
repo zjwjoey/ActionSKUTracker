@@ -6,6 +6,13 @@ from action_tracker.database.production import CommitBundle, ProductionDatabaseE
 from action_tracker.database.connection import connect
 
 
+def test_legacy_baseline_writer_is_blocked_in_sqlite_primary(tmp_path: Path):
+    from action_tracker.baseline import build_baseline
+
+    with pytest.raises(RuntimeError, match="LEGACY_STATE_WRITER_BLOCKED_SQLITE_PRIMARY"):
+        build_baseline({"storage": {"mode": "SQLITE_PRIMARY"}, "paths": {"state": tmp_path / "state", "master": tmp_path / "master.xlsx"}})
+
+
 def _bundle(run_id="run-1", base=None):
     return CommitBundle(
         run_id=run_id,
@@ -54,6 +61,35 @@ def test_non_pass_bundle_does_not_write(tmp_path: Path):
         assert conn.execute("select count(*) from commit_batches").fetchone()[0] == 0
 
 
+@pytest.mark.parametrize("method", [
+    "_insert_run", "_upsert_products", "_upsert_localizations", "_insert_observations",
+    "_upsert_lifecycle", "_insert_prices", "_insert_events", "_insert_reviews",
+    "_validate_transaction",
+])
+def test_transaction_fault_injection_rolls_back_every_stage(tmp_path: Path, monkeypatch, method: str):
+    db = tmp_path / f"{method[1:]}.db"
+    bundle = _bundle()
+    object.__setattr__(bundle, "price_events", ({"sku": "1001", "canonical_id": "ACT0001001",
+                                                   "date": "2026-08-30", "new_price": 2.5,
+                                                   "change_type": "INITIAL"},))
+    object.__setattr__(bundle, "event_events", ({"sku": "1001", "canonical_id": "ACT0001001",
+                                                   "date": "2026-08-30", "event_type": "TEST"},))
+    object.__setattr__(bundle, "review_rows", ({"sku": "1001", "问题类型": "TEST"},))
+    original = getattr(ProductionWriter, method)
+
+    def fail_after(*args, **kwargs):
+        original(*args, **kwargs)
+        raise RuntimeError("injected failure")
+
+    monkeypatch.setattr(ProductionWriter, method, staticmethod(fail_after))
+    with pytest.raises(RuntimeError, match="injected failure"):
+        ProductionWriter(db).commit(bundle)
+    with connect(db) as conn:
+        for table in ("runs", "products", "product_localizations", "observations", "lifecycle_state",
+                      "price_history", "event_history", "reviews", "commit_batches", "run_evidence", "export_sync"):
+            assert conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0, table
+
+
 def test_validate_production_database(tmp_path: Path):
     db = tmp_path / "action.db"
     ProductionWriter(db).commit(_bundle())
@@ -61,6 +97,17 @@ def test_validate_production_database(tmp_path: Path):
     result = validate_production_database(db)
     assert result["integrity"] == "PASS"
     assert result["foreign_keys"] == "PASS"
+
+
+def test_sqlite_backup_api_creates_integrity_checked_copy(tmp_path: Path):
+    db = tmp_path / "source.db"
+    backup = tmp_path / "backup" / "source.db"
+    ProductionWriter(db).commit(_bundle())
+    from action_tracker.database.production import backup_database
+    result = backup_database(db, backup)
+    assert result["integrity"] == "PASS"
+    assert backup.exists()
+    assert backup_database(db, backup)["sha256"] == result["sha256"]
 
 
 def test_v2_uses_dedicated_reviews_table_and_events_view(tmp_path: Path):
