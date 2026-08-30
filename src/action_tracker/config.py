@@ -7,7 +7,11 @@ from typing import Any
 
 import yaml
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+# The checked-out source tree and the production data root may be different
+# (for example, a validated worktree can operate on F:\\ActionSKUTracker's
+# runtime).  Keep the source-tree default for development, while allowing the
+# scheduler wrapper to select the explicit production data root.
+_PROJECT_ROOT = Path(os.environ.get("ACTION_TRACKER_PROJECT_ROOT") or Path(__file__).resolve().parent.parent.parent).resolve()
 
 
 def project_root() -> Path:
