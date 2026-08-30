@@ -15,8 +15,8 @@
 
 | 项目 | 结果 |
 |---|---|
-| Git HEAD | `e7aa3732756f31597c492a085eb63b2673d8f84e`（审计修改在其后提交） |
-| CI | 基线 GitHub Actions run `33292161030` PASS；审计提交后需以新 run 为准 |
+| Git HEAD | `e308836745d997eb66f905240acc3958a55c1e74` |
+| CI | GitHub Actions run `33293771076` PASS |
 | `storage.mode` | `SQLITE_PRIMARY` |
 | schema family | `ACTION_SQLITE_DATA` |
 | schema version | `2.0.0` |
@@ -94,10 +94,10 @@ SQLite Backup API 已加入 `backup_database()`，并实际生成：
 
 - targeted database/lifecycle/export tests：84 passed。
 - full regression：295 passed，0 failed，0 error。
-- 审计相关修改提交后需等待对应 GitHub Actions run 完成并记录 success；未执行 main merge。
+- 审计相关修改对应的 GitHub Actions run `33293771076` 已完成且 success；未执行 main merge。
 
 ## Final Verdict
 
-在本地验收条件下：HIGH=0、MEDIUM=0，完整性、FK、CURRENT/Lifecycle/Presence parity、历史导入、恢复、事务回滚、导出恢复和旧 writer guard 均 PASS。最终 GitHub CI 以审计提交对应的 workflow run 为最后门槛；若该 run 成功，则结论为 **CUTOVER_ACCEPTED**。
+在本地与 GitHub CI 验收条件下：HIGH=0、MEDIUM=0，完整性、FK、CURRENT/Lifecycle/Presence parity、历史导入、恢复、事务回滚、导出恢复和旧 writer guard 均 PASS。结论冻结为 **CUTOVER_ACCEPTED**。
 
 下一步：等待用户确认是否进入 main merge。
