@@ -4,6 +4,8 @@
 
 - Branch: `feat/knowledge-production-v1`
 - Parent main: `a3ce3de`
+- Branch HEAD: `7302442`
+- GitHub CI: run `33312031121`, PASS (CI-safe tests)
 - P0/P1/P2: released/accepted on main; see `P0_P2_DATA_FOUNDATION_FREEZE_20260830.md`.
 - Production switches remain disabled: dictionary apply, Knowledge apply, scoped dictionary, AI translation and auto approval.
 
