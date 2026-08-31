@@ -70,7 +70,7 @@ class RunLock:
         pid = data.get("pid")
         # A lock belonging to a live local process is never reclaimed merely
         # because a long collection exceeded the configured stale threshold.
-        if isinstance(pid, int) and _pid_alive(pid):
+        if isinstance(pid, int) and is_process_alive(pid):
             return
         age = datetime.now().timestamp() - self.path.stat().st_mtime
         if age > self.stale_after.total_seconds() or pid is not None:
@@ -84,7 +84,17 @@ class RunLock:
             self.path.unlink(missing_ok=True)
 
 
-def _pid_alive(pid: int) -> bool:
+def is_process_alive(pid: int | object) -> bool:
+    """Return whether a local PID is alive without signalling it on Windows.
+
+    ``os.kill(pid, 0)`` is the conventional POSIX probe, but it is not a safe
+    Windows substitute.  Keep one shared implementation so locks and resume
+    selection cannot drift into different platform behaviour.
+    """
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
     if pid <= 0:
         return False
     if sys.platform == "win32":

@@ -148,7 +148,10 @@ def _goto_page(browser, url: str, cat: str, p: int, total: int, retries: int = 3
     """访问分页 URL，goto 偶发 net::ERR_CONNECTION_CLOSED（实测连续多页命中），重试后再放弃。"""
     for attempt in range(1, retries + 1):
         try:
-            browser.goto(url)
+            passed = browser.goto(url)
+            if not passed:
+                log.warning("  [%s] 页 %d/%d 被访问控制拒绝，停止该页重试", cat, p, total)
+                return False
             return True
         except Exception as e:
             if attempt == retries:
@@ -175,18 +178,18 @@ def _grid_ok(browser) -> bool:
 def _wait_for_grid(browser, tries: int = 12) -> bool:
     """等待商品网格真正渲染（复刻旧脚本 waitForGrid）。
 
-    Cloudflare 挑战页没有网格节点；此时 reload 触发重新校验，CF 会在几秒内
-    自动放行真实页面，因此循环 reload 直到网格出现即可自愈。
+    页面没有网格时只请求 BrowserSession 的受控 reload；Listing 不自行解释
+    Challenge/403/429，也不直接调用 Playwright refresh。
     """
-    page = browser.page
     for _ in range(tries):
         if _grid_ok(browser):
             return True
         try:
-            page.reload(wait_until="domcontentloaded")
+            if not browser.reload():
+                return False
         except Exception:
-            pass
-        page.wait_for_timeout(1500)
+            return False
+        browser.page.wait_for_timeout(1500)
     return False
 
 
@@ -205,6 +208,10 @@ def scan_category(browser, cat: str, cat_url: str, max_pages: int | None = None,
             passed = browser.goto(cat_url)
             if not passed:
                 log.warning("类别 %s 挑战未通过(第 %d 次)", cat, attempt)
+                if attempt == goto_retries:
+                    return ([], False) if include_coverage else []
+                browser.sleep()
+                continue
             page.wait_for_timeout(1500)
             if _grid_ok(browser) or attempt == goto_retries:
                 break
