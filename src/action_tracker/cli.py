@@ -115,6 +115,20 @@ def build_parser() -> argparse.ArgumentParser:
     da.add_argument("--commit", action="store_true", help="请求正式写入；生产配置关闭时明确拒绝")
     de = sub.add_parser("dictionary-enrich", help="对已正式提交 run 的新增/变更 SKU 做增量字典标准化")
     de.add_argument("--run-id", required=True, help="必须是 FULL_COMMIT 且 QA PASS 的 observation run_id")
+    le = sub.add_parser("localization-enrich", help="对 PRIMARY CURRENT 做只读中文标准化解析并生成审计报告")
+    le.add_argument("--run-id", help="报告标识；不提供时使用当前时间")
+    la = sub.add_parser("localization-audit", help="审计 CURRENT 中文字段、残留西语和数字事实")
+    la.add_argument("--run-id", help="指定报告 run_id")
+    la.add_argument("--current", action="store_true", help="审计 SQLite PRIMARY CURRENT")
+    lr = sub.add_parser("localization-learning-report", help="查看最近一次 Localization learning candidates")
+    lr.add_argument("--run-id", help="指定报告 run_id")
+    lp = sub.add_parser("localization-promote", help="记录候选知识晋升决定（默认只读）")
+    lp.add_argument("--candidate-id", required=True)
+    lp.add_argument("--human-approved", action="store_true")
+    la = sub.add_parser("localization-apply", help="Localization SQLite apply；默认 dry-run，正式写入需显式配置与 --commit")
+    la.add_argument("--run-id", required=True)
+    la.add_argument("--dry-run", action="store_true")
+    la.add_argument("--commit", action="store_true")
     rq = sub.add_parser("review-queue", help="构建或处理统一人工审核队列")
     rq_sub = rq.add_subparsers(dest="review_queue_command", required=True)
     rq_build = rq_sub.add_parser("build", help="只读汇集 Master 与字典侧当前问题")
@@ -362,6 +376,47 @@ def main(argv=None) -> int:
             return 2
         print(json.dumps(result, ensure_ascii=False))
         return 0
+    if args.command == "localization-enrich":
+        from .localization.service import audit_current
+        try:
+            result = audit_current(cfg, run_id=args.run_id)
+        except Exception as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False)); return 0
+    if args.command == "localization-audit":
+        from .localization.service import audit_current
+        try:
+            result = audit_current(cfg, run_id=args.run_id)
+        except Exception as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False)); return 0
+    if args.command == "localization-learning-report":
+        from .localization.service import _report_root
+        root = _report_root(cfg)
+        dirs = sorted((p for p in root.glob("*") if p.is_dir()), key=lambda p: p.name)
+        if not dirs:
+            print(json.dumps({"count": 0, "rows": []}, ensure_ascii=False)); return 0
+        target = root / args.run_id if args.run_id else dirs[-1]
+        path = target / "learning_candidates.csv"
+        rows = []
+        if path.exists():
+            import csv
+            rows = list(csv.DictReader(path.open(encoding="utf-8-sig")))
+        print(json.dumps({"run_id": target.name, "count": len(rows), "rows": rows}, ensure_ascii=False)); return 0
+    if args.command == "localization-promote":
+        from .localization.promotion import promotion_manifest
+        result = promotion_manifest({"candidate_id": args.candidate_id}, "UNKNOWN", "LOCKED" if args.human_approved else "UNKNOWN")
+        print(json.dumps(result, ensure_ascii=False)); return 0
+    if args.command == "localization-apply":
+        from .localization.service import apply_from_audit
+        try:
+            result = apply_from_audit(cfg, run_id=args.run_id, commit=bool(args.commit and not args.dry_run))
+        except Exception as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False)); return 0
     if args.command == "review-queue":
         from .review_queue import ReviewQueueError, build_review_queue, decide_review
         try:

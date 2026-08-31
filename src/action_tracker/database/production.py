@@ -879,6 +879,57 @@ def apply_detail_corrections(
             "content_change_events": content_events, "mode": mode}
 
 
+def apply_localization_correction(
+    path: Path,
+    *,
+    run_id: str,
+    localizations_by_sku: Mapping[str, Mapping[str, Any]],
+    source_hashes: Mapping[str, str],
+) -> dict[str, Any]:
+    """Create an immutable zh-only correction commit on SQLite PRIMARY.
+
+    This deliberately has no SQL path for products, observations, prices,
+    lifecycle or ES rows.  The current committed head is locked before any
+    mutation and becomes ``base_commit_id`` for the new correction version.
+    """
+    path = Path(path); migrate_v2(path, role="PRIMARY")
+    fields = {"name", "cat1", "cat2", "spec", "description", "details"}
+    with connect(path) as db:
+        role = db.execute("SELECT value FROM schema_metadata WHERE key='database_role'").fetchone()
+        if not role or str(role[0]) != "PRIMARY":
+            raise ProductionDatabaseError("LOCALIZATION_CORRECTION_REQUIRES_SQLITE_PRIMARY")
+        head = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC,commit_id DESC LIMIT 1").fetchone()
+        if not head: raise ProductionDatabaseError("LOCALIZATION_CORRECTION_HEAD_MISSING")
+        base = str(head[0]); now = datetime.now(timezone.utc).isoformat()
+        db.execute("BEGIN IMMEDIATE")
+        locked = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC,commit_id DESC LIMIT 1").fetchone()
+        if not locked or str(locked[0]) != base: raise ProductionDatabaseError("BASELINE_CHANGED_BEFORE_LOCALIZATION_CORRECTION")
+        payload = {"operation": "LOCALIZATION_CORRECTION", "run_id": run_id, "base_commit_id": base, "skus": sorted(localizations_by_sku)}
+        bundle_hash = hashlib.sha256(json.dumps({"payload": payload, "values": localizations_by_sku, "hashes": source_hashes}, ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()
+        correction_run = f"localization_{run_id}_{uuid.uuid4().hex[:8]}"
+        commit_id = f"{run_id}_{correction_run}_{bundle_hash[:12]}"
+        db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES(?,?,?,?,?,?,?,?)", (correction_run, run_id, "COMMITTED", "PASS", 0, now, now, "2.0.0"))
+        db.execute("INSERT INTO run_evidence(run_id,snapshot_path,snapshot_hash,evidence_json) VALUES(?,?,?,?)", (correction_run, None, None, json.dumps(payload, ensure_ascii=False, sort_keys=True)))
+        db.execute("INSERT INTO commit_batches(commit_id,run_id,base_commit_id,bundle_hash,schema_version,started_at,committed_at,product_count,observation_count,price_event_count,event_count,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", (commit_id, correction_run, base, bundle_hash, "2.0.0", now, now, len(localizations_by_sku), 0, 0, 0, "COMMITTED"))
+        db.execute("INSERT INTO export_sync(commit_id,status) VALUES(?, 'PENDING')", (commit_id,)); supersede_older_export_sync(db, commit_id)
+        changed = 0
+        for sku, values in sorted(localizations_by_sku.items()):
+            sku = str(sku).strip(); source_hash_value = str(source_hashes.get(sku) or "")
+            if not source_hash_value: raise ProductionDatabaseError(f"LOCALIZATION_SOURCE_HASH_MISSING:{sku}")
+            if db.execute("SELECT 1 FROM products WHERE official_sku=? AND status='CURRENT'", (sku,)).fetchone() is None: raise ProductionDatabaseError(f"LOCALIZATION_SKU_NOT_CURRENT:{sku}")
+            current = db.execute("SELECT * FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone()
+            current_dict = dict(current) if current else {}
+            vals = {f: current_dict.get(f) for f in fields}; src = {f: current_dict.get(f"{f}_source") for f in fields}
+            for f, v in values.items():
+                if f in fields and v is not None: vals[f] = str(v); src[f] = "localization_engine"
+            db.execute("""INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,last_commit_id,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(official_sku,language) DO UPDATE SET name=excluded.name,cat1=excluded.cat1,cat2=excluded.cat2,spec=excluded.spec,description=excluded.description,details=excluded.details,source=excluded.source,review_status=excluded.review_status,updated_at=excluded.updated_at,last_commit_id=excluded.last_commit_id,source_hash=excluded.source_hash,resolution_status=excluded.resolution_status,name_source=excluded.name_source,cat1_source=excluded.cat1_source,cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,description_source=excluded.description_source,details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""", (sku, "zh", vals["name"], vals["cat1"], vals["cat2"], vals["spec"], vals["description"], vals["details"], "LOCALIZATION", "APPROVED", now, commit_id, source_hash_value, "APPLIED", src["name"], src["cat1"], src["cat2"], src["spec"], src["description"], src["details"], "CURRENT", "LOCALIZATION", now, commit_id))
+            changed += 1
+        db.commit()
+    return {"status": "SUCCESS", "base_commit_id": base, "commit_id": commit_id, "correction_run_id": correction_run, "applied_skus": changed}
+
+
 def mark_export_sync(path: Path, commit_id: str, *, master: Path, known: Path, offline: Path) -> dict[str, Any]:
     """Mark compatibility projections as synchronized after verifying files.
 
