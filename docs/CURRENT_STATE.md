@@ -65,7 +65,7 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
 
 ## 测试与发布状态
 
-- 本地完整回归：335 passed。
+- 本地完整回归：338 passed。
 - CI-safe 白名单已包含 `tests/test_extraction_v2.py`、`tests/test_cli_v2.py`、
   `tests/test_operations_http_v2.py`。
 - 最终提交 `dc67f3cde800b8f55aa44f7e9ae504d29c9bd4b7` 的 GitHub Actions run

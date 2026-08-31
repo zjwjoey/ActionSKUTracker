@@ -62,10 +62,14 @@ class ArtifactService:
     def build_csv(self, selection_id: str, output_path: Path) -> dict[str, Any]:
         from ..extraction.service import ExtractionService
         with connect(self.db_path) as db:
+            # Keep membership, source commit and product facts on one
+            # SQLite snapshot so a concurrent run cannot produce an artifact
+            # whose provenance points at a different database head.
+            db.execute("BEGIN")
             members = [str(r[0]) for r in db.execute("SELECT official_sku FROM selection_members WHERE selection_id=? ORDER BY ordinal,official_sku", (selection_id,))]
             source = db.execute("SELECT source_commit_id FROM selection_sets WHERE selection_id=?", (selection_id,)).fetchone()
             artifact_source = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC LIMIT 1").fetchone()
-        rows = ExtractionService(self.db_path).execute({"skus": members, "statuses": ["CURRENT", "MISSING", "OFFLINE", "HISTORICAL"], "limit": 10000}).items
+            rows = ExtractionService(self.db_path).execute({"skus": members, "statuses": ["CURRENT", "MISSING", "OFFLINE", "HISTORICAL"], "limit": 10000}, connection=db).items
         by_sku = {str(row["official_sku"]): row for row in rows}; missing = [sku for sku in members if sku not in by_sku]
         output_path.parent.mkdir(parents=True, exist_ok=True)
         fields = ["official_sku","name_es","zh_name","status","current_price","original_price","product_url","last_seen_at","image_status","localization_status"]

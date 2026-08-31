@@ -14,9 +14,9 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
         raise ValueError("CONTROL_CENTER_LOCALHOST_ONLY")
     svc = service
     class Handler(BaseHTTPRequestHandler):
-        def _send(self, payload):
+        def _send(self, payload, *, status: int = 200):
             data = json.dumps(payload, ensure_ascii=False, default=str).encode()
-            self.send_response(200); self.send_header("Content-Type", "application/json; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
+            self.send_response(status); self.send_header("Content-Type", "application/json; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
         def _send_html(self, html):
             data = html.encode("utf-8")
             self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
@@ -172,7 +172,8 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                     from ..extraction.selections import SelectionService
                     result = SelectionService(svc.db_path).create((form.get("name") or [""])[-1], json.loads((form.get("query_json") or ["{}"]) [-1]), description=(form.get("description") or [""])[-1]); return self._send(result)
             except Exception as exc:
-                return self._send({"error": str(exc)})
+                status = 404 if isinstance(exc, KeyError) else 400 if isinstance(exc, ValueError) else 500
+                return self._send({"error": str(exc)}, status=status)
             self.send_error(404)
         def _read_form(self):
             length = int(self.headers.get("Content-Length", "0"))
@@ -188,7 +189,8 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                     result = SavedViewService(svc.db_path).update(match.group(1), name=(form.get("name") or [None])[-1], description=(form.get("description") or [None])[-1], query=query)
                     return self._send(result)
             except Exception as exc:
-                return self._send({"error": str(exc)})
+                status = 404 if isinstance(exc, KeyError) else 400 if isinstance(exc, ValueError) else 500
+                return self._send({"error": str(exc)}, status=status)
             self.send_error(404)
         def do_DELETE(self):
             path = urlparse(self.path).path
@@ -199,7 +201,8 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                     SavedViewService(svc.db_path).delete(match.group(1))
                     return self._send({"status": "DELETED", "view_id": match.group(1)})
                 except Exception as exc:
-                    return self._send({"error": str(exc)})
+                    status = 404 if isinstance(exc, KeyError) else 400 if isinstance(exc, ValueError) else 500
+                    return self._send({"error": str(exc)}, status=status)
             self.send_error(404)
         def log_message(self, *_args): return
     ThreadingHTTPServer((host, port), Handler).serve_forever()

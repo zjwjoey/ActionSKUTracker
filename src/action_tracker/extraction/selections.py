@@ -62,15 +62,21 @@ class SelectionService:
         # paged UI cannot create a partial or duplicated membership snapshot.
         scope = q.normalized(); scope.pop("limit", None); scope.pop("offset", None)
         scope.update({"limit": 10000, "offset": 0})
-        result = ExtractionService(self.db_path).execute(scope)
-        # A selection is a fixed membership snapshot; read current facts now,
-        # but store no product fields in the membership table.
-        all_rows = list(result.items)
-        while len(all_rows) < result.matched_count:
-            next_page = ExtractionService(self.db_path).execute(ExtractionQuery.from_dict({**scope, "offset": len(all_rows), "limit": min(10000, result.matched_count-len(all_rows))}))
-            all_rows.extend(next_page.items)
-        selection_id = f"sel_{uuid.uuid4().hex[:12]}"; now = _now()
         with connect(self.db_path) as db:
+            # Hold a SQLite write transaction while reading the fixed
+            # membership and its source commit. A concurrent production
+            # commit therefore cannot make the recorded provenance disagree
+            # with the rows used to build the Selection.
+            db.execute("BEGIN IMMEDIATE")
+            extractor = ExtractionService(self.db_path)
+            result = extractor.execute(scope, connection=db)
+            all_rows = list(result.items)
+            while len(all_rows) < result.matched_count:
+                next_page = extractor.execute(ExtractionQuery.from_dict({**scope, "offset": len(all_rows), "limit": min(10000, result.matched_count-len(all_rows))}), connection=db)
+                all_rows.extend(next_page.items)
+            # A selection is a fixed membership snapshot; read current facts
+            # now, but store no product fields in the membership table.
+            selection_id = f"sel_{uuid.uuid4().hex[:12]}"; now = _now()
             source = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC LIMIT 1").fetchone()
             scope_query = ExtractionQuery.from_dict(scope)
             db.execute("INSERT INTO selection_sets(selection_id,name,description,created_at,created_from_view_id,query_json,query_hash,source_commit_id,matched_count) VALUES(?,?,?,?,?,?,?,?,?)", (selection_id,name,description,now,view_id,scope_query.canonical_json(),scope_query.query_hash(),str(source[0]) if source else None,len(all_rows)))

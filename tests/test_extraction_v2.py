@@ -44,6 +44,15 @@ def test_extraction_supports_reappeared_and_image_ready_filters(tmp_path: Path):
     assert ready.matched_count == 1 and ready.items[0]["image_ready_for_export"] is True
 
 
+def test_status_filters_are_union_including_reappeared(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,name_es,current_price,status,product_url,first_seen_at,last_seen_at,last_checked_at) VALUES('C','1003','Producto Tres',4.0,'CURRENT','https://example.test/1003','2026-08-01','2026-08-30','2026-08-30')")
+        db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('A','1001','2026-08-30','REAPPEARED')")
+    result = ExtractionService(path).execute({"statuses": ["CURRENT", "REAPPEARED"], "limit": 10})
+    assert result.matched_count == 2
+
+
 def test_extraction_exposes_recent_event_and_historical_price_range(tmp_path: Path):
     path = _db(tmp_path)
     with connect(path) as db:
@@ -52,6 +61,16 @@ def test_extraction_exposes_recent_event_and_historical_price_range(tmp_path: Pa
     result = ExtractionService(path).execute({"sort": "recent_change", "descending": True, "limit": 10})
     item = next(row for row in result.items if row["official_sku"] == "1001")
     assert item["change_direction"] == "DOWN" and item["historical_low"] == 1.2 and item["historical_high"] == 1.5
+
+
+def test_latest_price_is_one_deterministic_row_per_sku(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,old_price,new_price,change_type) VALUES('A','1001','2026-08-30',1.0,1.5,'UP')")
+        db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,old_price,new_price,change_type) VALUES('A','1001','2026-08-30',1.5,1.2,'DOWN')")
+    result = ExtractionService(path).execute({"skus": ["1001"], "limit": 10})
+    assert result.matched_count == 1 and len(result.items) == 1
+    assert result.items[0]["change_direction"] == "DOWN"
 
 
 def test_extraction_contract_time_dimensions_and_canonical_id(tmp_path: Path):

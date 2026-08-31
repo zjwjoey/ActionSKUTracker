@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 
 import pytest
 
@@ -65,3 +66,11 @@ def test_workspace_query_saved_view_selection_and_artifact_routes(workspace_serv
 def test_workspace_server_rejects_public_bind(tmp_path: Path):
     with pytest.raises(ValueError, match="LOCALHOST_ONLY"):
         serve(OperationsService(_db(tmp_path)), host="0.0.0.0", port=0)
+
+
+def test_workspace_returns_http_error_for_invalid_selection_export(workspace_server: str):
+    request = Request(workspace_server + "/api/selections/missing/export", data=urlencode({"artifact_type": "CSV"}).encode(), method="POST")
+    request.add_header("Content-Type", "application/x-www-form-urlencoded")
+    with pytest.raises(HTTPError) as error:
+        urlopen(request, timeout=5)
+    assert error.value.code == 404

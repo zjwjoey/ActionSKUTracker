@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,7 @@ class ExtractionService:
         if not self.db_path.exists():
             raise ExtractionError("DB_MISSING")
 
-    def execute(self, query: ExtractionQuery | dict[str, Any] | None = None) -> ExtractionResult:
+    def execute(self, query: ExtractionQuery | dict[str, Any] | None = None, *, connection: sqlite3.Connection | None = None) -> ExtractionResult:
         q = query if isinstance(query, ExtractionQuery) else ExtractionQuery.from_dict(query or {})
         if q.limit < 1 or q.limit > 10000 or q.offset < 0:
             raise ExtractionError("PAGINATION_INVALID")
@@ -41,7 +42,7 @@ class ExtractionService:
         joins = ["LEFT JOIN product_localizations es ON es.official_sku=p.official_sku AND es.language='es'",
                  "LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'",
                  "LEFT JOIN image_assets ia ON ia.official_sku=p.official_sku",
-                 "LEFT JOIN (SELECT h.official_sku,h.observed_at AS latest_at,h.new_price-h.old_price AS change_amount, CASE WHEN h.new_price>h.old_price THEN 'UP' WHEN h.new_price<h.old_price THEN 'DOWN' ELSE 'FLAT' END AS change_direction, CASE WHEN h.old_price IS NULL OR h.old_price=0 THEN NULL ELSE (h.new_price-h.old_price)*100.0/h.old_price END AS change_percent FROM price_history h WHERE h.observed_at=(SELECT MAX(h2.observed_at) FROM price_history h2 WHERE h2.official_sku=h.official_sku)) ph ON ph.official_sku=p.official_sku"]
+                 "LEFT JOIN (SELECT official_sku,observed_at AS latest_at,new_price-old_price AS change_amount, CASE WHEN new_price>old_price THEN 'UP' WHEN new_price<old_price THEN 'DOWN' ELSE 'FLAT' END AS change_direction, CASE WHEN old_price IS NULL OR old_price=0 THEN NULL ELSE (new_price-old_price)*100.0/old_price END AS change_percent FROM (SELECT h.*,ROW_NUMBER() OVER (PARTITION BY h.official_sku ORDER BY h.observed_at DESC,h.id DESC) AS rn FROM price_history h) ranked WHERE rn=1) ph ON ph.official_sku=p.official_sku"]
         joins.append("LEFT JOIN (SELECT official_sku,event_type AS recent_event_type,occurred_at AS recent_event_at FROM (SELECT e.official_sku,e.event_type,e.occurred_at,ROW_NUMBER() OVER (PARTITION BY e.official_sku ORDER BY e.occurred_at DESC,e.id DESC) AS rn FROM event_history e) ranked WHERE rn=1) ev_latest ON ev_latest.official_sku=p.official_sku")
         if q.keyword:
             term = f"%{' '.join(q.keyword.lower().split())}%"
@@ -52,9 +53,15 @@ class ExtractionService:
         self._in_clause(clauses, args, "p.official_sku", q.skus)
         statuses = tuple(self.STATUS_MAP.get(str(s).upper(), str(s).upper()) for s in q.statuses)
         direct_statuses = tuple(s for s in statuses if s != "REAPPEARED")
-        self._in_clause(clauses, args, "p.status", direct_statuses)
+        status_alternatives: list[str] = []
+        if direct_statuses:
+            placeholders = ",".join("?" for _ in direct_statuses)
+            status_alternatives.append(f"p.status IN ({placeholders})")
+            args.extend(direct_statuses)
         if "REAPPEARED" in statuses:
-            clauses.append("EXISTS (SELECT 1 FROM event_history ev_re WHERE ev_re.official_sku=p.official_sku AND ev_re.event_type='REAPPEARED')")
+            status_alternatives.append("EXISTS (SELECT 1 FROM event_history ev_re WHERE ev_re.official_sku=p.official_sku AND ev_re.event_type='REAPPEARED')")
+        if status_alternatives:
+            clauses.append("(" + " OR ".join(status_alternatives) + ")")
         self._in_clause(clauses, args, "COALESCE(zh.cat1,es.cat1,'')", q.cat1)
         self._in_clause(clauses, args, "COALESCE(zh.cat2,es.cat2,'')", q.cat2)
         if q.min_price is not None: clauses.append("p.current_price >= ?"); args.append(q.min_price)
@@ -155,7 +162,8 @@ class ExtractionService:
                    ev_latest.recent_event_type,ev_latest.recent_event_at"""
         joins.append("LEFT JOIN (SELECT official_sku, MIN(new_price) AS historical_low, MAX(new_price) AS historical_high FROM price_history GROUP BY official_sku) ps ON ps.official_sku=p.official_sku")
         base = f" FROM products p {' '.join(joins)}{where}"
-        with connect(self.db_path) as db:
+        db_context = nullcontext(connection) if connection is not None else connect(self.db_path)
+        with db_context as db:
             total = int(db.execute(f"SELECT COUNT(DISTINCT p.official_sku){base}", args).fetchone()[0])
             rows = db.execute(f"{select}{base} ORDER BY {sort_expr} {direction},p.official_sku ASC LIMIT ? OFFSET ?", [*args, q.limit, q.offset]).fetchall()
             source = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC LIMIT 1").fetchone()
