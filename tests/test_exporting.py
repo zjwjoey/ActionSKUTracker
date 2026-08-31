@@ -388,6 +388,26 @@ def test_es_and_zh_exports_have_identical_sku_price_and_link_sets(tmp_path):
         zh_wb.close()
 
 
+def test_excel_export_exact_sku_set_and_manifest_hash(tmp_path):
+    cfg = _cfg(tmp_path)
+    run_id = "2026-08-24_020000"
+    records = [_record("1002"), _record("1001", current=1.25, original=None)]
+    _write_master(cfg["paths"]["master"], [_run_log(run_id, "2026-08-24")], records)
+    _write_snapshot(cfg["paths"]["snapshots"], run_id, "2026-08-24", records)
+    result = export_catalog(cfg, language="es", export_date="2026-08-24", no_images=True)
+    wb = openpyxl.load_workbook(result["output"], data_only=True)
+    try:
+        ws = wb["商品全量"]
+        exported = {str(row[1].value) for row in ws.iter_rows(min_row=2) if row[1].value is not None}
+        assert exported == {"1001", "1002"}
+        assert ws.max_row == 3 and ws.max_column == 14
+    finally:
+        wb.close()
+    manifest = json.loads(Path(result["manifest"]).read_text(encoding="utf-8"))
+    assert manifest["sku_count"] == 2
+    assert manifest["sku_set_hash"] == hashlib.sha256("1001\n1002".encode()).hexdigest()
+
+
 def test_repeated_export_is_data_idempotent(tmp_path):
     cfg = _cfg(tmp_path)
     run_id = "2026-08-24_010000"
