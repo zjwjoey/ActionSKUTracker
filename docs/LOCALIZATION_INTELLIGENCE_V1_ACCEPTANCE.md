@@ -28,12 +28,12 @@ Localization 核心不访问官网，不修改 Presence、Lifecycle、Price hist
 
 ## 本次 feature 验证记录
 
-- implementation feature head：`58452635f8d8bffa2f3c140a8324419e76d5033a`
+- implementation feature head：`cb1f44385480e96b7418e39fde54458f942a3c0c`
 - 基线：`a3cbb6bfb49431d7ddf4dc502d302e6efb44a3f2`
 - 全量 dry-run：5,379 CURRENT；ready 0、review_required 5,379、普通西语残留 5,379、数字事实 mismatch 266、AI calls 0（run `v1-feature-audit-20260901b`）。
 - 该结果反映当前 PRIMARY 中大量历史中文字段的来源哈希/语言状态仍待重新标准化，不代表系统绕过了审核；formal apply 不会对这些行自动写入。
 - `localization-apply --dry-run` 已执行（run `v1-feature-apply-dry-run-20260901`），未写入 PRIMARY。
-- GitHub Actions exact-head CI：Ubuntu 与 Windows 均 PASS，run `33446389614`（head 与 implementation feature head 一致）。
-- 本轮补充了 SourceFacts 官方来源字段、SemanticFact 证据字段、跨字段数字保护、知识 CSV 唯一键/schema 校验、AI 身份/价格/结构校验和 Apply 源哈希门禁；本地回归共 378 项通过。
+- GitHub Actions exact-head CI：Ubuntu 与 Windows 均 PASS，run `33446984894`（head 与 implementation feature head 一致）。
+- 本轮补充了 SourceFacts 官方来源字段、SemanticFact 证据字段、跨字段数字保护、知识 CSV 唯一键/schema 校验、AI 身份/价格/结构校验、Apply 源哈希门禁，以及 unchanged daily 的中文 provenance/updated_at 保留；本地回归共 379 项通过。
 
 当前结论：`LOCALIZATION_V1_NOT_ACCEPTED DO_NOT_MERGE`。原因是全量质量门禁尚未 PASS，且生产 AI/apply 开关保持关闭；需先完成 UNKNOWN 候选审核或提供新的有效中文结果，再重新运行 audit/apply 验收。
