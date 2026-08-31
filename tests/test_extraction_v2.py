@@ -45,6 +45,15 @@ def test_saved_view_dynamic_and_selection_membership_fixed(tmp_path: Path):
     assert selection.get(selected["selection_id"])["members"] == ["1001"]
 
 
+def test_saved_view_update_and_delete_are_explicit(tmp_path: Path):
+    path = _db(tmp_path); view = SavedViewService(path)
+    saved = view.create("临时视图", {"statuses": ["CURRENT"]})
+    updated = view.update(saved["view_id"], name="当前低价", query={"statuses": ["CURRENT"], "max_price": 2})
+    assert updated["name"] == "当前低价" and updated["query"]["max_price"] == 2
+    view.delete(saved["view_id"])
+    assert view.get(saved["view_id"]) is None
+
+
 def test_image_zip_records_membership_and_missing_report(tmp_path: Path):
     path = _db(tmp_path); selection = SelectionService(path).create("图包", {"statuses":["CURRENT"],"limit":100})
     image_root = tmp_path / "images"; image_root.mkdir(); (image_root / "1001.png").write_bytes(b"png")

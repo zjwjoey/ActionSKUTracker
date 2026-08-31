@@ -1,11 +1,15 @@
 # Data Workspace V1
 
-The localhost Operations server now exposes the first usable workspace read
-surface: `/api/products` (Extraction Contract), `/api/views`,
-`/api/selections`, `/api/artifacts`, `/api/runs`, `/api/quality` and
-`/api/health`. The home page links to product queries and saved data sets.
+The localhost Operations server exposes the workspace read surface:
+`/api/products` (Extraction Contract), `/api/views`, `/api/selections`,
+`/api/artifacts`, `/api/runs`, `/api/quality` and `/api/health`. Individual
+saved views and selections can be read by id. The `/workspace` page supports
+keyword, status, price-range, image and promotion filters; it remains a read
+surface over SQLite and never mutates product facts.
 
 CLI management is available through `extract`, `saved-view create/list` and
-`selection create/list/get`. Selection exports use `export --selection-id` and
-record artifact provenance in SQLite. The server remains localhost-only; no
-public bind, authentication bypass or direct product mutation was added.
+`selection create/list/get`. Saved views also have explicit service/API update
+and delete operations; selection membership remains immutable after creation.
+Selection exports use `export --selection-id` and record artifact provenance in
+SQLite. The server remains localhost-only; no public bind, authentication
+bypass or direct product mutation was added.
