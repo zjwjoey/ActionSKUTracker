@@ -528,7 +528,14 @@ def _qa(cfg, *, run_id: str | None = None) -> int:
     if not candidates:
         print("没有可用 snapshot")
         return 1
-    qf = max(candidates, key=lambda path: path.stat().st_mtime)
+    # Windows filesystems can assign identical/coarse mtimes to two snapshot
+    # trees created in one test/run.  Date and run-id are the authoritative
+    # ordering; mtime is only a final tie-breaker for legacy layouts.
+    qf = max(candidates, key=lambda path: (
+        path.parent.parent.name,
+        path.parent.name,
+        path.stat().st_mtime_ns,
+    ))
     if not qf.exists():
         print(f"snapshot {qf.parent} 无 qa_report.json")
         return 1
