@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS export_sync (
  offline_sha256 TEXT,
  last_attempt_at TEXT,
  error TEXT,
- status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','SUCCESS','FAILED')),
+ status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','SUCCESS','FAILED','SUPERSEDED')),
  FOREIGN KEY (commit_id) REFERENCES commit_batches(commit_id)
 );
 CREATE TABLE IF NOT EXISTS image_assets (
@@ -162,6 +162,18 @@ CREATE TABLE IF NOT EXISTS operations_actions (
  parameters_json TEXT NOT NULL,
  result_json TEXT NOT NULL,
  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS detail_corrections (
+ correction_id TEXT PRIMARY KEY,
+ parent_run_id TEXT NOT NULL,
+ official_sku TEXT NOT NULL,
+ field_name TEXT NOT NULL,
+ old_value TEXT,
+ new_value TEXT NOT NULL,
+ mode TEXT NOT NULL CHECK (mode IN ('APPLY','BACKFILL')),
+ source_hash TEXT,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
 CREATE VIEW IF NOT EXISTS events AS
  SELECT id,canonical_id,official_sku,occurred_at,event_type,old_value,new_value,run_id,evidence,event_key
@@ -315,6 +327,26 @@ def migrate_v2(path, *, role: str = "SHADOW"):
     migrate(path)
     with connect(path) as db:
         db.executescript(V2_DDL)
+        # Older PRIMARY databases had an export_sync CHECK constraint that
+        # could not represent a pending projection superseded by a newer DB
+        # head.  SQLite cannot alter CHECK constraints in place, so copy the
+        # small operational table atomically and preserve every row.
+        export_sql = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='export_sync'").fetchone()
+        if export_sql and "SUPERSEDED" not in str(export_sql[0] or "").upper():
+            db.execute("ALTER TABLE export_sync RENAME TO export_sync_legacy")
+            db.execute("""CREATE TABLE export_sync (
+                commit_id TEXT PRIMARY KEY,
+                master_status TEXT NOT NULL DEFAULT 'PENDING',
+                known_status TEXT NOT NULL DEFAULT 'PENDING',
+                offline_status TEXT NOT NULL DEFAULT 'PENDING',
+                master_sha256 TEXT, known_sha256 TEXT, offline_sha256 TEXT,
+                last_attempt_at TEXT, error TEXT,
+                status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','SUCCESS','FAILED','SUPERSEDED')),
+                FOREIGN KEY (commit_id) REFERENCES commit_batches(commit_id)
+            )""")
+            db.execute("""INSERT INTO export_sync(commit_id,master_status,known_status,offline_status,master_sha256,known_sha256,offline_sha256,last_attempt_at,error,status)
+                          SELECT commit_id,master_status,known_status,offline_status,master_sha256,known_sha256,offline_sha256,last_attempt_at,error,status FROM export_sync_legacy""")
+            db.execute("DROP TABLE export_sync_legacy")
         for key, value in {
             "schema_family": "ACTION_SQLITE_DATA",
             "schema_version": "2.0.0",

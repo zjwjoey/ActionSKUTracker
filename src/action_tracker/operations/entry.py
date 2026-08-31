@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
-import os
 import uuid
 from datetime import datetime
 from typing import Any
@@ -10,6 +9,7 @@ from typing import Any
 from ..database.integration import database_path
 from ..database.production import validate_production_database
 from ..services.gitutil import git_commit_info
+from ..services.runtime import is_process_alive
 from .backup import backup_sqlite
 from .contracts import StepResult
 from .preflight import production_preflight
@@ -35,7 +35,15 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
                 prior = json.loads(prior_state.read_text(encoding="utf-8"))
                 details = prior.get("steps", {}).get("COLLECTION", {}).get("details", {})
                 if details.get("delegated_run_id"):
-                    delegated["result"] = {"run_id": details["delegated_run_id"], "commit_status": details.get("commit_status", "")}
+                    # Restore only metadata required by downstream Operations
+                    # steps.  This is deliberately an allowlist rather than
+                    # replaying arbitrary persisted JSON into runtime state.
+                    delegated["result"] = {
+                        "run_id": details["delegated_run_id"],
+                        "commit_status": details.get("commit_status", ""),
+                        "commit_id": details.get("commit_id"),
+                        "qa": details.get("qa") or {},
+                    }
             except (OSError, json.JSONDecodeError):
                 pass
     def collect_existing_chain() -> StepResult:
@@ -64,7 +72,7 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
                 "qa": qa,
                 "reason": "FORMAL_COMMIT_NOT_CONFIRMED",
             }, error_code="FORMAL_COMMIT_NOT_CONFIRMED")
-        return StepResult("SUCCESS", {"delegated": True, "delegated_run_id": result.get("run_id"), "commit_status": commit_status, "qa": qa})
+        return StepResult("SUCCESS", {"delegated": True, "delegated_run_id": result.get("run_id"), "commit_status": commit_status, "commit_id": result.get("commit_id"), "qa": qa})
 
     def delegated_run_id() -> str | None:
         result = delegated.get("result") or {}
@@ -108,15 +116,27 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
         if dry_run:
             return StepResult("SKIPPED", {"reason": "DRY_RUN_NO_FORMAL_COMMIT"})
         status = str((delegated.get("result") or {}).get("commit_status") or "")
-        return StepResult("SUCCESS", {"delegated": True, "commit_status": status})
+        return StepResult("SUCCESS", {"delegated": True, "commit_status": status, "commit_id": (delegated.get("result") or {}).get("commit_id")})
 
     def export_step() -> StepResult:
         if dry_run:
             return StepResult("SKIPPED", {"reason": "DRY_RUN_NO_FORMAL_EXPORT"})
-        status = str((delegated.get("result") or {}).get("commit_status") or "")
+        result = delegated.get("result") or {}
+        status = str(result.get("commit_status") or "")
         if status == "DB_COMMITTED_EXPORT_PENDING":
-            return StepResult("FAILED", {"reason": "COMPATIBILITY_EXPORT_PENDING", "commit_status": status}, retryable=True, error_code="EXPORT_PENDING")
-        return StepResult("SUCCESS", {"delegated": True, "commit_status": status, "reason": "compatibility export handled by delegated chain"})
+            commit_id = str(result.get("commit_id") or "")
+            if not commit_id:
+                # Retain the established retryable outer state for historical
+                # reports that predate commit_id persistence.  New formal runs
+                # always include it, so a resume can perform real recovery.
+                return StepResult("FAILED", {"reason": "COMMIT_ID_MISSING", "commit_status": status}, retryable=True, error_code="EXPORT_PENDING")
+            from ..database.integration import regenerate_pending_exports
+            recovered = regenerate_pending_exports(cfg, commit_id=commit_id)
+            if not recovered or any(item.get("status") != "SUCCESS" for item in recovered):
+                return StepResult("FAILED", {"reason": "COMPATIBILITY_EXPORT_PENDING", "commit_status": status, "commit_id": commit_id, "recovery": recovered}, retryable=True, error_code="EXPORT_PENDING")
+            result["commit_status"] = "FULL_COMMIT"
+            return StepResult("SUCCESS", {"delegated": True, "commit_status": "FULL_COMMIT", "commit_id": commit_id, "recovery": recovered})
+        return StepResult("SUCCESS", {"delegated": True, "commit_status": status, "commit_id": result.get("commit_id"), "reason": "compatibility export handled by delegated chain"})
 
     steps: dict[str, Any] = {
         "PREFLIGHT": lambda: StepResult("SUCCESS", {**production_preflight(cfg, db, report_root), "code_version": git_commit_info()}),
@@ -173,21 +193,10 @@ def _resolve_resume_run(report_root: Path, business_date: str, requested: str | 
             status = str(state.get("state") or "")
             if status not in _RESUMABLE_STATES:
                 continue
-            if status == "RUNNING" and _pid_alive(state.get("pid")):
+            if status == "RUNNING" and is_process_alive(state.get("pid")):
                 continue
             candidates.append((str(state.get("started_at") or ""), state_path.parent.name, state_path.stat().st_mtime))
     if not candidates:
         raise FileNotFoundError("RUN_STATE_MISSING")
     candidates.sort(key=lambda item: (item[0], item[2]), reverse=True)
     return candidates[0][1], True
-
-
-def _pid_alive(pid: Any) -> bool:
-    try:
-        value = int(pid)
-        if value <= 0:
-            return False
-        os.kill(value, 0)
-        return True
-    except (TypeError, ValueError, OSError):
-        return False

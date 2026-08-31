@@ -24,13 +24,14 @@ class ImageSyncError(RuntimeError):
 class ImageSyncService:
     """Incremental, resumable image sync isolated from product collection."""
 
-    def __init__(self, *, asset_root: Path, manifest_path: Path, staging_root: Path, derivative_root: Path | None = None, timeout_seconds: int = 20, max_retries: int = 3, download_workers: int = 1, downloader: Callable[[str, int], bytes] | None = None):
+    def __init__(self, *, asset_root: Path, manifest_path: Path, staging_root: Path, derivative_root: Path | None = None, timeout_seconds: int = 20, max_retries: int = 3, download_workers: int = 1, downloader: Callable[[str, int], bytes] | None = None, allowed_hosts: Iterable[str] | None = None):
         self.asset_root = Path(asset_root)
         self.staging_root = Path(staging_root)
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
         self.download_workers = max(1, int(download_workers))
         self.downloader = downloader or self._download
+        self.allowed_hosts = {str(host).strip().casefold() for host in (allowed_hosts or ()) if str(host).strip()}
         self.manifest = ImageManifest(manifest_path)
         self.derivative_service = ImageDerivativeService(Path(derivative_root)) if derivative_root else None
 
@@ -139,6 +140,9 @@ class ImageSyncService:
             parsed = urlparse(url)
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
                 raise ImageSyncError("INVALID_SOURCE_URL")
+            host = (parsed.hostname or "").casefold()
+            if self.allowed_hosts and host not in self.allowed_hosts:
+                raise ImageSyncError("IMAGE_SOURCE_HOST_NOT_ALLOWED")
             payload = self._with_retries(url)
             record.source_hash = hashlib.sha256(payload).hexdigest()
             record.source_filesize = len(payload)

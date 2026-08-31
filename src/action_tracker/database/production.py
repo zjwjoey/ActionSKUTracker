@@ -128,6 +128,14 @@ class ProductionWriter:
                      bundle.snapshot_path, bundle.snapshot_hash, "COMMITTED"),
                 )
                 db.execute("INSERT INTO export_sync(commit_id,status) VALUES(?, 'PENDING')", (commit_id,))
+                # Compatibility projections represent only the current DB
+                # head.  Once a newer formal commit exists, an older pending
+                # projection must never be rebuilt over the newer facts.
+                db.execute(
+                    "UPDATE export_sync SET status='SUPERSEDED', error=? "
+                    "WHERE commit_id<>? AND status IN ('PENDING','FAILED')",
+                    (f"SUPERSEDED_BY:{commit_id}", commit_id),
+                )
                 self._validate_transaction(db, bundle, commit_id)
                 db.commit()
             except Exception:
@@ -356,7 +364,7 @@ def database_status(path: Path) -> dict[str, Any]:
         metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
         try:
             latest = db.execute("SELECT commit_id,run_id,committed_at,status FROM commit_batches ORDER BY committed_at DESC LIMIT 1").fetchone()
-            pending = db.execute("SELECT COUNT(*) FROM export_sync WHERE status != 'SUCCESS'").fetchone()[0]
+            pending = db.execute("SELECT COUNT(*) FROM export_sync WHERE status IN ('PENDING','FAILED')").fetchone()[0]
             products = db.execute("SELECT COUNT(*) FROM products").fetchone()[0]
             lifecycle = db.execute("SELECT COUNT(*) FROM lifecycle_state").fetchone()[0]
         except sqlite3.OperationalError:
@@ -657,6 +665,136 @@ def promote_database_role(path: Path, *, target_role: str = "PRIMARY") -> dict[s
     return {"previous_role": "SHADOW", "role": "PRIMARY", "status": "PROMOTED"}
 
 
+_DETAIL_CORRECTION_FIELDS = {
+    "name_es": ("products", "name_es"),
+    "cat1_es": ("product_localizations", "cat1"),
+    "cat2_es": ("product_localizations", "cat2"),
+    "spec_es": ("product_localizations", "spec"),
+    "desc_es": ("product_localizations", "description"),
+    "details_es": ("product_localizations", "details"),
+    "product_url": ("products", "product_url"),
+    "image_url": ("products", "image_url"),
+}
+
+
+def apply_detail_corrections(
+    path: Path,
+    *,
+    parent_run_id: str,
+    details_by_sku: Mapping[str, Mapping[str, Any]],
+    mode: str,
+    source_run_date: str | None = None,
+) -> dict[str, Any]:
+    """Apply validated Detail facts directly to a SQLite PRIMARY database.
+
+    Detail is an enrichment source only.  This function intentionally has no
+    SQL path for prices, presence, status or lifecycle columns, and records
+    every field change before rebuilding the derived content-change evidence.
+    """
+    if mode not in {"APPLY", "BACKFILL"}:
+        raise ProductionDatabaseError("DETAIL_CORRECTION_MODE_INVALID")
+    path = Path(path)
+    migrate_v2(path, role="PRIMARY")
+    from ..services.hashing import content_hash, localization_source_hash
+
+    changed_skus: set[str] = set()
+    changed_fields = 0
+    content_events = 0
+    with connect(path) as db:
+        metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
+        if metadata.get("database_role") != "PRIMARY":
+            raise ProductionDatabaseError("DETAIL_CORRECTION_REQUIRES_SQLITE_PRIMARY")
+        parent = db.execute(
+            "SELECT c.commit_id,r.run_date,r.qa_state,r.dry_run FROM commit_batches c JOIN runs r ON r.run_id=c.run_id WHERE c.run_id=? AND c.status='COMMITTED'",
+            (parent_run_id,),
+        ).fetchone()
+        if mode == "APPLY" and (parent is None or str(parent[2]) not in {"PASS", "PASS_PRESENCE_ONLY"} or bool(parent[3])):
+            raise ProductionDatabaseError("DETAIL_CORRECTION_PARENT_NOT_FORMAL")
+        event_date = str(parent[1]) if parent is not None else str(source_run_date or "")
+        if not event_date:
+            raise ProductionDatabaseError("DETAIL_CORRECTION_SOURCE_DATE_MISSING")
+        head = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC LIMIT 1").fetchone()
+        if head is None:
+            raise ProductionDatabaseError("DETAIL_CORRECTION_HEAD_MISSING")
+        head_id = str(head[0])
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            for sku in sorted(details_by_sku):
+                sku = str(sku).strip()
+                detail = details_by_sku[sku]
+                row = db.execute(
+                    """SELECT p.canonical_id,p.status,p.name_es,p.product_url,p.image_url,
+                              es.name,es.cat1,es.cat2,es.spec,es.description,es.details
+                       FROM products p JOIN product_localizations es
+                       ON es.official_sku=p.official_sku AND es.language='es'
+                       WHERE p.official_sku=?""",
+                    (sku,),
+                ).fetchone()
+                if row is None:
+                    raise ProductionDatabaseError(f"DETAIL_CORRECTION_SKU_MISSING:{sku}")
+                if str(row[1]) != "CURRENT":
+                    raise ProductionDatabaseError(f"DETAIL_CORRECTION_SKU_NOT_CURRENT:{sku}")
+                before = {
+                    "name_es": row[5] or row[2], "cat1_es": row[6], "cat2_es": row[7],
+                    "spec_es": row[8], "desc_es": row[9], "details_es": row[10],
+                    "product_url": row[3], "image_url": row[4],
+                }
+                changes: list[tuple[str, str, Any, Any]] = []
+                for field, (table, column) in _DETAIL_CORRECTION_FIELDS.items():
+                    value = detail.get(field)
+                    if value is None or str(value).strip() == "":
+                        continue
+                    old = before.get(field)
+                    if mode == "BACKFILL" and old is not None and str(old).strip() != "":
+                        continue
+                    if str(old or "") == str(value):
+                        continue
+                    changes.append((field, table, old, value))
+                if not changes:
+                    continue
+                for field, table, old, value in changes:
+                    if table == "products":
+                        db.execute(f"UPDATE products SET {_DETAIL_CORRECTION_FIELDS[field][1]}=?,updated_at=CURRENT_TIMESTAMP WHERE official_sku=?", (value, sku))
+                        if field == "name_es":
+                            # The product convenience column and the ES
+                            # localization are one official fact and must not
+                            # diverge after a Detail correction.
+                            db.execute("UPDATE product_localizations SET name=?,updated_at=CURRENT_TIMESTAMP,last_commit_id=?,applied_commit_id=? WHERE official_sku=? AND language='es'", (value, head_id, head_id, sku))
+                    else:
+                        db.execute(f"UPDATE product_localizations SET {_DETAIL_CORRECTION_FIELDS[field][1]}=?,updated_at=CURRENT_TIMESTAMP,last_commit_id=?,applied_commit_id=? WHERE official_sku=? AND language='es'", (value, head_id, head_id, sku))
+                    db.execute(
+                        "INSERT INTO detail_corrections(correction_id,parent_run_id,official_sku,field_name,old_value,new_value,mode,source_hash) VALUES(?,?,?,?,?,?,?,?)",
+                        (uuid.uuid4().hex, parent_run_id, sku, field, None if old is None else str(old), str(value), mode, None),
+                    )
+                after = dict(before)
+                after.update({field: value for field, _table, _old, value in changes})
+                fact_hash = localization_source_hash(after)
+                db.execute("UPDATE products SET source_hash=?,updated_at=CURRENT_TIMESTAMP WHERE official_sku=?", (fact_hash, sku))
+                db.execute("UPDATE product_localizations SET source_hash=?,updated_at=CURRENT_TIMESTAMP WHERE official_sku=? AND language IN ('es','zh')", (fact_hash, sku))
+                db.execute("UPDATE detail_corrections SET source_hash=? WHERE parent_run_id=? AND official_sku=? AND source_hash IS NULL", (fact_hash, parent_run_id, sku))
+                if content_hash(before) != content_hash(after):
+                    event = {
+                        "canonical_id": row[0], "sku": sku, "date": event_date, "event_type": "CONTENT_CHANGE",
+                        "old_value": content_hash(before)[:12], "new_value": content_hash(after)[:12], "evidence": f"DETAIL_{mode}", "run_id": parent_run_id,
+                    }
+                    key = _event_key(parent_run_id, event, "detail-correction")
+                    db.execute("DELETE FROM event_history WHERE event_key=?", (key,))
+                    db.execute(
+                        "INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type,old_value,new_value,run_id,evidence,event_key) VALUES(?,?,?,?,?,?,?,?,?)",
+                        (event["canonical_id"], sku, event["date"], event["event_type"], event["old_value"], event["new_value"], parent_run_id, event["evidence"], key),
+                    )
+                    content_events += 1
+                changed_skus.add(sku)
+                changed_fields += len(changes)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+    return {"status": "SUCCESS", "parent_run_id": parent_run_id, "commit_id": head_id,
+            "applied_skus": len(changed_skus), "applied_fields": changed_fields,
+            "content_change_events": content_events, "mode": mode}
+
+
 def mark_export_sync(path: Path, commit_id: str, *, master: Path, known: Path, offline: Path) -> dict[str, Any]:
     """Mark compatibility projections as synchronized after verifying files.
 
@@ -678,6 +816,11 @@ def mark_export_sync(path: Path, commit_id: str, *, master: Path, known: Path, o
     from .connection import connect
 
     with connect(Path(path)) as db:
+        current = db.execute("SELECT status FROM export_sync WHERE commit_id=?", (commit_id,)).fetchone()
+        if current is None:
+            raise ProductionDatabaseError("EXPORT_SYNC_COMMIT_MISSING")
+        if str(current[0]) == "SUPERSEDED":
+            raise ProductionDatabaseError("EXPORT_SYNC_COMMIT_SUPERSEDED")
         db.execute(
             "UPDATE export_sync SET master_status=?,known_status=?,offline_status=?,master_sha256=?,known_sha256=?,offline_sha256=?,last_attempt_at=CURRENT_TIMESTAMP,error=?,status=? WHERE commit_id=?",
             ("SUCCESS" if "master" not in missing else "PENDING",
@@ -697,7 +840,7 @@ def sync_pending_exports(path: Path, *, master: Path, known: Path, offline: Path
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if "export_sync" not in tables:
             raise ProductionDatabaseError("DB_V2_SCHEMA_REQUIRED")
-        query = "SELECT commit_id FROM export_sync WHERE status != 'SUCCESS'"
+        query = "SELECT commit_id FROM export_sync WHERE status IN ('PENDING','FAILED')"
         args: tuple[Any, ...] = ()
         if commit_id:
             query += " AND commit_id=?"
@@ -776,7 +919,7 @@ def cutover_preflight(path: Path, *, master: Path, known: Path, offline: Path) -
     validation = validate_production_database(Path(path))
     with connect(Path(path)) as db:
         role = db.execute("SELECT value FROM schema_metadata WHERE key='database_role'").fetchone()
-        pending = db.execute("SELECT COUNT(*) FROM export_sync WHERE status != 'SUCCESS'").fetchone()[0]
+        pending = db.execute("SELECT COUNT(*) FROM export_sync WHERE status IN ('PENDING','FAILED')").fetchone()[0]
     if not role or role[0] != "SHADOW":
         raise ProductionDatabaseError("CUTOVER_REQUIRES_SHADOW_DATABASE")
     if pending:

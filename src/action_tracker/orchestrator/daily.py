@@ -489,7 +489,8 @@ def run_daily(
     write_snapshot(cfg, run_date, {"run_report": run_report})
     _print_report(run_report, qa)
     return {"run_id": run_id, "run_report": run_report, "qa": qa.to_dict(),
-            "commit_status": commit_status, "snapshot_dir": str(snap_dir)}
+            "commit_status": commit_status, "commit_id": sqlite_diagnostics.get("commit_id"),
+            "snapshot_dir": str(snap_dir)}
 
 
 def _build_current_records(

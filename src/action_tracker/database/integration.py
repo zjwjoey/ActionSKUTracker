@@ -330,13 +330,31 @@ def regenerate_pending_exports(cfg: Mapping[str, Any], *, commit_id: str | None 
     """Rebuild every pending compatibility projection, or one requested commit."""
     db_path = database_path(cfg)
     with connect(db_path) as db:
-        query = "SELECT commit_id FROM export_sync WHERE status != 'SUCCESS'"
+        if commit_id:
+            row = db.execute("SELECT status FROM export_sync WHERE commit_id=?", (commit_id,)).fetchone()
+            if row and str(row[0]) == "SUPERSEDED":
+                raise ProductionDatabaseError("EXPORT_SYNC_COMMIT_SUPERSEDED")
+        query = "SELECT commit_id FROM export_sync WHERE status IN ('PENDING','FAILED')"
         args: tuple[Any, ...] = ()
         if commit_id:
             query += " AND commit_id=?"
             args = (commit_id,)
         ids = [str(row[0]) for row in db.execute(query, args).fetchall()]
-    return [regenerate_compatibility_exports(cfg, value) for value in ids]
+    results: list[dict[str, Any]] = []
+    for value in ids:
+        try:
+            results.append(regenerate_compatibility_exports(cfg, value))
+        except Exception as exc:
+            # Keep the sync record operationally visible and retryable.  A
+            # later formal commit will supersede it; otherwise a resume can
+            # retry this exact current-head projection without recollecting.
+            with connect(db_path) as db:
+                db.execute(
+                    "UPDATE export_sync SET status='FAILED',error=?,last_attempt_at=CURRENT_TIMESTAMP WHERE commit_id=? AND status IN ('PENDING','FAILED')",
+                    (f"{type(exc).__name__}: {exc}", value),
+                )
+            results.append({"commit_id": value, "status": "FAILED", "error": f"{type(exc).__name__}: {exc}"})
+    return results
 
 
 def _with_base_commit(bundle: CommitBundle, base: str) -> CommitBundle:
