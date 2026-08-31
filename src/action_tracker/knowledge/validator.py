@@ -9,7 +9,7 @@ from typing import Any
 from .contracts import KNOWLEDGE_FIELDS
 
 _URL_RE = re.compile(r"(?:https?://|www\.)", re.IGNORECASE)
-_NUMBER_RE = re.compile(r"(?<![A-Za-z])\d+(?:[.,]\d+)?")
+_NUMBER_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?")
 
 
 @dataclass(frozen=True)

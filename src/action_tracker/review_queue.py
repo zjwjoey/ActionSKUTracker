@@ -43,6 +43,10 @@ REVIEW_QUEUE_TYPES = frozenset({
     "BRAND_CANDIDATE", "TERM_CANDIDATE", "NAME_REVIEW", "SPEC_REVIEW", "CATEGORY_REVIEW",
     "SOURCE_HASH_CHANGED", "MODEL_LOW_CONFIDENCE", "SOURCE_DAMAGED", "SOURCE_POLLUTED",
     "DICTIONARY_CONFLICT",
+    # Localization Intelligence V1 issue types
+    "PRODUCT_TYPE_REVIEW", "SERIES_REVIEW", "TECH_TOKEN_REVIEW", "SPEC_FORMAT_REVIEW",
+    "UNIT_REVIEW", "DESCRIPTION_REVIEW", "DETAIL_KEY_REVIEW", "DETAIL_VALUE_REVIEW",
+    "SPANISH_RESIDUAL", "NUMERIC_FACT_MISMATCH",
 })
 
 
@@ -389,7 +393,7 @@ def decide_review(
             _upsert_brand(cfg, value)
             _upsert_product_override(cfg, sku=row["sku"], field="brand_id", value=value, reason=f"review_id={review_id}")
             route = "brand_dictionary+manual_overrides"
-        elif row["issue_type"] in {"NAME_REVIEW", "SPEC_REVIEW", "CATEGORY_REVIEW"}:
+        elif row["issue_type"] in {"NAME_REVIEW", "SPEC_REVIEW", "CATEGORY_REVIEW", "PRODUCT_TYPE_REVIEW", "SERIES_REVIEW", "TECH_TOKEN_REVIEW", "SPEC_FORMAT_REVIEW", "UNIT_REVIEW", "DESCRIPTION_REVIEW", "DETAIL_KEY_REVIEW", "DETAIL_VALUE_REVIEW", "SPANISH_RESIDUAL", "NUMERIC_FACT_MISMATCH"}:
             if not value or not row["sku"]:
                 raise ReviewQueueError("PRODUCT_APPROVAL_REQUIRES_SKU_AND_VALUE")
             _upsert_product_override(cfg, sku=row["sku"], field=row["field"], value=value, reason=f"review_id={review_id}")

@@ -155,6 +155,27 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
     return RecordResolution(sku, fields, source_hash_status, source_quality, readiness, tuple(dict.fromkeys(reasons)), brand_classification)
 
 
+def resolve_localization(record: dict[str, Any], context: DictionaryContext):
+    """Compatibility entry point backed by the V1 Localization Engine.
+
+    Existing callers can continue using ``resolve_record`` during migration;
+    new export/audit code should call this function so there is one semantic
+    planner and one token-level validator.
+    """
+    from .localization.engine import LocalizationEngine
+    from .localization.knowledge import KnowledgeLoader
+    knowledge = KnowledgeLoader(context.directory).load()
+    product = context.product_by_sku.get(str(record.get("sku") or ""), {})
+    knowledge.update({
+        "cat1_map": {k[0]: v.get("cat1_zh", "") for k, v in context.category_by_pair.items()},
+        "cat2_map": {k[1]: v.get("cat2_zh", "") for k, v in context.category_by_pair.items() if k[1]},
+        "name_zh": product.get("name_zh_standard", ""), "spec_zh": product.get("spec_zh_standard", ""),
+    })
+    engine = LocalizationEngine(knowledge=knowledge)
+    plan = engine.resolve(record)
+    return plan, engine.validate(record, plan)
+
+
 def _product_field(field: str, record: dict[str, Any], product: dict[str, str], manual: dict[str, str], model: dict[str, str], context: DictionaryContext, source_hash: str, fallback_field: str) -> FieldResolution:
     manual_value = str(manual.get(field) or "").strip()
     if manual_value:
