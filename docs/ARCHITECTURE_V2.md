@@ -13,3 +13,6 @@ artifacts on demand.
 
 `Saved View` stores a dynamic query. `Selection Set` stores only fixed SKU
 membership. Both display current facts from SQLite when read.
+# Localization Intelligence V1
+
+Localization 是 SQLite PRIMARY 之上的中文派生层；不改变 Presence、Lifecycle、价格历史、官网西语事实和图片管线。正式 Apply 通过独立 correction commit 完成。

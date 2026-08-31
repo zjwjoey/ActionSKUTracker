@@ -145,6 +145,19 @@ knowledge:
   production_apply_enabled: false
   fallback_to_spanish: true
 
+# ---- Localization Intelligence V1 ----
+localization:
+  policy_version: CHINESE_LOCALIZATION_STANDARD_V1
+  ai:
+    enabled: false
+    provider: openai_compatible
+    base_url: null
+    model: null
+    api_key_env: ACTION_AI_API_KEY
+    temperature: 0
+    max_batch_size: 20
+    max_retries: 3
+
 scoped_dictionary:
   enabled: false
 

@@ -188,3 +188,6 @@ presence[sku, date] = 0  否则
 ## 11. CI 中的数据使用边界
 
 CI 测试只使用仓库中的 schema/配置和临时生成的最小 fixture，不把 `runtime/`、正式 Master、State、字典运行区或历史源文件作为云端写入目标。CI 可以验证实体结构和对账规则，但不能替代真实来源的覆盖率、QA 或 Presence 证据。
+# Localization fields
+
+七个中文字段由 Localization Engine 统一生成：`name_zh`、`cat1_zh`、`cat2_zh`、`spec_zh`、`unit_price_zh`、`desc_zh`、`details_zh`。SQLite `product_localizations` 保留 source_hash、freshness_status、resolution_status、逐字段 source、审批和 applied commit 元数据。

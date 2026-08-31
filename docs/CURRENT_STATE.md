@@ -98,3 +98,6 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
   全部观测端点。热修复最终提交及精确双平台 CI 结果以本分支最新 GitHub Actions
   记录为准。当前热修复代码修复提交为 `ee0ec7531e4bda9556801515f4a8cf29e2540cb8`；
   分支最新文档提交及其精确 HEAD CI 以 GitHub Actions 最新成功记录为准。
+# Localization Intelligence V1 status
+
+feature 分支新增统一 Localization Engine、语义/命名/规格规划、格式化、token-level Validator、AI provider、学习候选与 CLI 审计；生产 AI 和正式 localization apply 默认关闭，等待验收后再决定合并。

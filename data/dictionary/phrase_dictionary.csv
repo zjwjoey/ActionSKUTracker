@@ -1,0 +1,4 @@
+schema_version,source_phrase,zh_value,semantic_type,preferred_target,allowed_targets,category_context,review_status,notes
+1.0,varios colores,多种颜色,VARIANT,spec_zh,spec_zh,,HUMAN_APPROVED,固定短语
+1.0,diferentes variantes,多款可选,VARIANT,spec_zh,spec_zh,,HUMAN_APPROVED,固定短语
+1.0,gramos,g,STANDARD_UNIT,spec_zh,spec_zh,,HUMAN_APPROVED,单位

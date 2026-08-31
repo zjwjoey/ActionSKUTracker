@@ -264,3 +264,6 @@ SUM(当日日期列) == COUNT(DISTINCT CURRENT_VALID.sku)
 12. 导出前后来源文件哈希不变测试。
 
 这些测试在 GitHub Actions 中只使用临时 fixture；真实正式来源、图片缓存和视觉检查仍由 Windows 本地发布流程完成。CI 通过不等于 Template 1 已正式发布。
+# Localization Intelligence V1 integration
+
+中文导出读取 `LocalizationEngine` 的标准字段结果（value/source/status/freshness/policy_version），不再在导出层猜测品牌、自由翻译或重复判断西语残留。`localization-audit` 生成的报告是导出前的只读证据。

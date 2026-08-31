@@ -1,0 +1,5 @@
+schema_version,token,canonical_token,token_type,keep_original,normalization_rule,review_status,notes
+1.0,USB-C,USB-C,INTERFACE,1,uppercase,HUMAN_APPROVED,技术接口
+1.0,LED,LED,TECH_TOKEN,1,uppercase,HUMAN_APPROVED,技术词
+1.0,A3,A3,MODEL,1,uppercase,HUMAN_APPROVED,规格型号
+1.0,E27,E27,SOCKET,1,uppercase,HUMAN_APPROVED,灯头标准

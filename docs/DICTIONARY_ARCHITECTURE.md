@@ -102,3 +102,6 @@ PROVISIONAL 品牌。每次写入有唯一备份，替换后回读、hash 或 ma
 ## CI 边界
 
 字典 schema、优先级、source hash 和审核去重测试可以在 CI 中使用临时 fixture 验证；CI 不构建或发布本机运行字典，不写入 `runtime/dictionary/`，也不把测试通过误认为正式字典基线已更新。正式基线仍需本地审计后由明确发布步骤生成。
+# Localization Intelligence V1
+
+商品类型、详情键、技术 Token、固定短语使用 `data/dictionary/` 下的版本化扩展字典，由 `KnowledgeLoader` 统一加载；候选知识先进入 learning candidates 和现有 Review Queue，未通过 Promotion Gate 不进入正式基线。
