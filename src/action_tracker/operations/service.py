@@ -159,6 +159,18 @@ class OperationsService:
         facts = self.extract({"skus": selection["members"], "statuses": ["CURRENT", "MISSING", "OFFLINE", "HISTORICAL"], "limit": 10000})
         return {**selection, "items": facts["items"], "artifacts": self.artifacts(selection_id)}
 
+    def save_view_selection(self, view_id: str, name: str, *, description: str = "") -> dict[str, Any]:
+        """Create a fixed Selection from a Saved View's complete query."""
+        from ..extraction.selections import SavedViewService, SelectionService
+        view = SavedViewService(self.db_path).get(view_id)
+        if not view:
+            raise KeyError("VIEW_NOT_FOUND")
+        if not str(name or "").strip():
+            raise ValueError("SELECTION_NAME_REQUIRED")
+        return SelectionService(self.db_path).create(
+            str(name).strip(), view["query"], description=description, view_id=view_id
+        )
+
     def export_selection(self, selection_id: str, artifact_type: str) -> dict[str, Any]:
         """Materialize a requested Selection delivery through existing adapters."""
         from ..extraction.selections import SelectionService

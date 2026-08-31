@@ -73,6 +73,21 @@ def test_latest_price_is_one_deterministic_row_per_sku(tmp_path: Path):
     assert result.items[0]["change_direction"] == "DOWN"
 
 
+def test_event_ranges_recent_offline_reappeared_and_historical_filters(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO lifecycle_state(official_sku,canonical_id,current_status,offline_date,last_state_observation_date,updated_at) VALUES('1002','B','OFFLINE','2026-08-30','2026-08-30','2026-08-30')")
+        db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('A','1001','2026-08-30','REAPPEARED')")
+        db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,old_price,new_price,change_type) VALUES('A','1001','2026-08-20',1.5,1.0,'DOWN')")
+        db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,old_price,new_price,change_type) VALUES('A','1001','2026-08-30',1.0,1.4,'UP')")
+    svc = ExtractionService(path)
+    assert svc.execute({"event_types": ["REAPPEARED"], "event_from": "2026-08-30", "event_to": "2026-08-30", "limit": 10}).matched_count == 1
+    assert svc.execute({"event_types": ["REAPPEARED"], "event_from": "2026-08-01", "event_to": "2026-08-29", "limit": 10}).matched_count == 0
+    assert svc.execute({"statuses": ["OFFLINE"], "event_types": ["OFFLINE"], "event_last_n_days": 7, "limit": 10}).matched_count == 1
+    assert svc.execute({"historical_low_max": 1.0, "limit": 10}).matched_count == 1
+    assert svc.execute({"historical_high_min": 1.4, "limit": 10}).matched_count == 1
+
+
 def test_extraction_contract_time_dimensions_and_canonical_id(tmp_path: Path):
     path = _db(tmp_path)
     with connect(path) as db:
@@ -152,3 +167,16 @@ def test_selection_csv_preserves_member_after_offline_transition_and_history(tmp
     history = service.list(selection["selection_id"])
     assert len(history) == 2 and history[0]["artifact_id"] != history[1]["artifact_id"]
     assert all(item["source_commit_id"] == "commit-csv" and item["selection_source_commit_id"] == "commit-csv" for item in history)
+
+
+def test_selection_artifact_manifests_are_per_generation_file(tmp_path: Path):
+    path = _db(tmp_path)
+    selection = SelectionService(path).create("Manifest", {"statuses": ["CURRENT"]})
+    image_root = tmp_path / "images"; image_root.mkdir(); (image_root / "1001.png").write_bytes(b"png")
+    service = ArtifactService(path)
+    csv_result = service.build_csv(selection["selection_id"], tmp_path / "selection.csv")
+    zip_result = service.build_image_zip(selection["selection_id"], image_root, tmp_path / "selection.zip")
+    csv_artifact, zip_artifact = service.list(selection["selection_id"])
+    assert csv_result["missing"] == [] and zip_result["missing"] == 0
+    assert csv_artifact["manifest_path"] != zip_artifact["manifest_path"]
+    assert Path(csv_artifact["manifest_path"]).exists() and Path(zip_artifact["manifest_path"]).exists()

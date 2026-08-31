@@ -117,7 +117,7 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                 if not view: return self._send_html("<h1>Saved View 不存在</h1>")
                 result = svc.extract(view["query"]); esc = lambda value: html.escape(str(value or ""))
                 rows = "".join(f"<tr><td>{esc(i.get('official_sku'))}</td><td>{esc(i.get('name_es'))}</td><td>{esc(i.get('zh_name'))}</td><td>{esc(i.get('status'))}</td><td>{esc(i.get('current_price'))}</td></tr>" for i in result["items"])
-                return self._send_html(f"<!doctype html><meta charset='utf-8'><title>运行 Saved View</title><h1>{esc(view['name'])}</h1><p>当前匹配 {result['matched_count']} 条 · <a href='/views'>返回</a></p><table border='1'><tr><th>SKU</th><th>西语名称</th><th>中文名称</th><th>状态</th><th>当前价</th></tr>{rows}</table>")
+                return self._send_html(f"<!doctype html><meta charset='utf-8'><title>运行 Saved View</title><h1>{esc(view['name'])}</h1><p>当前匹配 {result['matched_count']} 条 · <a href='/views'>返回</a></p><form method='post' action='/api/views/{html.escape(str(view['view_id']), quote=True)}/selection'><input name='name' required placeholder='Selection名称'><input name='description' placeholder='说明'><button>保存当前 View 为 Selection</button></form><table border='1'><tr><th>SKU</th><th>西语名称</th><th>中文名称</th><th>状态</th><th>当前价</th></tr>{rows}</table>")
             match = re.fullmatch(r"/selections/([^/]+)", path)
             if match:
                 detail = svc.selection_detail(match.group(1))
@@ -158,6 +158,9 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                     from ..extraction.selections import SavedViewService
                     SavedViewService(svc.db_path).delete(match.group(1))
                     return self._send({"status": "DELETED", "view_id": match.group(1)})
+                match = re.fullmatch(r"/api/views/([^/]+)/selection", path)
+                if match:
+                    return self._send(svc.save_view_selection(match.group(1), (form.get("name") or [""])[-1], description=(form.get("description") or [""])[-1]))
                 match = re.fullmatch(r"/api/views/([^/]+)", path)
                 if match:
                     from ..extraction.selections import SavedViewService

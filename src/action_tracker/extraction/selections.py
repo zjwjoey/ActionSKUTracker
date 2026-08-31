@@ -44,7 +44,12 @@ class SavedViewService:
         return self.get(view_id)
 
     def delete(self, view_id: str) -> None:
-        with connect(self.db_path) as db: db.execute("DELETE FROM saved_views WHERE view_id=? AND is_system=0", (view_id,))
+        with connect(self.db_path) as db:
+            # A Selection created from a View is an immutable snapshot and
+            # must outlive that View. Release only the optional provenance
+            # link before deleting the user-owned View.
+            db.execute("UPDATE selection_sets SET created_from_view_id=NULL WHERE created_from_view_id=?", (view_id,))
+            db.execute("DELETE FROM saved_views WHERE view_id=? AND is_system=0", (view_id,))
 
     @staticmethod
     def _row(row) -> dict[str, Any]:

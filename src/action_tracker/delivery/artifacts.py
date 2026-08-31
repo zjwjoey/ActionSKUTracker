@@ -55,7 +55,7 @@ class ArtifactService:
                 if path.exists(): archive.write(path, arcname=f"{sku}.png"); included.append(sku)
                 else: missing.append(sku)
             archive.writestr("manifest.json", json.dumps({"selection_id":selection_id,"selection_source_commit_id":source[0] if source else None,"artifact_source_commit_id":artifact_source[0] if artifact_source else None,"requested_members":members,"included_members":included,"excluded_members":missing,"exclusion_reason":"IMAGE_NOT_AVAILABLE" if missing else None},ensure_ascii=False,indent=2))
-        manifest_path = output_path.with_name(output_path.stem + ".manifest.json")
+        manifest_path = output_path.with_name(output_path.name + ".manifest.json")
         manifest_path.write_text(json.dumps({"selection_id": selection_id, "selection_source_commit_id": source[0] if source else None, "artifact_source_commit_id": artifact_source[0] if artifact_source else None, "requested_members": members, "included_members": included, "excluded_members": missing, "exclusion_reason": "IMAGE_NOT_AVAILABLE" if missing else None}, ensure_ascii=False, indent=2), encoding="utf-8")
         return self.record(artifact_id=f"artifact_{uuid.uuid4().hex}", artifact_type="IMAGE_ZIP", file_path=output_path, row_count=len(included), selection_id=selection_id, image_profile="excel_250_white_v1", source_commit_id=str(artifact_source[0]) if artifact_source else None, selection_source_commit_id=str(source[0]) if source else None, manifest_path=manifest_path, status="SUCCESS" if not missing else "DEGRADED") | {"included":len(included),"missing":len(missing),"missing_skus":missing}
 
@@ -74,7 +74,7 @@ class ArtifactService:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         fields = ["official_sku","name_es","zh_name","status","current_price","original_price","product_url","last_seen_at","image_status","localization_status"]
         included = [str(row["official_sku"]) for row in rows]
-        manifest_path = output_path.with_name(output_path.stem + ".manifest.json")
+        manifest_path = output_path.with_name(output_path.name + ".manifest.json")
         manifest_path.write_text(json.dumps({"selection_id": selection_id, "selection_source_commit_id": source[0] if source else None, "artifact_source_commit_id": artifact_source[0] if artifact_source else None, "requested_members": members, "included_members": included, "excluded_members": missing, "exclusion_reason": "SKU_NOT_FOUND" if missing else None}, ensure_ascii=False, indent=2), encoding="utf-8")
         with output_path.open("w",encoding="utf-8-sig",newline="") as handle:
             writer=csv.DictWriter(handle,fieldnames=fields); writer.writeheader(); writer.writerows({k: row.get(k) for k in fields} for row in rows)

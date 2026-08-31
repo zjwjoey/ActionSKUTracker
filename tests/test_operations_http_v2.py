@@ -51,10 +51,17 @@ def test_workspace_query_saved_view_selection_and_artifact_routes(workspace_serv
     assert status == 200 and view["view_id"]
     status, ran = _json_request(base + f"/api/views/{view['view_id']}/run")
     assert status == 200 and ran["matched_count"] == 1
+    with urlopen(base + f"/views/{view['view_id']}", timeout=5) as response:
+        view_html = response.read().decode("utf-8")
+    assert response.status == 200 and "保存当前 View 为 Selection" in view_html
+    status, selection_from_view = _json_request(base + f"/api/views/{view['view_id']}/selection", method="POST", form={"name": "View Selection", "description": "from view"})
+    assert status == 200 and selection_from_view["created_from_view_id"] == view["view_id"]
     status, _ = _json_request(base + f"/api/views/{view['view_id']}", method="PUT", form={"name": "更新View", "query_json": json.dumps({"statuses": ["OFFLINE"]})})
     assert status == 200
     status, _ = _json_request(base + f"/api/views/{view['view_id']}", method="DELETE")
     assert status == 200
+    status, saved_selection = _json_request(base + f"/api/selections/{selection_from_view['selection_id']}")
+    assert status == 200 and saved_selection["created_from_view_id"] is None
     status, selection = _json_request(base + "/api/selections", method="POST", form={"name": "测试Selection", "query_json": json.dumps({"statuses": ["CURRENT"]})})
     assert status == 200 and selection["matched_count"] == 1
     status, detail = _json_request(base + f"/api/selections/{selection['selection_id']}")
