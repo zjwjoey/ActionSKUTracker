@@ -379,7 +379,7 @@ def main(argv=None) -> int:
     if args.command == "localization-enrich":
         from .localization.service import audit_current
         try:
-            result = audit_current(cfg, run_id=args.run_id)
+            result = audit_current(cfg, run_id=args.run_id, persist_reviews=True)
         except Exception as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2

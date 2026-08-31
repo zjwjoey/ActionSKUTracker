@@ -28,7 +28,7 @@ def _existing_zh(db_path: Path) -> dict[str, dict[str, Any]]:
     return {str(row[0]): {"name_zh": row[1], "cat1_zh": row[2], "cat2_zh": row[3], "spec_zh": row[4], "desc_zh": row[5], "details_zh": row[6], "source_hash": row[7], "freshness_status": row[8], "review_status": row[9]} for row in rows}
 
 
-def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records: list[dict[str, Any]] | None = None, persist_reviews: bool = False) -> dict[str, Any]:
     """Resolve/validate every PRIMARY CURRENT SKU without writing production data."""
     db_path = database_path(dict(cfg))
     records = records if records is not None else ProductionRepository(db_path).load_current_export_records()
@@ -88,6 +88,11 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
     review_headers = ["review_id", "issue_type", "sku", "field", "current_value", "suggested_value", "evidence", "reason", "created_at", "status", "source", "updated_at", "resolution"]
     with review_path.open("w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=review_headers); writer.writeheader(); writer.writerows(review_rows)
+    if persist_reviews and cfg.get("paths", {}).get("review_queue"):
+        from ..review_queue import _write_queue, load_queue
+        queue = load_queue(dict(cfg))
+        queue.update({row["review_id"]: row for row in review_rows})
+        _write_queue(dict(cfg), [queue[key] for key in sorted(queue)])
     learning = aggregate_candidates(candidates, out)
     # Keep the durable learning pool separate from per-run reports while
     # retaining the report-local copy required for reproducibility.
