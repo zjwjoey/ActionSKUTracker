@@ -35,6 +35,11 @@ class ExportValidationError(ValueError):
     """正式导出来源或记录不满足冻结契约。"""
 
 
+def _database_path(cfg: dict[str, Any]) -> Path:
+    from ..database.integration import database_path
+    return database_path(cfg)
+
+
 @dataclass(frozen=True)
 class ExportSource:
     export_date: str
@@ -61,6 +66,7 @@ def export_catalog(
     export_date: str,
     no_images: bool,
     run_id: str | None = None,
+    selection_id: str | None = None,
 ) -> dict[str, Any]:
     """导出一个正式全量清单；整个过程只读取来源并写入 exports 目录。"""
     _validate_date(export_date)
@@ -71,6 +77,20 @@ def export_catalog(
     if profile.language != language:
         raise ExportValidationError(f"EXPORT_PROFILE_LANGUAGE_MISMATCH: {profile.profile_id}")
     source = resolve_formal_source(cfg, export_date=export_date, requested_run_id=run_id, profile=profile)
+    selection_source_commit_id = None
+    if selection_id:
+        from ..extraction.selections import SelectionService
+        selection = SelectionService(_database_path(cfg)).get(selection_id)
+        if not selection:
+            raise ExportValidationError(f"SELECTION_NOT_FOUND: {selection_id}")
+        members = set(selection["members"]); source_skus = {str(r.get("sku") or "") for r in source.records}
+        missing = sorted(members - source_skus)
+        if missing:
+            raise ExportValidationError(f"SELECTION_MEMBER_NOT_IN_FORMAL_SOURCE: {','.join(missing[:10])}")
+        source = ExportSource(source.export_date, source.run_id, source.kind,
+                              tuple(r for r in source.records if str(r.get("sku") or "") in members),
+                              source.source_master_file_hash, source.directory)
+        selection_source_commit_id = selection.get("source_commit_id")
     validate_source_records(source.records, export_date=export_date)
     dictionary_hash = None
     fallback_counts: dict[str, int] = {}
@@ -94,7 +114,10 @@ def export_catalog(
     validate_output_rows(rows)
 
     date_compact = export_date.replace("-", "")
-    output_path = Path(cfg["paths"]["exports"]) / profile.filename_for(date_compact)
+    output_name = profile.filename_for(date_compact)
+    if selection_id:
+        output_name = output_name.replace(".xlsx", f"_Selection_{selection_id}.xlsx")
+    output_path = Path(cfg["paths"]["exports"]) / output_name
     headers = [str(column["header"]) for column in profile.columns]
     expected_skus = {str(r["编号"]) for r in rows}
     image_root = (Path(cfg["paths"]["images"]) / "derivatives" / "excel_250") if not no_images else None
@@ -136,6 +159,8 @@ def export_catalog(
             "image_embedded_count": image_stats["embedded_count"],
             "image_missing_count": image_stats["missing_count"],
             "image_eligible_count": sum(1 for eligible in (image_eligibility or {}).values() if eligible),
+            "selection_id": selection_id,
+            "selection_source_commit_id": selection_source_commit_id,
         }
         if language == "zh":
             manifest["dictionary_hash"] = dictionary_hash
@@ -143,6 +168,16 @@ def export_catalog(
             manifest["dictionary_unresolved_brand_ids"] = unresolved_brand_ids
         manifest_path = output_path.with_suffix(".manifest.json")
         _publish_export_pair(preview_path, output_path, manifest_path, manifest)
+        if selection_id:
+            from ..delivery.artifacts import ArtifactService
+            ArtifactService(_database_path(cfg)).record(
+                artifact_id=f"artifact_{hashlib.sha256((str(output_path)+source.run_id).encode()).hexdigest()[:16]}",
+                artifact_type="XLSX", file_path=output_path, row_count=len(rows), selection_id=selection_id,
+                profile_id=profile.profile_id, language=language,
+                image_profile="excel_250_white_v1" if not no_images else None,
+                source_commit_id=source.run_id, selection_source_commit_id=selection_source_commit_id,
+                manifest_path=manifest_path,
+            )
     finally:
         if preview_path.exists():
             preview_path.unlink()
@@ -156,6 +191,7 @@ def export_catalog(
         "image_embedded_count": image_stats["embedded_count"],
         "image_missing_count": image_stats["missing_count"],
         "image_eligible_count": sum(1 for eligible in (image_eligibility or {}).values() if eligible),
+        "selection_id": selection_id,
     }
 
 
