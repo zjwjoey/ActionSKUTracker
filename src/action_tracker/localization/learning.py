@@ -12,27 +12,33 @@ STATES = ("UNKNOWN", "AI_CANDIDATE", "EVIDENCE_ACCUMULATED", "HUMAN_REVIEWED", "
 
 
 def candidate_id(semantic_type: str, source_term: str, zh_value: str) -> str:
-    return hashlib.sha256(json.dumps([semantic_type, source_term, zh_value], ensure_ascii=False).encode()).hexdigest()
+    return hashlib.sha256(json.dumps([semantic_type.upper(), source_term.strip().casefold(), zh_value.strip()], ensure_ascii=False).encode()).hexdigest()
 
 
 def aggregate_candidates(rows: Iterable[dict[str, Any]], directory: Path) -> dict[str, Any]:
     directory = Path(directory); directory.mkdir(parents=True, exist_ok=True)
     grouped: dict[str, dict[str, Any]] = {}
     for row in rows:
-        key = candidate_id(str(row.get("semantic_type") or "UNKNOWN"), str(row.get("source_term") or ""), str(row.get("zh_value") or ""))
-        item = grouped.setdefault(key, {"candidate_id": key, "semantic_type": row.get("semantic_type", "UNKNOWN"), "source_term": row.get("source_term", ""), "zh_value": row.get("zh_value", ""), "occurrence_count": 0, "evidence_skus": set(), "status": "AI_CANDIDATE", "created_at": datetime.now(timezone.utc).isoformat()})
+        semantic_type = str(row.get("semantic_type") or "UNKNOWN").upper()
+        source_term = str(row.get("source_term") or row.get("normalized_source") or "").strip()
+        zh_value = str(row.get("zh_value") or row.get("canonical_zh") or "").strip()
+        key = candidate_id(semantic_type, source_term, zh_value)
+        item = grouped.setdefault(key, {"candidate_id": key, "knowledge_type": semantic_type, "semantic_type": semantic_type, "source_term": source_term, "normalized_source": source_term.casefold(), "zh_value": zh_value, "semantic_value": zh_value, "preferred_target": row.get("preferred_target", ""), "allowed_targets": row.get("allowed_targets", ""), "category_context": row.get("category_context", ""), "occurrence_count": 0, "evidence_skus": set(), "source_examples": set(), "provider": row.get("provider", "deterministic"), "model": row.get("model", ""), "prompt_version": row.get("prompt_version", ""), "policy_version": row.get("policy_version", "CHINESE_LOCALIZATION_STANDARD_V1"), "confidence": row.get("confidence", ""), "validator_status": row.get("validator_status", "PASS"), "review_status": row.get("review_status", "PENDING"), "status": "AI_CANDIDATE", "created_at": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()})
         item["occurrence_count"] += 1; item["evidence_skus"].add(str(row.get("sku") or ""))
+        if row.get("source_example") or source_term:
+            item["source_examples"].add(str(row.get("source_example") or source_term))
     output = []
     for item in grouped.values():
         item["evidence_skus"] = sorted(s for s in item["evidence_skus"] if s)
+        item["source_examples"] = sorted(s for s in item["source_examples"] if s)
         item["status"] = "EVIDENCE_ACCUMULATED" if item["occurrence_count"] > 1 else item["status"]
         output.append(item)
     output.sort(key=lambda x: (x["semantic_type"], x["source_term"], x["zh_value"]))
     path = directory / "learning_candidates.csv"
-    headers = ["candidate_id", "semantic_type", "source_term", "zh_value", "occurrence_count", "evidence_skus", "status", "created_at"]
+    headers = ["candidate_id", "knowledge_type", "semantic_type", "source_term", "normalized_source", "zh_value", "semantic_value", "preferred_target", "allowed_targets", "category_context", "occurrence_count", "evidence_skus", "source_examples", "provider", "model", "prompt_version", "policy_version", "confidence", "validator_status", "review_status", "status", "created_at", "updated_at"]
     with path.open("w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=headers); writer.writeheader()
-        for item in output: writer.writerow({**item, "evidence_skus": "|".join(item["evidence_skus"])})
+        for item in output: writer.writerow({**item, "evidence_skus": "|".join(item["evidence_skus"]), "source_examples": "|".join(item["source_examples"])})
     return {"path": str(path), "count": len(output), "rows": output}
 
 
@@ -49,6 +55,8 @@ def persist_promotion(candidate: dict[str, Any], directory: Path, *, human_appro
     """Persist an auditable promotion decision; never silently edits baseline."""
     directory = Path(directory); directory.mkdir(parents=True, exist_ok=True)
     decision = promotion_decision(candidate, human_approved=human_approved)
+    from .promotion import promotion_manifest
+    decision.update(promotion_manifest(candidate, decision["old_state"], decision["new_state"]))
     path = directory / f"promotion_{candidate.get('candidate_id')}.json"
     path.write_text(json.dumps({**decision, "candidate": candidate}, ensure_ascii=False, indent=2), encoding="utf-8")
     return {**decision, "manifest_path": str(path)}

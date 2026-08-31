@@ -37,36 +37,73 @@ _SEMANTIC_PATTERNS = (
 
 
 def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None) -> tuple[SemanticFact, ...]:
+    dictionaries = dictionaries or {}
     text_fields = (("name_es", source.name_es), ("spec_es", source.spec_es), ("desc_es", source.desc_es), ("details_es", source.details_es))
     facts: list[SemanticFact] = []
     seen: set[tuple[str, str]] = set()
+    # Versioned dictionaries are preferred over the small deterministic seed
+    # map.  Aliases are matched as phrases, never as arbitrary substrings of
+    # an unrelated word.
+    product_rows = dictionaries.get("product_type_rows") or dictionaries.get("product_types") or ()
+    phrase_rows = dictionaries.get("phrases") or ()
+    detail_rows = dictionaries.get("detail_keys") or ()
+    tech_rows = dictionaries.get("tech_tokens") or ()
+    if isinstance(product_rows, Mapping):
+        product_rows = [{"source_term": key, "canonical_zh": value} for key, value in product_rows.items()]
+    if isinstance(tech_rows, Mapping):
+        tech_rows = [{"token": key, "canonical_token": value, "token_type": "TECH_TOKEN"} for key, value in tech_rows.items()]
+    def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
+        key = (kind, source_text.casefold(), zh)
+        if key in seen or not source_text or not zh:
+            return
+        facts.append(SemanticFact(kind, source_text, zh, canonical or zh, field, evidence))
+        seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        for row in product_rows if isinstance(product_rows, (list, tuple)) else ():
+            term = str(row.get("source_term") or "").strip()
+            aliases = [term, *re.split(r"\s*[|,;]\s*", str(row.get("source_aliases") or ""))]
+            zh = str(row.get("canonical_zh") or "").strip()
+            if zh and any(alias and re.search(rf"(?<!\w){re.escape(alias.casefold())}(?!\w)", lower) for alias in aliases):
+                add("PRODUCT_TYPE", term or aliases[0], zh, field, "product_type_dictionary")
+        for row in phrase_rows if isinstance(phrase_rows, (list, tuple)) else ():
+            phrase = str(row.get("source_phrase") or "").strip()
+            zh = str(row.get("zh_value") or "").strip()
+            kind = str(row.get("semantic_type") or "DESCRIPTION_FACT").strip().upper()
+            if phrase and zh and phrase.casefold() in lower:
+                add(kind if kind in {"VARIANT", "FUNCTION", "CARE", "DESCRIPTION_FACT", "MATERIAL", "COMPATIBILITY"} else "DESCRIPTION_FACT", phrase, zh, field, "phrase_dictionary")
         for key_es, key_zh in _DETAIL_KEYS.items():
             if re.search(rf"(?:^|[;|\n])\s*{re.escape(key_es)}\s*[:：]", lower):
-                facts.append(SemanticFact("DETAIL_KEY", key_es, key_zh, key_zh, field, key_es))
+                add("DETAIL_KEY", key_es, key_zh, field, key_es)
+        for row in detail_rows if isinstance(detail_rows, (list, tuple)) else ():
+            key_es = str(row.get("key_es") or "").strip(); key_zh = str(row.get("key_zh") or "").strip()
+            if key_es and key_zh and re.search(rf"(?:^|[;|\n])\s*{re.escape(key_es)}\s*[:：]", lower):
+                add("DETAIL_KEY", key_es, key_zh, field, "detail_key_dictionary")
         for term, (kind, zh) in _TERM_MAP.items():
             if term in lower and (kind, zh) not in seen:
-                facts.append(SemanticFact(kind, term, zh, zh, field, term))
-                seen.add((kind, zh))
+                add(kind, term, zh, field, term)
         for token, zh in _COLORS.items():
             if re.search(rf"\b{re.escape(token)}\b", lower) and ("COLOR", zh) not in seen:
-                facts.append(SemanticFact("COLOR", token, zh, zh, field, token)); seen.add(("COLOR", zh))
+                add("COLOR", token, zh, field, token)
         for match in re.finditer(r"\b\d+(?:[.,]\d+)?\s?(?:mg|mcg|mAh|ml|l|g|kg|cm|mm|V|W|pulgadas?|unidades?|piezas?|pares?|denier)\b", text, re.I):
             raw = match.group(0).replace(" ", "")
-            facts.append(SemanticFact("STANDARD_UNIT", raw, raw, raw, field, match.group(0)))
+            add("STANDARD_UNIT", raw, raw, field, match.group(0))
+        for row in tech_rows if isinstance(tech_rows, (list, tuple)) else ():
+            token = str(row.get("token") or "").strip(); canonical = str(row.get("canonical_token") or token).strip()
+            if token and re.search(rf"(?<!\w){re.escape(token)}(?!\w)", text, re.I):
+                add(str(row.get("token_type") or "TECH_TOKEN").upper(), token, canonical, field, "tech_token_dictionary", canonical=canonical)
         for match in re.finditer(r"\b(?:USB-[A-Z]|A\d+|D\d+|E\d+|[A-Z]{1,4}\d{2,}[A-Z0-9-]*)\b", text):
             token = match.group(0)
             kind = "TECH_TOKEN" if token.upper().startswith(("USB", "E")) or token[0].isalpha() else "MODEL"
-            facts.append(SemanticFact(kind, token, token, token, field, token))
+            add(kind, token, token, field, token)
         for kind, pattern in _SEMANTIC_PATTERNS:
             for match in re.finditer(pattern, text, re.I):
                 raw = match.group(0)
                 # Keep the source token as value; the formatter/planner owns
                 # Chinese rendering and therefore cannot silently lose facts.
                 if (kind, raw.lower()) not in seen:
-                    facts.append(SemanticFact(kind, raw, raw, raw, field, raw)); seen.add((kind, raw.lower()))
+                    add(kind, raw, raw, field, raw)
     for brand in known_brands or set():
         if brand and brand.lower() in source.name_es.lower():
-            facts.append(SemanticFact("BRAND", brand, brand, brand, "name_es", brand))
+            add("BRAND", brand, brand, "name_es", brand)
     return tuple(facts)

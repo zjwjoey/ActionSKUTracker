@@ -41,6 +41,9 @@ class SourceFacts:
     product_url: str = ""
     current_price: Any = None
     original_price: Any = None
+    image_url: str = ""
+    source_run_id: str = ""
+    source_commit_id: str = ""
 
     @classmethod
     def from_record(cls, record: Mapping[str, Any]) -> "SourceFacts":
@@ -56,13 +59,24 @@ class SourceFacts:
             details_es=str(record.get("details_es") or record.get("product_details_es") or "").strip(),
             product_url=str(record.get("product_url") or "").strip(),
             current_price=record.get("current_price"), original_price=record.get("original_price"),
+            image_url=str(record.get("image_url") or "").strip(),
+            source_run_id=str(record.get("source_run_id") or record.get("run_id") or "").strip(),
+            source_commit_id=str(record.get("source_commit_id") or "").strip(),
         )
 
     def as_record(self) -> dict[str, Any]:
         return {"sku": self.sku, "canonical_id": self.canonical_id, "name_es": self.name_es,
                 "cat1_es": self.cat1_es, "cat2_es": self.cat2_es, "spec_es": self.spec_es,
                 "unit_price_es": self.unit_price_es, "desc_es": self.desc_es, "details_es": self.details_es,
-                "product_url": self.product_url, "current_price": self.current_price, "original_price": self.original_price}
+                "unit_price": self.unit_price_es, "product_url": self.product_url,
+                "image_url": self.image_url, "current_price": self.current_price,
+                "original_price": self.original_price, "source_run_id": self.source_run_id,
+                "source_commit_id": self.source_commit_id}
+
+    @property
+    def unit_price(self) -> str:
+        """Canonical contract spelling used by the architecture document."""
+        return self.unit_price_es
 
     @property
     def source_hash(self) -> str:
@@ -86,9 +100,41 @@ class SemanticFact:
 
     def as_dict(self) -> dict[str, Any]:
         return {"semantic_type": self.semantic_type, "source_text": self.source_text,
+                "normalized_source": self.normalized_source, "zh_value": self.zh_value,
                 "value": self.value, "canonical_value": self.canonical_value,
                 "source_field": self.source_field, "evidence": self.evidence,
-                "confidence": self.confidence, "placement": self.placement}
+                "confidence": self.confidence, "knowledge_source": self.knowledge_source,
+                "allowed_targets": list(self.allowed_targets), "preferred_target": self.preferred_target,
+                "keep_original": self.keep_original, "source_hash": self.source_hash,
+                "placement": self.placement}
+
+    @property
+    def normalized_source(self) -> str:
+        return self.source_text.strip().casefold()
+
+    @property
+    def zh_value(self) -> str:
+        return self.canonical_value or self.value
+
+    @property
+    def knowledge_source(self) -> str:
+        return "evidence" if self.evidence else "parser"
+
+    @property
+    def allowed_targets(self) -> tuple[str, ...]:
+        return (self.placement,) if self.placement else ()
+
+    @property
+    def preferred_target(self) -> str:
+        return self.placement
+
+    @property
+    def keep_original(self) -> bool:
+        return self.semantic_type in {"BRAND", "SERIES", "IP_CHARACTER", "MODEL", "TECH_TOKEN", "SOCKET", "INTERFACE"}
+
+    @property
+    def source_hash(self) -> str:
+        return ""
 
 
 @dataclass(frozen=True)
@@ -124,5 +170,25 @@ class LocalizationPlan:
         return {"sku": self.sku, "source_hash": self.source_hash,
                 "fields": {k: v.as_dict() for k, v in self.fields.items()},
                 "semantic_facts": [f.as_dict() for f in self.semantic_facts],
+                "name_tokens": [f.as_dict() for f in self.name_tokens],
+                "spec_tokens": [f.as_dict() for f in self.spec_tokens],
+                "description_facts": [f.as_dict() for f in self.description_facts],
+                "detail_pairs": [f.as_dict() for f in self.detail_pairs],
                 "readiness": self.readiness, "review_reasons": list(self.review_reasons),
                 "knowledge_hits": list(self.knowledge_hits), "ai_used": self.ai_used}
+
+    @property
+    def name_tokens(self) -> tuple[SemanticFact, ...]:
+        return tuple(f for f in self.semantic_facts if f.placement == "name")
+
+    @property
+    def spec_tokens(self) -> tuple[SemanticFact, ...]:
+        return tuple(f for f in self.semantic_facts if f.placement == "spec")
+
+    @property
+    def description_facts(self) -> tuple[SemanticFact, ...]:
+        return tuple(f for f in self.semantic_facts if f.placement == "description")
+
+    @property
+    def detail_pairs(self) -> tuple[SemanticFact, ...]:
+        return tuple(f for f in self.semantic_facts if f.placement == "details")

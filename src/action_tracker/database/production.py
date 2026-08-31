@@ -911,6 +911,7 @@ def apply_localization_correction(
     run_id: str,
     localizations_by_sku: Mapping[str, Mapping[str, Any]],
     source_hashes: Mapping[str, str],
+    apply_date: str | None = None,
 ) -> dict[str, Any]:
     """Create an immutable zh-only correction commit on SQLite PRIMARY.
 
@@ -934,7 +935,8 @@ def apply_localization_correction(
         bundle_hash = hashlib.sha256(json.dumps({"payload": payload, "values": localizations_by_sku, "hashes": source_hashes}, ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()
         correction_run = f"localization_{run_id}_{uuid.uuid4().hex[:8]}"
         commit_id = f"{run_id}_{correction_run}_{bundle_hash[:12]}"
-        db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES(?,?,?,?,?,?,?,?)", (correction_run, run_id, "COMMITTED", "PASS", 0, now, now, "2.0.0"))
+        business_date = str(apply_date or datetime.now().astimezone().date().isoformat())
+        db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES(?,?,?,?,?,?,?,?)", (correction_run, business_date, "COMMITTED", "PASS", 0, now, now, "2.0.0"))
         db.execute("INSERT INTO run_evidence(run_id,snapshot_path,snapshot_hash,evidence_json) VALUES(?,?,?,?)", (correction_run, None, None, json.dumps(payload, ensure_ascii=False, sort_keys=True)))
         db.execute("INSERT INTO commit_batches(commit_id,run_id,base_commit_id,bundle_hash,schema_version,started_at,committed_at,product_count,observation_count,price_event_count,event_count,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", (commit_id, correction_run, base, bundle_hash, "2.0.0", now, now, len(localizations_by_sku), 0, 0, 0, "COMMITTED"))
         db.execute("INSERT INTO export_sync(commit_id,status) VALUES(?, 'PENDING')", (commit_id,)); supersede_older_export_sync(db, commit_id)
@@ -943,6 +945,18 @@ def apply_localization_correction(
             sku = str(sku).strip(); source_hash_value = str(source_hashes.get(sku) or "")
             if not source_hash_value: raise ProductionDatabaseError(f"LOCALIZATION_SOURCE_HASH_MISSING:{sku}")
             if db.execute("SELECT 1 FROM products WHERE official_sku=? AND status='CURRENT'", (sku,)).fetchone() is None: raise ProductionDatabaseError(f"LOCALIZATION_SKU_NOT_CURRENT:{sku}")
+            if set(values) - fields:
+                raise ProductionDatabaseError(f"LOCALIZATION_FIELD_NOT_ALLOWED:{sku}")
+            from ..services.hashing import localization_source_hash
+            es = db.execute("SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='es'", (sku,)).fetchone()
+            if es is not None:
+                expected_hash = localization_source_hash({"name_es": es[0], "cat1_es": es[1], "cat2_es": es[2], "spec_es": es[3], "desc_es": es[4], "details_es": es[5]})
+                if source_hash_value != expected_hash:
+                    raise ProductionDatabaseError(f"LOCALIZATION_SOURCE_HASH_MISMATCH:{sku}")
+            # Older migrated fixtures can legitimately lack an ES projection;
+            # the caller-provided hash is then retained as the explicit
+            # evidence hash.  New production databases always contain ES and
+            # take the strict branch above.
             current = db.execute("SELECT * FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone()
             current_dict = dict(current) if current else {}
             vals = {f: current_dict.get(f) for f in fields}; src = {f: current_dict.get(f"{f}_source") for f in fields}

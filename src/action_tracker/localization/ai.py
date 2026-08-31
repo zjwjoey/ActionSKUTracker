@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
 from .contracts import POLICY_VERSION, SourceFacts
+from .policy import FIXED_CAT1, has_ordinary_spanish
+from .validator import _NUMBER
 
 
 class LocalizationAIProvider(Protocol):
@@ -59,15 +61,48 @@ def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, reques
     reasons: list[str] = []
     if not isinstance(payload, Mapping):
         return False, ("AI_RESPONSE_NOT_OBJECT",)
-    if set(payload) - {"fields", "product_type_candidate", "semantic_items", "detail_key_candidates", "tech_token_candidates", "placement", "confidence", "review_notes"}:
+    allowed_top = {"fields", "product_type_candidate", "semantic_items", "detail_key_candidates", "tech_token_candidates", "placement", "confidence", "review_notes", "sku", "canonical_id", "product_url", "current_price", "original_price", "source_hash"}
+    if set(payload) - allowed_top:
         reasons.append("AI_RESPONSE_UNKNOWN_KEY")
+    if "sku" in payload and str(payload.get("sku") or "").strip() != source.sku:
+        reasons.append("AI_SKU_MISMATCH")
+    if "canonical_id" in payload and str(payload.get("canonical_id") or "").strip() != source.canonical_id:
+        reasons.append("AI_CANONICAL_ID_MISMATCH")
+    if "product_url" in payload and str(payload.get("product_url") or "").strip() != source.product_url:
+        reasons.append("AI_URL_MISMATCH")
+    if "source_hash" in payload and str(payload.get("source_hash") or "") != source.source_hash:
+        reasons.append("AI_SOURCE_HASH_MISMATCH")
+    for key in ("current_price", "original_price"):
+        if key in payload and str(payload.get(key)) != str(getattr(source, key)):
+            reasons.append(f"AI_{key.upper()}_MISMATCH")
+    for key in ("semantic_items", "detail_key_candidates", "tech_token_candidates"):
+        if key in payload and not isinstance(payload[key], list):
+            reasons.append(f"AI_{key.upper()}_NOT_LIST")
+    for key in ("product_type_candidate", "placement"):
+        if key in payload and payload[key] is not None and not isinstance(payload[key], Mapping):
+            reasons.append(f"AI_{key.upper()}_NOT_OBJECT")
     fields = payload.get("fields")
     if not isinstance(fields, Mapping): reasons.append("AI_FIELDS_NOT_OBJECT")
     else:
         unknown = set(fields) - set(requested_fields)
         if unknown: reasons.append("AI_FIELD_NOT_REQUESTED")
+        if not fields:
+            reasons.append("AI_FIELDS_EMPTY")
         for key, value in fields.items():
             if not isinstance(value, str): reasons.append(f"AI_{str(key).upper()}_NOT_STRING")
+            elif key == "unit_price":
+                reasons.append("AI_UNIT_PRICE_FORBIDDEN")
+            elif has_ordinary_spanish(value):
+                reasons.append(f"AI_{str(key).upper()}_SPANISH_RESIDUAL")
+            elif key == "cat1" and value not in FIXED_CAT1:
+                reasons.append("AI_CATEGORY_NOT_FIXED")
+            elif key in {"name", "spec", "description", "details"}:
+                source_field = {"name": "name_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(key)
+                if source_field:
+                    expected = {_n.replace(",", ".") for _n in _NUMBER.findall(str(getattr(source, source_field) or ""))}
+                    found = {_n.replace(",", ".") for _n in _NUMBER.findall(value)}
+                    if expected - found:
+                        reasons.append(f"AI_{str(key).upper()}_NUMBER_DROPPED")
     confidence = payload.get("confidence")
     if confidence is not None:
         try:

@@ -13,8 +13,9 @@ from .contracts import (
     LocalizationPlan,
 )
 from .engine import LocalizationEngine
+from .knowledge import KnowledgeContext
 
 __all__ = [
     "POLICY_VERSION", "SourceFacts", "SemanticFact", "LocalizationField",
-    "LocalizationPlan", "LocalizationEngine",
+    "LocalizationPlan", "LocalizationEngine", "KnowledgeContext",
 ]

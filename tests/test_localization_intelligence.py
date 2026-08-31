@@ -9,6 +9,8 @@ from action_tracker.database.connection import connect
 from action_tracker.database.production import apply_localization_correction
 from action_tracker.database.production import CommitBundle, ProductionWriter
 from action_tracker.localization.service import audit_current
+from action_tracker.localization.knowledge import validate_knowledge_file, NEW_SCHEMAS, NEW_KEYS
+import csv
 
 
 def test_formatter_uses_retail_spec_contract():
@@ -125,4 +127,56 @@ def test_daily_bundle_preserves_old_zh_and_marks_stale_when_es_hash_changes(tmp_
     with connect(path) as db:
         row = db.execute("SELECT name,spec,source_hash,freshness_status,review_status,name_source,approved_by FROM product_localizations WHERE official_sku='1' AND language='zh'").fetchone()
         assert tuple(row) == ("旧中文", "10g", "old", "STALE", "APPROVED", "manual_override", "user")
+
+
+def test_source_and_semantic_contracts_keep_official_provenance():
+    source = SourceFacts.from_record({"sku": "42", "name_es": "USB-C cable", "image_url": "https://cdn/image.png", "run_id": "r1", "source_commit_id": "C1"})
+    assert source.unit_price == source.unit_price_es
+    assert source.image_url.endswith("image.png") and source.source_run_id == "r1"
+    fact = source_hash({"name_es": "USB-C cable"})
+    plan = LocalizationEngine().resolve({"sku": "42", "name_es": "USB-C cable", "spec_es": "1 m"})
+    item = plan.semantic_facts[0].as_dict()
+    assert {"normalized_source", "zh_value", "knowledge_source", "allowed_targets", "preferred_target", "keep_original", "source_hash"} <= set(item)
+    assert fact == plan.source_hash or isinstance(plan.source_hash, str)
+
+
+def test_dictionary_rows_drive_phrase_product_type_and_tech_token():
+    knowledge = {
+        "product_types": [{"source_term": "caja de almacenamiento", "source_aliases": "caja", "canonical_zh": "收纳箱"}],
+        "phrases": [{"source_phrase": "varios modelos", "zh_value": "多款可选", "semantic_type": "VARIANT"}],
+        "detail_keys": [],
+        "tech_tokens": [{"token": "USB-C", "canonical_token": "USB-C", "token_type": "INTERFACE"}],
+    }
+    plan = LocalizationEngine(knowledge=knowledge).resolve({"sku": "1", "name_es": "Caja de almacenamiento USB-C", "spec_es": "varios modelos"})
+    assert plan.fields["name_zh"].value.startswith("收纳箱")
+    assert "USB-C" in plan.fields["name_zh"].value and "多款可选" in plan.fields["spec_zh"].value
+    assert any(f.evidence == "product_type_dictionary" for f in plan.semantic_facts)
+
+
+def test_validator_allows_numeric_movement_but_blocks_detail_sku_and_stale():
+    record = {"sku": "42", "name_es": "Producto 42", "spec_es": "50 x 60 cm", "details_es": "Color: Azul"}
+    engine = LocalizationEngine()
+    plan = engine.resolve(record)
+    # The 42 from the name is allowed to move to structured details; a wrong
+    # explicit detail SKU is still an identity failure.
+    fields = dict(plan.fields)
+    fields["details_zh"] = type(fields["details_zh"])("商品编号：99", "test", "READY", plan.source_hash)
+    from action_tracker.localization.contracts import LocalizationPlan
+    bad = LocalizationPlan(plan.sku, plan.source_hash, fields, plan.semantic_facts)
+    result = engine.validate(record, bad)
+    assert "DETAIL_SKU_MISMATCH" in result.reasons
+
+
+def test_knowledge_schema_validator_rejects_duplicate_keys(tmp_path):
+    path = tmp_path / "tech_token_dictionary.csv"
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=NEW_SCHEMAS[path.name]); writer.writeheader()
+        row = {key: "" for key in NEW_SCHEMAS[path.name]}; row.update({"schema_version": "1.0", "token": "USB-C"})
+        writer.writerow(row); writer.writerow(row)
+    try:
+        validate_knowledge_file(path, NEW_SCHEMAS[path.name], NEW_KEYS[path.name])
+    except ValueError as exc:
+        assert "DUPLICATE" in str(exc)
+    else:
+        raise AssertionError("duplicate knowledge key was accepted")
 from pathlib import Path

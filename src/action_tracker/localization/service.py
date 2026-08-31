@@ -25,8 +25,8 @@ def _report_root(cfg: Mapping[str, Any]) -> Path:
 def _existing_zh(db_path: Path) -> dict[str, dict[str, Any]]:
     from ..database.connection import connect
     with connect(db_path) as db:
-        rows = db.execute("SELECT official_sku,name,cat1,cat2,spec,description,details,source_hash,freshness_status,review_status FROM product_localizations WHERE language='zh'").fetchall()
-    return {str(row[0]): {"name_zh": row[1], "cat1_zh": row[2], "cat2_zh": row[3], "spec_zh": row[4], "desc_zh": row[5], "details_zh": row[6], "source_hash": row[7], "freshness_status": row[8], "review_status": row[9]} for row in rows}
+        rows = db.execute("SELECT official_sku,name,cat1,cat2,spec,description,details,source_hash,freshness_status,review_status,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,approved_by,approved_at,last_commit_id,applied_commit_id FROM product_localizations WHERE language='zh'").fetchall()
+    return {str(row[0]): {"name_zh": row[1], "cat1_zh": row[2], "cat2_zh": row[3], "spec_zh": row[4], "desc_zh": row[5], "details_zh": row[6], "source_hash": row[7], "freshness_status": row[8], "review_status": row[9], "resolution_status": row[10], "zh_name_source": row[11], "zh_cat1_source": row[12], "zh_cat2_source": row[13], "zh_spec_source": row[14], "zh_description_source": row[15], "zh_details_source": row[16], "approved_by": row[17], "approved_at": row[18], "last_commit_id": row[19], "applied_commit_id": row[20]} for row in rows}
 
 
 def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records: list[dict[str, Any]] | None = None, persist_reviews: bool = False) -> dict[str, Any]:
@@ -75,7 +75,9 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
                "review_reasons": "|".join(validation.reasons),
                "spanish_residue_tokens": "|".join(validation.spanish_residue_tokens),
                "numeric_validation": "PASS" if not validation.numeric_mismatches else "FAIL",
-               "knowledge_hits": "|".join(plan.knowledge_hits), "ai_used": plan.ai_used}
+               "knowledge_hits": "|".join(plan.knowledge_hits), "ai_used": plan.ai_used,
+               "source_run_id": str(record.get("source_run_id") or ""),
+               "source_commit_id": str(record.get("source_commit_id") or "")}
         rows.append(row)
         for fact in plan.semantic_facts:
             if fact.semantic_type in {"PRODUCT_TYPE", "TECH_TOKEN", "STANDARD_UNIT", "DETAIL_KEY"}:
@@ -103,6 +105,12 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
     provider = provider_from_config(ai_config)
     if bool(ai_config.get("enabled")):
         for record, plan, record_engine in unknown_plans:
+            # Do not spend an AI call on a purely stale/metadata-only row.
+            # AI is reserved for explicit unknown semantic or translation
+            # work; the ordinary daily path keeps the old value stale.
+            eligible_reasons = {"PRODUCT_TYPE_REVIEW", "SERIES_REVIEW", "TECH_TOKEN_REVIEW", "DETAIL_KEY_REVIEW", "DETAIL_VALUE_REVIEW", "NAME_REVIEW", "CATEGORY_REVIEW", "DESCRIPTION_REVIEW", "SPANISH_RESIDUAL"}
+            if not (set(plan.review_reasons) & eligible_reasons):
+                continue
             try:
                 candidate = resolve_unknown(record_engine, record, plan, provider)
             except Exception as exc:
@@ -123,7 +131,13 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
                 "knowledge_hit_count": sum(bool(row["knowledge_hits"]) for row in rows), "ai_call_count": getattr(provider, "calls", 0),
                 "ai_candidate_count": len(ai_candidates), "ai_avoidance_rate": 1.0 - (getattr(provider, "calls", 0) / max(1, len(rows))), "generated_at": datetime.now(timezone.utc).isoformat()}
     (out / "coverage.json").write_text(json.dumps(coverage, ensure_ascii=False, indent=2), encoding="utf-8")
-    manifest = {"run_id": run_id, "report_dir": str(out), "audit": str(audit_path), "review_queue": str(review_path), "learning_candidates": learning["path"], "ai_candidates": str(ai_path), "coverage": str(out / "coverage.json"), "source_commit_id": None, "generated_at": datetime.now(timezone.utc).isoformat()}
+    source_commit_id = None
+    if db_path.exists():
+        try:
+            source_commit_id = ProductionRepository(db_path).current_head()
+        except Exception:
+            source_commit_id = None
+    manifest = {"run_id": run_id, "report_dir": str(out), "audit": str(audit_path), "review_queue": str(review_path), "learning_candidates": learning["path"], "ai_candidates": str(ai_path), "coverage": str(out / "coverage.json"), "source_commit_id": source_commit_id, "generated_at": datetime.now(timezone.utc).isoformat()}
     manifest["manifest_hash"] = hashlib.sha256(json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
     (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return {**manifest, **coverage}
@@ -137,6 +151,10 @@ def _review_rows(audit_rows: list[dict[str, Any]], run_id: str) -> list[dict[str
         "SPEC_FORMAT_REVIEW": ("SPEC_FORMAT_REVIEW", "spec_zh"), "DESCRIPTION_REVIEW": ("DESCRIPTION_REVIEW", "desc_zh"),
         "DETAIL_VALUE_REVIEW": ("DETAIL_VALUE_REVIEW", "details_zh"), "SPANISH_RESIDUAL": ("SPANISH_RESIDUAL", ""),
         "NUMERIC_FACT_MISMATCH": ("NUMERIC_FACT_MISMATCH", ""), "SOURCE_HASH_CHANGED": ("SOURCE_HASH_CHANGED", "source_hash"),
+        "SOURCE_HASH_MISMATCH": ("SOURCE_HASH_MISMATCH", "source_hash"), "DETAIL_SKU_MISMATCH": ("DETAIL_SKU_MISMATCH", "details_zh"),
+        "STALE_LOCALIZATION": ("STALE_LOCALIZATION", ""), "PRODUCT_TYPE_REVIEW": ("PRODUCT_TYPE_REVIEW", "name_zh"),
+        "DETAIL_KEY_REVIEW": ("DETAIL_KEY_REVIEW", "details_zh"), "TECH_TOKEN_REVIEW": ("TECH_TOKEN_REVIEW", "spec_zh"),
+        "PRICE_FACT_MISMATCH": ("PRICE_FACT_MISMATCH", "unit_price_zh"),
     }
     rows = []
     for row in audit_rows:
