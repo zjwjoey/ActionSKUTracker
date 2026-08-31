@@ -406,8 +406,19 @@ def main(argv=None) -> int:
             rows = list(csv.DictReader(path.open(encoding="utf-8-sig")))
         print(json.dumps({"run_id": target.name, "count": len(rows), "rows": rows}, ensure_ascii=False)); return 0
     if args.command == "localization-promote":
-        from .localization.promotion import promotion_manifest
-        result = promotion_manifest({"candidate_id": args.candidate_id}, "UNKNOWN", "LOCKED" if args.human_approved else "UNKNOWN")
+        from .localization.learning import persist_promotion
+        from .localization.service import _report_root
+        import csv as _csv
+        root = _report_root(cfg)
+        candidate = None
+        for path in sorted(root.glob("*/learning_candidates.csv"), reverse=True):
+            for row in _csv.DictReader(path.open(encoding="utf-8-sig")):
+                if row.get("candidate_id") == args.candidate_id:
+                    candidate = row; break
+            if candidate: break
+        if not candidate:
+            print(json.dumps({"error": "CANDIDATE_NOT_FOUND"}, ensure_ascii=False), file=sys.stderr); return 2
+        result = persist_promotion(candidate, path.parent, human_approved=args.human_approved)
         print(json.dumps(result, ensure_ascii=False)); return 0
     if args.command == "localization-apply":
         from .localization.service import apply_from_audit

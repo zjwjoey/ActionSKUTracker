@@ -13,6 +13,7 @@ from ..database.repository import ProductionRepository
 from ..database.production import apply_localization_correction
 from .contracts import LOCALIZATION_FIELDS
 from .engine import LocalizationEngine
+from .ai import provider_from_config, resolve_unknown
 from .knowledge import KnowledgeLoader
 from .learning import aggregate_candidates
 
@@ -38,6 +39,7 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
     existing = _existing_zh(db_path) if db_path.exists() else {}
     rows: list[dict[str, Any]] = []
     candidates: list[dict[str, Any]] = []
+    unknown_plans: list[tuple[dict[str, Any], Any, LocalizationEngine]] = []
     for record in records:
         sku = str(record.get("sku") or record.get("official_sku") or "")
         product = knowledge.get("product_by_sku", {}).get(sku, {})
@@ -55,6 +57,8 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
         plan = LocalizationEngine(knowledge=per_record_knowledge).resolve(record, existing=existing.get(sku))
         engine_for_record = LocalizationEngine(knowledge=per_record_knowledge)
         validation = engine_for_record.validate(record, plan)
+        if not validation.ok:
+            unknown_plans.append((record, plan, engine_for_record))
         old = existing.get(sku, {})
         row = {"sku": sku, "source_hash": plan.source_hash,
                "old_name_zh": old.get("name_zh", ""), "new_name_zh": plan.fields["name_zh"].value,
@@ -94,6 +98,19 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
         queue.update({row["review_id"]: row for row in review_rows})
         _write_queue(dict(cfg), [queue[key] for key in sorted(queue)])
     learning = aggregate_candidates(candidates, out)
+    ai_candidates: list[dict[str, Any]] = []
+    ai_config = ((cfg.get("localization") or {}).get("ai") or {})
+    provider = provider_from_config(ai_config)
+    if bool(ai_config.get("enabled")):
+        for record, plan, record_engine in unknown_plans:
+            try:
+                candidate = resolve_unknown(record_engine, record, plan, provider)
+            except Exception as exc:
+                candidate = {"sku": str(record.get("sku") or ""), "status": "FAILED", "failure_reason": type(exc).__name__}
+            if candidate:
+                ai_candidates.append(candidate)
+    ai_path = out / "ai_candidates.json"
+    ai_path.write_text(json.dumps(ai_candidates, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     # Keep the durable learning pool separate from per-run reports while
     # retaining the report-local copy required for reproducibility.
     learning_pool = Path(cfg["paths"]["temp"]).parent / "localization" / "learning_candidates" / date_key
@@ -103,10 +120,10 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
     coverage = {"run_id": run_id, "total_current_skus": len(rows), "ready_count": ready, "review_required_count": len(rows)-ready,
                 "ordinary_spanish_residue_count": sum(bool(row["spanish_residue_tokens"]) for row in rows),
                 "numeric_mismatch_count": sum(row["numeric_validation"] == "FAIL" for row in rows),
-                "knowledge_hit_count": sum(bool(row["knowledge_hits"]) for row in rows), "ai_call_count": 0,
-                "ai_avoidance_rate": 1.0, "generated_at": datetime.now(timezone.utc).isoformat()}
+                "knowledge_hit_count": sum(bool(row["knowledge_hits"]) for row in rows), "ai_call_count": getattr(provider, "calls", 0),
+                "ai_candidate_count": len(ai_candidates), "ai_avoidance_rate": 1.0 - (getattr(provider, "calls", 0) / max(1, len(rows))), "generated_at": datetime.now(timezone.utc).isoformat()}
     (out / "coverage.json").write_text(json.dumps(coverage, ensure_ascii=False, indent=2), encoding="utf-8")
-    manifest = {"run_id": run_id, "report_dir": str(out), "audit": str(audit_path), "review_queue": str(review_path), "learning_candidates": learning["path"], "coverage": str(out / "coverage.json"), "source_commit_id": None, "generated_at": datetime.now(timezone.utc).isoformat()}
+    manifest = {"run_id": run_id, "report_dir": str(out), "audit": str(audit_path), "review_queue": str(review_path), "learning_candidates": learning["path"], "ai_candidates": str(ai_path), "coverage": str(out / "coverage.json"), "source_commit_id": None, "generated_at": datetime.now(timezone.utc).isoformat()}
     manifest["manifest_hash"] = hashlib.sha256(json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
     (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return {**manifest, **coverage}

@@ -43,3 +43,12 @@ def promotion_decision(candidate: dict[str, Any], *, human_approved: bool = Fals
     elif safe_auto: new = "EVIDENCE_ACCUMULATED"
     else: new = old
     return {"candidate_id": candidate.get("candidate_id"), "old_state": old, "new_state": new, "promoted": new != old, "policy_version": "CHINESE_LOCALIZATION_STANDARD_V1"}
+
+
+def persist_promotion(candidate: dict[str, Any], directory: Path, *, human_approved: bool = False) -> dict[str, Any]:
+    """Persist an auditable promotion decision; never silently edits baseline."""
+    directory = Path(directory); directory.mkdir(parents=True, exist_ok=True)
+    decision = promotion_decision(candidate, human_approved=human_approved)
+    path = directory / f"promotion_{candidate.get('candidate_id')}.json"
+    path.write_text(json.dumps({**decision, "candidate": candidate}, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {**decision, "manifest_path": str(path)}
