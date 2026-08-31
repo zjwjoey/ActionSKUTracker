@@ -83,6 +83,11 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
     headers = list(rows[0].keys()) if rows else ["sku", "source_hash"]
     with audit_path.open("w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=headers); writer.writeheader(); writer.writerows(rows)
+    review_rows = _review_rows(rows, run_id or date_key)
+    review_path = out / "review_queue.csv"
+    review_headers = ["review_id", "issue_type", "sku", "field", "current_value", "suggested_value", "evidence", "reason", "created_at", "status", "source", "updated_at", "resolution"]
+    with review_path.open("w", encoding="utf-8-sig", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=review_headers); writer.writeheader(); writer.writerows(review_rows)
     learning = aggregate_candidates(candidates, out)
     # Keep the durable learning pool separate from per-run reports while
     # retaining the report-local copy required for reproducibility.
@@ -96,10 +101,32 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
                 "knowledge_hit_count": sum(bool(row["knowledge_hits"]) for row in rows), "ai_call_count": 0,
                 "ai_avoidance_rate": 1.0, "generated_at": datetime.now(timezone.utc).isoformat()}
     (out / "coverage.json").write_text(json.dumps(coverage, ensure_ascii=False, indent=2), encoding="utf-8")
-    manifest = {"run_id": run_id, "report_dir": str(out), "audit": str(audit_path), "learning_candidates": learning["path"], "coverage": str(out / "coverage.json"), "source_commit_id": None, "generated_at": datetime.now(timezone.utc).isoformat()}
+    manifest = {"run_id": run_id, "report_dir": str(out), "audit": str(audit_path), "review_queue": str(review_path), "learning_candidates": learning["path"], "coverage": str(out / "coverage.json"), "source_commit_id": None, "generated_at": datetime.now(timezone.utc).isoformat()}
     manifest["manifest_hash"] = hashlib.sha256(json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
     (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return {**manifest, **coverage}
+
+
+def _review_rows(audit_rows: list[dict[str, Any]], run_id: str) -> list[dict[str, str]]:
+    """Turn validator reasons into the existing unified review schema."""
+    import hashlib
+    mapping = {
+        "NAME_REVIEW": ("NAME_REVIEW", "name_zh"), "CATEGORY_REVIEW": ("CATEGORY_REVIEW", "cat1_zh"),
+        "SPEC_FORMAT_REVIEW": ("SPEC_FORMAT_REVIEW", "spec_zh"), "DESCRIPTION_REVIEW": ("DESCRIPTION_REVIEW", "desc_zh"),
+        "DETAIL_VALUE_REVIEW": ("DETAIL_VALUE_REVIEW", "details_zh"), "SPANISH_RESIDUAL": ("SPANISH_RESIDUAL", ""),
+        "NUMERIC_FACT_MISMATCH": ("NUMERIC_FACT_MISMATCH", ""), "SOURCE_HASH_CHANGED": ("SOURCE_HASH_CHANGED", "source_hash"),
+    }
+    rows = []
+    for row in audit_rows:
+        for reason in filter(None, str(row.get("review_reasons") or "").split("|")):
+            issue_type, field = mapping.get(reason, (reason if reason.endswith("_REVIEW") else "DATA_INCONSISTENCY", ""))
+            seed = "|".join((issue_type, str(row.get("sku") or ""), field, str(row.get("source_hash") or "")))
+            rid = hashlib.sha256(seed.encode()).hexdigest()[:24]
+            rows.append({"review_id": rid, "issue_type": issue_type, "sku": str(row.get("sku") or ""), "field": field,
+                         "current_value": str(row.get("old_" + field) or "") if field else "", "suggested_value": str(row.get("new_" + field) or "") if field else "",
+                         "evidence": str(row.get("source_hash") or ""), "reason": reason, "created_at": datetime.now(timezone.utc).isoformat(),
+                         "status": "PENDING", "source": "LOCALIZATION_ENGINE", "updated_at": datetime.now(timezone.utc).isoformat(), "resolution": ""})
+    return rows
 
 
 def apply_from_audit(cfg: Mapping[str, Any], *, run_id: str, commit: bool = False) -> dict[str, Any]:

@@ -8,6 +8,7 @@ from action_tracker.database.schema import migrate_v2
 from action_tracker.database.connection import connect
 from action_tracker.database.production import apply_localization_correction
 from action_tracker.database.production import CommitBundle, ProductionWriter
+from action_tracker.localization.service import audit_current
 
 
 def test_formatter_uses_retail_spec_contract():
@@ -69,6 +70,14 @@ def test_ai_contract_is_strict_and_only_unknown_is_called():
     assert validate_ai_response({"fields": {"name": "橡皮筋"}, "unexpected": 1}, SourceFacts.from_record(record), ("name",))[0] is False
 
 
+def test_audit_emits_review_queue_and_report_manifest(tmp_path):
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": tmp_path / "dict"}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    result = audit_current(cfg, run_id="r1", records=[{"sku": "1", "name_es": "Producto desconocido", "cat1_es": "Unknown", "spec_es": "10 gramos"}])
+    assert Path(result["audit"]).exists() and Path(result["review_queue"]).exists()
+    assert result["review_required_count"] == 1
+
+
 def test_learning_candidates_are_aggregated(tmp_path):
     result = aggregate_candidates([
         {"sku": "1", "semantic_type": "PRODUCT_TYPE", "source_term": "gomas", "zh_value": "橡皮筋"},
@@ -116,3 +125,4 @@ def test_daily_bundle_preserves_old_zh_and_marks_stale_when_es_hash_changes(tmp_
     with connect(path) as db:
         row = db.execute("SELECT name,spec,source_hash,freshness_status,review_status,name_source,approved_by FROM product_localizations WHERE official_sku='1' AND language='zh'").fetchone()
         assert tuple(row) == ("旧中文", "10g", "old", "STALE", "APPROVED", "manual_override", "user")
+from pathlib import Path
