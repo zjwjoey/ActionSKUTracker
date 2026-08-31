@@ -46,6 +46,26 @@ def build_parser() -> argparse.ArgumentParser:
     image_group.add_argument("--with-images", dest="with_images", action="store_true", help="读取本地 250x250 图片并嵌入")
     e.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     e.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
+    x = sub.add_parser("extract", help="统一商品提取（SQLite PRIMARY 只读）")
+    x.add_argument("--query-json", help="查询 JSON 文件或 JSON 字符串")
+    x.add_argument("--keyword")
+    x.add_argument("--sku", dest="skus", action="append")
+    x.add_argument("--status", dest="statuses", action="append")
+    x.add_argument("--cat1", action="append"); x.add_argument("--cat2", action="append")
+    x.add_argument("--min-price", type=float); x.add_argument("--max-price", type=float)
+    x.add_argument("--promotion", action="store_true"); x.add_argument("--new", dest="new_badge", action="store_true")
+    x.add_argument("--sort", default="sku"); x.add_argument("--desc", action="store_true")
+    x.add_argument("--limit", type=int, default=100); x.add_argument("--offset", type=int, default=0)
+    x.add_argument("--json", action="store_true"); x.add_argument("--save-selection")
+    v = sub.add_parser("saved-view", help="Saved View 管理")
+    v_sub = v.add_subparsers(dest="saved_view_command", required=True)
+    vc = v_sub.add_parser("create"); vc.add_argument("name"); vc.add_argument("--query-json", required=True); vc.add_argument("--description", default="")
+    v_sub.add_parser("list")
+    sset = sub.add_parser("selection", help="Selection Set 管理")
+    s_sub = sset.add_subparsers(dest="selection_command", required=True)
+    sc = s_sub.add_parser("create"); sc.add_argument("name"); sc.add_argument("--query-json", required=True); sc.add_argument("--description", default=""); sc.add_argument("--view-id")
+    s_sub.add_parser("list")
+    sg = s_sub.add_parser("get"); sg.add_argument("selection_id")
     t = sub.add_parser("export-template1", help="导出 Template 1 三表版本")
     t.add_argument("--with-images", action="store_true", help="仅在今日中文清单嵌入本地 250x250 图片")
     t.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
@@ -340,6 +360,46 @@ def main(argv=None) -> int:
             return 2
         print(json.dumps(result, ensure_ascii=False))
         return 0
+    if args.command == "extract":
+        from .database.integration import database_path
+        from .extraction import ExtractionQuery, ExtractionService, SelectionService, SavedViewService
+        import json as _json
+        payload = {}
+        if args.query_json:
+            source = Path(args.query_json)
+            payload = _json.loads(source.read_text(encoding="utf-8") if source.exists() else args.query_json)
+        for key in ("keyword", "min_price", "max_price", "sort", "limit", "offset"):
+            value = getattr(args, key, None)
+            if value is not None: payload[key] = value
+        for key in ("skus", "statuses", "cat1", "cat2"):
+            value = getattr(args, key, None)
+            if value: payload[key] = tuple(value)
+        if args.promotion: payload["promotion"] = True
+        if args.new_badge: payload["new_badge"] = True
+        if args.desc: payload["descending"] = True
+        result = ExtractionService(database_path(cfg)).execute(ExtractionQuery.from_dict(payload))
+        if args.save_selection:
+            saved = SelectionService(database_path(cfg)).create(args.save_selection, result.query)
+            output = {"selection": saved}
+        else: output = result.as_dict() if args.json else {"query_hash": result.query_hash, "matched_count": result.matched_count, "returned": len(result.items), "source_commit_id": result.source_commit_id}
+        print(_json.dumps(output, ensure_ascii=False, default=str)); return 0
+    if args.command == "saved-view":
+        from .database.integration import database_path
+        from .extraction import SavedViewService
+        import json as _json
+        svc = SavedViewService(database_path(cfg))
+        if args.saved_view_command == "list": print(_json.dumps(svc.list(), ensure_ascii=False)); return 0
+        payload = _json.loads(Path(args.query_json).read_text(encoding="utf-8") if Path(args.query_json).exists() else args.query_json)
+        print(_json.dumps(svc.create(args.name, payload, args.description), ensure_ascii=False)); return 0
+    if args.command == "selection":
+        from .database.integration import database_path
+        from .extraction import SelectionService
+        import json as _json
+        svc = SelectionService(database_path(cfg))
+        if args.selection_command == "list": print(_json.dumps(svc.list(), ensure_ascii=False)); return 0
+        if args.selection_command == "get": print(_json.dumps(svc.get(args.selection_id), ensure_ascii=False)); return 0
+        payload = _json.loads(Path(args.query_json).read_text(encoding="utf-8") if Path(args.query_json).exists() else args.query_json)
+        print(_json.dumps(svc.create(args.name, payload, description=args.description, view_id=args.view_id), ensure_ascii=False)); return 0
     if args.command == "production-run":
         from .operations.entry import run_production
         from .services.runtime import observation_date

@@ -232,6 +232,65 @@ CREATE TABLE IF NOT EXISTS translation_approval_audit (
  FOREIGN KEY (candidate_id) REFERENCES translation_candidates(candidate_id),
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
+
+-- Architecture V2 extraction/selection/delivery metadata.  These tables are
+-- additive: they contain query definitions, SKU membership and artifact
+-- provenance only; product/lifecycle/history tables remain the sole facts.
+CREATE TABLE IF NOT EXISTS saved_views (
+ view_id TEXT PRIMARY KEY,
+ name TEXT NOT NULL UNIQUE,
+ description TEXT NOT NULL DEFAULT '',
+ query_json TEXT NOT NULL,
+ query_hash TEXT NOT NULL,
+ is_system INTEGER NOT NULL DEFAULT 0,
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS selection_sets (
+ selection_id TEXT PRIMARY KEY,
+ name TEXT NOT NULL UNIQUE,
+ description TEXT NOT NULL DEFAULT '',
+ created_at TEXT NOT NULL,
+ created_from_view_id TEXT,
+ query_json TEXT NOT NULL,
+ query_hash TEXT NOT NULL,
+ source_commit_id TEXT,
+ matched_count INTEGER NOT NULL DEFAULT 0,
+ FOREIGN KEY (created_from_view_id) REFERENCES saved_views(view_id)
+);
+CREATE TABLE IF NOT EXISTS selection_members (
+ selection_id TEXT NOT NULL,
+ official_sku TEXT NOT NULL,
+ ordinal INTEGER NOT NULL,
+ PRIMARY KEY (selection_id, official_sku),
+ FOREIGN KEY (selection_id) REFERENCES selection_sets(selection_id) ON DELETE CASCADE,
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS artifacts (
+ artifact_id TEXT PRIMARY KEY,
+ artifact_type TEXT NOT NULL,
+ selection_id TEXT,
+ profile_id TEXT,
+ language TEXT,
+ image_profile TEXT,
+ source_commit_id TEXT,
+ selection_source_commit_id TEXT,
+ created_at TEXT NOT NULL,
+ file_path TEXT NOT NULL,
+ file_hash TEXT,
+ row_count INTEGER NOT NULL DEFAULT 0,
+ status TEXT NOT NULL,
+ manifest_path TEXT,
+ error TEXT,
+ FOREIGN KEY (selection_id) REFERENCES selection_sets(selection_id)
+);
+CREATE INDEX IF NOT EXISTS idx_products_status_price ON products(status,current_price,official_sku);
+CREATE INDEX IF NOT EXISTS idx_products_seen ON products(last_seen_at,official_sku);
+CREATE INDEX IF NOT EXISTS idx_localizations_lang_name ON product_localizations(language,name,official_sku);
+CREATE INDEX IF NOT EXISTS idx_images_status ON image_assets(status,official_sku);
+CREATE INDEX IF NOT EXISTS idx_events_type_date ON event_history(event_type,occurred_at,official_sku);
+CREATE INDEX IF NOT EXISTS idx_price_history_sku_date ON price_history(official_sku,observed_at);
+CREATE INDEX IF NOT EXISTS idx_selection_members_sku ON selection_members(official_sku,selection_id);
 '''
 
 
