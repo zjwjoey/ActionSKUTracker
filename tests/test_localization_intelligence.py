@@ -3,6 +3,7 @@ from action_tracker.localization.contracts import SourceFacts, source_hash
 from action_tracker.localization.formatter import format_details, format_spec, format_unit_price
 from action_tracker.localization.learning import aggregate_candidates
 from action_tracker.localization.promotion import can_promote
+from action_tracker.localization.ai import FakeProvider, resolve_unknown, validate_ai_response
 from action_tracker.database.schema import migrate_v2
 from action_tracker.database.connection import connect
 from action_tracker.database.production import apply_localization_correction
@@ -56,6 +57,16 @@ def test_changed_spanish_facts_keep_old_zh_as_stale_until_retranslation():
     assert plan.fields["name_zh"].value == "旧名称"
     assert plan.fields["name_zh"].freshness_status == "STALE"
     assert plan.fields["name_zh"].source_hash == "old-hash"
+
+
+def test_ai_contract_is_strict_and_only_unknown_is_called():
+    record = {"sku": "1", "name_es": "Gomas elásticas", "cat1_es": "Unknown", "cat2_es": "Manualidades", "spec_es": "100 gramos"}
+    engine = LocalizationEngine(knowledge={"cat1_map": {}, "cat2_map": {"Manualidades": "手工制作"}})
+    plan = engine.resolve(record)
+    provider = FakeProvider({"1": {"fields": {"cat1": "兴趣手作"}, "confidence": 0.99}})
+    candidate = resolve_unknown(engine, record, plan, provider)
+    assert candidate["schema_status"] == "PASS" and provider.calls == 1
+    assert validate_ai_response({"fields": {"name": "橡皮筋"}, "unexpected": 1}, SourceFacts.from_record(record), ("name",))[0] is False
 
 
 def test_learning_candidates_are_aggregated(tmp_path):

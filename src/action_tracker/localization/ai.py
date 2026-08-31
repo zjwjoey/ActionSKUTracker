@@ -54,6 +54,28 @@ class OpenAICompatibleProvider:
         return result
 
 
+def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, requested_fields: tuple[str, ...]) -> tuple[bool, tuple[str, ...]]:
+    """Validate the provider envelope before it becomes a candidate."""
+    reasons: list[str] = []
+    if not isinstance(payload, Mapping):
+        return False, ("AI_RESPONSE_NOT_OBJECT",)
+    if set(payload) - {"fields", "product_type_candidate", "semantic_items", "detail_key_candidates", "tech_token_candidates", "placement", "confidence", "review_notes"}:
+        reasons.append("AI_RESPONSE_UNKNOWN_KEY")
+    fields = payload.get("fields")
+    if not isinstance(fields, Mapping): reasons.append("AI_FIELDS_NOT_OBJECT")
+    else:
+        unknown = set(fields) - set(requested_fields)
+        if unknown: reasons.append("AI_FIELD_NOT_REQUESTED")
+        for key, value in fields.items():
+            if not isinstance(value, str): reasons.append(f"AI_{str(key).upper()}_NOT_STRING")
+    confidence = payload.get("confidence")
+    if confidence is not None:
+        try:
+            if not 0 <= float(confidence) <= 1: reasons.append("AI_CONFIDENCE_OUT_OF_RANGE")
+        except (TypeError, ValueError): reasons.append("AI_CONFIDENCE_INVALID")
+    return not reasons, tuple(dict.fromkeys(reasons))
+
+
 def provider_from_config(config: Mapping[str, Any] | None) -> LocalizationAIProvider:
     config = config or {}
     if not bool(config.get("enabled") or config.get("ai_enabled")):
@@ -74,11 +96,14 @@ def resolve_unknown(engine, record: Mapping[str, Any], plan, provider: Localizat
     source = SourceFacts.from_record(record)
     requested = tuple(key.removesuffix("_zh") for key, field in plan.fields.items() if field.status != "READY")
     result = dict(provider.complete(source, requested))
+    schema_ok, schema_reasons = validate_ai_response(result, source, requested)
     fields = result.get("fields") if isinstance(result.get("fields"), Mapping) else result
     candidate = {"sku": source.sku, "canonical_id": source.canonical_id, "source_hash": source.source_hash,
                  "policy_version": POLICY_VERSION, "prompt_version": prompt_version,
                  "provider": getattr(provider, "provider", type(provider).__name__),
                  "model": getattr(provider, "model", ""), "requested_fields": requested,
                  "fields": dict(fields), "confidence": result.get("confidence"),
-                 "review_notes": result.get("review_notes", "")}
+                 "review_notes": result.get("review_notes", ""),
+                 "schema_status": "PASS" if schema_ok else "FAIL",
+                 "schema_reasons": schema_reasons}
     return candidate
