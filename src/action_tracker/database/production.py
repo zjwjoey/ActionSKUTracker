@@ -258,6 +258,32 @@ class ProductionWriter:
         for r in rows:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
             language = str(r.get("language") or "zh")
+            incoming = dict(r)
+            if language == "zh":
+                existing_row = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details,source,review_status,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id,last_commit_id FROM product_localizations WHERE official_sku=? AND language='zh'",
+                    (sku,),
+                ).fetchone()
+                if existing_row is not None:
+                    existing = dict(existing_row)
+                    incoming_hash = str(incoming.get("source_hash") or "")
+                    existing_hash = str(existing.get("source_hash") or "")
+                    # Daily observation is not a localization Apply.  When
+                    # official Spanish facts changed, retain the last known
+                    # Chinese text and provenance and mark it STALE.  When
+                    # facts did not change, preserve approval/LOCK metadata.
+                    if existing_hash and incoming_hash and existing_hash != incoming_hash:
+                        for key in ("name", "cat1", "cat2", "spec", "description", "details", "source_hash", "resolution_status", "name_source", "cat1_source", "cat2_source", "spec_source", "description_source", "details_source", "approved_by", "approved_at", "applied_commit_id"):
+                            if key in existing:
+                                incoming[key] = existing[key]
+                        incoming["freshness_status"] = "STALE"
+                        incoming["review_status"] = existing.get("review_status") or "STALE"
+                    else:
+                        for key in ("review_status", "name_source", "cat1_source", "cat2_source", "spec_source", "description_source", "details_source", "approved_by", "approved_at", "applied_commit_id"):
+                            if existing.get(key) is not None:
+                                incoming[key] = existing[key]
+                        if str(existing.get("freshness_status") or "").upper() == "STALE":
+                            incoming["freshness_status"] = "STALE"
             db.execute(
                 """INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,last_commit_id,
                  source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
@@ -269,11 +295,11 @@ class ProductionWriter:
                  cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,description_source=excluded.description_source,
                  details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,
                  approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""",
-                (sku, language, r.get("name"), r.get("cat1"), r.get("cat2"), r.get("spec"), r.get("description"), r.get("details"),
-                 r.get("source"), r.get("review_status"), now, commit_id, r.get("source_hash"),
-                 r.get("resolution_status"), r.get("name_source"), r.get("cat1_source"), r.get("cat2_source"),
-                 r.get("spec_source"), r.get("description_source"), r.get("details_source"), r.get("freshness_status"),
-                 r.get("approved_by"), r.get("approved_at"), r.get("applied_commit_id") or commit_id),
+                 (sku, language, incoming.get("name"), incoming.get("cat1"), incoming.get("cat2"), incoming.get("spec"), incoming.get("description"), incoming.get("details"),
+                  incoming.get("source"), incoming.get("review_status"), now, commit_id, incoming.get("source_hash"),
+                  incoming.get("resolution_status"), incoming.get("name_source"), incoming.get("cat1_source"), incoming.get("cat2_source"),
+                  incoming.get("spec_source"), incoming.get("description_source"), incoming.get("details_source"), incoming.get("freshness_status"),
+                  incoming.get("approved_by"), incoming.get("approved_at"), incoming.get("applied_commit_id") or commit_id),
             )
 
     @staticmethod

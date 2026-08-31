@@ -57,6 +57,25 @@ class LocalizationEngine:
             output.append((plan, self.validate(record, plan)))
         return output
 
+    def primary_export_plan(self, record: Mapping[str, Any]) -> LocalizationPlan:
+        """Build a read-only plan from already-applied PRIMARY zh values.
+
+        Export must not translate or guess.  This adapter gives the export
+        layer the same field contract as enrichment while preserving the
+        applied value, source and freshness metadata from SQLite.
+        """
+        source = self.source_facts(record)
+        fields = {}
+        mapping = (("name_zh", "name"), ("cat1_zh", "cat1"), ("cat2_zh", "cat2"), ("spec_zh", "spec"), ("unit_price_zh", "unit_price"), ("desc_zh", "description"), ("details_zh", "details"))
+        for output_key, _ in mapping:
+            value = str(record.get(output_key) or (record.get("unit_price") if output_key == "unit_price_zh" else "") or "").strip()
+            source_name = "official_unit_price" if output_key == "unit_price_zh" else str(record.get("zh_" + output_key.removesuffix("_zh") + "_source") or "primary_localization")
+            freshness = str(record.get("zh_freshness_status") or "CURRENT")
+            status = "READY" if value and freshness != "STALE" else ("STALE" if value else "REVIEW_REQUIRED")
+            fields[output_key] = LocalizationField(value, source_name, status, str(record.get("zh_source_hash") or ""), freshness, self.policy_version, () if status == "READY" else (("STALE_LOCALIZATION",) if status == "STALE" else ("MISSING_LOCALIZATION",)))
+        reasons = tuple(dict.fromkeys(r for f in fields.values() for r in f.review_reasons))
+        return LocalizationPlan(source.sku, source.source_hash, fields, (), "AUTO_READY" if not reasons else "REVIEW_REQUIRED", reasons, (), False)
+
     @staticmethod
     def field_values(plan: LocalizationPlan) -> dict[str, str]:
         return {key: plan.fields[key].value for key in LOCALIZATION_FIELDS}

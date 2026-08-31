@@ -6,6 +6,7 @@ from action_tracker.localization.promotion import can_promote
 from action_tracker.database.schema import migrate_v2
 from action_tracker.database.connection import connect
 from action_tracker.database.production import apply_localization_correction
+from action_tracker.database.production import CommitBundle, ProductionWriter
 
 
 def test_formatter_uses_retail_spec_contract():
@@ -87,3 +88,19 @@ def test_sqlite_localization_apply_creates_versioned_zh_only_commit(tmp_path):
         row = db.execute("SELECT name,last_commit_id,source_hash,freshness_status FROM product_localizations WHERE official_sku='1' AND language='zh'").fetchone()
         assert tuple(row) == ("测试商品", result["commit_id"], "facts-hash", "CURRENT")
         assert db.execute("SELECT COUNT(*) FROM commit_batches").fetchone()[0] == 2
+
+
+def test_daily_bundle_preserves_old_zh_and_marks_stale_when_es_hash_changes(tmp_path):
+    path = tmp_path / "primary.db"
+    migrate_v2(path, role="PRIMARY")
+    with connect(path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('ACT1','1','CURRENT')")
+        db.execute("INSERT INTO commit_batches(commit_id,run_id,bundle_hash,schema_version,started_at,committed_at,status) VALUES('C1','r1','h','2.0.0','now','now','COMMITTED')")
+        db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES('r1','2026-09-01','COMMITTED','PASS',0,'now','now','2.0.0')")
+        db.execute("INSERT INTO product_localizations(official_sku,language,name,spec,source_hash,freshness_status,review_status,name_source,approved_by,approved_at,updated_at) VALUES('1','zh','旧中文','10g','old','CURRENT','APPROVED','manual_override','user','now','now')")
+    writer = ProductionWriter(path, role="PRIMARY")
+    bundle = CommitBundle(run_id="r2", observation_date="2026-09-02", qa_state="PASS", current_products=({"sku": "1", "canonical_id": "ACT1", "status": "CURRENT"},), localization_updates=({"sku": "1", "language": "zh", "name": "新中文候选", "spec": "20g", "source": "DICTIONARY_OR_FALLBACK", "source_hash": "new", "freshness_status": "CURRENT", "review_status": "PENDING"},), base_commit_id="C1")
+    writer.commit(bundle)
+    with connect(path) as db:
+        row = db.execute("SELECT name,spec,source_hash,freshness_status,review_status,name_source,approved_by FROM product_localizations WHERE official_sku='1' AND language='zh'").fetchone()
+        assert tuple(row) == ("旧中文", "10g", "old", "STALE", "APPROVED", "manual_override", "user")

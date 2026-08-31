@@ -38,4 +38,5 @@ def classify_latin_token(token: str, *, known_tokens: set[str] | None = None) ->
 def map_cat1(value: str, mappings: dict[str, str] | None = None) -> str:
     if value in FIXED_CAT1:
         return value
-    return (mappings or {}).get(value, "")
+    mapped = (mappings or {}).get(value, "")
+    return "个人护理" if mapped == "个人美容" else mapped

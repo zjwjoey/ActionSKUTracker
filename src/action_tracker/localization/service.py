@@ -62,6 +62,7 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
                "old_cat2_zh": old.get("cat2_zh", ""), "new_cat2_zh": plan.fields["cat2_zh"].value,
                "old_desc_zh": old.get("desc_zh", ""), "new_desc_zh": plan.fields["desc_zh"].value,
                "old_details_zh": old.get("details_zh", ""), "new_details_zh": plan.fields["details_zh"].value,
+               "old_unit_price_zh": record.get("unit_price", ""), "new_unit_price_zh": plan.fields["unit_price_zh"].value,
                "old_freshness_status": old.get("freshness_status", ""), "old_review_status": old.get("review_status", ""),
                # Validation is the final gate; a planner AUTO_READY result is
                # never allowed to mask residual Spanish or numeric failures.

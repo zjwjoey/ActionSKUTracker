@@ -200,32 +200,26 @@ def build_zh_rows_from_localized_source(records: Iterable[dict[str, Any]]) -> tu
     file-based dictionary.  Missing derived fields remain visible as review
     fallbacks rather than dropping the SKU.
     """
+    from ..localization.engine import LocalizationEngine
+    engine = LocalizationEngine()
     rows: list[dict[str, Any]] = []
     fallback_counts: dict[str, int] = {}
     for record in sorted(records, key=_sku_sort_key):
         sku = _text(record.get("sku"))
         fallbacks: list[str] = []
-        values = (
-            ("name_zh", "name_es", "中文品名"), ("cat1_zh", "cat1_es", "中文分类1"),
-            ("cat2_zh", "cat2_es", "中文分类2"), ("spec_zh", "spec_es", "中文规格"),
-            ("desc_zh", "desc_es", "中文描述"), ("details_zh", "details_es", "中文产品详情"),
-        )
-        resolved: dict[str, Any] = {}
-        for target, fallback_key, label in values:
-            value = _none_or_text(record.get(target))
-            if target in {"name_zh", "cat1_zh", "cat2_zh", "spec_zh"} and value and not _CJK_RE.search(value):
-                value = None
-            if not value:
-                value = _none_or_text(record.get(fallback_key))
-                fallbacks.append(label + "待审核")
-            resolved[target] = value
+        plan = engine.primary_export_plan(record)
+        resolved: dict[str, Any] = {key: _none_or_text(field.value) for key, field in plan.fields.items()}
+        labels = {"name_zh": "中文品名", "cat1_zh": "中文分类1", "cat2_zh": "中文分类2", "spec_zh": "中文规格", "unit_price_zh": "中文单价", "desc_zh": "中文描述", "details_zh": "中文产品详情"}
+        for key, field in plan.fields.items():
+            if field.status != "READY":
+                fallbacks.append(labels[key] + "待审核")
         for item in fallbacks:
             fallback_counts[item] = fallback_counts.get(item, 0) + 1
         rows.append({
             "图片": None, "编号": sku, "标题": resolved["name_zh"], "分类1": resolved["cat1_zh"],
             "分类2": resolved["cat2_zh"], "规格": resolved["spec_zh"],
             "折后价": _required_price(record.get("current_price"), sku=sku),
-            "原价": _display_original_price(record, sku=sku), "单价": _none_or_text(record.get("unit_price")),
+            "原价": _display_original_price(record, sku=sku), "单价": resolved["unit_price_zh"],
             "描述": resolved["desc_zh"], "产品详情": resolved["details_zh"],
             "图片链接": _none_or_text(record.get("image_url")), "商品链接": _text(record.get("product_url")),
             "备注": _zh_remarks(record, fallbacks),
