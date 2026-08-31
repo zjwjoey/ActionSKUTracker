@@ -60,7 +60,7 @@ def test_extraction_exposes_recent_event_and_historical_price_range(tmp_path: Pa
         db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,old_price,new_price,change_type) VALUES('A','1001','2026-08-30',1.5,1.2,'DOWN')")
     result = ExtractionService(path).execute({"sort": "recent_change", "descending": True, "limit": 10})
     item = next(row for row in result.items if row["official_sku"] == "1001")
-    assert item["change_direction"] == "DOWN" and item["historical_low"] == 1.2 and item["historical_high"] == 1.5
+    assert item["change_direction"] == "DOWN" and item["historical_low"] == 1.0 and item["historical_high"] == 1.5
 
 
 def test_latest_price_is_one_deterministic_row_per_sku(tmp_path: Path):

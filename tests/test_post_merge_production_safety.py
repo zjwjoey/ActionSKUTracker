@@ -14,7 +14,7 @@ from types import SimpleNamespace
 import pytest
 
 from action_tracker.database.connection import connect
-from action_tracker.database.production import CommitBundle, ProductionWriter, apply_detail_corrections, database_status
+from action_tracker.database.production import CommitBundle, ProductionDatabaseError, ProductionWriter, apply_detail_corrections, database_status
 from action_tracker.database.schema import migrate_v2
 from action_tracker import cli
 from action_tracker.monitor import listing
@@ -149,6 +149,22 @@ def test_detail_correction_primary_only_changes_detail_facts(tmp_path):
         assert tuple(es) == ("Nuevo", "Nueva descripción")
         assert conn.execute("SELECT count(*) FROM detail_corrections").fetchone()[0] == 2
         assert conn.execute("SELECT count(*) FROM event_history WHERE event_type='CONTENT_CHANGE'").fetchone()[0] == 1
+        correction = conn.execute("SELECT commit_id,base_commit_id,event_count FROM commit_batches WHERE run_id=?", (result["correction_run_id"],)).fetchone()
+        assert tuple(correction) == (result["commit_id"], "c1", 1)
+        assert conn.execute("SELECT count(*) FROM commit_batches WHERE commit_id='c1' AND bundle_hash='x'").fetchone()[0] == 1
+        assert conn.execute("SELECT run_id FROM event_history WHERE event_type='CONTENT_CHANGE'").fetchone()[0] == result["correction_run_id"]
+        assert conn.execute("SELECT freshness_status FROM product_localizations WHERE official_sku='1001' AND language='zh'").fetchone()[0] == "STALE"
+
+
+def test_detail_correction_old_parent_is_blocked_and_immutable(tmp_path):
+    db = tmp_path / "primary.sqlite"; _primary_db(db)
+    writer = ProductionWriter(db, role="PRIMARY")
+    second = writer.commit(CommitBundle(run_id="newer", observation_date="2026-08-31", qa_state="PASS", base_commit_id="c1"))
+    with pytest.raises(ProductionDatabaseError, match="DETAIL_CORRECTION_PARENT_NOT_CURRENT_HEAD"):
+        apply_detail_corrections(db, parent_run_id="parent", mode="APPLY", details_by_sku={"1001": {"desc_es": "blocked"}})
+    with connect(db) as conn:
+        assert tuple(conn.execute("SELECT commit_id,bundle_hash,event_count FROM commit_batches WHERE commit_id='c1'").fetchone()) == ("c1", "x", 0)
+        assert conn.execute("SELECT commit_id FROM commit_batches WHERE run_id='newer'").fetchone()[0] == second
 
 
 def test_backfill_never_overwrites_existing_primary_fact(tmp_path):
@@ -160,6 +176,8 @@ def test_backfill_never_overwrites_existing_primary_fact(tmp_path):
     with connect(db) as conn:
         es = conn.execute("SELECT name,details FROM product_localizations WHERE official_sku='1001' AND language='es'").fetchone()
         assert tuple(es) == ("Old", "Filled")
+        assert conn.execute("SELECT base_commit_id FROM commit_batches WHERE run_id=?", (result["correction_run_id"],)).fetchone()[0] == "c1"
+        assert conn.execute("SELECT run_id FROM event_history WHERE event_type='CONTENT_CHANGE'").fetchone()[0] == result["correction_run_id"]
 
 
 def test_new_commit_supersedes_old_pending_export(tmp_path):

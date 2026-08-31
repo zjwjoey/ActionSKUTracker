@@ -140,7 +140,7 @@ class BrowserSession:
             return False
         if status in (401, 403):
             try:
-                title = page.title()
+                title = self.page.title()
             except Exception:
                 title = ""
             if self.access_controller:

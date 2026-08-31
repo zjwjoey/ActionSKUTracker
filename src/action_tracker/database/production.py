@@ -713,12 +713,27 @@ def apply_detail_corrections(
         event_date = str(parent[1]) if parent is not None else str(source_run_date or "")
         if not event_date:
             raise ProductionDatabaseError("DETAIL_CORRECTION_SOURCE_DATE_MISSING")
-        head = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC LIMIT 1").fetchone()
+        head = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC,commit_id DESC LIMIT 1").fetchone()
         if head is None:
             raise ProductionDatabaseError("DETAIL_CORRECTION_HEAD_MISSING")
-        head_id = str(head[0])
+        baseline_head_id = str(head[0])
+        if mode == "APPLY" and str(parent[0]) != baseline_head_id:
+            raise ProductionDatabaseError("DETAIL_CORRECTION_PARENT_NOT_CURRENT_HEAD")
         try:
             db.execute("BEGIN IMMEDIATE")
+            locked_head = db.execute(
+                "SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC,commit_id DESC LIMIT 1"
+            ).fetchone()
+            if locked_head is None or str(locked_head[0]) != baseline_head_id:
+                raise ProductionDatabaseError("BASELINE_CHANGED_BEFORE_DETAIL_CORRECTION")
+            if mode == "APPLY":
+                locked_parent = db.execute(
+                    "SELECT commit_id FROM commit_batches WHERE run_id=? AND status='COMMITTED'", (parent_run_id,)
+                ).fetchone()
+                if locked_parent is None or str(locked_parent[0]) != baseline_head_id:
+                    raise ProductionDatabaseError("DETAIL_CORRECTION_PARENT_NOT_CURRENT_HEAD")
+
+            pending: list[dict[str, Any]] = []
             for sku in sorted(details_by_sku):
                 sku = str(sku).strip()
                 detail = details_by_sku[sku]
@@ -752,6 +767,56 @@ def apply_detail_corrections(
                     changes.append((field, table, old, value))
                 if not changes:
                     continue
+                after = dict(before)
+                after.update({field: value for field, _table, _old, value in changes})
+                pending.append({"sku": sku, "row": row, "before": before, "after": after, "changes": changes})
+
+            # A correction that changes facts is itself an immutable formal
+            # version.  The parent remains untouched; all derived records and
+            # CONTENT_CHANGE events are owned by this correction run.
+            if not pending:
+                db.rollback()
+                return {"status": "NOOP", "mode": mode, "parent_run_id": parent_run_id,
+                        "base_commit_id": baseline_head_id, "commit_id": baseline_head_id,
+                        "correction_run_id": None, "applied_skus": 0, "applied_fields": 0,
+                        "content_change_events": 0}
+            correction_run_id = (
+                f"detail_{mode.lower()}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}_"
+                f"{uuid.uuid4().hex[:8]}"
+            )
+            started_at = datetime.now(timezone.utc).isoformat()
+            payload = {
+                "operation": "DETAIL_CORRECTION", "mode": mode,
+                "parent_run_id": parent_run_id, "parent_commit_id": str(parent[0]) if parent else None,
+                "base_commit_id": baseline_head_id,
+                "affected_skus": len(pending),
+                "affected_fields": sum(len(item["changes"]) for item in pending),
+            }
+            bundle_hash = hashlib.sha256(
+                json.dumps({**payload, "details": details_by_sku}, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+            ).hexdigest()
+            correction_commit_id = f"{event_date}_{correction_run_id}_{bundle_hash[:12]}"
+            db.execute(
+                "INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES(?,?,?,?,?,?,?,?)",
+                (correction_run_id, event_date, "COMMITTED", "PASS", 0, started_at, started_at, "2.0.0"),
+            )
+            db.execute(
+                "INSERT INTO run_evidence(run_id,snapshot_path,snapshot_hash,evidence_json) VALUES(?,?,?,?)",
+                (correction_run_id, None, None, json.dumps(payload, ensure_ascii=False, sort_keys=True)),
+            )
+            db.execute(
+                "INSERT INTO commit_batches(commit_id,run_id,base_commit_id,bundle_hash,schema_version,started_at,committed_at,product_count,observation_count,price_event_count,event_count,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                (correction_commit_id, correction_run_id, baseline_head_id, bundle_hash, "2.0.0", started_at, started_at,
+                 len(pending), 0, 0, 0, "COMMITTED"),
+            )
+            db.execute("INSERT INTO export_sync(commit_id,status) VALUES(?, 'PENDING')", (correction_commit_id,))
+
+            for item in pending:
+                sku = item["sku"]
+                row = item["row"]
+                before = item["before"]
+                after = item["after"]
+                changes = item["changes"]
                 for field, table, old, value in changes:
                     if table == "products":
                         db.execute(f"UPDATE products SET {_DETAIL_CORRECTION_FIELDS[field][1]}=?,updated_at=CURRENT_TIMESTAMP WHERE official_sku=?", (value, sku))
@@ -759,38 +824,46 @@ def apply_detail_corrections(
                             # The product convenience column and the ES
                             # localization are one official fact and must not
                             # diverge after a Detail correction.
-                            db.execute("UPDATE product_localizations SET name=?,updated_at=CURRENT_TIMESTAMP,last_commit_id=?,applied_commit_id=? WHERE official_sku=? AND language='es'", (value, head_id, head_id, sku))
+                            db.execute("UPDATE product_localizations SET name=?,updated_at=CURRENT_TIMESTAMP,last_commit_id=?,applied_commit_id=? WHERE official_sku=? AND language='es'", (value, correction_commit_id, correction_commit_id, sku))
                     else:
-                        db.execute(f"UPDATE product_localizations SET {_DETAIL_CORRECTION_FIELDS[field][1]}=?,updated_at=CURRENT_TIMESTAMP,last_commit_id=?,applied_commit_id=? WHERE official_sku=? AND language='es'", (value, head_id, head_id, sku))
-                    db.execute(
-                        "INSERT INTO detail_corrections(correction_id,parent_run_id,official_sku,field_name,old_value,new_value,mode,source_hash) VALUES(?,?,?,?,?,?,?,?)",
-                        (uuid.uuid4().hex, parent_run_id, sku, field, None if old is None else str(old), str(value), mode, None),
-                    )
-                after = dict(before)
-                after.update({field: value for field, _table, _old, value in changes})
+                        db.execute(f"UPDATE product_localizations SET {_DETAIL_CORRECTION_FIELDS[field][1]}=?,updated_at=CURRENT_TIMESTAMP,last_commit_id=?,applied_commit_id=? WHERE official_sku=? AND language='es'", (value, correction_commit_id, correction_commit_id, sku))
                 fact_hash = localization_source_hash(after)
                 db.execute("UPDATE products SET source_hash=?,updated_at=CURRENT_TIMESTAMP WHERE official_sku=?", (fact_hash, sku))
-                db.execute("UPDATE product_localizations SET source_hash=?,updated_at=CURRENT_TIMESTAMP WHERE official_sku=? AND language IN ('es','zh')", (fact_hash, sku))
-                db.execute("UPDATE detail_corrections SET source_hash=? WHERE parent_run_id=? AND official_sku=? AND source_hash IS NULL", (fact_hash, parent_run_id, sku))
+                db.execute("UPDATE product_localizations SET source_hash=?,last_commit_id=?,applied_commit_id=?,freshness_status='CURRENT',updated_at=CURRENT_TIMESTAMP WHERE official_sku=? AND language='es'", (fact_hash, correction_commit_id, correction_commit_id, sku))
+                text_changed = any(field in {"name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es"} for field, _table, _old, _value in changes)
+                if text_changed:
+                    # Chinese content was not regenerated by this operation;
+                    # retain its old provenance and explicitly mark it stale.
+                    db.execute("UPDATE product_localizations SET freshness_status='STALE',updated_at=CURRENT_TIMESTAMP WHERE official_sku=? AND language='zh'", (sku,))
+                for field, _table, old, value in changes:
+                    db.execute(
+                        "INSERT INTO detail_corrections(correction_id,parent_run_id,official_sku,field_name,old_value,new_value,mode,source_hash) VALUES(?,?,?,?,?,?,?,?)",
+                        (uuid.uuid4().hex, parent_run_id, sku, field, None if old is None else str(old), str(value), mode, fact_hash),
+                    )
                 if content_hash(before) != content_hash(after):
                     event = {
                         "canonical_id": row[0], "sku": sku, "date": event_date, "event_type": "CONTENT_CHANGE",
-                        "old_value": content_hash(before)[:12], "new_value": content_hash(after)[:12], "evidence": f"DETAIL_{mode}", "run_id": parent_run_id,
+                        "old_value": content_hash(before)[:12], "new_value": content_hash(after)[:12], "evidence": f"DETAIL_{mode}", "run_id": correction_run_id,
                     }
-                    key = _event_key(parent_run_id, event, "detail-correction")
+                    key = _event_key(correction_run_id, event, "detail-correction")
                     db.execute("DELETE FROM event_history WHERE event_key=?", (key,))
                     db.execute(
                         "INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type,old_value,new_value,run_id,evidence,event_key) VALUES(?,?,?,?,?,?,?,?,?)",
-                        (event["canonical_id"], sku, event["date"], event["event_type"], event["old_value"], event["new_value"], parent_run_id, event["evidence"], key),
+                        (event["canonical_id"], sku, event["date"], event["event_type"], event["old_value"], event["new_value"], correction_run_id, event["evidence"], key),
                     )
                     content_events += 1
                 changed_skus.add(sku)
                 changed_fields += len(changes)
+            db.execute("UPDATE commit_batches SET event_count=? WHERE commit_id=?", (content_events, correction_commit_id))
             db.commit()
         except Exception:
             db.rollback()
             raise
-    return {"status": "SUCCESS", "parent_run_id": parent_run_id, "commit_id": head_id,
+    return {"status": "SUCCESS", "parent_run_id": parent_run_id,
+            "source_parent_run_id": parent_run_id,
+            "source_parent_commit_id": str(parent[0]) if parent else None,
+            "base_commit_id": baseline_head_id, "correction_run_id": correction_run_id,
+            "commit_id": correction_commit_id,
             "applied_skus": len(changed_skus), "applied_fields": changed_fields,
             "content_change_events": content_events, "mode": mode}
 

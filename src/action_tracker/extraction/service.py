@@ -160,7 +160,20 @@ class ExtractionService:
                    ia.status AS image_status, ia.master_image_path, ia.width AS image_width, ia.height AS image_height,
                    ph.change_direction,ph.change_amount,ph.change_percent, ps.historical_low,ps.historical_high,
                    ev_latest.recent_event_type,ev_latest.recent_event_at"""
-        joins.append("LEFT JOIN (SELECT official_sku, MIN(new_price) AS historical_low, MAX(new_price) AS historical_high FROM price_history GROUP BY official_sku) ps ON ps.official_sku=p.official_sku")
+        # Historical extrema cover every observed endpoint, not only the
+        # latest prices.  Including current_price also handles products with
+        # no price_history rows and preserves the true all-time range.
+        joins.append("""LEFT JOIN (
+            SELECT official_sku, MIN(price) AS historical_low, MAX(price) AS historical_high
+            FROM (
+                SELECT official_sku, old_price AS price FROM price_history WHERE old_price IS NOT NULL
+                UNION ALL
+                SELECT official_sku, new_price AS price FROM price_history WHERE new_price IS NOT NULL
+                UNION ALL
+                SELECT official_sku, current_price AS price FROM products WHERE current_price IS NOT NULL
+            ) observed_prices
+            GROUP BY official_sku
+        ) ps ON ps.official_sku=p.official_sku""")
         base = f" FROM products p {' '.join(joins)}{where}"
         db_context = nullcontext(connection) if connection is not None else connect(self.db_path)
         with db_context as db:
