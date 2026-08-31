@@ -2,13 +2,12 @@
 
 更新日期：2026-08-31
 项目目录：`F:\\ActionSKUTracker`
-当前开发分支：`feat/action-data-platform-v2`
+当前开发分支：`hotfix/post-merge-production-safety`
 
 ## 当前结论
 
-Architecture V2 的 Extraction、Saved View、Selection、Artifact 和本机
-Workspace 闭环已在功能分支实现。当前工作区正在进行最终测试、真实 SQLite
-只读验收和远端 CI 验证；主分支未修改，也不会自动合并。
+Architecture V2 已合并到 `main@59adcb1`。当前独立热修复分支只处理生产
+安全、恢复链和 Windows 行为；不会回滚 V2，也不会修改真实商品事实。
 
 ## 生产数据边界
 
@@ -65,12 +64,12 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
 
 ## 测试与发布状态
 
-- 本地完整回归：341 passed。
+- 本地完整回归：356 passed（热修复开发头）。
 - CI-safe 白名单已包含 `tests/test_extraction_v2.py`、`tests/test_cli_v2.py`、
   `tests/test_operations_http_v2.py`。
-- 功能提交 `07de5766a491b14e0fdeede5f334fae292273db3` 的 GitHub Actions run
-  `33360287371` 已通过 CI-safe 测试；主分支仍未自动合并。
-- 合并策略：完成独立审查且 HIGH/MEDIUM 均为 0 后，只给出 `RECOMMEND MERGE`，不自动合并。
+- `main@59adcb1` 的合并 CI 已通过；热修复尚未推送或合并。
+- 合并策略：完成独立审查且 HIGH/MEDIUM 均为 0 后，才给出
+  `RECOMMEND MERGE HOTFIX TO MAIN`，不会自动合并。
 
 ## 相关文档
 
@@ -80,3 +79,16 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
 - `docs/DATA_WORKSPACE_V1.md`
 - `docs/V2_FINAL_ACCEPTANCE.md`
 - `docs/OPERATIONS_RUNBOOK_V2.md`
+
+## Post-Merge Production Safety Hotfix
+
+- Windows PID 探测统一使用 `services.runtime.is_process_alive()`；Windows 不再用
+  `os.kill(pid, 0)`，RunLock 与 Operations Resume 使用同一实现。
+- Listing 的 `goto`/reload 均由 BrowserSession + AccessController 统一控制；Listing
+  不再直接刷新 Playwright page，也不会把 `goto=False` 当作成功。
+- Resume 会恢复 allowlist 内的 delegated `run_id`、`commit_status`、`commit_id` 与 QA
+  证据；导出待同步只重建当前 SQLite commit 的兼容投影，不重新采集或重复提交。
+- `export_sync` 支持 `SUPERSEDED`，历史 commit 不再永久占用 pending 指标；Detail
+  apply/backfill 在 SQLite PRIMARY 中仅改允许的详情事实，并再投影兼容 Excel/CSV。
+- 真实库于 2026-08-31 只读验收：integrity PASS、foreign keys 0、CURRENT 5,379、
+  MISSING 17、OFFLINE 650、HISTORICAL 2,634、lifecycle mismatch 0、export sync SUCCESS 8。

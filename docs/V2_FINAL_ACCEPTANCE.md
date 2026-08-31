@@ -67,3 +67,30 @@ integrity PASS，foreign-key check 为 0。该快照为只读验收记录。
 `RECOMMEND MERGE`。
 
 Windows Scheduler 的实际注册属于主机运维动作；仓库只提供注册脚本，未在代码中自动创建计划任务。
+
+## Post-Merge Production Safety Hotfix
+
+V2 functional acceptance does not by itself prove whole-program production
+safety. The follow-up hotfix on `hotfix/post-merge-production-safety` closes
+the post-merge audit findings without changing Extraction, Selection or
+Artifact contracts:
+
+- Windows PID probing is shared and non-signalling; Listing cannot bypass
+  BrowserSession / AccessController through raw reloads.
+- Resume restores QA and commit metadata, pending exports recover from the
+  exact current commit, and superseded export rows are excluded from pending
+  operational metrics.
+- Detail apply/backfill now write only approved detail facts to SQLite PRIMARY
+  with correction audit evidence, followed by compatibility projection.
+- Formal writes are limited to `production-run` / `data-update`; status and QA
+  resolve SQLite PRIMARY and nested snapshot runs correctly.
+- Backup API output is reopened and checked for integrity, foreign keys and
+  database identity before Collection; CI runs the safe suite on Ubuntu and
+  Windows.
+
+Read-only production validation on 2026-08-31, after a verified Backup API
+copy, observed: integrity `ok`, foreign keys `0`, database role `PRIMARY`,
+CURRENT `5,379`, MISSING `17`, OFFLINE `650`, HISTORICAL `2,634`, lifecycle
+mismatch `0`, and export sync `SUCCESS=8`. A migration rehearsal on a separate
+backup copy successfully upgraded `export_sync` to support `SUPERSEDED` while
+retaining integrity and zero foreign-key violations.
