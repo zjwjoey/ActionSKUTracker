@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ from .service import (
     validate_spanish_source_fields,
     validate_zh_rows_against_source,
     _resolve_image_eligibility,
+    _commit_id_for_run,
 )
 from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, verify_template1_xlsx, write_template1_xlsx
 
@@ -35,6 +37,7 @@ def export_template1(
         from .profiles import load_profile
         profile = load_profile(cfg, language="es", no_images=True)
         source = resolve_formal_source(cfg, export_date=export_date, requested_run_id=run_id, profile=profile)
+        artifact_source_commit_id = source.source_commit_id or _commit_id_for_run(_database_path(cfg), source.run_id)
         records = list(source.records)
         selection_source_commit_id = None
         if selection_id:
@@ -131,6 +134,7 @@ def export_template1(
         "with_images": with_images,
         "selection_id": selection_id,
         "selection_source_commit_id": selection_source_commit_id,
+        "artifact_source_commit_id": artifact_source_commit_id,
         "image_profile": "excel_250_white_v1" if with_images else None,
         "dictionary_fallback_counts": fallback_counts,
         "history_source_stats": [stat.__dict__ for stat in history.source_stats],
@@ -143,10 +147,10 @@ def export_template1(
     if selection_id:
         from ..delivery.artifacts import ArtifactService
         ArtifactService(_database_path(cfg)).record(
-            artifact_id=f"artifact_{hashlib.sha256((str(output)+source.run_id).encode()).hexdigest()[:16]}",
+            artifact_id=f"artifact_{uuid.uuid4().hex}",
             artifact_type="TEMPLATE1_XLSX", file_path=output, row_count=len(current_skus), selection_id=selection_id,
             language="multi", image_profile="excel_250_white_v1" if with_images else None,
-            source_commit_id=source.run_id, selection_source_commit_id=selection_source_commit_id,
+            source_commit_id=artifact_source_commit_id, selection_source_commit_id=selection_source_commit_id,
             manifest_path=manifest_path,
         )
     return {

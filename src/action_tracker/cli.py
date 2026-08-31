@@ -50,6 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     x = sub.add_parser("extract", help="统一商品提取（SQLite PRIMARY 只读）")
     x.add_argument("--query-json", help="查询 JSON 文件或 JSON 字符串")
     x.add_argument("--keyword")
+    x.add_argument("--canonical-id"); x.add_argument("--canonical-id-list", dest="canonical_ids", action="append")
     x.add_argument("--sku", dest="skus", action="append")
     x.add_argument("--status", dest="statuses", action="append")
     x.add_argument("--cat1", action="append"); x.add_argument("--cat2", action="append")
@@ -59,7 +60,9 @@ def build_parser() -> argparse.ArgumentParser:
     original_group.add_argument("--no-original-price", dest="no_original_price", action="store_true")
     x.add_argument("--promotion", action="store_true"); x.add_argument("--new", dest="new_badge", action="store_true"); x.add_argument("--sustainable", action="store_true")
     x.add_argument("--price-change", choices=("UP", "DOWN", "FLAT")); x.add_argument("--min-change-amount", type=float); x.add_argument("--min-change-percent", type=float)
+    x.add_argument("--historical-low-min", type=float); x.add_argument("--historical-low-max", type=float); x.add_argument("--historical-high-min", type=float); x.add_argument("--historical-high-max", type=float)
     x.add_argument("--event-type", dest="event_types", action="append"); x.add_argument("--date-from"); x.add_argument("--date-to"); x.add_argument("--last-n-days", type=int)
+    x.add_argument("--first-seen-from"); x.add_argument("--first-seen-to"); x.add_argument("--last-seen-from"); x.add_argument("--last-seen-to"); x.add_argument("--event-from"); x.add_argument("--event-to"); x.add_argument("--event-last-n-days", type=int)
     x.add_argument("--image-status", dest="image_statuses", action="append"); x.add_argument("--has-image", action="store_true"); x.add_argument("--image-ready", dest="image_ready_for_export", action="store_true")
     x.add_argument("--localization-status"); x.add_argument("--missing-field", dest="missing_fields", action="append")
     x.add_argument("--sort", default="sku"); x.add_argument("--desc", action="store_true")
@@ -69,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     v_sub = v.add_subparsers(dest="saved_view_command", required=True)
     vc = v_sub.add_parser("create"); vc.add_argument("name"); vc.add_argument("--query-json", required=True); vc.add_argument("--description", default="")
     v_sub.add_parser("list")
+    vr = v_sub.add_parser("run"); vr.add_argument("view_id"); vr.add_argument("--json", action="store_true")
     vu = v_sub.add_parser("update"); vu.add_argument("view_id"); vu.add_argument("--name"); vu.add_argument("--description"); vu.add_argument("--query-json")
     vd = v_sub.add_parser("delete"); vd.add_argument("view_id")
     sset = sub.add_parser("selection", help="Selection Set 管理")
@@ -384,10 +388,10 @@ def main(argv=None) -> int:
         if args.query_json:
             source = Path(args.query_json)
             payload = _json.loads(source.read_text(encoding="utf-8") if source.exists() else args.query_json)
-        for key in ("keyword", "min_price", "max_price", "sort", "limit", "offset", "price_change", "min_change_amount", "min_change_percent", "date_from", "date_to", "last_n_days", "localization_status"):
+        for key in ("keyword", "canonical_id", "min_price", "max_price", "sort", "limit", "offset", "price_change", "min_change_amount", "min_change_percent", "historical_low_min", "historical_low_max", "historical_high_min", "historical_high_max", "date_from", "date_to", "last_n_days", "first_seen_from", "first_seen_to", "last_seen_from", "last_seen_to", "event_from", "event_to", "event_last_n_days", "localization_status"):
             value = getattr(args, key, None)
             if value is not None: payload[key] = value
-        for key in ("skus", "statuses", "cat1", "cat2", "event_types", "image_statuses", "missing_fields"):
+        for key in ("canonical_ids", "skus", "statuses", "cat1", "cat2", "event_types", "image_statuses", "missing_fields"):
             value = getattr(args, key, None)
             if value: payload[key] = tuple(value)
         if args.has_original_price: payload["has_original_price"] = True
@@ -410,6 +414,13 @@ def main(argv=None) -> int:
         import json as _json
         svc = SavedViewService(database_path(cfg))
         if args.saved_view_command == "list": print(_json.dumps(svc.list(), ensure_ascii=False)); return 0
+        if args.saved_view_command == "run":
+            view = svc.get(args.view_id)
+            if not view:
+                print(_json.dumps({"error": "VIEW_NOT_FOUND"}, ensure_ascii=False), file=sys.stderr); return 2
+            from .extraction import ExtractionService
+            result = ExtractionService(database_path(cfg)).execute(view["query"])
+            print(_json.dumps(result.as_dict() if args.json else {"view_id": args.view_id, "query_hash": result.query_hash, "matched_count": result.matched_count, "returned": len(result.items)}, ensure_ascii=False, default=str)); return 0
         if args.saved_view_command == "delete":
             svc.delete(args.view_id); print(_json.dumps({"status": "DELETED", "view_id": args.view_id}, ensure_ascii=False)); return 0
         if args.saved_view_command == "update":

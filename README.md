@@ -198,3 +198,5 @@ CI 只运行不访问官网、使用临时目录的本地测试，不执行：
 完整真实运行仍必须在本地经过 dry-run 和 QA。CI 测试白名单见
 `tests/ci_safe_tests.txt`，依赖入口见 `requirements.txt` 与
 `requirements-dev.txt`。
+- 运行已保存查询：`python -m action_tracker saved-view run <VIEW_ID> --json`。
+- 打开本机 Workspace：`python -m action_tracker ops serve`，浏览器访问 `http://127.0.0.1:8787/`。

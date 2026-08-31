@@ -149,6 +149,50 @@ class OperationsService:
         from ..extraction.selections import SelectionService
         return SelectionService(self.db_path).list()
 
+    def selection_detail(self, selection_id: str) -> dict[str, Any] | None:
+        from ..extraction.selections import SelectionService
+        selection = SelectionService(self.db_path).get(selection_id)
+        if not selection:
+            return None
+        # Membership is immutable, while the displayed facts are always read
+        # from the current SQLite state.
+        facts = self.extract({"skus": selection["members"], "statuses": ["CURRENT", "MISSING", "OFFLINE", "HISTORICAL"], "limit": 10000})
+        return {**selection, "items": facts["items"], "artifacts": self.artifacts(selection_id)}
+
+    def export_selection(self, selection_id: str, artifact_type: str) -> dict[str, Any]:
+        """Materialize a requested Selection delivery through existing adapters."""
+        from ..extraction.selections import SelectionService
+        selection = SelectionService(self.db_path).get(selection_id)
+        if not selection:
+            raise KeyError("SELECTION_NOT_FOUND")
+        export_root = Path(self.config.get("paths", {}).get("exports") or self.db_path.parent.parent / "exports")
+        export_root.mkdir(parents=True, exist_ok=True)
+        kind = artifact_type.upper()
+        if kind == "CSV":
+            from ..delivery.artifacts import ArtifactService
+            return ArtifactService(self.db_path).build_csv(selection_id, export_root / f"Selection_{selection_id}.csv")
+        commit_id = selection.get("source_commit_id")
+        with connect(self.db_path) as db:
+            row = db.execute("SELECT r.run_date FROM commit_batches c JOIN runs r ON r.run_id=c.run_id WHERE c.commit_id=?", (commit_id,)).fetchone()
+            if not row:
+                row = db.execute("SELECT run_date FROM runs ORDER BY started_at DESC LIMIT 1").fetchone()
+        if not row:
+            raise ValueError("SELECTION_EXPORT_DATE_UNAVAILABLE")
+        export_date = str(row[0])
+        cfg = self.config
+        if kind in {"ES_XLSX", "ZH_XLSX", "ES_XLSX_IMAGES", "ZH_XLSX_IMAGES"}:
+            from ..exporting.service import export_catalog
+            language = "es" if kind.startswith("ES") else "zh"
+            return export_catalog(cfg, language=language, export_date=export_date, no_images=not kind.endswith("_IMAGES"), selection_id=selection_id)
+        if kind == "TEMPLATE1":
+            from ..exporting.template1_service import export_template1
+            return export_template1(cfg, export_date=export_date, selection_id=selection_id, with_images=False)
+        if kind == "IMAGE_ZIP":
+            from ..delivery.artifacts import ArtifactService
+            image_root = Path(cfg.get("paths", {}).get("images") or self.db_path.parent.parent / "images") / "derivatives" / "excel_250"
+            return ArtifactService(self.db_path).build_image_zip(selection_id, image_root, export_root / f"Selection_{selection_id}.zip")
+        raise ValueError(f"SELECTION_EXPORT_UNSUPPORTED: {artifact_type}")
+
     def artifacts(self, selection_id: str | None = None) -> list[dict[str, Any]]:
         from ..delivery.artifacts import ArtifactService
         return ArtifactService(self.db_path).list(selection_id)

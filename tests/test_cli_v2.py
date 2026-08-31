@@ -7,3 +7,5 @@ def test_saved_view_cli_exposes_update_and_delete():
     delete = parser.parse_args(["saved-view", "delete", "view_1"])
     assert update.saved_view_command == "update" and update.view_id == "view_1"
     assert delete.saved_view_command == "delete" and delete.view_id == "view_1"
+    run = parser.parse_args(["saved-view", "run", "view_1", "--json"])
+    assert run.saved_view_command == "run" and run.json is True

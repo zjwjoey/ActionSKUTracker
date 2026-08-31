@@ -48,6 +48,7 @@ class ExportSource:
     records: tuple[dict[str, Any], ...]
     source_master_file_hash: str | None
     directory: Path | None = None
+    source_commit_id: str | None = None
 
 
 _SOURCE_HASH_FIELDS = (
@@ -77,6 +78,7 @@ def export_catalog(
     if profile.language != language:
         raise ExportValidationError(f"EXPORT_PROFILE_LANGUAGE_MISMATCH: {profile.profile_id}")
     source = resolve_formal_source(cfg, export_date=export_date, requested_run_id=run_id, profile=profile)
+    artifact_source_commit_id = source.source_commit_id or _commit_id_for_run(_database_path(cfg), source.run_id)
     selection_source_commit_id = None
     if selection_id:
         from ..extraction.selections import SelectionService
@@ -89,7 +91,7 @@ def export_catalog(
             raise ExportValidationError(f"SELECTION_MEMBER_NOT_IN_FORMAL_SOURCE: {','.join(missing[:10])}")
         source = ExportSource(source.export_date, source.run_id, source.kind,
                               tuple(r for r in source.records if str(r.get("sku") or "") in members),
-                              source.source_master_file_hash, source.directory)
+                              source.source_master_file_hash, source.directory, source.source_commit_id)
         selection_source_commit_id = selection.get("source_commit_id")
     validate_source_records(source.records, export_date=export_date)
     dictionary_hash = None
@@ -161,6 +163,7 @@ def export_catalog(
             "image_eligible_count": sum(1 for eligible in (image_eligibility or {}).values() if eligible),
             "selection_id": selection_id,
             "selection_source_commit_id": selection_source_commit_id,
+            "artifact_source_commit_id": artifact_source_commit_id,
         }
         if language == "zh":
             manifest["dictionary_hash"] = dictionary_hash
@@ -175,7 +178,7 @@ def export_catalog(
                 artifact_type="XLSX", file_path=output_path, row_count=len(rows), selection_id=selection_id,
                 profile_id=profile.profile_id, language=language,
                 image_profile="excel_250_white_v1" if not no_images else None,
-                source_commit_id=source.run_id, selection_source_commit_id=selection_source_commit_id,
+                source_commit_id=artifact_source_commit_id, selection_source_commit_id=selection_source_commit_id,
                 manifest_path=manifest_path,
             )
     finally:
@@ -192,7 +195,17 @@ def export_catalog(
         "image_missing_count": image_stats["missing_count"],
         "image_eligible_count": sum(1 for eligible in (image_eligibility or {}).values() if eligible),
         "selection_id": selection_id,
+        "artifact_source_commit_id": artifact_source_commit_id,
     }
+
+
+def _commit_id_for_run(db_path: Path, run_id: str | None) -> str | None:
+    if not run_id or not db_path.exists():
+        return None
+    from ..database.connection import connect
+    with connect(db_path) as db:
+        row = db.execute("SELECT commit_id FROM commit_batches WHERE run_id=? AND status='COMMITTED'", (run_id,)).fetchone()
+    return str(row[0]) if row else None
 
 
 def resolve_formal_source(
@@ -272,7 +285,7 @@ def _resolve_sqlite_current_source(
         raise ExportValidationError("SQLITE_CURRENT_SOURCE_EMPTY")
     return ExportSource(
         export_date=export_date, run_id=str(info["run_id"]), kind="SQLITE_CURRENT",
-        records=records, source_master_file_hash=None, directory=None,
+        records=records, source_master_file_hash=None, directory=None, source_commit_id=str(info["commit_id"]),
     )
 
 

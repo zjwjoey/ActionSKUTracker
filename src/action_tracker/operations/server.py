@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urlencode
 import re
 
 from .service import OperationsService
@@ -24,12 +24,15 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
             path = urlparse(self.path).path
             if path == "/":
                 status = svc.system_status(); health = svc.health(); db_role = status["database"].get("metadata", {}).get("database_role", "-")
-                html = f"<!doctype html><html lang='zh-CN'><meta charset='utf-8'><title>ActionSKUTracker Workspace</title><style>body{{font-family:system-ui;margin:2rem;background:#f5f7fa;color:#17202a}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}}.card{{background:white;border:1px solid #d9e2ec;border-radius:8px;padding:1rem}}.value{{font-size:1.8rem;font-weight:700}}a{{margin-right:1rem}}</style><h1>ActionSKUTracker Workspace</h1><p>本机只读控制台 · 状态: <b>{status['state']}</b> · 健康: <b>{health['state']}</b></p><div class='grid'><div class='card'>CURRENT SKU<div class='value'>{status['current_sku']}</div></div><div class='card'>数据库角色<div class='value'>{db_role}</div></div><div class='card'>待导出同步<div class='value'>{status['database'].get('pending_export_sync', 0)}</div></div><div class='card'>待审核<div class='value'>{status['reviews_open']}</div></div><div class='card'>AI队列<div class='value'>{status['translation_queue_pending']}</div></div></div><p><a href='/workspace'>商品 Workspace</a><a href='/views'>Saved Views</a><a href='/selections'>Selections</a><a href='/artifacts'>导出记录</a><a href='/api/runs'>运行记录</a><a href='/api/quality'>数据质量</a><a href='/api/health'>系统健康</a></p></html>"
-                return self._send_html(html)
+                page_html = f"<!doctype html><html lang='zh-CN'><meta charset='utf-8'><title>ActionSKUTracker Workspace</title><style>body{{font-family:system-ui;margin:2rem;background:#f5f7fa;color:#17202a}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}}.card{{background:white;border:1px solid #d9e2ec;border-radius:8px;padding:1rem}}.value{{font-size:1.8rem;font-weight:700}}a{{margin-right:1rem}}</style><h1>ActionSKUTracker Workspace</h1><p>本机只读控制台 · 状态: <b>{status['state']}</b> · 健康: <b>{health['state']}</b></p><div class='grid'><div class='card'>CURRENT SKU<div class='value'>{status['current_sku']}</div></div><div class='card'>数据库角色<div class='value'>{db_role}</div></div><div class='card'>待导出同步<div class='value'>{status['database'].get('pending_export_sync', 0)}</div></div><div class='card'>待审核<div class='value'>{status['reviews_open']}</div></div><div class='card'>AI队列<div class='value'>{status['translation_queue_pending']}</div></div></div><p><a href='/workspace'>商品 Workspace</a><a href='/views'>Saved Views</a><a href='/selections'>Selections</a><a href='/artifacts'>导出记录</a><a href='/api/runs'>运行记录</a><a href='/api/quality'>数据质量</a><a href='/api/health'>系统健康</a></p></html>"
+                return self._send_html(page_html)
             if path == "/workspace":
                 params = parse_qs(urlparse(self.path).query); keyword = (params.get("keyword") or [""])[-1]
                 query = {key: values[-1] for key, values in params.items() if values}
                 query["keyword"] = keyword; query.setdefault("statuses", "CURRENT"); query["limit"] = 50
+                try: query["offset"] = max(0, int(query.get("offset", 0)))
+                except (TypeError, ValueError): query["offset"] = 0
+                query["sort"] = query.get("sort", "sku")
                 for key in ("statuses", "cat1", "cat2"):
                     if key in query: query[key] = tuple(x for x in query[key].split(",") if x)
                 for key in ("min_price", "max_price"):
@@ -39,7 +42,7 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                 if "last_n_days" in query:
                     try: query["last_n_days"] = int(query["last_n_days"])
                     except ValueError: query.pop("last_n_days", None)
-                for key in ("has_image", "promotion", "new_badge", "sustainable"):
+                for key in ("has_image", "promotion", "new_badge", "sustainable", "descending"):
                     if key in query: query[key] = str(query[key]).lower() in {"1", "true", "yes", "on"}
                 result = svc.extract(query)
                 esc = lambda value: html.escape(str(value or ""))
@@ -55,9 +58,15 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                 safe_change = html.escape(str(query.get("price_change", "")), quote=True)
                 safe_image_status = html.escape(str(query.get("image_statuses", "")), quote=True)
                 safe_loc_status = html.escape(str(query.get("localization_status", "")), quote=True)
+                current_offset = int(query.get("offset", 0)); next_offset = current_offset + 50; prev_offset = max(0, current_offset - 50)
+                nav_base = {k: v for k, v in params.items() if k not in {"offset"}}
+                next_url = "/workspace?" + urlencode({**nav_base, "offset": next_offset}, doseq=True)
+                prev_url = "/workspace?" + urlencode({**nav_base, "offset": prev_offset}, doseq=True)
+                query_json = html.escape(json.dumps({**query, "limit": 10000, "offset": 0}, ensure_ascii=False), quote=True)
                 status_options = "CURRENT" if query.get("statuses") == ("CURRENT",) else "OFFLINE" if query.get("statuses") == ("OFFLINE",) else "CURRENT,OFFLINE"
                 options = "".join(f"<option value='{value}'{' selected' if status_options == value else ''}>{label}</option>" for value, label in (("CURRENT", "CURRENT"), ("OFFLINE", "OFFLINE"), ("CURRENT,OFFLINE", "全部状态")))
-                return self._send_html(f"<!doctype html><html lang='zh-CN'><meta charset='utf-8'><title>商品 Workspace</title><style>body{{font-family:system-ui;margin:2rem}}table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #ddd;padding:.4rem;text-align:left}}th{{background:#eef2f7}}input,select{{padding:.4rem;margin:.2rem}}input[name=keyword]{{width:22rem}}</style><h1>商品 Workspace</h1><form><input name='keyword' value='{safe_keyword}' placeholder='SKU / 西语或中文关键词'><input name='skus' value='{safe_sku}' placeholder='SKU'><select name='statuses'>{options}</select><input name='cat1' value='{safe_cat1}' placeholder='一级分类'><input name='cat2' value='{safe_cat2}' placeholder='二级分类'><input name='min_price' value='{min_price}' type='number' step='0.01' placeholder='最低价'><input name='max_price' value='{max_price}' type='number' step='0.01' placeholder='最高价'><input name='last_n_days' value='{safe_days}' type='number' min='1' placeholder='最近N天'><select name='price_change'><option value=''>价格变化</option><option value='UP'{' selected' if query.get('price_change') == 'UP' else ''}>上涨</option><option value='DOWN'{' selected' if query.get('price_change') == 'DOWN' else ''}>下降</option></select><input name='image_statuses' value='{safe_image_status}' placeholder='图片状态'><input name='localization_status' value='{safe_loc_status}' placeholder='中文状态'><label><input type='checkbox' name='has_image' value='1'{checked('has_image')}>有图片</label><label><input type='checkbox' name='promotion' value='1'{checked('promotion')}>促销</label><label><input type='checkbox' name='new_badge' value='1'{checked('new_badge')}>新品</label><button>查询</button></form><p>匹配 {result['matched_count']} 条，当前显示 {len(result['items'])} 条 · <a href='/'>返回</a></p><table><tr><th>SKU</th><th>西语名称</th><th>中文名称</th><th>分类</th><th>当前价</th><th>原价</th><th>状态</th><th>首次发现</th><th>最后确认</th><th>最近变价</th><th>图片</th><th>中文状态</th></tr>{rows}</table></html>")
+                sort_options = "".join(f"<option value='{value}'{' selected' if query.get('sort') == value else ''}>{label}</option>" for value, label in (("sku", "SKU"), ("current_price", "价格"), ("first_seen", "首次发现"), ("last_seen", "最后确认"), ("recent_change", "最近变化")))
+                return self._send_html(f"<!doctype html><html lang='zh-CN'><meta charset='utf-8'><title>商品 Workspace</title><style>body{{font-family:system-ui;margin:2rem}}table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #ddd;padding:.4rem;text-align:left}}th{{background:#eef2f7}}input,select{{padding:.4rem;margin:.2rem}}input[name=keyword]{{width:22rem}}.actions{{margin:.8rem 0}}</style><h1>商品 Workspace</h1><form><input name='keyword' value='{safe_keyword}' placeholder='SKU / 西语或中文关键词'><input name='skus' value='{safe_sku}' placeholder='SKU'><select name='statuses'>{options}</select><select name='sort'>{sort_options}</select><label><input type='checkbox' name='descending' value='1'{checked('descending')}>倒序</label><input name='cat1' value='{safe_cat1}' placeholder='一级分类'><input name='cat2' value='{safe_cat2}' placeholder='二级分类'><input name='min_price' value='{min_price}' type='number' step='0.01' placeholder='最低价'><input name='max_price' value='{max_price}' type='number' step='0.01' placeholder='最高价'><input name='last_n_days' value='{safe_days}' type='number' min='1' placeholder='最近N天'><select name='price_change'><option value=''>价格变化</option><option value='UP'{' selected' if query.get('price_change') == 'UP' else ''}>上涨</option><option value='DOWN'{' selected' if query.get('price_change') == 'DOWN' else ''}>下降</option></select><input name='image_statuses' value='{safe_image_status}' placeholder='图片状态'><input name='localization_status' value='{safe_loc_status}' placeholder='中文状态'><label><input type='checkbox' name='has_image' value='1'{checked('has_image')}>有图片</label><label><input type='checkbox' name='promotion' value='1'{checked('promotion')}>促销</label><label><input type='checkbox' name='new_badge' value='1'{checked('new_badge')}>新品</label><button>查询</button></form><div class='actions'><form method='post' action='/api/views' style='display:inline'><input type='hidden' name='query_json' value='{query_json}'><input name='name' required placeholder='Saved View名称'><button>保存为 Saved View</button></form> <form method='post' action='/api/selections' style='display:inline'><input type='hidden' name='query_json' value='{query_json}'><input name='name' required placeholder='Selection名称'><button>保存为 Selection</button></form></div><p>匹配 {result['matched_count']} 条，当前显示 {len(result['items'])} 条（offset {current_offset}） · <a href='/'>返回</a> · <a href='{html.escape(prev_url, quote=True)}'>上一页</a> · <a href='{html.escape(next_url, quote=True)}'>下一页</a></p><table><tr><th>SKU</th><th>西语名称</th><th>中文名称</th><th>分类</th><th>当前价</th><th>原价</th><th>状态</th><th>首次发现</th><th>最后确认</th><th>最近变价</th><th>图片</th><th>中文状态</th></tr>{rows}</table></html>")
             if path == "/api/status": return self._send(svc.system_status())
             if path == "/api/runs": return self._send(svc.run_history())
             match = re.fullmatch(r"/api/runs/([^/]+)", path)
@@ -73,13 +82,24 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                     if key in query:
                         try: query[key] = float(query[key]) if "price" in key else int(query[key])
                         except ValueError: return self._send({"error": f"INVALID_{key}"})
-                for key in ("promotion", "new_badge", "sustainable", "has_original_price", "has_image", "image_ready_for_export"):
+                for key in ("promotion", "new_badge", "sustainable", "has_original_price", "has_image", "image_ready_for_export", "descending"):
                     if key in query:
                         query[key] = str(query[key]).lower() in {"1", "true", "yes", "on"}
                 return self._send(svc.extract(query))
             if path == "/api/views": return self._send(svc.saved_views())
             if path == "/api/selections": return self._send(svc.selections())
             if path == "/api/artifacts": return self._send(svc.artifacts())
+            match = re.fullmatch(r"/api/views/([^/]+)/run", path)
+            if match:
+                from ..extraction.selections import SavedViewService
+                view = SavedViewService(svc.db_path).get(match.group(1))
+                return self._send({"error": "VIEW_NOT_FOUND"} if not view else svc.extract(view["query"]))
+            match = re.fullmatch(r"/api/selections/([^/]+)/artifacts", path)
+            if match: return self._send(svc.artifacts(match.group(1)))
+            match = re.fullmatch(r"/api/selections/([^/]+)", path)
+            if match:
+                result = svc.selection_detail(match.group(1))
+                return self._send(result or {"error": "SELECTION_NOT_FOUND"})
             match = re.fullmatch(r"/api/views/([^/]+)", path)
             if match:
                 from ..extraction.selections import SavedViewService
@@ -90,10 +110,26 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                 from ..extraction.selections import SelectionService
                 result = SelectionService(svc.db_path).get(match.group(1))
                 return self._send(result or {"error": "SELECTION_NOT_FOUND"})
+            match = re.fullmatch(r"/views/([^/]+)", path)
+            if match:
+                from ..extraction.selections import SavedViewService
+                view = SavedViewService(svc.db_path).get(match.group(1))
+                if not view: return self._send_html("<h1>Saved View 不存在</h1>")
+                result = svc.extract(view["query"]); esc = lambda value: html.escape(str(value or ""))
+                rows = "".join(f"<tr><td>{esc(i.get('official_sku'))}</td><td>{esc(i.get('name_es'))}</td><td>{esc(i.get('zh_name'))}</td><td>{esc(i.get('status'))}</td><td>{esc(i.get('current_price'))}</td></tr>" for i in result["items"])
+                return self._send_html(f"<!doctype html><meta charset='utf-8'><title>运行 Saved View</title><h1>{esc(view['name'])}</h1><p>当前匹配 {result['matched_count']} 条 · <a href='/views'>返回</a></p><table border='1'><tr><th>SKU</th><th>西语名称</th><th>中文名称</th><th>状态</th><th>当前价</th></tr>{rows}</table>")
+            match = re.fullmatch(r"/selections/([^/]+)", path)
+            if match:
+                detail = svc.selection_detail(match.group(1))
+                if not detail: return self._send_html("<h1>Selection 不存在</h1>")
+                esc = lambda value: html.escape(str(value or "")); rows = "".join(f"<tr><td>{esc(i.get('official_sku'))}</td><td>{esc(i.get('name_es'))}</td><td>{esc(i.get('zh_name'))}</td><td>{esc(i.get('status'))}</td><td>{esc(i.get('current_price'))}</td></tr>" for i in detail["items"])
+                artifacts = "".join(f"<li>{esc(a.get('artifact_type'))} · {esc(a.get('created_at'))} · {esc(a.get('file_path'))}</li>" for a in detail["artifacts"])
+                exports = "".join(f"<form method='post' action='/api/selections/{html.escape(str(detail['selection_id']), quote=True)}/export' style='display:inline'><input type='hidden' name='artifact_type' value='{kind}'><button>{label}</button></form> " for kind, label in (("CSV", "导出CSV"), ("ES_XLSX", "导出西语Excel"), ("ZH_XLSX", "导出中文Excel"), ("ZH_XLSX_IMAGES", "导出中文带图"), ("IMAGE_ZIP", "导出图片包")))
+                return self._send_html(f"<!doctype html><meta charset='utf-8'><title>Selection</title><h1>{esc(detail['name'])}</h1><p>{esc(detail['description'])}</p><p>创建于 {esc(detail['created_at'])} · 来源提交 {esc(detail.get('source_commit_id'))} · 成员 {detail['matched_count']} 条</p><p>{exports}</p><p>Artifact 历史：</p><ul>{artifacts or '<li>暂无</li>'}</ul><table border='1'><tr><th>SKU</th><th>西语名称</th><th>中文名称</th><th>状态</th><th>当前价</th></tr>{rows}</table><p><a href='/selections'>返回</a></p>")
             if path == "/views":
                 views = svc.saved_views()
                 rows = "".join(
-                    f"<tr><td>{html.escape(str(v['name']))}</td><td>{html.escape(str(v['description']))}</td>"
+                    f"<tr><td><a href='/views/{html.escape(str(v['view_id']), quote=True)}'>{html.escape(str(v['name']))}</a></td><td>{html.escape(str(v['description']))}</td>"
                     f"<td>{html.escape(str(v['query_hash'])[:12])}</td><td><form method='post' action='/api/views/{html.escape(str(v['view_id']), quote=True)}'>"
                     f"<input name='name' value='{html.escape(str(v['name']), quote=True)}' required><input name='description' value='{html.escape(str(v['description']), quote=True)}'>"
                     f"<input name='query_json' value='{html.escape(json.dumps(v['query'], ensure_ascii=False), quote=True)}' size='35'><button>更新</button></form>"
@@ -102,17 +138,21 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                 )
                 return self._send_html(f"<!doctype html><meta charset='utf-8'><title>Saved Views</title><h1>Saved Views</h1><form method='post' action='/api/views'><input name='name' required placeholder='名称'><input name='description' placeholder='说明'><input name='query_json' required value='{{\"statuses\":[\"CURRENT\"]}}' size='45'><button>保存</button></form><table border='1'><tr><th>名称</th><th>说明</th><th>Query</th><th>管理</th></tr>{rows}</table><p><a href='/'>返回</a></p>")
             if path == "/selections":
-                selections = svc.selections(); rows = "".join(f"<tr><td>{html.escape(str(s['name']))}</td><td>{s['matched_count']}</td><td>{html.escape(str(s['source_commit_id'] or ''))}</td></tr>" for s in selections)
-                return self._send_html(f"<!doctype html><meta charset='utf-8'><title>Selections</title><h1>Selections</h1><form method='post' action='/api/selections'><input name='name' required placeholder='名称'><input name='description' placeholder='说明'><input name='query_json' required value='{{\"statuses\":[\"CURRENT\"]}}' size='45'><button>创建固定选择集</button></form><table border='1'><tr><th>名称</th><th>SKU 数</th><th>来源提交</th></tr>{rows}</table><p><a href='/'>返回</a></p>")
+                selections = svc.selections(); rows = "".join(f"<tr><td><a href='/selections/{html.escape(str(s['selection_id']), quote=True)}'>{html.escape(str(s['name']))}</a></td><td>{s['matched_count']}</td><td>{html.escape(str(s['source_commit_id'] or ''))}</td><td><a href='/api/selections/{html.escape(str(s['selection_id']), quote=True)}/artifacts'>Artifact历史</a></td></tr>" for s in selections)
+                return self._send_html(f"<!doctype html><meta charset='utf-8'><title>Selections</title><h1>Selections</h1><form method='post' action='/api/selections'><input name='name' required placeholder='名称'><input name='description' placeholder='说明'><input name='query_json' required value='{{\"statuses\":[\"CURRENT\"]}}' size='45'><button>创建固定选择集</button></form><table border='1'><tr><th>名称</th><th>SKU 数</th><th>来源提交</th><th>Artifacts</th></tr>{rows}</table><p><a href='/'>返回</a></p>")
             if path == "/artifacts":
-                artifacts = svc.artifacts(); rows = "".join(f"<tr><td>{html.escape(str(a['artifact_type']))}</td><td>{html.escape(str(a.get('selection_id') or ''))}</td><td>{a['row_count']}</td><td>{html.escape(str(a['status']))}</td><td>{html.escape(str(a['file_path']))}</td></tr>" for a in artifacts)
-                return self._send_html(f"<!doctype html><meta charset='utf-8'><title>Artifacts</title><h1>导出记录</h1><table border='1'><tr><th>类型</th><th>Selection</th><th>行数</th><th>状态</th><th>文件</th></tr>{rows}</table><p><a href='/'>返回</a></p>")
+                artifacts = svc.artifacts(); esc = lambda value: html.escape(str(value or "")); rows = "".join(f"<tr><td>{esc(a['artifact_type'])}</td><td>{esc(a.get('selection_id'))}</td><td>{esc(a.get('language'))}</td><td>{esc(a.get('image_profile'))}</td><td>{a['row_count']}</td><td>{esc(a.get('created_at'))}</td><td>{esc(a['status'])}</td><td>{esc(a.get('source_commit_id'))}</td><td>{esc(a.get('file_path'))}</td><td>{esc(a.get('file_hash'))}</td></tr>" for a in artifacts)
+                return self._send_html(f"<!doctype html><meta charset='utf-8'><title>Artifacts</title><h1>导出记录</h1><table border='1'><tr><th>类型</th><th>Selection</th><th>语言</th><th>图片配置</th><th>行数</th><th>创建时间</th><th>状态</th><th>来源提交</th><th>文件</th><th>Hash</th></tr>{rows}</table><p><a href='/'>返回</a></p>")
             self.send_error(404)
         def do_POST(self):
             path = urlparse(self.path).path
             length = int(self.headers.get("Content-Length", "0"))
             form = parse_qs(self.rfile.read(length).decode("utf-8"))
             try:
+                match = re.fullmatch(r"/api/selections/([^/]+)/export", path)
+                if match:
+                    artifact_type = (form.get("artifact_type") or [""])[-1]
+                    return self._send(svc.export_selection(match.group(1), artifact_type))
                 match = re.fullmatch(r"/api/views/([^/]+)/delete", path)
                 if match:
                     from ..extraction.selections import SavedViewService

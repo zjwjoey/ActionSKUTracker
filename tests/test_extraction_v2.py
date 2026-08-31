@@ -54,6 +54,30 @@ def test_extraction_exposes_recent_event_and_historical_price_range(tmp_path: Pa
     assert item["change_direction"] == "DOWN" and item["historical_low"] == 1.2 and item["historical_high"] == 1.5
 
 
+def test_extraction_contract_time_dimensions_and_canonical_id(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('A','1001','2026-08-30','PRICE_DOWN')")
+    svc = ExtractionService(path)
+    assert ExtractionQuery().normalized()["statuses"] == ExtractionQuery.from_dict({}).normalized()["statuses"] == ["current"]
+    assert svc.execute({"canonical_id": "A", "first_seen_from": "2026-08-01", "first_seen_to": "2026-08-01"}).matched_count == 1
+    assert svc.execute({"last_seen_from": "2026-08-30", "last_seen_to": "2026-08-30"}).matched_count == 1
+    recent = svc.execute({"event_types": ["price_down"], "event_last_n_days": 7})
+    assert recent.matched_count == 1
+
+
+def test_extraction_six_field_localization_and_specific_missing_field(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,name_es,current_price,status,product_url,first_seen_at,last_seen_at,last_checked_at) VALUES('C','1003','Producto Tres',4.0,'CURRENT','https://example.test/1003','2026-08-01','2026-08-30','2026-08-30')")
+        db.execute("INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,updated_at) VALUES('1003','zh','商品三','家居','收纳','3件','描述','详情','2026-08-30')")
+        db.execute("UPDATE product_localizations SET description='描述',details='详情' WHERE official_sku='1002' AND language='zh'")
+    svc = ExtractionService(path)
+    assert svc.execute({"localization_status": "COMPLETE", "limit": 10}).matched_count == 1
+    missing = svc.execute({"missing_fields": ["desc_zh"], "limit": 10})
+    assert missing.matched_count == 1 and missing.items[0]["official_sku"] == "1001"
+
+
 def test_saved_view_dynamic_and_selection_membership_fixed(tmp_path: Path):
     path = _db(tmp_path); view = SavedViewService(path); selection = SelectionService(path)
     saved = view.create("当前商品", {"statuses": ["CURRENT"], "limit": 100})
@@ -75,8 +99,37 @@ def test_saved_view_update_and_delete_are_explicit(tmp_path: Path):
     assert view.get(saved["view_id"]) is None
 
 
+def test_selection_ignores_page_limit_and_offset_for_membership(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,name_es,current_price,status,product_url,first_seen_at,last_seen_at,last_checked_at) VALUES('C','1003','Producto Tres',4.0,'CURRENT','https://example.test/1003','2026-08-01','2026-08-30','2026-08-30')")
+    selected = SelectionService(path).create("完整选择", {"statuses": ["CURRENT"], "limit": 1, "offset": 1})
+    assert selected["matched_count"] == 2 and selected["members"] == ["1001", "1003"]
+
+
 def test_image_zip_records_membership_and_missing_report(tmp_path: Path):
     path = _db(tmp_path); selection = SelectionService(path).create("图包", {"statuses":["CURRENT"],"limit":100})
     image_root = tmp_path / "images"; image_root.mkdir(); (image_root / "1001.png").write_bytes(b"png")
     result = ArtifactService(path).build_image_zip(selection["selection_id"], image_root, tmp_path / "images.zip")
     assert result["included"] == 1 and result["missing"] == 0
+
+
+def test_selection_csv_preserves_member_after_offline_transition_and_history(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run) VALUES('run-csv','2026-08-30','COMMITTED','PASS',0)")
+        db.execute("INSERT INTO commit_batches(commit_id,run_id,bundle_hash,schema_version,started_at,committed_at,status) VALUES('commit-csv','run-csv','hash','2.0.0','2026-08-30','2026-08-30','COMMITTED')")
+    selection = SelectionService(path).create("CSV", {"statuses": ["CURRENT"], "limit": 100})
+    with connect(path) as db:
+        db.execute("UPDATE products SET status='OFFLINE' WHERE official_sku='1001'")
+    service = ArtifactService(path)
+    first = service.build_csv(selection["selection_id"], tmp_path / "selection.csv")
+    second = service.build_csv(selection["selection_id"], tmp_path / "selection.csv")
+    assert first["missing"] == [] and second["missing"] == []
+    import csv
+    with (tmp_path / "selection.csv").open(encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows[0]["official_sku"] == "1001" and rows[0]["status"] == "OFFLINE"
+    history = service.list(selection["selection_id"])
+    assert len(history) == 2 and history[0]["artifact_id"] != history[1]["artifact_id"]
+    assert all(item["source_commit_id"] == "commit-csv" and item["selection_source_commit_id"] == "commit-csv" for item in history)

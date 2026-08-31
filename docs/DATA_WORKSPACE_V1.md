@@ -7,6 +7,12 @@ saved views and selections can be read by id. The `/workspace` page supports
 keyword, status, price-range, image and promotion filters; it remains a read
 surface over SQLite and never mutates product facts.
 
+The normal workflow is `query → save View or Selection → open Selection →
+export → inspect Artifact history`. Saved View run pages always re-query
+SQLite; Selection detail pages keep membership fixed while displaying current
+facts. Selection pages expose CSV, ES Excel, ZH Excel, ZH-with-images and
+image-package delivery actions.
+
 CLI management is available through `extract`, `saved-view create/list/update/delete` and
 `selection create/list/get`. Saved views also have explicit service/API update
 and delete operations; selection membership remains immutable after creation.

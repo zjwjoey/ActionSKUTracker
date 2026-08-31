@@ -47,6 +47,8 @@ class ExtractionService:
             term = f"%{' '.join(q.keyword.lower().split())}%"
             clauses.append("(lower(p.official_sku) LIKE ? OR lower(COALESCE(p.name_es,'')) LIKE ? OR lower(COALESCE(p.name_zh,'')) LIKE ? OR lower(COALESCE(es.name,'')) LIKE ? OR lower(COALESCE(zh.name,'')) LIKE ?)")
             args.extend([term] * 5)
+        canonical_ids = q.canonical_ids or ((q.canonical_id,) if q.canonical_id else ())
+        self._in_clause(clauses, args, "p.canonical_id", tuple(str(v) for v in canonical_ids))
         self._in_clause(clauses, args, "p.official_sku", q.skus)
         statuses = tuple(self.STATUS_MAP.get(str(s).upper(), str(s).upper()) for s in q.statuses)
         direct_statuses = tuple(s for s in statuses if s != "REAPPEARED")
@@ -71,26 +73,77 @@ class ExtractionService:
         if q.localization_status:
             status = q.localization_status.upper()
             if status == "COMPLETE":
-                clauses.append("COALESCE(zh.review_status,'')='VERIFIED' AND COALESCE(zh.name,'')<>'' AND COALESCE(zh.cat1,'')<>'' AND COALESCE(zh.spec,'')<>''")
+                clauses.append("COALESCE(zh.name,'')<>'' AND COALESCE(zh.cat1,'')<>'' AND COALESCE(zh.cat2,'')<>'' AND COALESCE(zh.spec,'')<>'' AND COALESCE(zh.description,'')<>'' AND COALESCE(zh.details,'')<>''")
             elif status in {"INCOMPLETE", "STALE", "PENDING", "REVIEW_PENDING", "BLOCKED"}:
-                if status == "INCOMPLETE": clauses.append("(COALESCE(zh.name,'')='' OR COALESCE(zh.cat1,'')='' OR COALESCE(zh.spec,'')='')")
+                if status == "INCOMPLETE": clauses.append("(COALESCE(zh.name,'')='' OR COALESCE(zh.cat1,'')='' OR COALESCE(zh.cat2,'')='' OR COALESCE(zh.spec,'')='' OR COALESCE(zh.description,'')='' OR COALESCE(zh.details,'')='')")
                 else: clauses.append("COALESCE(zh.review_status,'')=?"); args.append("PENDING" if status == "REVIEW_PENDING" else status)
             else:
                 raise ExtractionError(f"LOCALIZATION_STATUS_UNSUPPORTED: {q.localization_status}")
         for field in q.missing_fields:
-            column = {"category": "COALESCE(zh.cat1,es.cat1)", "spec": "COALESCE(zh.spec,es.spec)", "description": "COALESCE(zh.description,es.description)", "image": "ia.status", "localization": "zh.name"}.get(field)
+            column = {
+                "category": "COALESCE(zh.cat1,es.cat1)", "spec": "COALESCE(zh.spec,es.spec)",
+                "description": "COALESCE(zh.description,es.description)", "image": "ia.status",
+                "localization": "zh.name", "name_zh": "zh.name", "cat1_zh": "zh.cat1",
+                "cat2_zh": "zh.cat2", "spec_zh": "zh.spec", "desc_zh": "zh.description",
+                "details_zh": "zh.details",
+            }.get(str(field).lower())
             if not column: raise ExtractionError(f"MISSING_FIELD_UNSUPPORTED: {field}")
             clauses.append(f"({column} IS NULL OR trim({column})='')")
         if q.price_change: clauses.append("ph.change_direction=?"); args.append(q.price_change.upper())
         if q.min_change_amount is not None: clauses.append("abs(COALESCE(ph.change_amount,0)) >= ?"); args.append(q.min_change_amount)
         if q.min_change_percent is not None: clauses.append("abs(COALESCE(ph.change_percent,0)) >= ?"); args.append(q.min_change_percent)
-        if q.event_types:
-            event_types = tuple(str(v).upper() for v in q.event_types)
-            placeholders = ",".join("?" for _ in event_types); clauses.append(f"EXISTS (SELECT 1 FROM event_history ev WHERE ev.official_sku=p.official_sku AND ev.event_type IN ({placeholders}))"); args.extend(event_types)
-        if q.date_from: clauses.append("COALESCE(p.last_seen_at,p.last_checked_at) >= ?"); args.append(q.date_from)
-        if q.date_to: clauses.append("COALESCE(p.last_seen_at,p.last_checked_at) <= ?"); args.append(q.date_to)
+        if q.historical_low_min is not None: clauses.append("COALESCE(ps.historical_low,p.current_price) >= ?"); args.append(q.historical_low_min)
+        if q.historical_low_max is not None: clauses.append("COALESCE(ps.historical_low,p.current_price) <= ?"); args.append(q.historical_low_max)
+        if q.historical_high_min is not None: clauses.append("COALESCE(ps.historical_high,p.current_price) >= ?"); args.append(q.historical_high_min)
+        if q.historical_high_max is not None: clauses.append("COALESCE(ps.historical_high,p.current_price) <= ?"); args.append(q.historical_high_max)
+        # Backward-compatible aliases: date_from/date_to/last_n_days retain
+        # their original last-seen meaning. New callers should use the
+        # explicit first_seen_*, last_seen_* and event_* fields below.
+        last_seen_from = q.last_seen_from or q.date_from
+        last_seen_to = q.last_seen_to or q.date_to
+        if q.first_seen_from: clauses.append("p.first_seen_at >= ?"); args.append(q.first_seen_from)
+        if q.first_seen_to: clauses.append("p.first_seen_at <= ?"); args.append(q.first_seen_to)
+        if last_seen_from: clauses.append("COALESCE(p.last_seen_at,p.last_checked_at) >= ?"); args.append(last_seen_from)
+        if last_seen_to: clauses.append("COALESCE(p.last_seen_at,p.last_checked_at) <= ?"); args.append(last_seen_to)
         if q.last_n_days is not None:
             since = (datetime.now(timezone.utc) - timedelta(days=int(q.last_n_days))).date().isoformat(); clauses.append("COALESCE(p.last_seen_at,p.last_checked_at) >= ?"); args.append(since)
+        # All event predicates are evaluated against the same event row. This
+        # prevents a recent event of one type from satisfying a query for an
+        # older event of another type.
+        if q.event_types or q.event_from or q.event_to or q.event_last_n_days is not None:
+            event_since = ((datetime.now(timezone.utc) - timedelta(days=int(q.event_last_n_days))).isoformat()
+                           if q.event_last_n_days is not None else None)
+            requested_events = tuple(str(v).upper() for v in q.event_types)
+
+            def _date_parts(alias: str) -> tuple[list[str], list[Any]]:
+                parts: list[str] = []; values: list[Any] = []
+                if q.event_from: parts.append(f"{alias} >= ?"); values.append(q.event_from)
+                if q.event_to: parts.append(f"{alias} <= ?"); values.append(q.event_to)
+                if event_since: parts.append(f"{alias} >= ?"); values.append(event_since)
+                return parts, values
+
+            event_alternatives: list[tuple[str, list[Any]]] = []
+            if not requested_events:
+                dates, values = _date_parts("ev.occurred_at")
+                event_alternatives.append(("EXISTS (SELECT 1 FROM event_history ev WHERE ev.official_sku=p.official_sku" + (" AND " + " AND ".join(dates) if dates else "") + ")", values))
+            for event_type in requested_events:
+                if event_type in {"PRICE_DOWN", "PRICE_UP"}:
+                    direction = "pe.new_price < pe.old_price" if event_type == "PRICE_DOWN" else "pe.new_price > pe.old_price"
+                    dates, values = _date_parts("pe.observed_at")
+                    event_alternatives.append(("EXISTS (SELECT 1 FROM price_history pe WHERE pe.official_sku=p.official_sku AND pe.old_price IS NOT NULL AND " + direction + (" AND " + " AND ".join(dates) if dates else "") + ")", values))
+                    # Preserve compatibility with older batches that
+                    # materialized derived price directions in event_history.
+                    edates, evalues = _date_parts("ev.occurred_at")
+                    event_alternatives.append(("EXISTS (SELECT 1 FROM event_history ev WHERE ev.official_sku=p.official_sku AND ev.event_type=?" + (" AND " + " AND ".join(edates) if edates else "") + ")", [event_type, *evalues]))
+                elif event_type == "OFFLINE":
+                    dates, values = _date_parts("ls.offline_date")
+                    event_alternatives.append(("EXISTS (SELECT 1 FROM lifecycle_state ls WHERE ls.official_sku=p.official_sku AND ls.offline_date IS NOT NULL" + (" AND " + " AND ".join(dates) if dates else "") + ")", values))
+                else:
+                    mapped = ("FIRST_SEEN", "ACTION_NEW_BADGE_ON") if event_type == "NEW" else (event_type,)
+                    placeholders = ",".join("?" for _ in mapped); dates, values = _date_parts("ev.occurred_at")
+                    event_alternatives.append(("EXISTS (SELECT 1 FROM event_history ev WHERE ev.official_sku=p.official_sku AND ev.event_type IN (" + placeholders + ")" + (" AND " + " AND ".join(dates) if dates else "") + ")", [*mapped, *values]))
+            clauses.append("(" + " OR ".join(sql for sql, _ in event_alternatives) + ")")
+            for _, values in event_alternatives: args.extend(values)
         where = " WHERE " + " AND ".join(clauses) if clauses else ""
         sort_expr = self.SORTS[q.sort]
         direction = "DESC" if q.descending else "ASC"
@@ -122,9 +175,9 @@ class ExtractionService:
         keys = list(row.keys()); data = {key: row[key] for key in keys}
         for key in ("action_new_badge", "promotion_active", "sustainable_badge"):
             data[key] = bool(data[key])
-        fields_complete = all(str(data.get(k) or "").strip() for k in ("zh_name", "zh_cat1", "zh_spec"))
+        fields_complete = all(str(data.get(k) or "").strip() for k in ("zh_name", "zh_cat1", "zh_cat2", "zh_spec", "zh_description", "zh_details"))
         review_status = str(data.get("zh_review_status") or "").upper()
-        data["localization_status"] = "COMPLETE" if fields_complete and review_status in {"", "VERIFIED"} else (review_status or "INCOMPLETE")
+        data["localization_status"] = "COMPLETE" if fields_complete else (review_status if review_status in {"STALE", "PENDING", "BLOCKED", "REVIEW_PENDING"} else "INCOMPLETE")
         data["has_image"] = data.get("image_status") == "AVAILABLE"
         # The authoritative 250x250 derivative lives on the filesystem and is
         # validated by the image/export pipeline.  The read model can safely
