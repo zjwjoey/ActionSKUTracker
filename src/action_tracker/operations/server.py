@@ -14,6 +14,28 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
         raise ValueError("CONTROL_CENTER_LOCALHOST_ONLY")
     svc = service
     class Handler(BaseHTTPRequestHandler):
+        _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+        def _local_write_origin(self) -> bool:
+            """Reject cross-site writes even though the server is localhost-only.
+
+            A missing Origin is allowed for local HTML forms and command-line
+            clients.  If a browser sends one, both Host and Origin must remain
+            loopback addresses.
+            """
+            host_header = self.headers.get("Host") or ""
+            host = (urlparse("//" + host_header).hostname or "").casefold()
+            if host and host not in self._LOCAL_HOSTS:
+                return False
+            origin = self.headers.get("Origin")
+            if not origin:
+                return True
+            parsed = urlparse(origin)
+            return parsed.scheme in {"http", "https"} and (parsed.hostname or "").casefold() in self._LOCAL_HOSTS
+        def _guard_write(self) -> bool:
+            if self._local_write_origin():
+                return True
+            self._send({"error": "CONTROL_CENTER_ORIGIN_NOT_ALLOWED"}, status=403)
+            return False
         def _send(self, payload, *, status: int = 200):
             data = json.dumps(payload, ensure_ascii=False, default=str).encode()
             self.send_response(status); self.send_header("Content-Type", "application/json; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
@@ -145,6 +167,7 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                 return self._send_html(f"<!doctype html><meta charset='utf-8'><title>Artifacts</title><h1>导出记录</h1><table border='1'><tr><th>类型</th><th>Selection</th><th>语言</th><th>图片配置</th><th>行数</th><th>创建时间</th><th>状态</th><th>来源提交</th><th>文件</th><th>Hash</th></tr>{rows}</table><p><a href='/'>返回</a></p>")
             self.send_error(404)
         def do_POST(self):
+            if not self._guard_write(): return
             path = urlparse(self.path).path
             length = int(self.headers.get("Content-Length", "0"))
             form = parse_qs(self.rfile.read(length).decode("utf-8"))
@@ -182,6 +205,7 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
             length = int(self.headers.get("Content-Length", "0"))
             return parse_qs(self.rfile.read(length).decode("utf-8"))
         def do_PUT(self):
+            if not self._guard_write(): return
             path = urlparse(self.path).path; form = self._read_form()
             try:
                 match = re.fullmatch(r"/api/views/([^/]+)", path)
@@ -196,6 +220,7 @@ def serve(service: OperationsService, *, host: str = "127.0.0.1", port: int = 87
                 return self._send({"error": str(exc)}, status=status)
             self.send_error(404)
         def do_DELETE(self):
+            if not self._guard_write(): return
             path = urlparse(self.path).path
             match = re.fullmatch(r"/api/views/([^/]+)", path)
             if match:

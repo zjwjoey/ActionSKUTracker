@@ -4,3 +4,5 @@ openpyxl==3.1.5
 PyYAML==6.0.3
 playwright==1.46.0
 Pillow==12.1.1
+# Provides IANA timezone data on Windows runners for ZoneInfo("Europe/Madrid").
+tzdata>=2024.1

@@ -105,12 +105,30 @@ class BrowserSession:
 
     # ---- 导航 ----
     def goto(self, url: str, timeout_ms: int | None = None) -> bool:
-        """访问 URL，尽力通过挑战页。返回最终是否未停留在挑战页。"""
-        page = self.page
+        """Navigate under the shared access controller."""
+        return self._navigate(
+            lambda: self.page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=timeout_ms or self.cfg.get("timeout_ms", 45000),
+            )
+        )
+
+    def reload(self) -> bool:
+        """Refresh the current page under the same bounded access policy.
+
+        Listing and Detail code must call this method instead of touching
+        Playwright's ``page.reload`` directly.  Restrictions therefore always
+        feed the one AccessController and cannot silently become parser input.
+        """
+        return self._navigate(lambda: self.page.reload(wait_until="domcontentloaded"))
+
+    def _navigate(self, navigate) -> bool:
+        """Perform one navigation plus the configured, bounded challenge retry."""
         if self.access_controller:
             self.access_controller.before_navigation()
         try:
-            response = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms or self.cfg.get("timeout_ms", 45000))
+            response = navigate()
         except Exception:
             if self.access_controller:
                 self.access_controller.record(error=True)
@@ -122,7 +140,7 @@ class BrowserSession:
             return False
         if status in (401, 403):
             try:
-                title = page.title()
+                title = self.page.title()
             except Exception:
                 title = ""
             if self.access_controller:
@@ -130,23 +148,31 @@ class BrowserSession:
                 # page in the controller event, but do not retry either form.
                 self.access_controller.record(challenge=is_challenge(title), status=None if is_challenge(title) else status)
             return False
-        if self.access_controller:
+        if self.access_controller and status is not None:
             self.access_controller.record(status=status)
-        for _ in range(self.cfg.get("challenge_reloads", 15)):
+        for attempt in range(self.cfg.get("challenge_reloads", 15) + 1):
             try:
-                title = page.title()
+                title = self.page.title()
             except Exception:
                 title = ""
             if not is_challenge(title):
                 if self.access_controller:
                     self.access_controller.record()
                 return True
+            if attempt >= self.cfg.get("challenge_reloads", 15):
+                if self.access_controller:
+                    self.access_controller.record(challenge=True)
+                return False
             if self.access_controller and not self.access_controller.allow_challenge_retry():
                 self.access_controller.record(challenge=True)
                 return False
-            time.sleep((self.cfg.get("challenge_sleep_ms", 800) / 1000.0) * (2 ** _))
+            time.sleep((self.cfg.get("challenge_sleep_ms", 800) / 1000.0) * (2 ** attempt))
             try:
-                reload_response = page.reload(wait_until="domcontentloaded")
+                # Kept inside BrowserSession: callers never perform raw page
+                # reloads and every retry obtains fresh controller permission.
+                if self.access_controller:
+                    self.access_controller.before_navigation()
+                reload_response = self.page.reload(wait_until="domcontentloaded")
                 reload_status = reload_response.status if reload_response else None
                 if reload_status == 429:
                     if self.access_controller:
@@ -157,10 +183,9 @@ class BrowserSession:
                         self.access_controller.record(challenge=True)
                     return False
             except Exception:
-                time.sleep(1.0)
-        if self.access_controller:
-            self.access_controller.record(challenge=True)
-        return False
+                if self.access_controller:
+                    self.access_controller.record(error=True)
+                return False
 
     def sleep(self):
         """温和节奏，避免高频访问被限流。"""

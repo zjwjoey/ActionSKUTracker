@@ -171,6 +171,19 @@ def apply_detail_retry(cfg: dict[str, Any], parent_run_id: str) -> dict:
     if pending:
         raise ValueError(f"DETAIL_RETRY_INCOMPLETE: {len(pending)} SKU(s) still pending")
 
+    from ..database.integration import database_path, regenerate_compatibility_exports, storage_mode
+    if storage_mode(cfg) == "SQLITE_PRIMARY":
+        from ..database.production import apply_detail_corrections
+        result = apply_detail_corrections(
+            database_path(cfg), parent_run_id=parent_run_id, details_by_sku=completed, mode="APPLY",
+            source_run_date=str(parent_report.get("run_date") or ""),
+        )
+        # Excel/CSV are compatibility projections only.  Rebuild them from
+        # the corrected PRIMARY facts; never route Detail through the legacy
+        # Master writer in this mode.
+        result["compatibility_projection"] = regenerate_compatibility_exports(cfg, result["commit_id"])
+        return result
+
     current = reader.load_current(paths["master"])
     expected_current = parent_report.get("today_sku")
     if expected_current is not None and len(current) != int(expected_current):
@@ -238,6 +251,16 @@ def backfill_missing_details(cfg: dict[str, Any], source_run_id: str) -> dict:
     completed = _completed_details(source)
     if not planned or planned - set(completed):
         raise ValueError("SOURCE_DETAIL_EVIDENCE_INCOMPLETE")
+
+    from ..database.integration import database_path, regenerate_compatibility_exports, storage_mode
+    if storage_mode(cfg) == "SQLITE_PRIMARY":
+        from ..database.production import apply_detail_corrections
+        result = apply_detail_corrections(
+            database_path(cfg), parent_run_id=source_run_id, details_by_sku=completed, mode="BACKFILL",
+            source_run_date=str(source_report.get("run_date") or ""),
+        )
+        result["compatibility_projection"] = regenerate_compatibility_exports(cfg, result["commit_id"])
+        return result
 
     current = reader.load_current(paths["master"])
     candidates = planned & set(current)

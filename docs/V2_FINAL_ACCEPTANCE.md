@@ -67,3 +67,51 @@ integrity PASS，foreign-key check 为 0。该快照为只读验收记录。
 `RECOMMEND MERGE`。
 
 Windows Scheduler 的实际注册属于主机运维动作；仓库只提供注册脚本，未在代码中自动创建计划任务。
+
+## Post-Merge Production Safety Hotfix
+
+V2 functional acceptance does not by itself prove whole-program production
+safety. The follow-up hotfix on `hotfix/post-merge-production-safety` closes
+the post-merge audit findings without changing Extraction, Selection or
+Artifact contracts:
+
+- Windows PID probing is shared and non-signalling; Listing cannot bypass
+  BrowserSession / AccessController through raw reloads.
+- Resume restores QA and commit metadata, pending exports recover from the
+  exact current commit, and superseded export rows are excluded from pending
+  operational metrics.
+- Detail apply/backfill now write only approved detail facts to SQLite PRIMARY
+  with correction audit evidence, followed by compatibility projection.
+- Formal writes are limited to `production-run` / `data-update`; status and QA
+  resolve SQLite PRIMARY and nested snapshot runs correctly.
+- Backup API output is reopened and checked for integrity, foreign keys and
+  database identity before Collection; CI runs the safe suite on Ubuntu and
+  Windows.
+- Detail correction facts are versioned as a new correction run/commit. The
+  parent commit remains immutable; APPLY is blocked when the parent is not the
+  current HEAD, while BACKFILL only fills blank current fields. Spanish fact
+  changes retain the old Chinese source hash and mark that localization stale.
+- Historical price extrema use every non-null `old_price`, `new_price`, and
+  current product price endpoint, so reversal sequences retain their true
+  all-time low/high values.
+
+Read-only production validation on 2026-08-31, after a verified Backup API
+copy, observed: integrity `ok`, foreign keys `0`, database role `PRIMARY`,
+CURRENT `5,379`, MISSING `17`, OFFLINE `650`, HISTORICAL `2,634`, lifecycle
+mismatch `0`, and export sync `SUCCESS=8`. A migration rehearsal on a separate
+backup copy successfully upgraded `export_sync` to support `SUPERSEDED` while
+retaining integrity and zero foreign-key violations.
+
+## Post-Merge Hotfix Final Closure
+
+The final hotfix code candidate is `ee0ec7531e4bda9556801515f4a8cf29e2540cb8` on
+`hotfix/post-merge-production-safety`, based on `main@59adcb1`. Local full
+regression before this closure is 363 passed. Exact-head GitHub Actions for the
+final pushed branch is tracked by the latest successful run.
+
+Detail correction acceptance was exercised on a copy of PRIMARY: the old
+commit remained metadata-stable, a new correction commit was created with the
+old commit as `base_commit_id`, `CONTENT_CHANGE` was owned by the correction
+run, the Chinese localization was marked `STALE`, and the new projection row
+was `PENDING`. The copy reported SQLite integrity `ok` and zero foreign-key
+errors; the production PRIMARY was not modified.

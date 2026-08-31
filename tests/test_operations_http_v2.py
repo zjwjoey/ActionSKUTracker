@@ -81,3 +81,12 @@ def test_workspace_returns_http_error_for_invalid_selection_export(workspace_ser
     with pytest.raises(HTTPError) as error:
         urlopen(request, timeout=5)
     assert error.value.code == 404
+
+
+def test_workspace_rejects_cross_site_post_origin(workspace_server: str):
+    request = Request(workspace_server + "/api/views", data=urlencode({"name": "blocked", "query_json": "{}"}).encode(), method="POST")
+    request.add_header("Content-Type", "application/x-www-form-urlencoded")
+    request.add_header("Origin", "https://evil.example")
+    with pytest.raises(HTTPError) as error:
+        urlopen(request, timeout=5)
+    assert error.value.code == 403

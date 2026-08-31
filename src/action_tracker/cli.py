@@ -38,7 +38,8 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--force", action="store_true", help="重建状态文件")
 
     s = sub.add_parser("status", help="查看项目状态")
-    q = sub.add_parser("qa", help="重跑 QA（基于最近 snapshot）")
+    q = sub.add_parser("qa", help="查看已落盘 QA（默认最新 snapshot run）")
+    q.add_argument("--run-id", help="指定 snapshot run_id")
     e = sub.add_parser("export", help="导出已正式提交的商品清单")
     e.add_argument("--lang", choices=("es", "zh"), required=True, help="导出语言")
     image_group = e.add_mutually_exclusive_group(required=True)
@@ -156,6 +157,10 @@ def main(argv=None) -> int:
         return _status(cfg)
     if args.command == "daily-run":
         dry_run = True if args.dry_run is None else args.dry_run
+        from .database.integration import storage_mode
+        if not dry_run and storage_mode(cfg) == "SQLITE_PRIMARY":
+            print(json.dumps({"error": "FORMAL_RUN_REQUIRES_DATA_UPDATE"}, ensure_ascii=False), file=sys.stderr)
+            return 2
         from .orchestrator.daily import run_daily
         res = run_daily(
             cfg,
@@ -191,7 +196,7 @@ def main(argv=None) -> int:
         print(json.dumps(res, ensure_ascii=False))
         return 0
     if args.command == "qa":
-        return _qa(cfg)
+        return _qa(cfg, run_id=args.run_id)
     if args.command == "export":
         from .exporting.service import ExportValidationError, export_catalog
         try:
@@ -471,30 +476,68 @@ def main(argv=None) -> int:
 
 def _status(cfg) -> int:
     from . import state as st
+    from .database.connection import connect
+    from .database.integration import database_path, storage_mode
+    from .database.production import database_status, validate_production_database
     from .excel.reader import load_current
 
     master = cfg["paths"]["master"]
     cur = load_current(master) if master.exists() else {}
     known = st.load_known_skus(cfg["paths"]["state"])
     offline = st.load_offline_skus(cfg["paths"]["state"])
+    mode = storage_mode(cfg)
     print("项目根: ", cfg["project_root"])
-    print("Master: ", master, "存在" if master.exists() else "缺失")
-    print("CURRENT SKU: ", len(cur))
-    print("known_skus: ", len(known))
-    print("offline_skus: ", len(offline))
+    print("Storage Mode: ", mode)
+    if mode == "SQLITE_PRIMARY":
+        db_path = database_path(cfg)
+        status = database_status(db_path)
+        validation = validate_production_database(db_path)
+        with connect(db_path) as db:
+            counts = {str(row[0]): int(row[1]) for row in db.execute("SELECT status,COUNT(*) FROM products GROUP BY status")}
+            latest_run = db.execute("SELECT run_id,run_date,qa_state FROM runs ORDER BY started_at DESC LIMIT 1").fetchone()
+        db_current = counts.get("CURRENT", 0)
+        compatibility = "IN_SYNC" if (len(cur) == db_current and len(known) == status.get("lifecycle") and status.get("pending_export_sync", 0) == 0) else "OUT_OF_SYNC"
+        print("Database Role: ", status.get("metadata", {}).get("database_role"))
+        print("Database Path: ", db_path)
+        print("SQLite HEAD Commit: ", (status.get("latest_commit") or {}).get("commit_id"))
+        print("Latest Formal Run: ", dict(latest_run) if latest_run else None)
+        for name in ("CURRENT", "MISSING", "OFFLINE", "HISTORICAL"):
+            print(f"{name}: ", counts.get(name, 0))
+        print("Integrity: ", validation["integrity"])
+        print("Foreign Keys: ", validation["foreign_keys"])
+        print("Pending Export Sync: ", status.get("pending_export_sync", 0))
+        print("Compatibility Projection Status: ", compatibility)
+        print("Master Current Count: ", len(cur))
+        print("Known Current Count: ", sum(1 for item in known.values() if str(item.get("last_status") or item.get("current_status") or "").upper() in {"ACTIVE", "CURRENT"}))
+        print("Offline Projection Count: ", len(offline))
+    else:
+        print("Master: ", master, "存在" if master.exists() else "缺失")
+        print("CURRENT SKU: ", len(cur))
+        print("known_skus: ", len(known))
+        print("offline_skus: ", len(offline))
     print("git: ", _git_head())
     return 0
 
 
-def _qa(cfg) -> int:
-    snaps = sorted((cfg["paths"]["snapshots"] / "2026-01-01").parent.iterdir(), reverse=True) if cfg["paths"]["snapshots"].exists() else []
-    if not snaps:
+def _qa(cfg, *, run_id: str | None = None) -> int:
+    root = cfg["paths"]["snapshots"]
+    if not root.exists():
         print("没有可用 snapshot")
         return 1
-    latest = snaps[0]
-    qf = latest / "qa_report.json"
+    candidates = list(root.glob(f"*/{run_id}/qa_report.json")) if run_id else list(root.glob("*/*/qa_report.json"))
+    if not candidates:
+        print("没有可用 snapshot")
+        return 1
+    # Windows filesystems can assign identical/coarse mtimes to two snapshot
+    # trees created in one test/run.  Date and run-id are the authoritative
+    # ordering; mtime is only a final tie-breaker for legacy layouts.
+    qf = max(candidates, key=lambda path: (
+        path.parent.parent.name,
+        path.parent.name,
+        path.stat().st_mtime_ns,
+    ))
     if not qf.exists():
-        print(f"最近 snapshot {latest} 无 qa_report.json")
+        print(f"snapshot {qf.parent} 无 qa_report.json")
         return 1
     data = json.loads(qf.read_text(encoding="utf-8"))
     print(json.dumps(data, ensure_ascii=False, indent=2))

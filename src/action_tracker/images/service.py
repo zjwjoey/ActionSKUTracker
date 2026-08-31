@@ -23,6 +23,7 @@ def sync_formal_current(cfg: dict[str, Any], *, export_date: str, run_id: str | 
         timeout_seconds=int(image_cfg.get("timeout_seconds", 20)),
         max_retries=int(image_cfg.get("max_retries", 3)),
         download_workers=int(image_cfg.get("download_workers", 1)),
+        allowed_hosts=image_cfg.get("allowed_hosts") or (),
     )
     rows = [{"sku": r.get("sku"), "canonical_id": r.get("canonical_id"), "image_url": r.get("image_url")} for r in source.records]
     result = service.sync(rows, run_id=source.run_id)

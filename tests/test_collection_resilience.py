@@ -268,6 +268,18 @@ def test_403_never_reloads_regardless_of_title(title):
     assert page.reloads == 0 and ctl.state == AccessState.COOLDOWN
 
 
+def test_403_challenge_title_is_reported_without_nameerror():
+    class Controller:
+        def __init__(self): self.calls = []
+        def before_navigation(self): pass
+        def record(self, **kwargs): self.calls.append(kwargs)
+    ctl = Controller()
+    page = _ChallengePage(["Un momento"], [403])
+    assert _challenge_session(page, ctl).goto("https://x") is False
+    assert page.reloads == 0
+    assert ctl.calls and ctl.calls[-1].get("challenge") is True
+
+
 def test_200_challenge_reloads_then_records_only_recovered_page_as_success():
     page, ctl = _ChallengePage(["Un momento", "normal product page"]), AccessController(cooldown_seconds=0)
     assert _challenge_session(page, ctl).goto("https://x") is True

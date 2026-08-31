@@ -39,3 +39,4 @@ tests/test_operations.py
 tests/test_extraction_v2.py
 tests/test_cli_v2.py
 tests/test_operations_http_v2.py
+tests/test_post_merge_production_safety.py

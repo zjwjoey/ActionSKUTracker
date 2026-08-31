@@ -67,6 +67,9 @@ operations:
 
 images:
   enabled: false
+  # Only official Action CDN hosts may be fetched by the optional image job.
+  allowed_hosts:
+    - asset.action.com
   asset_root: runtime/images/assets
   staging_root: runtime/images/staging
   derivative_root: runtime/images/derivatives
