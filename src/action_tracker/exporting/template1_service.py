@@ -24,7 +24,7 @@ from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, verify_template1_xlsx, 
 
 def export_template1(
     cfg: dict[str, Any], *, export_date: str, run_id: str | None = None,
-    with_images: bool = False,
+    with_images: bool = False, selection_id: str | None = None,
 ) -> dict[str, Any]:
     """生成 Template 1 三表工作簿。
 
@@ -36,6 +36,16 @@ def export_template1(
         profile = load_profile(cfg, language="es", no_images=True)
         source = resolve_formal_source(cfg, export_date=export_date, requested_run_id=run_id, profile=profile)
         records = list(source.records)
+        selection_source_commit_id = None
+        if selection_id:
+            from ..extraction.selections import SelectionService
+            selection = SelectionService(_database_path(cfg)).get(selection_id)
+            if not selection: raise ExportValidationError(f"SELECTION_NOT_FOUND: {selection_id}")
+            members = set(selection["members"]); source_skus = {str(r.get("sku") or "") for r in records}
+            missing = sorted(members - source_skus)
+            if missing: raise ExportValidationError(f"SELECTION_MEMBER_NOT_IN_FORMAL_SOURCE: {','.join(missing[:10])}")
+            records = [r for r in records if str(r.get("sku") or "") in members]
+            selection_source_commit_id = selection.get("source_commit_id")
         validate_source_records(records, export_date=export_date)
         validate_spanish_source_fields(records)
         es_rows = build_es_rows(records)
@@ -69,7 +79,9 @@ def export_template1(
 
     date_compact = export_date.replace("-", "")
     suffix = "带图" if with_images else "不带图"
-    output = Path(cfg["paths"]["exports"]) / f"{date_compact}Action商品全量_三表版_{suffix}.xlsx"
+    name = f"{date_compact}Action商品全量_三表版_{suffix}.xlsx"
+    if selection_id: name = name.replace(".xlsx", f"_Selection_{selection_id}.xlsx")
+    output = Path(cfg["paths"]["exports"]) / name
     temporary = output.with_name(f".{output.stem}.preview.xlsx")
     image_root = None
     if with_images:
@@ -117,6 +129,8 @@ def export_template1(
         "zh_image_embedded_count": image_stats["embedded_count"],
         "zh_image_missing_count": image_stats["missing_count"],
         "with_images": with_images,
+        "selection_id": selection_id,
+        "selection_source_commit_id": selection_source_commit_id,
         "image_profile": "excel_250_white_v1" if with_images else None,
         "dictionary_fallback_counts": fallback_counts,
         "history_source_stats": [stat.__dict__ for stat in history.source_stats],
@@ -126,18 +140,33 @@ def export_template1(
         "validation_results": {"history": "PASS", "cross_sheet": "PASS", "workbook": "PASS"},
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if selection_id:
+        from ..delivery.artifacts import ArtifactService
+        ArtifactService(_database_path(cfg)).record(
+            artifact_id=f"artifact_{hashlib.sha256((str(output)+source.run_id).encode()).hexdigest()[:16]}",
+            artifact_type="TEMPLATE1_XLSX", file_path=output, row_count=len(current_skus), selection_id=selection_id,
+            language="multi", image_profile="excel_250_white_v1" if with_images else None,
+            source_commit_id=source.run_id, selection_source_commit_id=selection_source_commit_id,
+            manifest_path=manifest_path,
+        )
     return {
         "output": str(output), "manifest": str(manifest_path), "run_id": source.run_id,
         "sku_count": len(current_skus), "history_sku_count": len(history_rows),
         "profile": "action_full_template_1", "with_images": with_images,
         "image_embedded_count": image_stats["embedded_count"],
         "image_missing_count": image_stats["missing_count"],
+        "selection_id": selection_id,
     }
 
 
 def _hash_records(records: list[dict[str, Any]]) -> str:
     payload = json.dumps(sorted(records, key=lambda row: str(row.get("sku") or "")), ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _database_path(cfg: dict[str, Any]) -> Path:
+    from ..database.integration import database_path
+    return database_path(cfg)
 
 
 def _compact_date(value: str) -> str:
