@@ -44,6 +44,16 @@ def test_extraction_supports_reappeared_and_image_ready_filters(tmp_path: Path):
     assert ready.matched_count == 1 and ready.items[0]["image_ready_for_export"] is True
 
 
+def test_extraction_exposes_recent_event_and_historical_price_range(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,old_price,new_price,change_type) VALUES('A','1001','2026-08-20',1.0,1.5,'UP')")
+        db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,old_price,new_price,change_type) VALUES('A','1001','2026-08-30',1.5,1.2,'DOWN')")
+    result = ExtractionService(path).execute({"sort": "recent_change", "descending": True, "limit": 10})
+    item = next(row for row in result.items if row["official_sku"] == "1001")
+    assert item["change_direction"] == "DOWN" and item["historical_low"] == 1.2 and item["historical_high"] == 1.5
+
+
 def test_saved_view_dynamic_and_selection_membership_fixed(tmp_path: Path):
     path = _db(tmp_path); view = SavedViewService(path); selection = SelectionService(path)
     saved = view.create("当前商品", {"statuses": ["CURRENT"], "limit": 100})

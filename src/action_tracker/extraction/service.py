@@ -61,7 +61,7 @@ class ExtractionService:
         elif q.has_original_price is False: clauses.append("(p.original_price IS NULL OR p.original_price <= p.current_price)")
         for field, value in (("p.promotion_active", q.promotion), ("p.action_new_badge", q.new_badge), ("p.sustainable_badge", q.sustainable)):
             if value is not None: clauses.append(f"{field}=?"); args.append(int(value))
-        if q.image_statuses: self._in_clause(clauses, args, "COALESCE(ia.status,'NO_SOURCE_URL')", q.image_statuses)
+        if q.image_statuses: self._in_clause(clauses, args, "COALESCE(ia.status,'NO_SOURCE_URL')", tuple(str(v).upper() for v in q.image_statuses))
         if q.has_image is True: clauses.append("ia.status='AVAILABLE'")
         elif q.has_image is False: clauses.append("(ia.status IS NULL OR ia.status<>'AVAILABLE')")
         if q.image_ready_for_export is True:
@@ -85,7 +85,8 @@ class ExtractionService:
         if q.min_change_amount is not None: clauses.append("abs(COALESCE(ph.change_amount,0)) >= ?"); args.append(q.min_change_amount)
         if q.min_change_percent is not None: clauses.append("abs(COALESCE(ph.change_percent,0)) >= ?"); args.append(q.min_change_percent)
         if q.event_types:
-            placeholders = ",".join("?" for _ in q.event_types); clauses.append(f"EXISTS (SELECT 1 FROM event_history ev WHERE ev.official_sku=p.official_sku AND ev.event_type IN ({placeholders}))"); args.extend(q.event_types)
+            event_types = tuple(str(v).upper() for v in q.event_types)
+            placeholders = ",".join("?" for _ in event_types); clauses.append(f"EXISTS (SELECT 1 FROM event_history ev WHERE ev.official_sku=p.official_sku AND ev.event_type IN ({placeholders}))"); args.extend(event_types)
         if q.date_from: clauses.append("COALESCE(p.last_seen_at,p.last_checked_at) >= ?"); args.append(q.date_from)
         if q.date_to: clauses.append("COALESCE(p.last_seen_at,p.last_checked_at) <= ?"); args.append(q.date_to)
         if q.last_n_days is not None:
