@@ -54,7 +54,14 @@ def build_parser() -> argparse.ArgumentParser:
     x.add_argument("--status", dest="statuses", action="append")
     x.add_argument("--cat1", action="append"); x.add_argument("--cat2", action="append")
     x.add_argument("--min-price", type=float); x.add_argument("--max-price", type=float)
-    x.add_argument("--promotion", action="store_true"); x.add_argument("--new", dest="new_badge", action="store_true")
+    original_group = x.add_mutually_exclusive_group()
+    original_group.add_argument("--has-original-price", action="store_true")
+    original_group.add_argument("--no-original-price", dest="no_original_price", action="store_true")
+    x.add_argument("--promotion", action="store_true"); x.add_argument("--new", dest="new_badge", action="store_true"); x.add_argument("--sustainable", action="store_true")
+    x.add_argument("--price-change", choices=("UP", "DOWN", "FLAT")); x.add_argument("--min-change-amount", type=float); x.add_argument("--min-change-percent", type=float)
+    x.add_argument("--event-type", dest="event_types", action="append"); x.add_argument("--date-from"); x.add_argument("--date-to"); x.add_argument("--last-n-days", type=int)
+    x.add_argument("--image-status", dest="image_statuses", action="append"); x.add_argument("--has-image", action="store_true"); x.add_argument("--image-ready", dest="image_ready_for_export", action="store_true")
+    x.add_argument("--localization-status"); x.add_argument("--missing-field", dest="missing_fields", action="append")
     x.add_argument("--sort", default="sku"); x.add_argument("--desc", action="store_true")
     x.add_argument("--limit", type=int, default=100); x.add_argument("--offset", type=int, default=0)
     x.add_argument("--json", action="store_true"); x.add_argument("--save-selection")
@@ -377,14 +384,19 @@ def main(argv=None) -> int:
         if args.query_json:
             source = Path(args.query_json)
             payload = _json.loads(source.read_text(encoding="utf-8") if source.exists() else args.query_json)
-        for key in ("keyword", "min_price", "max_price", "sort", "limit", "offset"):
+        for key in ("keyword", "min_price", "max_price", "sort", "limit", "offset", "price_change", "min_change_amount", "min_change_percent", "date_from", "date_to", "last_n_days", "localization_status"):
             value = getattr(args, key, None)
             if value is not None: payload[key] = value
-        for key in ("skus", "statuses", "cat1", "cat2"):
+        for key in ("skus", "statuses", "cat1", "cat2", "event_types", "image_statuses", "missing_fields"):
             value = getattr(args, key, None)
             if value: payload[key] = tuple(value)
+        if args.has_original_price: payload["has_original_price"] = True
+        if args.no_original_price: payload["has_original_price"] = False
         if args.promotion: payload["promotion"] = True
         if args.new_badge: payload["new_badge"] = True
+        if args.sustainable: payload["sustainable"] = True
+        if args.has_image: payload["has_image"] = True
+        if args.image_ready_for_export: payload["image_ready_for_export"] = True
         if args.desc: payload["descending"] = True
         result = ExtractionService(database_path(cfg)).execute(ExtractionQuery.from_dict(payload))
         if args.save_selection:

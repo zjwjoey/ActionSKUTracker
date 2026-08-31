@@ -22,7 +22,7 @@ class ExtractionService:
     """
     SORTS = {"sku": "p.official_sku", "name": "COALESCE(zh.name,es.name,p.name_es)",
              "current_price": "p.current_price", "first_seen": "p.first_seen_at",
-             "last_seen": "p.last_seen_at", "recent_change": "recent_change"}
+             "last_seen": "p.last_seen_at", "recent_change": "COALESCE(ph.latest_at,'')"}
     STATUS_MAP = {"CURRENT": "CURRENT", "MISSING": "MISSING", "OFFLINE": "OFFLINE"}
 
     def __init__(self, db_path: Path):
@@ -42,13 +42,17 @@ class ExtractionService:
                  "LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'",
                  "LEFT JOIN image_assets ia ON ia.official_sku=p.official_sku",
                  "LEFT JOIN (SELECT h.official_sku,h.observed_at AS latest_at,h.new_price-h.old_price AS change_amount, CASE WHEN h.new_price>h.old_price THEN 'UP' WHEN h.new_price<h.old_price THEN 'DOWN' ELSE 'FLAT' END AS change_direction, CASE WHEN h.old_price IS NULL OR h.old_price=0 THEN NULL ELSE (h.new_price-h.old_price)*100.0/h.old_price END AS change_percent FROM price_history h WHERE h.observed_at=(SELECT MAX(h2.observed_at) FROM price_history h2 WHERE h2.official_sku=h.official_sku)) ph ON ph.official_sku=p.official_sku"]
+        joins.append("LEFT JOIN (SELECT official_sku,event_type AS recent_event_type,occurred_at AS recent_event_at FROM (SELECT e.official_sku,e.event_type,e.occurred_at,ROW_NUMBER() OVER (PARTITION BY e.official_sku ORDER BY e.occurred_at DESC,e.id DESC) AS rn FROM event_history e) ranked WHERE rn=1) ev_latest ON ev_latest.official_sku=p.official_sku")
         if q.keyword:
             term = f"%{' '.join(q.keyword.lower().split())}%"
             clauses.append("(lower(p.official_sku) LIKE ? OR lower(COALESCE(p.name_es,'')) LIKE ? OR lower(COALESCE(p.name_zh,'')) LIKE ? OR lower(COALESCE(es.name,'')) LIKE ? OR lower(COALESCE(zh.name,'')) LIKE ?)")
             args.extend([term] * 5)
         self._in_clause(clauses, args, "p.official_sku", q.skus)
         statuses = tuple(self.STATUS_MAP.get(str(s).upper(), str(s).upper()) for s in q.statuses)
-        self._in_clause(clauses, args, "p.status", statuses)
+        direct_statuses = tuple(s for s in statuses if s != "REAPPEARED")
+        self._in_clause(clauses, args, "p.status", direct_statuses)
+        if "REAPPEARED" in statuses:
+            clauses.append("EXISTS (SELECT 1 FROM event_history ev_re WHERE ev_re.official_sku=p.official_sku AND ev_re.event_type='REAPPEARED')")
         self._in_clause(clauses, args, "COALESCE(zh.cat1,es.cat1,'')", q.cat1)
         self._in_clause(clauses, args, "COALESCE(zh.cat2,es.cat2,'')", q.cat2)
         if q.min_price is not None: clauses.append("p.current_price >= ?"); args.append(q.min_price)
@@ -60,8 +64,19 @@ class ExtractionService:
         if q.image_statuses: self._in_clause(clauses, args, "COALESCE(ia.status,'NO_SOURCE_URL')", q.image_statuses)
         if q.has_image is True: clauses.append("ia.status='AVAILABLE'")
         elif q.has_image is False: clauses.append("(ia.status IS NULL OR ia.status<>'AVAILABLE')")
+        if q.image_ready_for_export is True:
+            clauses.append("ia.status='AVAILABLE' AND ia.master_image_path IS NOT NULL")
+        elif q.image_ready_for_export is False:
+            clauses.append("(ia.status IS NULL OR ia.status<>'AVAILABLE' OR ia.master_image_path IS NULL)")
         if q.localization_status:
-            clauses.append("CASE WHEN COALESCE(zh.name,'')<>'' AND COALESCE(zh.cat1,'')<>'' AND COALESCE(zh.spec,'')<>'' THEN 'COMPLETE' ELSE 'INCOMPLETE' END=?"); args.append(q.localization_status.upper())
+            status = q.localization_status.upper()
+            if status == "COMPLETE":
+                clauses.append("COALESCE(zh.review_status,'')='VERIFIED' AND COALESCE(zh.name,'')<>'' AND COALESCE(zh.cat1,'')<>'' AND COALESCE(zh.spec,'')<>''")
+            elif status in {"INCOMPLETE", "STALE", "PENDING", "REVIEW_PENDING", "BLOCKED"}:
+                if status == "INCOMPLETE": clauses.append("(COALESCE(zh.name,'')='' OR COALESCE(zh.cat1,'')='' OR COALESCE(zh.spec,'')='')")
+                else: clauses.append("COALESCE(zh.review_status,'')=?"); args.append("PENDING" if status == "REVIEW_PENDING" else status)
+            else:
+                raise ExtractionError(f"LOCALIZATION_STATUS_UNSUPPORTED: {q.localization_status}")
         for field in q.missing_fields:
             column = {"category": "COALESCE(zh.cat1,es.cat1)", "spec": "COALESCE(zh.spec,es.spec)", "description": "COALESCE(zh.description,es.description)", "image": "ia.status", "localization": "zh.name"}.get(field)
             if not column: raise ExtractionError(f"MISSING_FIELD_UNSUPPORTED: {field}")
@@ -80,8 +95,11 @@ class ExtractionService:
         direction = "DESC" if q.descending else "ASC"
         select = """SELECT p.canonical_id,p.official_sku,p.name_es,p.current_price,p.original_price,p.status,p.product_url,p.first_seen_at,p.last_seen_at,p.action_new_badge,p.promotion_active,p.sustainable_badge,
                    es.name AS es_name,es.cat1 AS es_cat1,es.cat2 AS es_cat2,es.spec AS es_spec,es.description AS es_description,es.details AS es_details,
-                   zh.name AS zh_name,zh.cat1 AS zh_cat1,zh.cat2 AS zh_cat2,zh.spec AS zh_spec,zh.description AS zh_description,zh.details AS zh_details,
-                   ia.status AS image_status, ph.change_direction,ph.change_amount,ph.change_percent"""
+                   zh.name AS zh_name,zh.cat1 AS zh_cat1,zh.cat2 AS zh_cat2,zh.spec AS zh_spec,zh.description AS zh_description,zh.details AS zh_details,zh.review_status AS zh_review_status,
+                   ia.status AS image_status, ia.master_image_path, ia.width AS image_width, ia.height AS image_height,
+                   ph.change_direction,ph.change_amount,ph.change_percent, ps.historical_low,ps.historical_high,
+                   ev_latest.recent_event_type,ev_latest.recent_event_at"""
+        joins.append("LEFT JOIN (SELECT official_sku, MIN(new_price) AS historical_low, MAX(new_price) AS historical_high FROM price_history GROUP BY official_sku) ps ON ps.official_sku=p.official_sku")
         base = f" FROM products p {' '.join(joins)}{where}"
         with connect(self.db_path) as db:
             total = int(db.execute(f"SELECT COUNT(DISTINCT p.official_sku){base}", args).fetchone()[0])
@@ -103,6 +121,14 @@ class ExtractionService:
         keys = list(row.keys()); data = {key: row[key] for key in keys}
         for key in ("action_new_badge", "promotion_active", "sustainable_badge"):
             data[key] = bool(data[key])
-        data["localization_status"] = "COMPLETE" if all(str(data.get(k) or "").strip() for k in ("zh_name", "zh_cat1", "zh_spec")) else "INCOMPLETE"
+        fields_complete = all(str(data.get(k) or "").strip() for k in ("zh_name", "zh_cat1", "zh_spec"))
+        review_status = str(data.get("zh_review_status") or "").upper()
+        data["localization_status"] = "COMPLETE" if fields_complete and review_status in {"", "VERIFIED"} else (review_status or "INCOMPLETE")
         data["has_image"] = data.get("image_status") == "AVAILABLE"
+        # The authoritative 250x250 derivative lives on the filesystem and is
+        # validated by the image/export pipeline.  The read model can safely
+        # expose readiness only when the DB has a known-good master asset;
+        # export still performs the derivative-level validation.
+        data["image_ready_for_export"] = bool(data.get("image_status") == "AVAILABLE" and data.get("master_image_path"))
+        data["last_confirmed_at"] = data.get("last_seen_at")
         return data

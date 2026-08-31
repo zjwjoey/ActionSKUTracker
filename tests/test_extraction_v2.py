@@ -33,6 +33,17 @@ def test_sort_pagination_and_offline(tmp_path: Path):
     assert result.pagination["has_more"] is False
 
 
+def test_extraction_supports_reappeared_and_image_ready_filters(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('A','1001','2026-08-30','REAPPEARED')")
+        db.execute("UPDATE image_assets SET master_image_path='1001.png',width=250,height=250 WHERE official_sku='1001'")
+    svc = ExtractionService(path)
+    assert svc.execute({"statuses": ["REAPPEARED"], "limit": 10}).matched_count == 1
+    ready = svc.execute({"image_ready_for_export": True, "limit": 10})
+    assert ready.matched_count == 1 and ready.items[0]["image_ready_for_export"] is True
+
+
 def test_saved_view_dynamic_and_selection_membership_fixed(tmp_path: Path):
     path = _db(tmp_path); view = SavedViewService(path); selection = SelectionService(path)
     saved = view.create("当前商品", {"statuses": ["CURRENT"], "limit": 100})

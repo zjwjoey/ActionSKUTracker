@@ -38,6 +38,7 @@ class ExtractionQuery:
     last_n_days: int | None = None
     image_statuses: tuple[str, ...] = ()
     has_image: bool | None = None
+    image_ready_for_export: bool | None = None
     localization_status: str | None = None
     missing_fields: tuple[str, ...] = ()
     sort: str = "sku"
