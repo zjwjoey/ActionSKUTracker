@@ -48,3 +48,6 @@ QA `PASS`（或已定义的 `PASS_PRESENCE_ONLY`）。任一条件不满足即�
 - `enrichment_report.json`：输入 run、数量、字典变更和无网络声明。
 
 CI 只测试上述选择范围、字段保护和无网络约束的临时 fixture；不会执行真实 enrichment，也不会写入正式运行字典。
+# Localization Intelligence V1 integration
+
+`dictionary-enrich` 保持兼容；新的中文标准化、UNKNOWN 队列和审计由 `LocalizationEngine` 统一提供。字典增量仍须经过 source hash、Review Queue 和 Promotion Gate，不能把单次模型结果直接写入正式基线。
