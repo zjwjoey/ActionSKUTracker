@@ -31,8 +31,9 @@ check 为 0。该快照为只读验收记录。
 
 ## 发布状态
 
-本地完整回归在修复后为 338 passed。修复提交完成并推送后，将以对应最终 HEAD 的
-GitHub Actions CI PASS 为准；主分支不在本任务内自动合并，独立审查通过后才输出
+本地完整回归在修复后为 338 passed。最终修复提交
+`b65a5bba73a825a2a80cfed79d34311f763f2a4e` 对应 GitHub Actions run
+`33356239761`，CI-safe 测试 PASS。主分支不在本任务内自动合并，独立审查通过后才输出
 `RECOMMEND MERGE`。
 
 Windows Scheduler 的实际注册属于主机运维动作；仓库只提供注册脚本，未在代码中自动创建计划任务。
