@@ -67,7 +67,7 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
 - 本地完整回归：356 passed（热修复开发头）。
 - CI-safe 白名单已包含 `tests/test_extraction_v2.py`、`tests/test_cli_v2.py`、
   `tests/test_operations_http_v2.py`。
-- `main@59adcb1` 的合并 CI 已通过；热修复尚未推送或合并。
+- `main@59adcb1` 的合并 CI 已通过；热修复分支已推送但尚未合并。
 - 合并策略：完成独立审查且 HIGH/MEDIUM 均为 0 后，才给出
   `RECOMMEND MERGE HOTFIX TO MAIN`，不会自动合并。
 
@@ -92,3 +92,8 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
   apply/backfill 在 SQLite PRIMARY 中仅改允许的详情事实，并再投影兼容 Excel/CSV。
 - 真实库于 2026-08-31 只读验收：integrity PASS、foreign keys 0、CURRENT 5,379、
   MISSING 17、OFFLINE 650、HISTORICAL 2,634、lifecycle mismatch 0、export sync SUCCESS 8。
+- Detail correction 已采用独立 correction run/commit：旧 parent commit 保持不可变，
+  APPLY 要求 parent 是当前 HEAD，BACKFILL 仅填充空字段；西语事实变更会保留旧中文
+  source_hash 并标记中文 freshness 为 `STALE`。历史价格低/高值覆盖 old/new/current
+  全部观测端点。热修复最终提交及精确双平台 CI 结果以本分支最新 GitHub Actions
+  记录为准。

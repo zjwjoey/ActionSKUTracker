@@ -87,6 +87,13 @@ Artifact contracts:
 - Backup API output is reopened and checked for integrity, foreign keys and
   database identity before Collection; CI runs the safe suite on Ubuntu and
   Windows.
+- Detail correction facts are versioned as a new correction run/commit. The
+  parent commit remains immutable; APPLY is blocked when the parent is not the
+  current HEAD, while BACKFILL only fills blank current fields. Spanish fact
+  changes retain the old Chinese source hash and mark that localization stale.
+- Historical price extrema use every non-null `old_price`, `new_price`, and
+  current product price endpoint, so reversal sequences retain their true
+  all-time low/high values.
 
 Read-only production validation on 2026-08-31, after a verified Backup API
 copy, observed: integrity `ok`, foreign keys `0`, database role `PRIMARY`,
