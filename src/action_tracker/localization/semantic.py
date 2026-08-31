@@ -18,6 +18,7 @@ _TERM_MAP = {
     "conmutador": ("PRODUCT_TYPE", "交换机"), "speculoos": ("PRODUCT_TYPE", "焦糖饼干"),
 }
 _COLORS = {"blanco": "白色", "blanca": "白色", "negro": "黑色", "negra": "黑色", "rojo": "红色", "roja": "红色", "verde": "绿色", "azul": "蓝色", "multicolor": "彩色", "antracita": "炭灰色"}
+_DETAIL_KEYS = {"color": "颜色", "cantidad": "数量", "contenido": "含量", "material": "材质", "número de producto": "商品编号", "numero de producto": "商品编号", "tamaño": "尺寸", "peso": "重量", "potencia": "功率", "voltaje": "电压", "tipo": "类型"}
 
 
 def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None) -> tuple[SemanticFact, ...]:
@@ -26,6 +27,9 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     seen: set[tuple[str, str]] = set()
     for field, text in text_fields:
         lower = text.lower()
+        for key_es, key_zh in _DETAIL_KEYS.items():
+            if re.search(rf"(?:^|[;|\n])\s*{re.escape(key_es)}\s*[:：]", lower):
+                facts.append(SemanticFact("DETAIL_KEY", key_es, key_zh, key_zh, field, key_es))
         for term, (kind, zh) in _TERM_MAP.items():
             if term in lower and (kind, zh) not in seen:
                 facts.append(SemanticFact(kind, term, zh, zh, field, term))

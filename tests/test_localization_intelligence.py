@@ -33,6 +33,20 @@ def test_technical_tokens_are_preserved_and_numeric_facts_checked():
     assert not validation.numeric_mismatches
 
 
+def test_validator_blocks_unformatted_spec_and_missing_tech_token():
+    record = {"sku": "x", "name_es": "Concentrador USB-C", "spec_es": "4 puertos"}
+    engine = LocalizationEngine()
+    plan = engine.resolve(record)
+    assert "USB-C" in plan.fields["name_zh"].value or any(f.value == "USB-C" for f in plan.semantic_facts)
+    bad_record = {"sku": "x", "name_es": "Concentrador USB-C", "spec_es": "4 x 5 cm | varios colores"}
+    bad = engine.resolve(bad_record)
+    bad_fields = dict(bad.fields); bad_fields["spec_zh"] = type(bad.fields["spec_zh"])("4 x 5 cm | colores", "test", "READY", bad.source_hash)
+    from action_tracker.localization.contracts import LocalizationPlan
+    bad_plan = LocalizationPlan(bad.sku, bad.source_hash, bad_fields, bad.semantic_facts)
+    result = engine.validate(bad_record, bad_plan)
+    assert "SPEC_FORMAT_REVIEW" in result.reasons
+
+
 def test_changed_spanish_facts_keep_old_zh_as_stale_until_retranslation():
     record = {"sku": "1", "name_es": "Gomas elásticas", "spec_es": "100 gramos"}
     engine = LocalizationEngine()

@@ -38,4 +38,11 @@ def validate_plan(source: SourceFacts, plan: LocalizationPlan, *, allowed_tokens
         if expected - found:
             numeric_bad.append(src_key)
     if numeric_bad: reasons.append("NUMERIC_FACT_MISMATCH")
+    spec = plan.fields["spec_zh"].value
+    if "|" in spec or re.search(r"\d\s*[xX]\s*\d", spec) or re.search(r"\d+\s+(?:mm|cm|ml|kg|mg|mcg|mAh|V|W|Hz)\b", spec, re.I):
+        reasons.append("SPEC_FORMAT_REVIEW")
+    rendered = " ".join(field.value for field in plan.fields.values())
+    for fact in plan.semantic_facts:
+        if fact.semantic_type in {"TECH_TOKEN", "MODEL", "SOCKET", "INTERFACE"} and fact.value and fact.value not in rendered:
+            reasons.append("TECH_TOKEN_REVIEW")
     return LocalizationValidation(not reasons, tuple(dict.fromkeys(reasons)), tuple(residue), tuple(numeric_bad))
