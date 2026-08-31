@@ -101,3 +101,17 @@ CURRENT `5,379`, MISSING `17`, OFFLINE `650`, HISTORICAL `2,634`, lifecycle
 mismatch `0`, and export sync `SUCCESS=8`. A migration rehearsal on a separate
 backup copy successfully upgraded `export_sync` to support `SUPERSEDED` while
 retaining integrity and zero foreign-key violations.
+
+## Post-Merge Hotfix Final Closure
+
+The final hotfix candidate is `0e64ec43949a4946598deacf6c50e9d8a250f0dc` on
+`hotfix/post-merge-production-safety`, based on `main@59adcb1`. Local full
+regression is 358 passed. Exact-head GitHub Actions run `33372638623` passed
+on both `ubuntu-latest` and `windows-latest`.
+
+Detail correction acceptance was exercised on a copy of PRIMARY: the old
+commit remained metadata-stable, a new correction commit was created with the
+old commit as `base_commit_id`, `CONTENT_CHANGE` was owned by the correction
+run, the Chinese localization was marked `STALE`, and the new projection row
+was `PENDING`. The copy reported SQLite integrity `ok` and zero foreign-key
+errors; the production PRIMARY was not modified.

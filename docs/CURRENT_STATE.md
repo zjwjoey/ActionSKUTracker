@@ -64,9 +64,9 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
 
 ## 测试与发布状态
 
-- 本地完整回归：356 passed（热修复开发头）。
+- 本地完整回归：358 passed（热修复最终候选头）。
 - CI-safe 白名单已包含 `tests/test_extraction_v2.py`、`tests/test_cli_v2.py`、
-  `tests/test_operations_http_v2.py`。
+  `tests/test_operations_http_v2.py`、`tests/test_post_merge_production_safety.py`。
 - `main@59adcb1` 的合并 CI 已通过；热修复分支已推送但尚未合并。
 - 合并策略：完成独立审查且 HIGH/MEDIUM 均为 0 后，才给出
   `RECOMMEND MERGE HOTFIX TO MAIN`，不会自动合并。
@@ -96,4 +96,5 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
   APPLY 要求 parent 是当前 HEAD，BACKFILL 仅填充空字段；西语事实变更会保留旧中文
   source_hash 并标记中文 freshness 为 `STALE`。历史价格低/高值覆盖 old/new/current
   全部观测端点。热修复最终提交及精确双平台 CI 结果以本分支最新 GitHub Actions
-  记录为准。
+  记录为准。当前热修复 HEAD 为 `0e64ec43949a4946598deacf6c50e9d8a250f0dc`，
+  对应 GitHub Actions run `33372638623`，Ubuntu 与 Windows 均为 SUCCESS。
