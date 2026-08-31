@@ -20,6 +20,7 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 - Architecture V2 Extraction、Saved View、Selection Set、Selection Artifact 和 localhost Workspace 查询入口。
 - Workspace 支持关键词、状态、价格、图片和促销筛选；Saved View 提供显式更新/删除 API。
 - Windows 计划任务注册脚本：`scripts/register_action_tracker_task.ps1`（需管理员 PowerShell）。
+- Saved View CLI：`saved-view create/list/update/delete`；Selection 成员创建后保持固定。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 

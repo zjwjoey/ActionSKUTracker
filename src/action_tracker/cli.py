@@ -62,6 +62,8 @@ def build_parser() -> argparse.ArgumentParser:
     v_sub = v.add_subparsers(dest="saved_view_command", required=True)
     vc = v_sub.add_parser("create"); vc.add_argument("name"); vc.add_argument("--query-json", required=True); vc.add_argument("--description", default="")
     v_sub.add_parser("list")
+    vu = v_sub.add_parser("update"); vu.add_argument("view_id"); vu.add_argument("--name"); vu.add_argument("--description"); vu.add_argument("--query-json")
+    vd = v_sub.add_parser("delete"); vd.add_argument("view_id")
     sset = sub.add_parser("selection", help="Selection Set 管理")
     s_sub = sset.add_subparsers(dest="selection_command", required=True)
     sc = s_sub.add_parser("create"); sc.add_argument("name"); sc.add_argument("--query-json", required=True); sc.add_argument("--description", default=""); sc.add_argument("--view-id")
@@ -396,6 +398,15 @@ def main(argv=None) -> int:
         import json as _json
         svc = SavedViewService(database_path(cfg))
         if args.saved_view_command == "list": print(_json.dumps(svc.list(), ensure_ascii=False)); return 0
+        if args.saved_view_command == "delete":
+            svc.delete(args.view_id); print(_json.dumps({"status": "DELETED", "view_id": args.view_id}, ensure_ascii=False)); return 0
+        if args.saved_view_command == "update":
+            payload = None
+            if args.query_json:
+                source = Path(args.query_json)
+                payload = _json.loads(source.read_text(encoding="utf-8") if source.exists() else args.query_json)
+            result = svc.update(args.view_id, name=args.name, description=args.description, query=payload)
+            print(_json.dumps(result, ensure_ascii=False)); return 0
         payload = _json.loads(Path(args.query_json).read_text(encoding="utf-8") if Path(args.query_json).exists() else args.query_json)
         print(_json.dumps(svc.create(args.name, payload, args.description), ensure_ascii=False)); return 0
     if args.command == "selection":
