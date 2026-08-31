@@ -59,6 +59,15 @@ class RecordResolution:
 
 
 def resolve_record(record: dict[str, Any], context: DictionaryContext) -> RecordResolution:
+    # Once the versioned Localization Intelligence dictionaries are available,
+    # production callers use the single semantic Planner/Validator path.  The
+    # compact legacy implementation below remains only for old fixtures and
+    # third-party callers whose dictionary directory predates V1.
+    if all((context.directory / filename).exists() for filename in (
+        "product_type_dictionary.csv", "detail_key_dictionary.csv",
+        "tech_token_dictionary.csv", "phrase_dictionary.csv",
+    )):
+        return _resolve_record_v1(record, context)
     sku = str(record.get("sku") or "").strip()
     product = context.product_by_sku.get(sku, {})
     manual = context.manual_by_sku.get(sku, {})
@@ -153,6 +162,50 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
         )
         readiness = "AUTO_READY" if mandatory_ok else "REVIEW_REQUIRED"
     return RecordResolution(sku, fields, source_hash_status, source_quality, readiness, tuple(dict.fromkeys(reasons)), brand_classification)
+
+
+def _resolve_record_v1(record: dict[str, Any], context: DictionaryContext) -> RecordResolution:
+    """Adapt the V1 LocalizationPlan to the frozen legacy API shape."""
+    from .localization.engine import LocalizationEngine
+    from .localization.knowledge import KnowledgeLoader
+
+    knowledge = dict(KnowledgeLoader(context.directory).load())
+    product = context.product_by_sku.get(str(record.get("sku") or "").strip(), {})
+    manual = context.manual_by_sku.get(str(record.get("sku") or "").strip(), {})
+    knowledge.update({
+        "name_zh": manual.get("name_zh_standard") or product.get("name_zh_standard") or "",
+        "spec_zh": manual.get("spec_zh_standard") or product.get("spec_zh_standard") or "",
+        "cat1_zh": manual.get("cat1_zh") or product.get("cat1_zh") or "",
+        "cat2_zh": manual.get("cat2_zh") or product.get("cat2_zh") or "",
+        "cat1_map": {key[0]: value.get("cat1_zh", "") for key, value in context.category_by_pair.items()},
+        "cat2_map": {key[1]: value.get("cat2_zh", "") for key, value in context.category_by_pair.items() if key[1]},
+    })
+    engine = LocalizationEngine(knowledge=knowledge)
+    existing = {"source_hash": product.get("source_hash") or ""}
+    for field, legacy in (("name_zh", "name"), ("spec_zh", "spec"), ("cat1_zh", "cat1"), ("cat2_zh", "cat2")):
+        existing[field] = manual.get(field.replace("_zh", "_zh_standard")) or product.get(field.replace("_zh", "_zh_standard")) or ""
+    plan = engine.resolve(record, existing=existing if existing["source_hash"] else None)
+    validation = engine.validate(record, plan)
+    fields: dict[str, FieldResolution] = {}
+    for key, field in plan.fields.items():
+        legacy = {"desc_zh": "description", "details_zh": "details", "unit_price_zh": "unit_price"}.get(key, key.removesuffix("_zh"))
+        status = "READY" if field.status == "READY" else ("MISSING" if not field.value else ("FALLBACK" if field.status == "FALLBACK" else "REVIEW"))
+        fields[legacy] = FieldResolution(field.value, field.source, status)
+    brands = [fact.value for fact in plan.semantic_facts if fact.semantic_type == "BRAND"]
+    if brands:
+        fields["brand"] = FieldResolution(brands[0], "brand_dictionary", "READY")
+        brand_classification = "CONFIRMED"
+    else:
+        fields["brand"] = FieldResolution("", "none", "READY")
+        brand_classification = "NONE"
+    quality = context.source_quality_by_sku.get(str(record.get("sku") or ""), "") or "OK"
+    source_quality = quality if quality in {"OK", "SOURCE_DAMAGED", "SOURCE_POLLUTED"} else "SOURCE_UNTRUSTED"
+    reasons = list(validation.reasons)
+    if source_quality != "OK": reasons.append(source_quality)
+    readiness = "SOURCE_BLOCKED" if source_quality != "OK" else ("AUTO_READY" if validation.ok else "REVIEW_REQUIRED")
+    return RecordResolution(str(record.get("sku") or "").strip(), fields,
+                            "MATCH" if product.get("source_hash") == plan.source_hash and product.get("source_hash") else "MISMATCH",
+                            source_quality, readiness, tuple(dict.fromkeys(reasons)), brand_classification)
 
 
 def resolve_localization(record: dict[str, Any], context: DictionaryContext):
