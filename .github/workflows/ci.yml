@@ -45,8 +45,11 @@ jobs:
         run: python -m pip install -r requirements-dev.txt
 
       - name: Run CI-safe tests
+        # Run the generated step script directly with Python. GitHub defaults
+        # Windows jobs to PowerShell, whose redirection syntax is incompatible
+        # with the Unix here-document form used before this hotfix.
+        shell: python
         run: |
-          python - <<'PY'
           from pathlib import Path
           import pytest
 
@@ -56,4 +59,3 @@ jobs:
               if line.strip() and not line.lstrip().startswith("#")
           ]
           raise SystemExit(pytest.main(["-q", *test_files]))
-          PY
