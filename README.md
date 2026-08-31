@@ -17,6 +17,7 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 - 图片资产增量同步、断点 Manifest、标准化和质量状态；
 - SQLite V2 事务 Writer、PRIMARY 只读 Repository、Shadow/Primary 模式接线（当前正式主链为 SQLite PRIMARY）；
 - AI-Free 字典覆盖率、字段级 Resolver、Dictionary Apply 预览与正式 Gate（生产写入默认关闭）、统一审核队列和术语候选。
+- Architecture V2 Extraction、Saved View、Selection Set、Selection Artifact 和 localhost Workspace 查询入口。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
@@ -46,6 +47,10 @@ Master / State
 - [字典专题](docs/DICTIONARY_ARCHITECTURE.md)
 - [导出模块](docs/EXPORT_ARCHITECTURE.md)
 - [Template 1](docs/EXPORT_PROFILE.md)
+- [Architecture V2](docs/ARCHITECTURE_V2.md)
+- [Boundary Contracts V2](docs/BOUNDARY_CONTRACTS_V2.md)
+- [Extraction Contract V1](docs/EXTRACTION_CONTRACT_V1.md)
+- [Data Workspace V1](docs/DATA_WORKSPACE_V1.md)
 
 ## 快速使用
 
@@ -77,6 +82,11 @@ python -m action_tracker dictionary-apply --run-id <正式run_id> --dry-run
 
 # 请求正式 Apply（当前配置会安全拒绝）
 python -m action_tracker dictionary-apply --run-id <正式run_id> --commit
+
+# 统一商品查询（只读 SQLite PRIMARY）
+python -m action_tracker extract --status CURRENT --max-price 2 --limit 50 --json
+python -m action_tracker saved-view create "低价在售" --query-json '{"statuses":["CURRENT"],"max_price":2}'
+python -m action_tracker selection create "采购清单" --query-json '{"statuses":["CURRENT"],"max_price":2}'
 
 # 完整回归测试
 python -m pytest -q
@@ -122,6 +132,8 @@ python -m action_tracker export --lang es --no-images --date YYYY-MM-DD
 python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD
 # 读取本地图片并导出带图版本（不会触发网络下载）
 python -m action_tracker export --lang zh --with-images --date YYYY-MM-DD
+# Selection 导出（成员固定，事实取导出时最新 SQLite 数据）
+python -m action_tracker export --lang zh --no-images --date YYYY-MM-DD --selection-id <selection_id>
 # Template 1：只有“今日中文清单”嵌入本地图片，另外两张表保持无图
 python -m action_tracker export-template1 --date YYYY-MM-DD --with-images
 # 图片同步（只针对正式 CURRENT 的 image_url）

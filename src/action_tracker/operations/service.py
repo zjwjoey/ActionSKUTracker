@@ -137,6 +137,22 @@ class OperationsService:
             rows = db.execute("SELECT status,count(*) FROM export_sync GROUP BY status").fetchall()
         return {"statuses": {str(row[0]): row[1] for row in rows}}
 
+    def extract(self, query: dict[str, Any] | None = None) -> dict[str, Any]:
+        from ..extraction.service import ExtractionService
+        return ExtractionService(self.db_path).execute(query or {}).as_dict()
+
+    def saved_views(self) -> list[dict[str, Any]]:
+        from ..extraction.selections import SavedViewService
+        return SavedViewService(self.db_path).list()
+
+    def selections(self) -> list[dict[str, Any]]:
+        from ..extraction.selections import SelectionService
+        return SelectionService(self.db_path).list()
+
+    def artifacts(self, selection_id: str | None = None) -> list[dict[str, Any]]:
+        from ..delivery.artifacts import ArtifactService
+        return ArtifactService(self.db_path).list(selection_id)
+
     def health(self) -> dict[str, Any]:
         checks: dict[str, Any] = {}
         try: checks["database"] = validate_production_database(self.db_path)

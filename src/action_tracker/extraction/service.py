@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from ..database.connection import connect
-from ..database.schema import migrate_v2
 from .contracts import ExtractionQuery, ExtractionResult
 
 
@@ -30,7 +29,6 @@ class ExtractionService:
         self.db_path = Path(db_path)
         if not self.db_path.exists():
             raise ExtractionError("DB_MISSING")
-        migrate_v2(self.db_path, role="PRIMARY")
 
     def execute(self, query: ExtractionQuery | dict[str, Any] | None = None) -> ExtractionResult:
         q = query if isinstance(query, ExtractionQuery) else ExtractionQuery.from_dict(query or {})

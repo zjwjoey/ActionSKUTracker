@@ -3,6 +3,7 @@ from pathlib import Path
 from action_tracker.database.connection import connect
 from action_tracker.database.schema import migrate_v2
 from action_tracker.extraction import ExtractionQuery, ExtractionService, SavedViewService, SelectionService
+from action_tracker.delivery import ArtifactService
 
 
 def _db(tmp_path: Path) -> Path:
@@ -42,3 +43,10 @@ def test_saved_view_dynamic_and_selection_membership_fixed(tmp_path: Path):
     refreshed = ExtractionService(path).execute(ExtractionQuery(statuses=("CURRENT",)))
     assert refreshed.items[0]["current_price"] == 9.9
     assert selection.get(selected["selection_id"])["members"] == ["1001"]
+
+
+def test_image_zip_records_membership_and_missing_report(tmp_path: Path):
+    path = _db(tmp_path); selection = SelectionService(path).create("图包", {"statuses":["CURRENT"],"limit":100})
+    image_root = tmp_path / "images"; image_root.mkdir(); (image_root / "1001.png").write_bytes(b"png")
+    result = ArtifactService(path).build_image_zip(selection["selection_id"], image_root, tmp_path / "images.zip")
+    assert result["included"] == 1 and result["missing"] == 0

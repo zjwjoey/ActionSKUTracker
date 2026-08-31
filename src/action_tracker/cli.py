@@ -46,6 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     image_group.add_argument("--with-images", dest="with_images", action="store_true", help="读取本地 250x250 图片并嵌入")
     e.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     e.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
+    e.add_argument("--selection-id", help="可选：仅导出已保存 Selection 的 SKU")
     x = sub.add_parser("extract", help="统一商品提取（SQLite PRIMARY 只读）")
     x.add_argument("--query-json", help="查询 JSON 文件或 JSON 字符串")
     x.add_argument("--keyword")
@@ -66,6 +67,8 @@ def build_parser() -> argparse.ArgumentParser:
     sc = s_sub.add_parser("create"); sc.add_argument("name"); sc.add_argument("--query-json", required=True); sc.add_argument("--description", default=""); sc.add_argument("--view-id")
     s_sub.add_parser("list")
     sg = s_sub.add_parser("get"); sg.add_argument("selection_id")
+    sz = s_sub.add_parser("zip"); sz.add_argument("selection_id"); sz.add_argument("--output", required=True)
+    sx = s_sub.add_parser("csv"); sx.add_argument("selection_id"); sx.add_argument("--output", required=True)
     t = sub.add_parser("export-template1", help="导出 Template 1 三表版本")
     t.add_argument("--with-images", action="store_true", help="仅在今日中文清单嵌入本地 250x250 图片")
     t.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
@@ -116,6 +119,9 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--from-step", choices=("PREFLIGHT", "BACKUP", "COLLECTION", "QA", "DB_COMMIT", "EXPORT", "IMAGE", "KNOWLEDGE", "AI", "AUTO_APPROVAL", "REVIEW", "REPORT"))
     pr.add_argument("--dry-run", action="store_true")
     pr.add_argument("--no-network", action="store_true")
+    du = sub.add_parser("data-update", help="每日数据更新主链（production-run 兼容别名）")
+    du.add_argument("--date"); du.add_argument("--resume", action="store_true"); du.add_argument("--run-id")
+    du.add_argument("--dry-run", action="store_true"); du.add_argument("--no-network", action="store_true")
     ops = sub.add_parser("ops", help="本机运营状态/控制台")
     ops_sub = ops.add_subparsers(dest="ops_command", required=True)
     ops_sub.add_parser("status"); ops_sub.add_parser("health"); ops_sub.add_parser("runs"); ops_run = ops_sub.add_parser("run"); ops_run.add_argument("run_id")
@@ -177,7 +183,7 @@ def main(argv=None) -> int:
         try:
             result = export_catalog(
                 cfg, language=args.lang, export_date=args.date,
-                no_images=not args.with_images, run_id=args.run_id,
+                no_images=not args.with_images, run_id=args.run_id, selection_id=args.selection_id,
             )
         except ExportValidationError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
@@ -398,13 +404,20 @@ def main(argv=None) -> int:
         svc = SelectionService(database_path(cfg))
         if args.selection_command == "list": print(_json.dumps(svc.list(), ensure_ascii=False)); return 0
         if args.selection_command == "get": print(_json.dumps(svc.get(args.selection_id), ensure_ascii=False)); return 0
+        if args.selection_command == "zip":
+            from .delivery import ArtifactService
+            image_root = Path(cfg["paths"]["images"]) / "derivatives" / "excel_250"
+            print(_json.dumps(ArtifactService(database_path(cfg)).build_image_zip(args.selection_id, image_root, Path(args.output)), ensure_ascii=False)); return 0
+        if args.selection_command == "csv":
+            from .delivery import ArtifactService
+            print(_json.dumps(ArtifactService(database_path(cfg)).build_csv(args.selection_id, Path(args.output)), ensure_ascii=False)); return 0
         payload = _json.loads(Path(args.query_json).read_text(encoding="utf-8") if Path(args.query_json).exists() else args.query_json)
         print(_json.dumps(svc.create(args.name, payload, description=args.description, view_id=args.view_id), ensure_ascii=False)); return 0
-    if args.command == "production-run":
+    if args.command in ("production-run", "data-update"):
         from .operations.entry import run_production
         from .services.runtime import observation_date
         try:
-            result = run_production(cfg, business_date=args.date or observation_date(), resume=args.resume, run_id=args.run_id, from_step=args.from_step, dry_run=args.dry_run, no_network=args.no_network)
+            result = run_production(cfg, business_date=args.date or observation_date(), resume=args.resume, run_id=args.run_id, from_step=getattr(args, "from_step", None), dry_run=args.dry_run, no_network=args.no_network)
         except Exception as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr); return 30
         print(json.dumps(result, ensure_ascii=False)); return int(result.get("exit_code") or 0)

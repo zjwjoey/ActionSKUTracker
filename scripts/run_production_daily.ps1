@@ -16,7 +16,7 @@ Set-Location $ProjectRoot
 $env:ACTION_TRACKER_PROJECT_ROOT = $ProjectRoot
 $env:PYTHONPATH = Join-Path $SourceRoot "src"
 
-$arguments = @("-m", "action_tracker", "production-run")
+$arguments = @("-m", "action_tracker", "data-update")
 if ($Date) { $arguments += @("--date", $Date) }
 if ($Resume) { $arguments += "--resume" }
 if ($DryRun) { $arguments += "--dry-run" }

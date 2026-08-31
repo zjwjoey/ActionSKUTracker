@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from ..database.connection import connect
-from ..database.schema import migrate_v2
 from .contracts import ExtractionQuery
 from .service import ExtractionService
 
@@ -18,7 +17,7 @@ def _now() -> str:
 
 class SavedViewService:
     def __init__(self, db_path: Path):
-        self.db_path = Path(db_path); migrate_v2(self.db_path, role="PRIMARY")
+        self.db_path = Path(db_path)
 
     def create(self, name: str, query: ExtractionQuery | dict[str, Any], description: str = "", *, is_system: bool = False) -> dict[str, Any]:
         q = query if isinstance(query, ExtractionQuery) else ExtractionQuery.from_dict(query)
@@ -54,7 +53,7 @@ class SavedViewService:
 
 class SelectionService:
     def __init__(self, db_path: Path):
-        self.db_path = Path(db_path); migrate_v2(self.db_path, role="PRIMARY")
+        self.db_path = Path(db_path)
 
     def create(self, name: str, query: ExtractionQuery | dict[str, Any], *, description: str = "", view_id: str | None = None) -> dict[str, Any]:
         q = query if isinstance(query, ExtractionQuery) else ExtractionQuery.from_dict(query)
