@@ -23,5 +23,5 @@ artifact hashes rather than relying on historical SHA values.
 - Real Selection `sel_900a37b4339a`: 50 fixed members from CURRENT price <=
   0.5. CSV, ES XLSX, ZH XLSX, ZH-with-images XLSX and a 50-image ZIP were
   generated with exact membership and artifact hashes recorded in SQLite.
-- Local regression: 325 passed. Exact-head CI for branch HEAD `3204c72`:
-  `33352025298 PASS`. Main is unchanged and no merge is automatic.
+- Local regression: 325 passed. Exact-head CI for branch HEAD `2e98b40`:
+  `33352065427 PASS`. Main is unchanged and no merge is automatic.
