@@ -18,6 +18,8 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 - SQLite V2 事务 Writer、PRIMARY 只读 Repository、Shadow/Primary 模式接线（当前正式主链为 SQLite PRIMARY）；
 - AI-Free 字典覆盖率、字段级 Resolver、Dictionary Apply 预览与正式 Gate（生产写入默认关闭）、统一审核队列和术语候选。
 - Architecture V2 Extraction、Saved View、Selection Set、Selection Artifact 和 localhost Workspace 查询入口。
+- Workspace 支持关键词、状态、价格、图片和促销筛选；Saved View 提供显式更新/删除 API。
+- Windows 计划任务注册脚本：`scripts/register_action_tracker_task.ps1`（需管理员 PowerShell）。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 

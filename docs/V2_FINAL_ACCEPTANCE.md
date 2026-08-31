@@ -23,5 +23,11 @@ artifact hashes rather than relying on historical SHA values.
 - Real Selection `sel_900a37b4339a`: 50 fixed members from CURRENT price <=
   0.5. CSV, ES XLSX, ZH XLSX, ZH-with-images XLSX and a 50-image ZIP were
   generated with exact membership and artifact hashes recorded in SQLite.
-- Local regression: 325 passed. Exact-head CI for branch HEAD `2e98b40`:
-  `33352065427 PASS`. Main is unchanged and no merge is automatic.
+- Local regression: 326 passed. Branch HEAD `935e4c7` includes the explicit
+  Scheduler registration script and Workspace query/control closure. Exact-head
+  CI must be rerun for this new head before merge. Main is unchanged and no
+  merge is automatic.
+- Operational status: no matching ActionSKUTracker Windows Task Scheduler task
+  is currently registered on the host. Registration remains an operator action
+  requiring elevated PowerShell; the repository script is
+  `scripts/register_action_tracker_task.ps1`.
