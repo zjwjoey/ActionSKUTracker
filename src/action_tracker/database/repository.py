@@ -142,7 +142,11 @@ class ProductionRepository:
                    p.unit_price_raw,p.raw_badges,p.action_new_badge,p.promotion_active,p.sustainable_badge,
                    p.status,p.product_url,p.image_url,p.first_seen_at,p.last_seen_at,
                    es.name,es.cat1,es.cat2,es.spec,es.description,es.details,
-                   zh.name,zh.cat1,zh.cat2,zh.spec,zh.description,zh.details
+                   zh.name,zh.cat1,zh.cat2,zh.spec,zh.description,zh.details,
+                   zh.source_hash,zh.resolution_status,zh.review_status,zh.freshness_status,
+                   zh.name_source,zh.cat1_source,zh.cat2_source,zh.spec_source,
+                   zh.description_source,zh.details_source,zh.approved_by,zh.approved_at,
+                   zh.last_commit_id,zh.applied_commit_id
                    FROM products p
                    LEFT JOIN product_localizations es ON es.official_sku=p.official_sku AND es.language='es'
                    LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'
@@ -157,6 +161,10 @@ class ProductionRepository:
                 "status": row[11], "product_url": row[12], "image_url": row[13], "first_seen": row[14], "last_seen": row[15],
                 "cat1_es": row[17], "cat2_es": row[18], "spec_es": row[19], "desc_es": row[20], "details_es": row[21],
                 "cat1_zh": row[23], "cat2_zh": row[24], "spec_zh": row[25], "desc_zh": row[26], "details_zh": row[27],
+                "zh_source_hash": row[28], "zh_resolution_status": row[29], "zh_review_status": row[30], "zh_freshness_status": row[31],
+                "zh_name_source": row[32], "zh_cat1_source": row[33], "zh_cat2_source": row[34], "zh_spec_source": row[35],
+                "zh_description_source": row[36], "zh_details_source": row[37], "zh_approved_by": row[38], "zh_approved_at": row[39],
+                "zh_last_commit_id": row[40], "zh_applied_commit_id": row[41],
             })
         return records
 
