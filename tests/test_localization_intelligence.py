@@ -1,6 +1,6 @@
 from action_tracker.localization import LocalizationEngine
 from action_tracker.localization.contracts import SourceFacts, source_hash
-from action_tracker.localization.formatter import format_spec, format_unit_price
+from action_tracker.localization.formatter import format_details, format_spec, format_unit_price
 from action_tracker.localization.learning import aggregate_candidates
 from action_tracker.localization.promotion import can_promote
 from action_tracker.database.schema import migrate_v2
@@ -13,6 +13,7 @@ def test_formatter_uses_retail_spec_contract():
     assert format_spec("50 x 60 cm | varios colores") == "50×60cm｜多种颜色"
     assert format_spec("100 gramos") == "100g"
     assert format_unit_price("0,33 €/ud.") == "0,33 €/件"
+    assert format_details("Color: Azul\nCantidad: 3 unidades\nSin alcohol: No") == "颜色：蓝色；数量：3件；含酒精：否"
 
 
 def test_known_product_type_resolves_without_ai():

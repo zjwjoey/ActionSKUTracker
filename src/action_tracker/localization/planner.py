@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from .contracts import LocalizationField, LocalizationPlan, SemanticFact, SourceFacts
-from .formatter import format_spec, format_text, format_unit_price
+from .formatter import format_details, format_spec, format_text, format_unit_price
 from .policy import FIXED_CAT1, has_ordinary_spanish, map_cat1
 
 _FIELD_NAMES = {"name_zh": "name", "cat1_zh": "cat1", "cat2_zh": "cat2", "spec_zh": "spec", "unit_price_zh": "unit_price", "desc_zh": "description", "details_zh": "details"}
@@ -50,9 +50,14 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     spec, ss = value("spec_zh")
     if not spec:
         spec = format_spec(source.spec_es)
+    else:
+        spec = format_spec(spec)
     unit_price, ups = value("unit_price_zh", format_unit_price(source.unit_price_es))
     desc, ds = value("desc_zh", format_text(source.desc_es))
-    details, dts = value("details_zh", format_text(source.details_es))
+    details, dts = value("details_zh", format_details(source.details_es))
+    details = format_details(details)
+    placements = {"PRODUCT_TYPE": "name", "BRAND": "name", "SERIES": "name", "IP_CHARACTER": "name", "MODEL": "spec", "TECH_TOKEN": "spec", "STANDARD_UNIT": "spec", "SIZE_DIMENSION": "spec", "CAPACITY": "spec", "WEIGHT": "spec", "QUANTITY": "spec", "COLOR": "spec", "VARIANT": "spec", "MATERIAL": "name", "FUNCTION": "description", "COMPATIBILITY": "spec", "VOLTAGE": "spec", "POWER": "spec", "CURRENT": "spec", "FREQUENCY": "spec", "BATTERY_CAPACITY": "spec", "SOCKET": "spec", "INTERFACE": "spec", "PROTECTION_RATING": "spec", "CARE": "details", "NUTRITION": "name", "DETAIL_KEY": "details", "DESCRIPTION_FACT": "description"}
+    planned_facts = tuple(SemanticFact(f.semantic_type, f.source_text, f.value, f.canonical_value, f.source_field, f.evidence, f.confidence, placements.get(f.semantic_type, "review")) for f in facts)
     fields = {
         "name_zh": LocalizationField(name, ns, "READY" if clean(name) else "REVIEW_REQUIRED", source.source_hash, "CURRENT", review_reasons=() if clean(name) else ("NAME_REVIEW", "SPANISH_RESIDUAL")),
         "cat1_zh": LocalizationField(cat1, cs, "READY" if cat1 in FIXED_CAT1 else "REVIEW_REQUIRED", source.source_hash, "CURRENT", review_reasons=() if cat1 in FIXED_CAT1 else ("CATEGORY_REVIEW",)),
@@ -64,4 +69,4 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     }
     reasons = tuple(dict.fromkeys(r for f in fields.values() for r in f.review_reasons))
     readiness = "AUTO_READY" if all(f.status == "READY" for f in fields.values()) else "REVIEW_REQUIRED"
-    return LocalizationPlan(source.sku, source.source_hash, fields, facts, readiness, reasons, tuple(hits), False)
+    return LocalizationPlan(source.sku, source.source_hash, fields, planned_facts, readiness, reasons, tuple(hits), False)

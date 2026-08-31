@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -83,6 +84,11 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
     with audit_path.open("w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=headers); writer.writeheader(); writer.writerows(rows)
     learning = aggregate_candidates(candidates, out)
+    # Keep the durable learning pool separate from per-run reports while
+    # retaining the report-local copy required for reproducibility.
+    learning_pool = Path(cfg["paths"]["temp"]).parent / "localization" / "learning_candidates" / date_key
+    learning_pool.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(learning["path"], learning_pool / "learning_candidates.csv")
     ready = sum(row["readiness"] in {"READY", "AUTO_READY"} for row in rows)
     coverage = {"run_id": run_id, "total_current_skus": len(rows), "ready_count": ready, "review_required_count": len(rows)-ready,
                 "ordinary_spanish_residue_count": sum(bool(row["spanish_residue_tokens"]) for row in rows),

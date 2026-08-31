@@ -19,6 +19,21 @@ _TERM_MAP = {
 }
 _COLORS = {"blanco": "白色", "blanca": "白色", "negro": "黑色", "negra": "黑色", "rojo": "红色", "roja": "红色", "verde": "绿色", "azul": "蓝色", "multicolor": "彩色", "antracita": "炭灰色"}
 _DETAIL_KEYS = {"color": "颜色", "cantidad": "数量", "contenido": "含量", "material": "材质", "número de producto": "商品编号", "numero de producto": "商品编号", "tamaño": "尺寸", "peso": "重量", "potencia": "功率", "voltaje": "电压", "tipo": "类型"}
+_SEMANTIC_PATTERNS = (
+    ("SIZE_DIMENSION", r"\b\d+(?:[.,]\d+)?\s*[xX×]\s*\d+(?:[.,]\d+)?\s*(?:cm|mm|m)\b"),
+    ("CAPACITY", r"\b\d+(?:[.,]\d+)?\s*(?:ml|l|litros?)\b"),
+    ("WEIGHT", r"\b\d+(?:[.,]\d+)?\s*(?:g|gramos?|kg|kilos?)\b"),
+    ("QUANTITY", r"\b\d+\s*(?:unidades?|piezas?|pares?|uds?\.?|packs?)\b"),
+    ("VOLTAGE", r"\b\d+(?:[–-]\d+)?\s*V\b"),
+    ("POWER", r"\b\d+(?:[.,]\d+)?\s*W\b"),
+    ("BATTERY_CAPACITY", r"\b\d+(?:[.,]\d+)?\s*mAh\b"),
+    ("PROTECTION_RATING", r"\bIP\d{2}\b"),
+    ("SOCKET", r"\bE\d{2}\b"),
+    ("INTERFACE", r"\b(?:USB-[A-Z]|HDMI|Bluetooth|Wi-?Fi)\b"),
+    ("MATERIAL", r"\b(?:algodón|poliéster|nylon|plástico|madera|acero|aluminio|microfibra|caucho)\b"),
+    ("COMPATIBILITY", r"\b(?:compatible|compatibilidad|para\s+(?:HP|Epson|iPhone|Android))\b"),
+    ("NUTRITION", r"\b(?:vitamina|omega[- ]?3|colágeno|magnesio|proteína)\b"),
+)
 
 
 def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None) -> tuple[SemanticFact, ...]:
@@ -44,6 +59,13 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
             token = match.group(0)
             kind = "TECH_TOKEN" if token.upper().startswith(("USB", "E")) or token[0].isalpha() else "MODEL"
             facts.append(SemanticFact(kind, token, token, token, field, token))
+        for kind, pattern in _SEMANTIC_PATTERNS:
+            for match in re.finditer(pattern, text, re.I):
+                raw = match.group(0)
+                # Keep the source token as value; the formatter/planner owns
+                # Chinese rendering and therefore cannot silently lose facts.
+                if (kind, raw.lower()) not in seen:
+                    facts.append(SemanticFact(kind, raw, raw, raw, field, raw)); seen.add((kind, raw.lower()))
     for brand in known_brands or set():
         if brand and brand.lower() in source.name_es.lower():
             facts.append(SemanticFact("BRAND", brand, brand, brand, "name_es", brand))
