@@ -104,10 +104,10 @@ retaining integrity and zero foreign-key violations.
 
 ## Post-Merge Hotfix Final Closure
 
-The final hotfix candidate is `0e64ec43949a4946598deacf6c50e9d8a250f0dc` on
+The final hotfix code candidate is `ee0ec7531e4bda9556801515f4a8cf29e2540cb8` on
 `hotfix/post-merge-production-safety`, based on `main@59adcb1`. Local full
-regression is 358 passed. Exact-head GitHub Actions run `33372638623` passed
-on both `ubuntu-latest` and `windows-latest`.
+regression before this closure is 363 passed. Exact-head GitHub Actions for the
+final pushed branch is tracked by the latest successful run.
 
 Detail correction acceptance was exercised on a copy of PRIMARY: the old
 commit remained metadata-stable, a new correction commit was created with the
