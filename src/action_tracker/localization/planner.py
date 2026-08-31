@@ -76,7 +76,7 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     details, dts = value("details_zh", format_details(source.details_es))
     details = format_details(details)
     placements = {"PRODUCT_TYPE": "name", "BRAND": "name", "SERIES": "name", "IP_CHARACTER": "name", "MODEL": "spec", "TECH_TOKEN": "spec", "STANDARD_UNIT": "spec", "SIZE_DIMENSION": "spec", "CAPACITY": "spec", "WEIGHT": "spec", "QUANTITY": "spec", "COLOR": "spec", "VARIANT": "spec", "MATERIAL": "name", "FUNCTION": "description", "COMPATIBILITY": "spec", "VOLTAGE": "spec", "POWER": "spec", "CURRENT": "spec", "FREQUENCY": "spec", "BATTERY_CAPACITY": "spec", "SOCKET": "spec", "INTERFACE": "spec", "PROTECTION_RATING": "spec", "CARE": "details", "NUTRITION": "name", "DETAIL_KEY": "details", "DESCRIPTION_FACT": "description"}
-    planned_facts = tuple(SemanticFact(f.semantic_type, f.source_text, f.value, f.canonical_value, f.source_field, f.evidence, f.confidence, placements.get(f.semantic_type, "review")) for f in facts)
+    planned_facts = tuple(SemanticFact(f.semantic_type, f.source_text, f.value, f.canonical_value, f.source_field, f.evidence, f.confidence, placements.get(f.semantic_type, "review"), f.source_hash or source.source_hash) for f in facts)
     # Every semantic fact receives explicit placement evidence.  This is
     # intentionally field-level provenance rather than a single opaque
     # translator provenance string.

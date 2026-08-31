@@ -137,6 +137,8 @@ class ProductionRepository:
         """Return CURRENT facts plus both language localization projections."""
         with connect(self.path) as db:
             self._check_v2(db)
+            head_row = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC,commit_id DESC LIMIT 1").fetchone()
+            run_row = db.execute("SELECT run_id FROM runs ORDER BY started_at DESC,run_id DESC LIMIT 1").fetchone()
             rows = db.execute(
                 """SELECT p.canonical_id,p.official_sku,p.name_es,p.name_zh,p.current_price,p.original_price,
                    p.unit_price_raw,p.raw_badges,p.action_new_badge,p.promotion_active,p.sustainable_badge,
@@ -152,6 +154,8 @@ class ProductionRepository:
                    LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'
                    WHERE p.status='CURRENT' ORDER BY p.official_sku"""
             ).fetchall()
+        source_commit_id = str(head_row[0]) if head_row else ""
+        source_run_id = str(run_row[0]) if run_row else ""
         records = []
         for row in rows:
             records.append({
@@ -165,6 +169,7 @@ class ProductionRepository:
                 "zh_name_source": row[32], "zh_cat1_source": row[33], "zh_cat2_source": row[34], "zh_spec_source": row[35],
                 "zh_description_source": row[36], "zh_details_source": row[37], "zh_approved_by": row[38], "zh_approved_at": row[39],
                 "zh_last_commit_id": row[40], "zh_applied_commit_id": row[41],
+                "source_commit_id": source_commit_id, "source_run_id": source_run_id,
             })
         return records
 

@@ -93,6 +93,7 @@ class SemanticFact:
     evidence: str = ""
     confidence: float = 1.0
     placement: str = ""
+    fact_source_hash: str = ""
 
     def __post_init__(self) -> None:
         if self.semantic_type not in SEMANTIC_TYPES:
@@ -134,7 +135,7 @@ class SemanticFact:
 
     @property
     def source_hash(self) -> str:
-        return ""
+        return self.fact_source_hash
 
 
 @dataclass(frozen=True)

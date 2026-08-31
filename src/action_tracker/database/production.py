@@ -261,7 +261,7 @@ class ProductionWriter:
             incoming = dict(r)
             if language == "zh":
                 existing_row = db.execute(
-                    "SELECT name,cat1,cat2,spec,description,details,source,review_status,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id,last_commit_id FROM product_localizations WHERE official_sku=? AND language='zh'",
+                    "SELECT name,cat1,cat2,spec,description,details,source,review_status,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id,last_commit_id,updated_at FROM product_localizations WHERE official_sku=? AND language='zh'",
                     (sku,),
                 ).fetchone()
                 if existing_row is not None:
@@ -273,13 +273,13 @@ class ProductionWriter:
                     # Chinese text and provenance and mark it STALE.  When
                     # facts did not change, preserve approval/LOCK metadata.
                     if existing_hash and incoming_hash and existing_hash != incoming_hash:
-                        for key in ("name", "cat1", "cat2", "spec", "description", "details", "source_hash", "resolution_status", "name_source", "cat1_source", "cat2_source", "spec_source", "description_source", "details_source", "approved_by", "approved_at", "applied_commit_id"):
+                        for key in ("name", "cat1", "cat2", "spec", "description", "details", "source_hash", "resolution_status", "name_source", "cat1_source", "cat2_source", "spec_source", "description_source", "details_source", "approved_by", "approved_at", "applied_commit_id", "last_commit_id", "updated_at"):
                             if key in existing:
                                 incoming[key] = existing[key]
                         incoming["freshness_status"] = "STALE"
                         incoming["review_status"] = existing.get("review_status") or "STALE"
                     else:
-                        for key in ("review_status", "name_source", "cat1_source", "cat2_source", "spec_source", "description_source", "details_source", "approved_by", "approved_at", "applied_commit_id"):
+                        for key in ("name", "cat1", "cat2", "spec", "description", "details", "source_hash", "resolution_status", "review_status", "name_source", "cat1_source", "cat2_source", "spec_source", "description_source", "details_source", "approved_by", "approved_at", "applied_commit_id", "last_commit_id", "updated_at"):
                             if existing.get(key) is not None:
                                 incoming[key] = existing[key]
                         if str(existing.get("freshness_status") or "").upper() == "STALE":
@@ -296,7 +296,7 @@ class ProductionWriter:
                  details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,
                  approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""",
                  (sku, language, incoming.get("name"), incoming.get("cat1"), incoming.get("cat2"), incoming.get("spec"), incoming.get("description"), incoming.get("details"),
-                  incoming.get("source"), incoming.get("review_status"), now, commit_id, incoming.get("source_hash"),
+                  incoming.get("source"), incoming.get("review_status"), incoming.get("updated_at") or now, incoming.get("last_commit_id") or commit_id, incoming.get("source_hash"),
                   incoming.get("resolution_status"), incoming.get("name_source"), incoming.get("cat1_source"), incoming.get("cat2_source"),
                   incoming.get("spec_source"), incoming.get("description_source"), incoming.get("details_source"), incoming.get("freshness_status"),
                   incoming.get("approved_by"), incoming.get("approved_at"), incoming.get("applied_commit_id") or commit_id),

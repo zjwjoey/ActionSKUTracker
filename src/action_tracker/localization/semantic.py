@@ -56,7 +56,7 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         key = (kind, source_text.casefold(), zh)
         if key in seen or not source_text or not zh:
             return
-        facts.append(SemanticFact(kind, source_text, zh, canonical or zh, field, evidence))
+        facts.append(SemanticFact(kind, source_text, zh, canonical or zh, field, evidence, 1.0, "", source.source_hash))
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()

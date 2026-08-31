@@ -129,6 +129,22 @@ def test_daily_bundle_preserves_old_zh_and_marks_stale_when_es_hash_changes(tmp_
         assert tuple(row) == ("旧中文", "10g", "old", "STALE", "APPROVED", "manual_override", "user")
 
 
+def test_daily_bundle_keeps_localization_updated_at_and_commit_when_facts_unchanged(tmp_path):
+    path = tmp_path / "primary.db"
+    migrate_v2(path, role="PRIMARY")
+    with connect(path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('ACT1','1','CURRENT')")
+        db.execute("INSERT INTO commit_batches(commit_id,run_id,bundle_hash,schema_version,started_at,committed_at,status) VALUES('C1','r1','h','2.0.0','now','now','COMMITTED')")
+        db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES('r1','2026-09-01','COMMITTED','PASS',0,'now','now','2.0.0')")
+        db.execute("INSERT INTO product_localizations(official_sku,language,name,source_hash,review_status,updated_at,last_commit_id,applied_commit_id) VALUES('1','zh','中文','same','APPROVED','old-time','C1','C1')")
+    writer = ProductionWriter(path, role="PRIMARY")
+    bundle = CommitBundle(run_id="r2", observation_date="2026-09-02", qa_state="PASS", current_products=({"sku": "1", "canonical_id": "ACT1", "status": "CURRENT"},), localization_updates=({"sku": "1", "language": "zh", "name": "新候选不应覆盖", "source_hash": "same", "review_status": "PENDING"},), base_commit_id="C1")
+    writer.commit(bundle)
+    with connect(path) as db:
+        row = db.execute("SELECT name,updated_at,last_commit_id,review_status FROM product_localizations WHERE official_sku='1' AND language='zh'").fetchone()
+        assert tuple(row) == ("中文", "old-time", "C1", "APPROVED")
+
+
 def test_source_and_semantic_contracts_keep_official_provenance():
     source = SourceFacts.from_record({"sku": "42", "name_es": "USB-C cable", "image_url": "https://cdn/image.png", "run_id": "r1", "source_commit_id": "C1"})
     assert source.unit_price == source.unit_price_es
@@ -137,7 +153,7 @@ def test_source_and_semantic_contracts_keep_official_provenance():
     plan = LocalizationEngine().resolve({"sku": "42", "name_es": "USB-C cable", "spec_es": "1 m"})
     item = plan.semantic_facts[0].as_dict()
     assert {"normalized_source", "zh_value", "knowledge_source", "allowed_targets", "preferred_target", "keep_original", "source_hash"} <= set(item)
-    assert fact == plan.source_hash or isinstance(plan.source_hash, str)
+    assert item["source_hash"] == plan.source_hash and isinstance(fact, str)
 
 
 def test_dictionary_rows_drive_phrase_product_type_and_tech_token():
