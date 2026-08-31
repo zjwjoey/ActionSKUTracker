@@ -28,10 +28,10 @@ Localization 核心不访问官网，不修改 Presence、Lifecycle、Price hist
 
 ## 本次 feature 验证记录
 
-- feature head：`d09f26e113aee7e3c40d700a2c1679bb8cc71bf8`
+- feature head：`85e2ab80fc2d9af4fcdf6b829b1c6755991b0715`
 - 基线：`a3cbb6bfb49431d7ddf4dc502d302e6efb44a3f2`
 - 全量 dry-run：5,379 CURRENT；ready 0、review_required 5,379、普通西语残留 5,379、数字事实 mismatch 436、AI calls 0。
 - 该结果反映当前 PRIMARY 中大量历史中文字段的来源哈希/语言状态仍待重新标准化，不代表系统绕过了审核；formal apply 不会对这些行自动写入。
-- GitHub Actions exact-head CI：此前 head 的 Ubuntu/Windows 均 PASS；本次文档提交后需以最新 run 为准。
+- GitHub Actions exact-head CI：Ubuntu 与 Windows 均 PASS，run `33441487960`。
 
 当前结论：`LOCALIZATION_V1_NOT_ACCEPTED DO_NOT_MERGE`。原因是全量质量门禁尚未 PASS，且生产 AI/apply 开关保持关闭；需先完成 UNKNOWN 候选审核或提供新的有效中文结果，再重新运行 audit/apply 验收。
