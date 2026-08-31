@@ -68,7 +68,8 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
 - 本地完整回归：335 passed。
 - CI-safe 白名单已包含 `tests/test_extraction_v2.py`、`tests/test_cli_v2.py`、
   `tests/test_operations_http_v2.py`。
-- 最终提交后必须以同一 commit 的 GitHub Actions CI PASS 为准；在 CI 通过前不宣称可合并。
+- 最终提交 `dc67f3cde800b8f55aa44f7e9ae504d29c9bd4b7` 的 GitHub Actions run
+  `33355330753` 已通过 CI-safe 测试；主分支仍未自动合并。
 - 合并策略：完成独立审查且 HIGH/MEDIUM 均为 0 后，只给出 `RECOMMEND MERGE`，不自动合并。
 
 ## 相关文档
