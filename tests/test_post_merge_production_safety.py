@@ -16,6 +16,7 @@ import pytest
 from action_tracker.database.connection import connect
 from action_tracker.database.production import CommitBundle, ProductionDatabaseError, ProductionWriter, apply_detail_corrections, database_status
 from action_tracker.database.schema import migrate_v2
+from action_tracker.extraction import ExtractionService
 from action_tracker import cli
 from action_tracker.monitor import listing
 from action_tracker.operations import entry
@@ -154,6 +155,22 @@ def test_detail_correction_primary_only_changes_detail_facts(tmp_path):
         assert conn.execute("SELECT count(*) FROM commit_batches WHERE commit_id='c1' AND bundle_hash='x'").fetchone()[0] == 1
         assert conn.execute("SELECT run_id FROM event_history WHERE event_type='CONTENT_CHANGE'").fetchone()[0] == result["correction_run_id"]
         assert conn.execute("SELECT freshness_status FROM product_localizations WHERE official_sku='1001' AND language='zh'").fetchone()[0] == "STALE"
+    item = next(row for row in ExtractionService(db).execute({"skus": ["1001"], "limit": 10}).items)
+    assert item["localization_status"] == "STALE"
+
+
+@pytest.mark.parametrize("old_status", ["PENDING", "FAILED", "SUCCESS"])
+def test_detail_correction_export_sync_head_transition(tmp_path, old_status):
+    db = tmp_path / "primary.sqlite"; _primary_db(db)
+    with connect(db) as conn:
+        conn.execute("UPDATE export_sync SET status=? WHERE commit_id='c1'", (old_status,))
+    result = apply_detail_corrections(db, parent_run_id="parent", mode="APPLY", details_by_sku={"1001": {"desc_es": "Corrected"}})
+    with connect(db) as conn:
+        old = conn.execute("SELECT status FROM export_sync WHERE commit_id='c1'").fetchone()[0]
+        new = conn.execute("SELECT status FROM export_sync WHERE commit_id=?", (result["commit_id"],)).fetchone()[0]
+        assert old == ("SUCCESS" if old_status == "SUCCESS" else "SUPERSEDED")
+        assert new == "PENDING"
+        assert database_status(db)["pending_export_sync"] == 1
 
 
 def test_detail_correction_old_parent_is_blocked_and_immutable(tmp_path):

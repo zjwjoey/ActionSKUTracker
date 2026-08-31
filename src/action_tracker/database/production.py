@@ -25,6 +25,20 @@ class ProductionDatabaseError(RuntimeError):
     """Production DB identity, baseline or transaction validation failure."""
 
 
+def supersede_older_export_sync(db: sqlite3.Connection, new_commit_id: str) -> None:
+    """Move older retryable projections behind the new SQLite head.
+
+    Successful historical projections remain valid evidence; only PENDING and
+    FAILED rows can be superseded.  Callers must invoke this inside the same
+    transaction that creates the new commit.
+    """
+    db.execute(
+        "UPDATE export_sync SET status='SUPERSEDED', error=? "
+        "WHERE commit_id<>? AND status IN ('PENDING','FAILED')",
+        (f"SUPERSEDED_BY:{new_commit_id}", new_commit_id),
+    )
+
+
 @dataclass(frozen=True)
 class CommitBundle:
     run_id: str
@@ -131,11 +145,7 @@ class ProductionWriter:
                 # Compatibility projections represent only the current DB
                 # head.  Once a newer formal commit exists, an older pending
                 # projection must never be rebuilt over the newer facts.
-                db.execute(
-                    "UPDATE export_sync SET status='SUPERSEDED', error=? "
-                    "WHERE commit_id<>? AND status IN ('PENDING','FAILED')",
-                    (f"SUPERSEDED_BY:{commit_id}", commit_id),
-                )
+                supersede_older_export_sync(db, commit_id)
                 self._validate_transaction(db, bundle, commit_id)
                 db.commit()
             except Exception:
@@ -810,6 +820,7 @@ def apply_detail_corrections(
                  len(pending), 0, 0, 0, "COMMITTED"),
             )
             db.execute("INSERT INTO export_sync(commit_id,status) VALUES(?, 'PENDING')", (correction_commit_id,))
+            supersede_older_export_sync(db, correction_commit_id)
 
             for item in pending:
                 sku = item["sku"]

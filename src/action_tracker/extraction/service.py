@@ -79,11 +79,17 @@ class ExtractionService:
             clauses.append("(ia.status IS NULL OR ia.status<>'AVAILABLE' OR ia.master_image_path IS NULL)")
         if q.localization_status:
             status = q.localization_status.upper()
+            six_complete = "COALESCE(zh.name,'')<>'' AND COALESCE(zh.cat1,'')<>'' AND COALESCE(zh.cat2,'')<>'' AND COALESCE(zh.spec,'')<>'' AND COALESCE(zh.description,'')<>'' AND COALESCE(zh.details,'')<>''"
+            stale = "(upper(COALESCE(zh.freshness_status,''))='STALE' OR upper(COALESCE(zh.review_status,''))='STALE')"
+            review_blocked = "upper(COALESCE(zh.review_status,''))='BLOCKED'"
+            review_pending = "upper(COALESCE(zh.review_status,'')) IN ('PENDING','REVIEW_PENDING')"
             if status == "COMPLETE":
-                clauses.append("COALESCE(zh.name,'')<>'' AND COALESCE(zh.cat1,'')<>'' AND COALESCE(zh.cat2,'')<>'' AND COALESCE(zh.spec,'')<>'' AND COALESCE(zh.description,'')<>'' AND COALESCE(zh.details,'')<>''")
+                clauses.append(f"{six_complete} AND NOT {stale} AND NOT {review_blocked} AND NOT {review_pending}")
             elif status in {"INCOMPLETE", "STALE", "PENDING", "REVIEW_PENDING", "BLOCKED"}:
-                if status == "INCOMPLETE": clauses.append("(COALESCE(zh.name,'')='' OR COALESCE(zh.cat1,'')='' OR COALESCE(zh.cat2,'')='' OR COALESCE(zh.spec,'')='' OR COALESCE(zh.description,'')='' OR COALESCE(zh.details,'')='')")
-                else: clauses.append("COALESCE(zh.review_status,'')=?"); args.append("PENDING" if status == "REVIEW_PENDING" else status)
+                if status == "INCOMPLETE": clauses.append(f"NOT {stale} AND NOT {review_blocked} AND NOT {review_pending} AND NOT ({six_complete})")
+                elif status == "STALE": clauses.append(stale)
+                elif status == "REVIEW_PENDING": clauses.append("upper(COALESCE(zh.review_status,''))='REVIEW_PENDING'")
+                else: clauses.append(f"upper(COALESCE(zh.review_status,''))=?"); args.append(status)
             else:
                 raise ExtractionError(f"LOCALIZATION_STATUS_UNSUPPORTED: {q.localization_status}")
         for field in q.missing_fields:
@@ -156,7 +162,7 @@ class ExtractionService:
         direction = "DESC" if q.descending else "ASC"
         select = """SELECT p.canonical_id,p.official_sku,p.name_es,p.current_price,p.original_price,p.status,p.product_url,p.first_seen_at,p.last_seen_at,p.action_new_badge,p.promotion_active,p.sustainable_badge,
                    es.name AS es_name,es.cat1 AS es_cat1,es.cat2 AS es_cat2,es.spec AS es_spec,es.description AS es_description,es.details AS es_details,
-                   zh.name AS zh_name,zh.cat1 AS zh_cat1,zh.cat2 AS zh_cat2,zh.spec AS zh_spec,zh.description AS zh_description,zh.details AS zh_details,zh.review_status AS zh_review_status,
+                   zh.name AS zh_name,zh.cat1 AS zh_cat1,zh.cat2 AS zh_cat2,zh.spec AS zh_spec,zh.description AS zh_description,zh.details AS zh_details,zh.review_status AS zh_review_status,zh.freshness_status AS zh_freshness_status,
                    ia.status AS image_status, ia.master_image_path, ia.width AS image_width, ia.height AS image_height,
                    ph.change_direction,ph.change_amount,ph.change_percent, ps.historical_low,ps.historical_high,
                    ev_latest.recent_event_type,ev_latest.recent_event_at"""
@@ -197,8 +203,19 @@ class ExtractionService:
         for key in ("action_new_badge", "promotion_active", "sustainable_badge"):
             data[key] = bool(data[key])
         fields_complete = all(str(data.get(k) or "").strip() for k in ("zh_name", "zh_cat1", "zh_cat2", "zh_spec", "zh_description", "zh_details"))
+        freshness = str(data.get("zh_freshness_status") or "").upper()
         review_status = str(data.get("zh_review_status") or "").upper()
-        data["localization_status"] = "COMPLETE" if fields_complete else (review_status if review_status in {"STALE", "PENDING", "BLOCKED", "REVIEW_PENDING"} else "INCOMPLETE")
+        if freshness == "STALE" or review_status == "STALE":
+            status = "STALE"
+        elif review_status == "BLOCKED":
+            status = "BLOCKED"
+        elif review_status in {"REVIEW_PENDING", "PENDING"}:
+            status = review_status
+        elif not fields_complete:
+            status = "INCOMPLETE"
+        else:
+            status = "COMPLETE"
+        data["localization_status"] = status
         data["has_image"] = data.get("image_status") == "AVAILABLE"
         # The authoritative 250x250 derivative lives on the filesystem and is
         # validated by the image/export pipeline.  The read model can safely

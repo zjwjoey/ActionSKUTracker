@@ -112,6 +112,31 @@ def test_extraction_six_field_localization_and_specific_missing_field(tmp_path: 
     assert missing.matched_count == 1 and missing.items[0]["official_sku"] == "1001"
 
 
+def test_localization_freshness_is_read_and_stale_overrides_complete(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE product_localizations SET description='描述',details='详情',freshness_status='STALE' WHERE official_sku='1001' AND language='zh'")
+        db.execute("INSERT INTO products(canonical_id,official_sku,name_es,current_price,status) VALUES('C','1003','Producto Tres',4.0,'CURRENT')")
+        db.execute("INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,freshness_status,updated_at) VALUES('1003','zh','商品三','家居','收纳','3件','描述','详情','CURRENT','2026-08-30')")
+    result = ExtractionService(path).execute({"localization_status": "STALE", "limit": 10})
+    assert result.matched_count == 1 and result.items[0]["official_sku"] == "1001"
+    assert result.items[0]["zh_freshness_status"] == "STALE"
+    complete = ExtractionService(path).execute({"localization_status": "COMPLETE", "limit": 10})
+    assert complete.matched_count == 1 and complete.items[0]["official_sku"] == "1003"
+
+
+def test_localization_status_incomplete_and_review_states(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE product_localizations SET freshness_status='CURRENT' WHERE official_sku='1001' AND language='zh'")
+        db.execute("UPDATE product_localizations SET description='描述',details='详情',review_status='BLOCKED' WHERE official_sku='1001' AND language='zh'")
+        db.execute("UPDATE product_localizations SET review_status='PENDING' WHERE official_sku='1002' AND language='zh'")
+    svc = ExtractionService(path)
+    assert svc.execute({"localization_status": "BLOCKED", "limit": 10}).matched_count == 1
+    assert svc.execute({"localization_status": "PENDING", "statuses": ["OFFLINE"], "limit": 10}).matched_count == 1
+    assert svc.execute({"localization_status": "INCOMPLETE", "limit": 10}).matched_count == 0
+
+
 def test_saved_view_dynamic_and_selection_membership_fixed(tmp_path: Path):
     path = _db(tmp_path); view = SavedViewService(path); selection = SelectionService(path)
     saved = view.create("当前商品", {"statuses": ["CURRENT"], "limit": 100})
