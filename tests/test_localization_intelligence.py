@@ -221,6 +221,11 @@ def test_model_cache_must_match_current_record_not_stale_product_dictionary(tmp_
     loaded = KnowledgeLoader(directory).load()
     assert current_product_dictionary_hash(current_record) != loaded["model_by_sku"][old_record["sku"]]["source_hash"]
     assert loaded["model_by_sku"][old_record["sku"]]["quality_status"] == "VERIFIED"
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    result = audit_current(cfg, run_id="cache-stale-e2e", records=[current_record])
+    row = next(csv.DictReader(Path(result["audit"]).open(encoding="utf-8-sig")))
+    assert row["new_name_zh"] != "旧缓存"
 
 
 def test_manual_override_is_revalidated_and_bad_manual_value_is_not_bypassed(tmp_path):
