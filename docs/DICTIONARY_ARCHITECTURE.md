@@ -106,6 +106,8 @@ PROVISIONAL 品牌。每次写入有唯一备份，替换后回读、hash 或 ma
 Localization V1 的四个扩展字典纳入同一治理 manifest、schema 校验和内容 hash；`KnowledgePromotionRouter` 按 `knowledge_type` 路由，禁止把可复用知识全部写入 manual override。
 
 Final closure（2026-09-01）：扩展字典统一使用 `PENDING / AI_CANDIDATE / SEED_REVIEWED / HUMAN_REVIEWED / LOCKED / REJECTED`；正式 Resolver 只采用 `SEED_REVIEWED / HUMAN_REVIEWED / LOCKED`。Manual Override 优先于商品字典，可信同源 Model Cache 次之，源损坏字段进入 `SOURCE_BLOCKED`，不交给模型。
+
+Learning Candidate 的多 SKU 证据使用结构化 `evidence_json`，每个 SKU 独立保存当前 source hash、run 和 commit 信息；同一 SKU 不同 hash 标记冲突。Promotion freshness 逐条对照当前 PRIMARY，不能依赖候选顶层的单一 `source_hash`。
 # Localization Intelligence V1
 
 商品类型、详情键、技术 Token、固定短语使用 `data/dictionary/` 下的版本化扩展字典，由 `KnowledgeLoader` 统一加载；候选知识先进入 learning candidates 和现有 Review Queue，未通过 Promotion Gate 不进入正式基线。

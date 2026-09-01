@@ -764,3 +764,7 @@ V1 完成后应具备：
 ## V1 Final Closure Addendum
 
 本地 Qwen3:8B 通过可配置的 `LocalOpenAICompatibleProvider` 接入，默认关闭；AI 只处理 UNKNOWN，输出必须经 Validator 后进入统一 Learning Pool。人工批准由 `KnowledgePromotionRouter` 路由到对应知识 CSV，原子写入并更新 manifest，绝不直接修改 PRIMARY 或执行 Git。
+
+### Final Closure Evidence Contract（2026-09-01）
+
+Learning Candidate 的语义身份仍由 `semantic_type + source_term + zh_value` 决定，但事实证据必须按 SKU 保存为结构化 `evidence`：每条包含 `sku`、`source_hash`、`source_run_id`、`source_commit_id` 和 `source_example`。同一 SKU+hash 只保留一条；同一 SKU 出现不同 hash 标记 `EVIDENCE_CONFLICT`，不得静默覆盖。CSV 的 `evidence_json` 是正式 freshness 依据，`evidence_skus` 仅为派生展示列。Promotion 必须逐条核验当前 PRIMARY 的 Localization source hash，任何缺失、非当前 SKU 或不匹配都阻断 promotion。

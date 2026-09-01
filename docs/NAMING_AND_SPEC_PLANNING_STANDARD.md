@@ -512,6 +512,10 @@ source semantic item
 
 `LocalizationPlan` 必须保存 placement evidence，供 Debug 和 Review。
 
+### Localization V1 Final Closure（2026-09-01）
+
+模型只处理 Planner 判定为 UNKNOWN 且来源字段未损坏的字段；输出是候选，不是命名事实。品名、规格和详情的中文结果必须经过字段级 Validator，保留型号、接口、单位和全部数字；人工覆盖拥有内容优先级但不绕过校验。多 SKU 学习规则按 SKU 保存独立 source evidence，不允许用一个 SKU 的 hash 代表聚合候选。
+
 ## 22. 具体示例
 
 ### SKU 100241

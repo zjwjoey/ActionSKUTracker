@@ -696,3 +696,7 @@ Review 项不得被伪装 PASS。
 ## Knowledge status contract
 
 知识可信状态仅使用 `PENDING`、`AI_CANDIDATE`、`SEED_REVIEWED`、`HUMAN_REVIEWED`、`LOCKED`、`REJECTED`。其中 `SEED_REVIEWED` 表示仓库固定种子，不能冒充人工审核；Review Queue 的 `APPROVED/REJECTED/RESOLVED` 是任务状态，不能与知识状态混用。Manual Override 优先于商品字典，模型缓存必须同源且有效，Source Damage 字段进入 `SOURCE_BLOCKED`，不得交给 AI。
+
+### 2026-09-01 V1 收口补充
+
+人工覆盖写入后必须再次经过最终 Validator；模型缓存只在可信质量状态且匹配当前 PRIMARY 四字段 source hash 时可用。Source Damage 按字段隔离：损坏字段禁止进入 AI，其他未知字段仍可按 `requested_fields` 进入 AI。任何 AI 结果都必须保持 JSON 合同、数字和技术 Token，不得因模型输出失败而降低校验规则。
