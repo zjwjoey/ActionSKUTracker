@@ -4,6 +4,10 @@ Providers are injected through an interface and credentials are read only from r
 
 The local Qwen3:8B integration uses the interchangeable `LocalOpenAICompatibleProvider`. Endpoint/model are configuration, JSON-only responses are required, and `localization-ai-status` / `localization-ai-check` are explicit read-only diagnostics. Human approval is required before any reusable candidate is promoted.
 
+## Offline fine-tuning data preparation
+
+`scripts/build_local_qwen_dataset.py` can build a Qwen-compatible `train.jsonl`, `valid.jsonl` and `manifest.json` under `runtime/local_ai/training_data/`. It reads only trusted product/term dictionary rows, preserves source numbers and technical tokens, excludes unreviewed or inconsistent examples, and performs no model/network call. The generated dataset is an offline training input; it does not modify the dictionary, Learning Pool or PRIMARY. A later QLoRA run must remain in a separate F-drive environment and pass shadow evaluation before the adapter is configured for inference.
+
 Final closure (2026-09-01): the local `qwen3:8b` endpoint passed product and numeric/technical-token JSON smoke tests. The provider remains opt-in; smoke output is not written to the dictionary or PRIMARY. Source-damaged fields are never sent to the provider, requested fields are field-scoped, and promotion always rechecks every structured evidence row against current PRIMARY source hashes.
 # Localization Intelligence V1 boundary
 

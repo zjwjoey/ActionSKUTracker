@@ -36,6 +36,7 @@ tests/test_refine_dictionary_translations.py
 tests/test_writer.py
 tests/test_knowledge_production.py
 tests/test_localization_intelligence.py
+tests/test_local_qwen_dataset.py
 tests/test_operations.py
 tests/test_extraction_v2.py
 tests/test_cli_v2.py

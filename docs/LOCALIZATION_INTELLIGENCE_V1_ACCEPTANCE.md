@@ -17,7 +17,7 @@
 
 - 专项：`32 passed`。
 - 必测集合（Localization、Dictionary、Review Queue、Translation、DB Production、Post-merge safety）：`114 passed`。
-- 全量：`395 passed`。
+- 全量：`396 passed`（含离线 Qwen 训练集生成器回归）。
 - Manual Override、Model Cache、Source Damage、Learning E2E、Multi-SKU evidence、Promotion stale/pass contract、Qwen response contract 均有回归覆盖。
 
 ## Local Qwen3:8B
