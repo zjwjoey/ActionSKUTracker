@@ -16,7 +16,7 @@ from .engine import LocalizationEngine
 from .ai import provider_from_config, resolve_unknown
 from .knowledge import KnowledgeLoader
 from .learning import aggregate_candidates
-from ..dictionary import product_source_hash
+from ..dictionary import current_product_dictionary_hash
 
 
 def _report_root(cfg: Mapping[str, Any]) -> Path:
@@ -72,7 +72,7 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
         # A same-source, trusted model cache fills only fields still unknown;
         # it remains below product/formal dictionaries and above a new AI call.
         model = knowledge.get("model_by_sku", {}).get(sku)
-        if model and product and product_source_hash(product) == str(model.get("source_hash") or ""):
+        if model and current_product_dictionary_hash(record) == str(model.get("source_hash") or ""):
             fields = dict(plan.fields); changed = False
             for cache_field, target in (("name_zh_standard", "name_zh"), ("spec_zh_standard", "spec_zh")):
                 cached = str(model.get(cache_field) or "").strip()
@@ -94,9 +94,12 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
             from .contracts import LocalizationPlan
             plan = LocalizationPlan(plan.sku, plan.source_hash, fields, plan.semantic_facts, "REVIEW_REQUIRED", tuple(dict.fromkeys((*plan.review_reasons, "SOURCE_BLOCKED"))), plan.knowledge_hits, plan.ai_used)
             validation = engine_for_record.validate(record, plan)
+        # Manual overrides, model cache and source damage all change the
+        # candidate plan.  Re-run the validator on the final field set before
+        # deciding readiness or AI eligibility.
+        validation = engine_for_record.validate(record, plan)
         if not validation.ok:
-            if not blocked:
-                unknown_plans.append((record, plan, engine_for_record))
+            unknown_plans.append((record, plan, engine_for_record, blocked))
         old = existing.get(sku, {})
         row = {"sku": sku, "source_hash": plan.source_hash,
                "old_name_zh": old.get("name_zh", ""), "new_name_zh": plan.fields["name_zh"].value,
@@ -143,16 +146,23 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
     ai_candidates: list[dict[str, Any]] = []
     ai_config = ((cfg.get("localization") or {}).get("ai") or {})
     provider = provider_from_config(ai_config)
+    ai_eligible_count = 0
     if bool(ai_config.get("enabled")):
-        for record, plan, record_engine in unknown_plans:
+        for record, plan, record_engine, blocked in unknown_plans:
             # Do not spend an AI call on a purely stale/metadata-only row.
             # AI is reserved for explicit unknown semantic or translation
             # work; the ordinary daily path keeps the old value stale.
             eligible_reasons = {"PRODUCT_TYPE_REVIEW", "SERIES_REVIEW", "TECH_TOKEN_REVIEW", "DETAIL_KEY_REVIEW", "DETAIL_VALUE_REVIEW", "NAME_REVIEW", "CATEGORY_REVIEW", "DESCRIPTION_REVIEW", "SPANISH_RESIDUAL"}
-            if not (set(plan.review_reasons) & eligible_reasons):
+            blocked_targets = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}
+            requested_fields = tuple(key.removesuffix("_zh") for key, field in plan.fields.items()
+                                     if field.status != "READY" and
+                                     blocked_targets.get(key.removesuffix("_zh"), key.removesuffix("_zh")) not in blocked and
+                                     blocked_targets.get(key.removesuffix("_zh"), key.removesuffix("_zh")).replace("_es", "_es_raw") not in blocked)
+            if not requested_fields or not (set(plan.review_reasons) & eligible_reasons):
                 continue
+            ai_eligible_count += 1
             try:
-                candidate = resolve_unknown(record_engine, record, plan, provider)
+                candidate = resolve_unknown(record_engine, record, plan, provider, requested_fields=requested_fields)
             except Exception as exc:
                 candidate = {"sku": str(record.get("sku") or ""), "status": "FAILED", "failure_reason": type(exc).__name__}
             if candidate:
@@ -192,7 +202,7 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
                 "stale_localization_count": sum("STALE_LOCALIZATION" in str(row.get("review_reasons") or "").split("|") for row in rows),
                 "knowledge_hit_count": knowledge_hit_count,
                 "knowledge_hit_rate": knowledge_hit_count / max(1, len(rows)),
-                "ai_eligible_count": len(unknown_plans), "ai_call_count": getattr(provider, "calls", 0),
+                "ai_eligible_count": ai_eligible_count, "ai_call_count": getattr(provider, "calls", 0),
                 "ai_candidate_count": len(ai_candidates), "ai_avoidance_rate": 1.0 - (getattr(provider, "calls", 0) / max(1, len(rows))), "generated_at": datetime.now(timezone.utc).isoformat()}
     (out / "coverage.json").write_text(json.dumps(coverage, ensure_ascii=False, indent=2), encoding="utf-8")
     source_commit_id = None

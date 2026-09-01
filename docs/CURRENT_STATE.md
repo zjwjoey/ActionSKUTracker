@@ -102,6 +102,6 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
 
 feature 分支新增统一 Localization Engine、语义/命名/规格规划、格式化、token-level Validator、AI provider、学习候选与 CLI 审计；生产 AI 和正式 localization apply 默认关闭，等待验收后再决定合并。
 
-2026-09-01 收口状态：本地 Provider、统一 Learning/Promotion、Review Queue 字段适配、否定详情键和事实覆盖检查已实现；目标分支专项测试 27 passed、必测集合 109 passed、全量 390 passed。最终只读审计：5,379 CURRENT、READY 389、REVIEW_REQUIRED 4,990、普通西语残留 1,671、数字事实 mismatch 334、FACT_NOT_COVERED 0、SOURCE_BLOCKED 7、SOURCE_HASH_CHANGED 13、STALE_LOCALIZATION 13、AI calls 0、AI avoidance 100%。代码层 `LOCALIZATION_V1_CODE_ACCEPTANCE_PENDING`（exact-head CI 未验证且 Qwen smoke 未通过）；数据层 `LOCALIZATION_DATA_REVIEW_REQUIRED`；Production Apply/Auto Approval 保持关闭。
+2026-09-01 收口状态：本地 Provider、结构化 Multi-SKU Learning/Promotion、Review Queue 字段适配、否定详情键和事实覆盖检查已实现；目标分支专项测试 32 passed、必测集合 114 passed、全量 395 passed。最终只读审计：5,379 CURRENT、READY 389、REVIEW_REQUIRED 4,990、普通西语残留 1,671、数字事实 mismatch 334、FACT_NOT_COVERED 0、SOURCE_BLOCKED 7、SOURCE_HASH_CHANGED 13、STALE_LOCALIZATION 13、AI eligible 0（生产 AI 关闭）、AI calls 0、AI avoidance 100%。代码层待本轮 implementation HEAD 的 exact-head CI；数据层 `LOCALIZATION_DATA_REVIEW_REQUIRED`；Production Apply/Auto Approval 保持关闭。
 
-本机 Ollama `qwen3:8b` endpoint health 可达，但真实 JSON smoke 返回缺少合同要求的 `fields` 包装并出现英文/乱码，按规则记为 `LOCAL_QWEN_NOT_VERIFIED`，不降低 Validator。实现 HEAD `08d7b34e063875309f9eb85a9b7d44799f86c141` 的 GitHub Actions run `33464852944` 已通过 Ubuntu/Windows；后续仅有文档提交，Localization 测试已实际执行。不合并 main，等待模型合同修复后再复核。
+本机 Ollama `qwen3:8b` endpoint health 可达；本轮 product 与 numeric/technical-token JSON smoke 均通过结构化合同和 Validator，记为 `LOCAL_QWEN_VERIFIED`，但没有写入生产。下一步只需推送本轮 implementation HEAD 并完成 exact-head Ubuntu/Windows CI，再决定是否合并 main；不合并前不改生产配置。

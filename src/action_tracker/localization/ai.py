@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import re
 import urllib.request
 from datetime import datetime, timezone
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping, Protocol
 
 from .contracts import POLICY_VERSION, SourceFacts
@@ -15,10 +16,11 @@ from .validator import _NUMBER
 
 def _system_prompt() -> str:
     return (
-        "You are a constrained localization resolver. Return one JSON object only, no markdown or reasoning. "
-        "Never change SKU, canonical_id, URL, prices, or source facts. Resolve only requested unknown fields. "
-        "Preserve all numbers and technical tokens; use one of the fixed 15 Chinese category-1 labels. "
-        "Unknown or unverifiable facts must be represented as review_notes, not invented."
+        "你是商品结构化中文标准化引擎。只返回一个 JSON 对象，禁止 Markdown、代码围栏、解释和思考过程。"
+        "JSON 顶层必须包含 sku、source_hash、fields、semantic_items、product_type_candidate、detail_key_candidates、tech_token_candidates、confidence；"
+        "fields 必须是对象，只填写 requested_fields 中的字段。不得改变 SKU、source_hash、价格、URL 或官方西语事实。"
+        "普通西班牙语必须翻译成中文；品牌、型号、技术词和标准单位按原文保留。必须保留所有数字。"
+        "未知或无法核实的内容放入 review_notes，不得臆造。"
     )
 
 
@@ -29,7 +31,13 @@ def _user_prompt(source: SourceFacts, requested_fields: tuple[str, ...]) -> str:
         "name_es": source.name_es, "cat1_es": source.cat1_es, "cat2_es": source.cat2_es,
         "spec_es": source.spec_es, "desc_es": source.desc_es, "details_es": source.details_es,
         "requested_fields": list(requested_fields),
-        "response_contract": {"fields": {field: "string" for field in requested_fields}, "semantic_items": [], "review_notes": ""},
+        "response_contract": {
+            "sku": source.sku, "source_hash": source.source_hash,
+            "fields": {field: "中文字符串" for field in requested_fields},
+            "semantic_items": [], "product_type_candidate": None,
+            "detail_key_candidates": [], "tech_token_candidates": [],
+            "confidence": 0.0, "review_notes": "",
+        },
     }, ensure_ascii=False)
 
 
@@ -88,12 +96,20 @@ class LocalOpenAICompatibleProvider(OpenAICompatibleProvider):
     """
     api_key_env: str | None = None
     provider: str = "local_openai_compatible"
+    provider_options: Mapping[str, Any] = field(default_factory=dict)
 
     def complete(self, source: SourceFacts, requested_fields: tuple[str, ...]) -> Mapping[str, Any]:
-        payload = {"model": self.model, "temperature": 0, "messages": [
+        payload = {"model": self.model, "temperature": 0, "stream": False, "messages": [
             {"role": "system", "content": _system_prompt()},
             {"role": "user", "content": _user_prompt(source, requested_fields)},
         ], "response_format": {"type": "json_object"}}
+        # Optional capability-specific knobs are never sent to generic
+        # providers.  Ollama Qwen deployments can set think=false explicitly
+        # when supported; an unset option keeps the adapter portable.
+        if "think" in self.provider_options:
+            payload["think"] = bool(self.provider_options["think"])
+        if isinstance(self.provider_options.get("response_format"), Mapping):
+            payload["response_format"] = dict(self.provider_options["response_format"])
         headers = {"Content-Type": "application/json"}
         if self.api_key_env:
             key = os.environ.get(self.api_key_env)
@@ -105,7 +121,11 @@ class LocalOpenAICompatibleProvider(OpenAICompatibleProvider):
         content = body["choices"][0]["message"]["content"]
         if isinstance(content, list):
             content = "".join(str(part.get("text") or "") if isinstance(part, Mapping) else str(part) for part in content)
-        result = json.loads(str(content).strip())
+        text = str(content).lstrip("\ufeff").strip()
+        if text.startswith("```") and text.endswith("```"):
+            text = text.split("\n", 1)[1] if "\n" in text else text
+            text = text.rsplit("```", 1)[0].strip()
+        result = json.loads(text)
         if not isinstance(result, Mapping):
             raise ValueError("LOCALIZATION_AI_SCHEMA_INVALID")
         return result
@@ -137,27 +157,45 @@ def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, reques
         if key in payload and payload[key] is not None and not isinstance(payload[key], Mapping):
             reasons.append(f"AI_{key.upper()}_NOT_OBJECT")
     fields = payload.get("fields")
-    if not isinstance(fields, Mapping): reasons.append("AI_FIELDS_NOT_OBJECT")
+    if not isinstance(fields, Mapping):
+        reasons.append("AI_FIELDS_NOT_OBJECT")
+        fields = {}
     else:
         unknown = set(fields) - set(requested_fields)
-        if unknown: reasons.append("AI_FIELD_NOT_REQUESTED")
-        if not fields:
-            reasons.append("AI_FIELDS_EMPTY")
-        for key, value in fields.items():
-            if not isinstance(value, str): reasons.append(f"AI_{str(key).upper()}_NOT_STRING")
-            elif key == "unit_price":
-                reasons.append("AI_UNIT_PRICE_FORBIDDEN")
-            elif has_ordinary_spanish(value):
-                reasons.append(f"AI_{str(key).upper()}_SPANISH_RESIDUAL")
-            elif key == "cat1" and value not in FIXED_CAT1:
-                reasons.append("AI_CATEGORY_NOT_FIXED")
-            elif key in {"name", "spec", "description", "details"}:
-                source_field = {"name": "name_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(key)
-                if source_field:
-                    expected = {_n.replace(",", ".") for _n in _NUMBER.findall(str(getattr(source, source_field) or ""))}
-                    found = {_n.replace(",", ".") for _n in _NUMBER.findall(value)}
-                    if expected - found:
-                        reasons.append(f"AI_{str(key).upper()}_NUMBER_DROPPED")
+        if unknown:
+            reasons.append("AI_FIELD_NOT_REQUESTED")
+    if not fields:
+        reasons.append("AI_FIELDS_EMPTY")
+    source_tokens = set()
+    for source_text in (source.name_es, source.spec_es, source.desc_es, source.details_es):
+        source_tokens.update(re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ-]*", source_text or ""))
+    # Preserve only tokens that are plausibly technical identifiers/units.  A
+    # sentence-initial Spanish word such as ``Lámpara`` is capitalized too,
+    # but must still be rejected as residual Spanish; therefore do not use a
+    # simple ``any(ch.isupper())`` test here.
+    technical_units = {"mAh", "mg", "mcg", "ml", "mm", "cm", "kg", "Hz", "V", "W", "L", "g"}
+    technical_tokens = {
+        token for token in source_tokens
+        if any(ch.isdigit() for ch in token)
+        or "-" in token
+        or token in technical_units
+        or (token.isupper() and len(token) >= 2)
+    }
+    for key, value in fields.items():
+        if not isinstance(value, str): reasons.append(f"AI_{str(key).upper()}_NOT_STRING")
+        elif key == "unit_price":
+            reasons.append("AI_UNIT_PRICE_FORBIDDEN")
+        elif has_ordinary_spanish(value, allowed_tokens=technical_tokens):
+            reasons.append(f"AI_{str(key).upper()}_SPANISH_RESIDUAL")
+        elif key == "cat1" and value not in FIXED_CAT1:
+            reasons.append("AI_CATEGORY_NOT_FIXED")
+        elif key in {"name", "spec", "description", "details"}:
+            source_field = {"name": "name_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(key)
+            if source_field:
+                expected = {_n.replace(",", ".") for _n in _NUMBER.findall(str(getattr(source, source_field) or ""))}
+                found = {_n.replace(",", ".") for _n in _NUMBER.findall(value)}
+                if expected - found:
+                    reasons.append(f"AI_{str(key).upper()}_NUMBER_DROPPED")
     confidence = payload.get("confidence")
     if confidence is not None:
         try:
@@ -177,6 +215,7 @@ def provider_from_config(config: Mapping[str, Any] | None) -> LocalizationAIProv
         return LocalOpenAICompatibleProvider(
             str(config.get("base_url") or ""), str(config.get("model") or ""), key_env,
             int(config.get("timeout") or 120),
+            provider_options=dict(config.get("provider_options") or {}),
         )
     return OpenAICompatibleProvider(str(config.get("base_url") or ""), str(config.get("model") or ""), str(config.get("api_key_env") or "ACTION_AI_API_KEY"))
 
@@ -203,7 +242,7 @@ def provider_health(provider: LocalizationAIProvider) -> dict[str, Any]:
         return {"status": "LOCAL_PROVIDER_NOT_VERIFIED", "provider": getattr(provider, "provider", ""), "model": getattr(provider, "model", ""), "error": str(exc)}
 
 
-def resolve_unknown(engine, record: Mapping[str, Any], plan, provider: LocalizationAIProvider, *, prompt_version: str = "localization_v1") -> dict[str, Any] | None:
+def resolve_unknown(engine, record: Mapping[str, Any], plan, provider: LocalizationAIProvider, *, requested_fields: tuple[str, ...] | None = None, prompt_version: str = "localization_v1") -> dict[str, Any] | None:
     """Ask a provider only when deterministic localization is not ready.
 
     The return value is an auditable candidate, never a production row.  A
@@ -212,7 +251,7 @@ def resolve_unknown(engine, record: Mapping[str, Any], plan, provider: Localizat
     if plan.readiness in {"AUTO_READY", "READY"}:
         return None
     source = SourceFacts.from_record(record)
-    requested = tuple(key.removesuffix("_zh") for key, field in plan.fields.items() if field.status != "READY")
+    requested = requested_fields or tuple(key.removesuffix("_zh") for key, field in plan.fields.items() if field.status != "READY")
     request_body = _user_prompt(source, requested)
     result = dict(provider.complete(source, requested))
     schema_ok, schema_reasons = validate_ai_response(result, source, requested)

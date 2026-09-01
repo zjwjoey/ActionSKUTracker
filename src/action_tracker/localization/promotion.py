@@ -44,29 +44,51 @@ class KnowledgePromotionError(RuntimeError):
 
 def validate_candidate_freshness(candidate: Mapping[str, Any], current_facts: Mapping[str, Mapping[str, Any]] | None = None) -> tuple[bool, str]:
     """Re-check every evidence SKU against current official Spanish facts."""
-    evidence = candidate.get("evidence_skus") or candidate.get("sku") or ""
-    if isinstance(evidence, str):
-        skus = [s.strip() for s in evidence.replace(",", "|").split("|") if s.strip()]
-    else:
-        skus = [str(s).strip() for s in evidence if str(s).strip()]
-    if not skus:
+    raw_evidence = candidate.get("evidence") or candidate.get("evidence_json")
+    evidence_rows: list[Mapping[str, Any]] = []
+    if raw_evidence:
+        if isinstance(raw_evidence, str):
+            try:
+                raw_evidence = json.loads(raw_evidence)
+            except (TypeError, ValueError):
+                return False, "SOURCE_EVIDENCE_MISSING"
+        if isinstance(raw_evidence, list):
+            # A structured candidate is authoritative: every evidence row
+            # must be an object.  Silently dropping malformed rows would let
+            # a partially corrupted multi-SKU candidate pass freshness.
+            if raw_evidence and all(isinstance(row, Mapping) for row in raw_evidence):
+                evidence_rows = list(raw_evidence)
+            elif raw_evidence:
+                return False, "SOURCE_EVIDENCE_MISSING"
+    if not evidence_rows:
+        # Legacy candidates had evidence_skus plus one display hash.  Keep
+        # compatibility, but the structured evidence path is authoritative.
+        evidence = candidate.get("evidence_skus") or candidate.get("sku") or ""
+        if isinstance(evidence, str):
+            skus = [s.strip() for s in evidence.replace(",", "|").split("|") if s.strip()]
+        else:
+            skus = [str(s).strip() for s in evidence if str(s).strip()]
+        legacy_hash = str(candidate.get("source_hash") or "")
+        evidence_rows = [{"sku": sku, "source_hash": legacy_hash} for sku in skus]
+    if not evidence_rows:
         return False, "SOURCE_EVIDENCE_MISSING"
     if not current_facts:
         return False, "SOURCE_EVIDENCE_MISSING"
-    expected = str(candidate.get("source_hash") or "")
-    if not expected:
-        return False, "SOURCE_EVIDENCE_MISSING"
-    for sku in skus:
+    for evidence in evidence_rows:
+        sku = str(evidence.get("sku") or "").strip()
+        expected = str(evidence.get("source_hash") or "").strip()
+        if not sku or not expected:
+            return False, "SOURCE_EVIDENCE_MISSING"
         record = current_facts.get(sku)
         if not record:
             return False, "SKU_NOT_CURRENT"
         actual = localization_source_hash({
-            "name_es": record.get("name_es") or record.get("name"),
-            "cat1_es": record.get("cat1_es") or record.get("cat1"),
-            "cat2_es": record.get("cat2_es") or record.get("cat2"),
-            "spec_es": record.get("spec_es") or record.get("spec"),
-            "desc_es": record.get("desc_es") or record.get("description_es") or record.get("description"),
-            "details_es": record.get("details_es") or record.get("details"),
+            "name_es": record.get("name_es") or record.get("name") or "",
+            "cat1_es": record.get("cat1_es") or record.get("cat1") or "",
+            "cat2_es": record.get("cat2_es") or record.get("cat2") or "",
+            "spec_es": record.get("spec_es") or record.get("spec") or "",
+            "desc_es": record.get("desc_es") or record.get("description_es") or record.get("description") or "",
+            "details_es": record.get("details_es") or record.get("details") or "",
         })
         if actual != expected:
             return False, "CANDIDATE_STALE"
@@ -114,7 +136,7 @@ class KnowledgePromotionRouter:
             raise KnowledgePromotionError("VALIDATOR_FAIL")
         if str(candidate.get("status") or "").upper() == "REJECTED":
             raise KnowledgePromotionError("CANDIDATE_REJECTED")
-        if candidate.get("evidence_skus") or candidate.get("sku"):
+        if candidate.get("evidence") or candidate.get("evidence_json") or candidate.get("evidence_skus") or candidate.get("sku"):
             if self.freshness_checker is None:
                 raise KnowledgePromotionError("SOURCE_EVIDENCE_MISSING")
             fresh = self.freshness_checker(candidate)

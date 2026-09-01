@@ -13,8 +13,9 @@ from action_tracker.database.production import apply_localization_correction
 from action_tracker.database.production import CommitBundle, ProductionWriter
 from action_tracker.localization.service import audit_current
 from action_tracker.localization.knowledge import validate_knowledge_file, NEW_SCHEMAS, NEW_KEYS
-from action_tracker.dictionary import PRODUCT_DICTIONARY_HEADERS, MODEL_TRANSLATION_HEADERS, OVERRIDE_HEADERS, SOURCE_DAMAGE_HEADERS, product_source_hash
+from action_tracker.dictionary import PRODUCT_DICTIONARY_HEADERS, MODEL_TRANSLATION_HEADERS, OVERRIDE_HEADERS, SOURCE_DAMAGE_HEADERS, product_source_hash, current_product_dictionary_hash
 import csv
+import json
 
 
 def test_formatter_uses_retail_spec_contract():
@@ -44,6 +45,32 @@ def test_local_provider_is_configurable_and_does_not_require_an_api_key():
     provider = provider_from_config({"enabled": True, "provider": "local_openai_compatible", "base_url": "http://127.0.0.1:11434/v1", "model": "qwen3:8b"})
     assert isinstance(provider, LocalOpenAICompatibleProvider)
     assert provider.api_key_env is None
+
+
+def test_ai_response_contract_rejects_malformed_identity_numbers_and_unknown_fields():
+    source = SourceFacts.from_record({"sku": "TEST-QWEN", "name_es": "Lámpara LED USB-C", "spec_es": "220 V | 10 W | 4000 mAh | IP44"})
+    valid = {"sku": source.sku, "source_hash": source.source_hash, "fields": {"name": "LED灯", "spec": "220V｜10W｜4000毫安时｜IP44"}}
+    assert validate_ai_response(valid, source, ("name", "spec")) == (True, ())
+    cases = [
+        ({"name": "灯"}, "AI_FIELDS_NOT_OBJECT"),
+        ({"name": "灯"}, "AI_SKU_MISMATCH"),
+        ({"name": "灯"}, "AI_SOURCE_HASH_MISMATCH"),
+        ({"name": "灯", "extra": "x"}, "AI_FIELD_NOT_REQUESTED"),
+        ({"name": "灯", "spec": "220V｜10W｜IP44"}, "AI_SPEC_NUMBER_DROPPED"),
+        ({"name": "Lámpara"}, "AI_NAME_SPANISH_RESIDUAL"),
+    ]
+    for fields, reason in cases:
+        payload = {"sku": source.sku, "source_hash": source.source_hash, "fields": fields}
+        if reason == "AI_FIELDS_NOT_OBJECT":
+            payload["fields"] = fields["name"]
+        elif reason == "AI_SKU_MISMATCH":
+            payload["sku"] = "OTHER"
+        elif reason == "AI_SOURCE_HASH_MISMATCH":
+            payload["source_hash"] = "old"
+        elif reason == "AI_FIELD_NOT_REQUESTED":
+            payload["fields"] = {"name": "灯", "extra": "x"}
+        ok, reasons = validate_ai_response(payload, source, ("name", "spec"))
+        assert not ok and reason in reasons
 
 
 def test_technical_tokens_are_preserved_and_numeric_facts_checked():
@@ -156,6 +183,60 @@ def test_promotion_freshness_blocks_stale_evidence():
     assert not ok and reason == "CANDIDATE_STALE"
 
 
+def test_multi_sku_learning_evidence_keeps_independent_hashes_and_passes_freshness(tmp_path):
+    facts = {
+        "A": {"name_es": "A", "cat1_es": "Hogar", "cat2_es": "", "spec_es": "1 g", "desc_es": "", "details_es": ""},
+        "B": {"name_es": "B", "cat1_es": "Hogar", "cat2_es": "", "spec_es": "2 g", "desc_es": "", "details_es": ""},
+        "C": {"name_es": "C", "cat1_es": "Hogar", "cat2_es": "", "spec_es": "3 g", "desc_es": "", "details_es": ""},
+    }
+    rows = [{"sku": sku, "semantic_type": "PRODUCT_TYPE", "source_term": "plegable", "zh_value": "可折叠", "source_hash": source_hash(rec)} for sku, rec in facts.items()]
+    result = aggregate_candidates(rows, tmp_path)
+    candidate = result["rows"][0]
+    assert {item["sku"] for item in candidate["evidence"]} == {"A", "B", "C"}
+    assert len({item["source_hash"] for item in candidate["evidence"]}) == 3
+    assert validate_candidate_freshness(candidate, facts) == (True, "PASS")
+
+
+def test_multi_sku_learning_evidence_stale_or_missing_blocks_promotion(tmp_path):
+    facts = {sku: {"name_es": sku, "cat1_es": "Hogar", "cat2_es": "", "spec_es": f"{idx} g", "desc_es": "", "details_es": ""} for idx, sku in enumerate(("A", "B", "C"), 1)}
+    rows = [{"sku": sku, "semantic_type": "PRODUCT_TYPE", "source_term": "plegable", "zh_value": "可折叠", "source_hash": source_hash(rec)} for sku, rec in facts.items()]
+    candidate = aggregate_candidates(rows, tmp_path)["rows"][0]
+    changed = dict(facts["B"]); changed["name_es"] = "B2"
+    assert validate_candidate_freshness(candidate, {**facts, "B": changed}) == (False, "CANDIDATE_STALE")
+    assert validate_candidate_freshness(candidate, {"A": facts["A"], "C": facts["C"]}) == (False, "SKU_NOT_CURRENT")
+    corrupt = {"evidence": [{"sku": "A", "source_hash": source_hash(facts["A"])}, "corrupt"]}
+    assert validate_candidate_freshness(corrupt, facts) == (False, "SOURCE_EVIDENCE_MISSING")
+
+
+def test_model_cache_must_match_current_record_not_stale_product_dictionary(tmp_path):
+    directory = tmp_path / "dict"
+    ensure_schemas(directory)
+    old_record = {"sku": "CACHE-STALE", "name_es": "Producto A", "cat1_es": "Hogar", "spec_es": "10 gramos"}
+    current_record = {**old_record, "name_es": "Producto B"}
+    product = {key: "" for key in PRODUCT_DICTIONARY_HEADERS}
+    product.update({"sku": old_record["sku"], "name_es_raw": old_record["name_es"], "cat1_es": "Hogar", "spec_es_raw": "10 gramos"})
+    product["source_hash"] = product_source_hash(product)
+    _write_csv(directory / "product_dictionary.csv", PRODUCT_DICTIONARY_HEADERS, [product])
+    _write_csv(directory / "model_translation_overrides.csv", MODEL_TRANSLATION_HEADERS, [{"sku": old_record["sku"], "source_hash": product["source_hash"], "name_zh_standard": "旧缓存", "quality_status": "VERIFIED"}])
+    loaded = KnowledgeLoader(directory).load()
+    assert current_product_dictionary_hash(current_record) != loaded["model_by_sku"][old_record["sku"]]["source_hash"]
+    assert loaded["model_by_sku"][old_record["sku"]]["quality_status"] == "VERIFIED"
+
+
+def test_manual_override_is_revalidated_and_bad_manual_value_is_not_bypassed(tmp_path):
+    directory = tmp_path / "dict"
+    ensure_schemas(directory)
+    record = {"sku": "MANUAL-VALIDATE", "name_es": "Producto desconocido", "cat1_es": "Hogar", "spec_es": "10 gramos"}
+    _write_csv(directory / "manual_overrides.csv", OVERRIDE_HEADERS, [{"scope": "product", "key": record["sku"], "field": "name_zh_standard", "value": "错误 producto"}])
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    result = audit_current(cfg, run_id="manual-validation", records=[record])
+    row = next(csv.DictReader(Path(result["audit"]).open(encoding="utf-8-sig")))
+    assert row["new_name_zh"] == "错误 producto"
+    assert row["readiness"] == "REVIEW_REQUIRED"
+    assert "SPANISH_RESIDUAL" in row["review_reasons"]
+
+
 def _write_csv(path, headers, rows):
     with path.open("w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=headers)
@@ -199,14 +280,16 @@ def test_same_source_model_cache_is_loaded_into_audit_without_writing_primary(tm
 def test_source_damage_blocks_only_damaged_field_and_ai(tmp_path):
     directory = tmp_path / "dict"
     ensure_schemas(directory)
-    record = {"sku": "DAMAGED-1", "name_es": "Detergente", "cat1_es": "Hogar", "spec_es": "10 gramos", "desc_es": "texto roto"}
+    record = {"sku": "DAMAGED-1", "name_es": "Producto xyz", "cat1_es": "Hogar", "spec_es": "10 gramos", "desc_es": "texto roto"}
     _write_csv(directory / "source_damage_report.csv", SOURCE_DAMAGE_HEADERS, [{"sku": record["sku"], "damaged_fields": "desc_es", "status": "SOURCE_DAMAGED"}])
     cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory}, "localization": {"ai": {"enabled": True, "provider": "fake"}}}
     cfg["paths"]["temp"].mkdir(parents=True)
     result = audit_current(cfg, run_id="damage-e2e", records=[record])
     row = next(csv.DictReader(Path(result["audit"]).open(encoding="utf-8-sig")))
     assert "SOURCE_BLOCKED" in row["review_reasons"]
-    assert result["ai_call_count"] == 0
+    assert result["ai_call_count"] == 1
+    ai_rows = json.loads(Path(result["ai_candidates"]).read_text(encoding="utf-8"))
+    assert ai_rows and "name" in ai_rows[0]["requested_fields"] and "description" not in ai_rows[0]["requested_fields"]
     assert row["new_name_zh"]
 
 

@@ -213,6 +213,16 @@ def product_source_hash(row: Mapping[str, object]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def current_product_dictionary_hash(row: Mapping[str, object]) -> str:
+    """Compute the legacy four-field hash from a current PRIMARY record."""
+    return product_source_hash({
+        "name_es_raw": row.get("name_es") or row.get("name") or "",
+        "cat1_es": row.get("cat1_es") or row.get("cat1") or "",
+        "cat2_es": row.get("cat2_es") or row.get("cat2") or "",
+        "spec_es_raw": row.get("spec_es") or row.get("spec") or "",
+    })
+
+
 # 兼容内部旧调用；新代码应使用公开的 product_source_hash。
 _source_hash = product_source_hash
 
