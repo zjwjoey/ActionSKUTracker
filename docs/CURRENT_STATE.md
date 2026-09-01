@@ -1,13 +1,13 @@
 # Action SKU Tracker 当前状态
 
-更新日期：2026-08-31
-项目目录：`F:\\ActionSKUTracker`
-当前开发分支：`hotfix/post-merge-production-safety`
+更新日期：2026-09-01
+项目目录：`F:\\ActionSKUTracker_main_merge`（验证 worktree；生产数据仍在 `F:\\ActionSKUTracker\\runtime`）
+当前开发分支：`feat/chinese-localization-intelligence-v1`
 
 ## 当前结论
 
-Architecture V2 已合并到 `main@59adcb1`。当前独立热修复分支只处理生产
-安全、恢复链和 Windows 行为；不会回滚 V2，也不会修改真实商品事实。
+Architecture V2 已合并到 `main@59adcb1`。当前 feature 分支只收口
+Localization Intelligence V1；不会回滚 V2，也不会修改真实商品事实。
 
 ## 生产数据边界
 
@@ -102,4 +102,6 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
 
 feature 分支新增统一 Localization Engine、语义/命名/规格规划、格式化、token-level Validator、AI provider、学习候选与 CLI 审计；生产 AI 和正式 localization apply 默认关闭，等待验收后再决定合并。
 
-2026-09-01 收口状态：本地 Provider、统一 Learning/Promotion、Review Queue 字段适配、否定详情键和事实覆盖检查已实现；目标分支本地回归 385 passed（含 Learning E2E）。使用现有 PRIMARY 快照只读审计得到 5,379 CURRENT、READY 394、REVIEW_REQUIRED 4,985、普通西语残留 1,671、数字事实 mismatch 334、AI calls 0。由于质量门禁仍未清零，本分支仍 `LOCALIZATION_V1_NOT_ACCEPTED / DO_NOT_MERGE`。
+2026-09-01 收口状态：本地 Provider、统一 Learning/Promotion、Review Queue 字段适配、否定详情键和事实覆盖检查已实现；目标分支专项测试 27 passed、必测集合 109 passed、全量 390 passed。最终只读审计：5,379 CURRENT、READY 389、REVIEW_REQUIRED 4,990、普通西语残留 1,671、数字事实 mismatch 334、FACT_NOT_COVERED 0、SOURCE_BLOCKED 7、SOURCE_HASH_CHANGED 13、STALE_LOCALIZATION 13、AI calls 0、AI avoidance 100%。代码层 `LOCALIZATION_V1_CODE_ACCEPTANCE_PENDING`（exact-head CI 未验证且 Qwen smoke 未通过）；数据层 `LOCALIZATION_DATA_REVIEW_REQUIRED`；Production Apply/Auto Approval 保持关闭。
+
+本机 Ollama `qwen3:8b` endpoint health 可达，但真实 JSON smoke 返回缺少合同要求的 `fields` 包装并出现英文/乱码，按规则记为 `LOCAL_QWEN_NOT_VERIFIED`，不降低 Validator。GitHub exact-head Ubuntu/Windows CI 因当前环境无法连接 GitHub，暂记 `NOT VERIFIED`；不合并 main。

@@ -1,5 +1,5 @@
 schema_version,key_es,key_zh,field_group,value_type,unit_rule,review_status,notes
-1.0,Color,颜色,details,text,,HUMAN_APPROVED,标准详情键
-1.0,Cantidad,数量,details,quantity,件,HUMAN_APPROVED,标准详情键
-1.0,Contenido,含量,details,quantity,,HUMAN_APPROVED,标准详情键
-1.0,Número de producto,商品编号,details,sku,,HUMAN_APPROVED,必须等于SKU
+1.0,Color,颜色,details,text,,SEED_REVIEWED,标准详情键
+1.0,Cantidad,数量,details,quantity,件,SEED_REVIEWED,标准详情键
+1.0,Contenido,含量,details,quantity,,SEED_REVIEWED,标准详情键
+1.0,Número de producto,商品编号,details,sku,,SEED_REVIEWED,必须等于SKU

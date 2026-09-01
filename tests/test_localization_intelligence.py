@@ -4,7 +4,7 @@ from action_tracker.services.hashing import localization_source_hash
 from action_tracker.localization.formatter import format_details, format_spec, format_unit_price
 from action_tracker.localization.learning import aggregate_candidates
 from action_tracker.localization.promotion import can_promote
-from action_tracker.localization.promotion import KnowledgePromotionRouter
+from action_tracker.localization.promotion import KnowledgePromotionRouter, validate_candidate_freshness, KnowledgePromotionError
 from action_tracker.localization.knowledge import KnowledgeLoader, ensure_schemas
 from action_tracker.localization.ai import FakeProvider, LocalOpenAICompatibleProvider, provider_from_config, resolve_unknown, validate_ai_response
 from action_tracker.database.schema import migrate_v2
@@ -13,6 +13,7 @@ from action_tracker.database.production import apply_localization_correction
 from action_tracker.database.production import CommitBundle, ProductionWriter
 from action_tracker.localization.service import audit_current
 from action_tracker.localization.knowledge import validate_knowledge_file, NEW_SCHEMAS, NEW_KEYS
+from action_tracker.dictionary import PRODUCT_DICTIONARY_HEADERS, MODEL_TRANSLATION_HEADERS, OVERRIDE_HEADERS, SOURCE_DAMAGE_HEADERS, product_source_hash
 import csv
 
 
@@ -131,6 +132,82 @@ def test_learning_e2e_promotes_product_type_and_future_run_avoids_ai(tmp_path):
     second = LocalizationEngine(knowledge=loaded).resolve(record)
     assert second.fields["name_zh"].value == "奶泡器"
     assert "PRODUCT_TYPE_REVIEW" not in second.review_reasons
+
+
+def test_seed_reviewed_knowledge_is_loaded_but_ai_candidate_is_not(tmp_path):
+    directory = tmp_path / "knowledge"
+    ensure_schemas(directory)
+    path = directory / "product_type_dictionary.csv"
+    with path.open("a", encoding="utf-8-sig", newline="") as fh:
+        csv.writer(fh).writerow(["1.0", "seed-1", "espumador", "", "", "", "奶泡器", "1.0", "SEED_REVIEWED", "seed"])
+    with (directory / "term_dictionary.csv").open("w", encoding="utf-8-sig", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["term_es", "term_zh", "term_type", "forbidden_zh", "keep_original", "review_status", "notes"])
+        writer.writeheader(); writer.writerow(dict(zip(writer.fieldnames, ["recargable", "可充电", "FUNCTION", "", "0", "SEED_REVIEWED", "seed"])))
+    loaded = KnowledgeLoader(directory).load()
+    assert loaded["product_types"]["espumador"] == "奶泡器"
+    facts = LocalizationEngine(knowledge=loaded).resolve({"sku": "1", "name_es": "Lámpara recargable", "cat1_es": "Hobby", "spec_es": ""}).semantic_facts
+    assert any(f.source_text == "recargable" and f.knowledge_source == "term_dictionary" for f in facts)
+
+
+def test_promotion_freshness_blocks_stale_evidence():
+    candidate = {"source_hash": source_hash({"name_es": "A", "cat1_es": "Hobby", "cat2_es": "", "spec_es": "", "desc_es": "", "details_es": ""}), "evidence_skus": ["1"]}
+    current = {"1": {"name_es": "B", "cat1_es": "Hobby", "cat2_es": "", "spec_es": "", "desc_es": "", "details_es": ""}}
+    ok, reason = validate_candidate_freshness(candidate, current)
+    assert not ok and reason == "CANDIDATE_STALE"
+
+
+def _write_csv(path, headers, rows):
+    with path.open("w", encoding="utf-8-sig", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def test_manual_override_is_used_by_audit_current_with_field_provenance(tmp_path):
+    directory = tmp_path / "dict"
+    ensure_schemas(directory)
+    record = {"sku": "MANUAL-1", "name_es": "Producto desconocido", "cat1_es": "Hogar", "spec_es": "10 gramos"}
+    product = {key: "" for key in PRODUCT_DICTIONARY_HEADERS}
+    product.update({"sku": record["sku"], "name_es_raw": record["name_es"], "cat1_es": "Hogar", "spec_es_raw": "10 gramos", "name_zh_standard": "字典名称", "cat1_zh": "家务清洁", "spec_zh_standard": "10g"})
+    product["source_hash"] = product_source_hash(product)
+    _write_csv(directory / "product_dictionary.csv", PRODUCT_DICTIONARY_HEADERS, [product])
+    _write_csv(directory / "manual_overrides.csv", OVERRIDE_HEADERS, [{"scope": "product", "key": record["sku"], "field": "name_zh_standard", "value": "人工名称", "source": "TEST"}])
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    result = audit_current(cfg, run_id="manual-e2e", records=[record])
+    row = next(csv.DictReader(Path(result["audit"]).open(encoding="utf-8-sig")))
+    assert row["new_name_zh"] == "人工名称"
+
+
+def test_same_source_model_cache_is_loaded_into_audit_without_writing_primary(tmp_path):
+    directory = tmp_path / "dict"
+    ensure_schemas(directory)
+    record = {"sku": "CACHE-1", "name_es": "Producto desconocido", "cat1_es": "Hogar", "spec_es": "10 gramos"}
+    product = {key: "" for key in PRODUCT_DICTIONARY_HEADERS}
+    product.update({"sku": record["sku"], "name_es_raw": record["name_es"], "cat1_es": "Hogar", "spec_es_raw": "10 gramos", "cat1_zh": "家务清洁", "spec_zh_standard": "10g"})
+    product["source_hash"] = product_source_hash(product)
+    _write_csv(directory / "product_dictionary.csv", PRODUCT_DICTIONARY_HEADERS, [product])
+    _write_csv(directory / "model_translation_overrides.csv", MODEL_TRANSLATION_HEADERS, [{"sku": record["sku"], "source_hash": product["source_hash"], "name_zh_standard": "缓存名称", "spec_zh_standard": "10g", "quality_status": "VERIFIED", "model": "qwen3:8b"}])
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    result = audit_current(cfg, run_id="cache-e2e", records=[record])
+    row = next(csv.DictReader(Path(result["audit"]).open(encoding="utf-8-sig")))
+    assert row["new_name_zh"] == "缓存名称"
+    assert result["ai_call_count"] == 0
+
+
+def test_source_damage_blocks_only_damaged_field_and_ai(tmp_path):
+    directory = tmp_path / "dict"
+    ensure_schemas(directory)
+    record = {"sku": "DAMAGED-1", "name_es": "Detergente", "cat1_es": "Hogar", "spec_es": "10 gramos", "desc_es": "texto roto"}
+    _write_csv(directory / "source_damage_report.csv", SOURCE_DAMAGE_HEADERS, [{"sku": record["sku"], "damaged_fields": "desc_es", "status": "SOURCE_DAMAGED"}])
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory}, "localization": {"ai": {"enabled": True, "provider": "fake"}}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    result = audit_current(cfg, run_id="damage-e2e", records=[record])
+    row = next(csv.DictReader(Path(result["audit"]).open(encoding="utf-8-sig")))
+    assert "SOURCE_BLOCKED" in row["review_reasons"]
+    assert result["ai_call_count"] == 0
+    assert row["new_name_zh"]
 
 
 def test_sqlite_localization_apply_creates_versioned_zh_only_commit(tmp_path):

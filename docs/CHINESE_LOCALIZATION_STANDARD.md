@@ -692,3 +692,7 @@ source_hash/freshness 正确
 ```
 
 Review 项不得被伪装 PASS。
+
+## Knowledge status contract
+
+知识可信状态仅使用 `PENDING`、`AI_CANDIDATE`、`SEED_REVIEWED`、`HUMAN_REVIEWED`、`LOCKED`、`REJECTED`。其中 `SEED_REVIEWED` 表示仓库固定种子，不能冒充人工审核；Review Queue 的 `APPROVED/REJECTED/RESOLVED` 是任务状态，不能与知识状态混用。Manual Override 优先于商品字典，模型缓存必须同源且有效，Source Damage 字段进入 `SOURCE_BLOCKED`，不得交给 AI。

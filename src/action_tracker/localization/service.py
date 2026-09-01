@@ -11,11 +11,12 @@ from typing import Any, Mapping
 from ..database.integration import database_path
 from ..database.repository import ProductionRepository
 from ..database.production import apply_localization_correction
-from .contracts import LOCALIZATION_FIELDS
+from .contracts import LOCALIZATION_FIELDS, LocalizationField
 from .engine import LocalizationEngine
 from .ai import provider_from_config, resolve_unknown
 from .knowledge import KnowledgeLoader
 from .learning import aggregate_candidates
+from ..dictionary import product_source_hash
 
 
 def _report_root(cfg: Mapping[str, Any]) -> Path:
@@ -57,8 +58,45 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
         plan = LocalizationEngine(knowledge=per_record_knowledge).resolve(record, existing=existing.get(sku))
         engine_for_record = LocalizationEngine(knowledge=per_record_knowledge)
         validation = engine_for_record.validate(record, plan)
+        # Field-level manual overrides are the highest localization priority.
+        # They never change Spanish facts and remain subject to the existing
+        # source-hash freshness contract via ``existing``.
+        for field, override in (knowledge.get("manual_by_sku", {}).get(sku, {}) or {}).items():
+            target = {"name_zh_standard": "name_zh", "spec_zh_standard": "spec_zh", "cat1_zh": "cat1_zh", "cat2_zh": "cat2_zh"}.get(field)
+            if target and str(override.get("value") or "").strip():
+                old_field = plan.fields[target]
+                fields = dict(plan.fields)
+                fields[target] = LocalizationField(str(override["value"]).strip(), "manual_override", old_field.status, old_field.source_hash, old_field.freshness_status, old_field.policy_version, old_field.review_reasons, old_field.provenance)
+                from .contracts import LocalizationPlan
+                plan = LocalizationPlan(plan.sku, plan.source_hash, fields, plan.semantic_facts, plan.readiness, plan.review_reasons, plan.knowledge_hits, plan.ai_used)
+        # A same-source, trusted model cache fills only fields still unknown;
+        # it remains below product/formal dictionaries and above a new AI call.
+        model = knowledge.get("model_by_sku", {}).get(sku)
+        if model and product and product_source_hash(product) == str(model.get("source_hash") or ""):
+            fields = dict(plan.fields); changed = False
+            for cache_field, target in (("name_zh_standard", "name_zh"), ("spec_zh_standard", "spec_zh")):
+                cached = str(model.get(cache_field) or "").strip()
+                if cached and fields[target].status != "READY" and fields[target].source not in {"knowledge", "manual_override"}:
+                    old_field = fields[target]
+                    fields[target] = LocalizationField(cached, "model_cache", "READY", old_field.source_hash, old_field.freshness_status, old_field.policy_version, old_field.review_reasons, old_field.provenance)
+                    changed = True
+            if changed:
+                from .contracts import LocalizationPlan
+                plan = LocalizationPlan(plan.sku, plan.source_hash, fields, plan.semantic_facts, plan.readiness, plan.review_reasons, plan.knowledge_hits, plan.ai_used)
+                validation = engine_for_record.validate(record, plan)
+        blocked = knowledge.get("source_damage_by_sku", {}).get(sku, set()) or set()
+        if blocked:
+            fields = dict(plan.fields)
+            for source_field, target in (("name_es", "name_zh"), ("cat1_es", "cat1_zh"), ("cat2_es", "cat2_zh"), ("spec_es", "spec_zh"), ("desc_es", "desc_zh"), ("details_es", "details_zh")):
+                if source_field in blocked or source_field.replace("_es", "_es_raw") in blocked:
+                    old_field = fields[target]
+                    fields[target] = LocalizationField(old_field.value, "source_damage", "REVIEW_REQUIRED", old_field.source_hash, old_field.freshness_status, old_field.policy_version, tuple(dict.fromkeys((*old_field.review_reasons, "SOURCE_BLOCKED"))), old_field.provenance)
+            from .contracts import LocalizationPlan
+            plan = LocalizationPlan(plan.sku, plan.source_hash, fields, plan.semantic_facts, "REVIEW_REQUIRED", tuple(dict.fromkeys((*plan.review_reasons, "SOURCE_BLOCKED"))), plan.knowledge_hits, plan.ai_used)
+            validation = engine_for_record.validate(record, plan)
         if not validation.ok:
-            unknown_plans.append((record, plan, engine_for_record))
+            if not blocked:
+                unknown_plans.append((record, plan, engine_for_record))
         old = existing.get(sku, {})
         row = {"sku": sku, "source_hash": plan.source_hash,
                "old_name_zh": old.get("name_zh", ""), "new_name_zh": plan.fields["name_zh"].value,
@@ -144,11 +182,17 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
     learning_pool.mkdir(parents=True, exist_ok=True)
     shutil.copy2(learning["path"], learning_pool / "learning_candidates.csv")
     ready = sum(row["readiness"] in {"READY", "AUTO_READY"} for row in rows)
+    knowledge_hit_count = sum(bool(row["knowledge_hits"]) for row in rows)
     coverage = {"run_id": run_id, "total_current_skus": len(rows), "ready_count": ready, "review_required_count": len(rows)-ready,
                 "ordinary_spanish_residue_count": sum(bool(row["spanish_residue_tokens"]) for row in rows),
                 "numeric_mismatch_count": sum(row["numeric_validation"] == "FAIL" for row in rows),
                 "fact_not_covered_count": sum("FACT_NOT_COVERED" in str(row.get("review_reasons") or "").split("|") for row in rows),
-                "knowledge_hit_count": sum(bool(row["knowledge_hits"]) for row in rows), "ai_call_count": getattr(provider, "calls", 0),
+                "source_blocked_count": sum("SOURCE_BLOCKED" in str(row.get("review_reasons") or "").split("|") for row in rows),
+                "source_hash_changed_count": sum("SOURCE_HASH_CHANGED" in str(row.get("review_reasons") or "").split("|") for row in rows),
+                "stale_localization_count": sum("STALE_LOCALIZATION" in str(row.get("review_reasons") or "").split("|") for row in rows),
+                "knowledge_hit_count": knowledge_hit_count,
+                "knowledge_hit_rate": knowledge_hit_count / max(1, len(rows)),
+                "ai_eligible_count": len(unknown_plans), "ai_call_count": getattr(provider, "calls", 0),
                 "ai_candidate_count": len(ai_candidates), "ai_avoidance_rate": 1.0 - (getattr(provider, "calls", 0) / max(1, len(rows))), "generated_at": datetime.now(timezone.utc).isoformat()}
     (out / "coverage.json").write_text(json.dumps(coverage, ensure_ascii=False, indent=2), encoding="utf-8")
     source_commit_id = None

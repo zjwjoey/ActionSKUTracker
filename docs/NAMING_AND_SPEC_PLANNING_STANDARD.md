@@ -602,3 +602,5 @@ Barra de cola
 - `varios colores` → `多种颜色`
 - `diferentes variantes` → `多款可选`
 - 数字事实保持
+
+知识命中顺序固定为 Manual Override → Product Dictionary → Confirmed Brand/Category → Product Type/Phrase/Term/Tech Token → 同源模型缓存 → 确定性规则 → 本地 AI UNKNOWN 候选。AI 只提供候选，不直接写正式字段；品名、规格规划必须保留技术 Token、数量和单位事实。

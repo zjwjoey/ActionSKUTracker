@@ -104,6 +104,8 @@ PROVISIONAL 品牌。每次写入有唯一备份，替换后回读、hash 或 ma
 字典 schema、优先级、source hash 和审核去重测试可以在 CI 中使用临时 fixture 验证；CI 不构建或发布本机运行字典，不写入 `runtime/dictionary/`，也不把测试通过误认为正式字典基线已更新。正式基线仍需本地审计后由明确发布步骤生成。
 
 Localization V1 的四个扩展字典纳入同一治理 manifest、schema 校验和内容 hash；`KnowledgePromotionRouter` 按 `knowledge_type` 路由，禁止把可复用知识全部写入 manual override。
+
+Final closure（2026-09-01）：扩展字典统一使用 `PENDING / AI_CANDIDATE / SEED_REVIEWED / HUMAN_REVIEWED / LOCKED / REJECTED`；正式 Resolver 只采用 `SEED_REVIEWED / HUMAN_REVIEWED / LOCKED`。Manual Override 优先于商品字典，可信同源 Model Cache 次之，源损坏字段进入 `SOURCE_BLOCKED`，不交给模型。
 # Localization Intelligence V1
 
 商品类型、详情键、技术 Token、固定短语使用 `data/dictionary/` 下的版本化扩展字典，由 `KnowledgeLoader` 统一加载；候选知识先进入 learning candidates 和现有 Review Queue，未通过 Promotion Gate 不进入正式基线。

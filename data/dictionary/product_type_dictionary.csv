@@ -1,4 +1,4 @@
 schema_version,product_type_id,source_term,source_aliases,cat1_es,cat2_es,canonical_zh,confidence,review_status,notes
-1.0,pt-gomas,gomas,,Hobby,Manualidades,橡皮筋,1.0,HUMAN_APPROVED,固定语义种子
-1.0,pt-cola,barra de cola,,Hobby,Manualidades,胶棒,1.0,HUMAN_APPROVED,固定语义种子
-1.0,pt-cutting-mat,alfombrilla para cortar,,Hobby,Manualidades,切割垫,1.0,HUMAN_APPROVED,固定语义种子
+1.0,pt-gomas,gomas,,Hobby,Manualidades,橡皮筋,1.0,SEED_REVIEWED,固定语义种子
+1.0,pt-cola,barra de cola,,Hobby,Manualidades,胶棒,1.0,SEED_REVIEWED,固定语义种子
+1.0,pt-cutting-mat,alfombrilla para cortar,,Hobby,Manualidades,切割垫,1.0,SEED_REVIEWED,固定语义种子

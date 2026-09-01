@@ -429,7 +429,9 @@ def main(argv=None) -> int:
         print(json.dumps({"run_id": target.name, "count": len(rows), "rows": rows}, ensure_ascii=False)); return 0
     if args.command == "localization-promote":
         from .localization.learning import persist_promotion
-        from .localization.promotion import KnowledgePromotionRouter, KnowledgePromotionError
+        from .localization.promotion import KnowledgePromotionRouter, KnowledgePromotionError, validate_candidate_freshness
+        from .database.integration import database_path
+        from .database.repository import ProductionRepository
         from .localization.service import _report_root
         import csv as _csv
         root = _report_root(cfg)
@@ -447,7 +449,10 @@ def main(argv=None) -> int:
         # owning dictionary; AI never writes this path implicitly.
         if args.human_approved:
             try:
-                result["knowledge_promotion"] = KnowledgePromotionRouter(Path(cfg["paths"].get("dictionary_baseline") or cfg["paths"]["dictionary"])).promote(candidate, human_approved=True, validator_pass=str(candidate.get("validator_status") or "PASS").upper() == "PASS", source_hash_match=True)
+                records = ProductionRepository(database_path(cfg)).load_current_export_records()
+                current = {str(row.get("sku") or row.get("official_sku") or ""): row for row in records}
+                router = KnowledgePromotionRouter(Path(cfg["paths"].get("dictionary_baseline") or cfg["paths"]["dictionary"]), freshness_checker=lambda item: validate_candidate_freshness(item, current))
+                result["knowledge_promotion"] = router.promote(candidate, human_approved=True, validator_pass=str(candidate.get("validator_status") or "PASS").upper() == "PASS")
             except KnowledgePromotionError as exc:
                 print(json.dumps({"error": str(exc), "decision": result}, ensure_ascii=False), file=sys.stderr); return 2
         print(json.dumps(result, ensure_ascii=False)); return 0

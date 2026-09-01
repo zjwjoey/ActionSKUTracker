@@ -14,6 +14,7 @@ from ..dictionary import (
     BRAND_DICTIONARY_HEADERS, OVERRIDE_HEADERS, TERM_DICTIONARY_HEADERS,
     load_dictionary_rows, write_dictionary_csv,
 )
+from ..services.hashing import localization_source_hash
 
 
 def can_promote(candidate: Mapping[str, Any], *, validator_pass: bool, source_hash_match: bool, human_approved: bool = False) -> tuple[bool, tuple[str, ...]]:
@@ -41,6 +42,37 @@ class KnowledgePromotionError(RuntimeError):
     """A candidate failed the V1 promotion contract."""
 
 
+def validate_candidate_freshness(candidate: Mapping[str, Any], current_facts: Mapping[str, Mapping[str, Any]] | None = None) -> tuple[bool, str]:
+    """Re-check every evidence SKU against current official Spanish facts."""
+    evidence = candidate.get("evidence_skus") or candidate.get("sku") or ""
+    if isinstance(evidence, str):
+        skus = [s.strip() for s in evidence.replace(",", "|").split("|") if s.strip()]
+    else:
+        skus = [str(s).strip() for s in evidence if str(s).strip()]
+    if not skus:
+        return False, "SOURCE_EVIDENCE_MISSING"
+    if not current_facts:
+        return False, "SOURCE_EVIDENCE_MISSING"
+    expected = str(candidate.get("source_hash") or "")
+    if not expected:
+        return False, "SOURCE_EVIDENCE_MISSING"
+    for sku in skus:
+        record = current_facts.get(sku)
+        if not record:
+            return False, "SKU_NOT_CURRENT"
+        actual = localization_source_hash({
+            "name_es": record.get("name_es") or record.get("name"),
+            "cat1_es": record.get("cat1_es") or record.get("cat1"),
+            "cat2_es": record.get("cat2_es") or record.get("cat2"),
+            "spec_es": record.get("spec_es") or record.get("spec"),
+            "desc_es": record.get("desc_es") or record.get("description_es") or record.get("description"),
+            "details_es": record.get("details_es") or record.get("details"),
+        })
+        if actual != expected:
+            return False, "CANDIDATE_STALE"
+    return True, "PASS"
+
+
 class KnowledgePromotionRouter:
     """Route an explicitly approved candidate into its owning knowledge file.
 
@@ -59,8 +91,9 @@ class KnowledgePromotionRouter:
         "MATERIAL": "phrase_dictionary.csv", "COMPATIBILITY": "phrase_dictionary.csv",
     }
 
-    def __init__(self, directory: Path):
+    def __init__(self, directory: Path, *, freshness_checker=None):
         self.directory = Path(directory)
+        self.freshness_checker = freshness_checker
 
     @staticmethod
     def _candidate_payload(candidate: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -81,6 +114,16 @@ class KnowledgePromotionRouter:
             raise KnowledgePromotionError("VALIDATOR_FAIL")
         if str(candidate.get("status") or "").upper() == "REJECTED":
             raise KnowledgePromotionError("CANDIDATE_REJECTED")
+        if candidate.get("evidence_skus") or candidate.get("sku"):
+            if self.freshness_checker is None:
+                raise KnowledgePromotionError("SOURCE_EVIDENCE_MISSING")
+            fresh = self.freshness_checker(candidate)
+            if isinstance(fresh, tuple):
+                ok, reason = fresh
+            else:
+                ok, reason = bool(fresh), "PASS" if fresh else "CANDIDATE_STALE"
+            if not ok:
+                raise KnowledgePromotionError(str(reason))
 
     def _write_new(self, filename: str, row: dict[str, Any]) -> dict[str, Any]:
         ensure_schemas(self.directory)

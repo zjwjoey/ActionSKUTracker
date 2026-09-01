@@ -41,9 +41,12 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         # deliberately kept out of the stable product name.  Identity-level
         # interfaces/models may be retained when they define the product.
         identity = [f.canonical_value or f.value for f in facts
-                    if f.semantic_type in {"INTERFACE", "IP_CHARACTER"}
-                    ]
-        name = "".join(x for x in (brand + "牌" if brand else "", product_type, *identity) if x)
+                    if f.semantic_type in {"INTERFACE", "IP_CHARACTER", "TECH_TOKEN", "FUNCTION"}
+                    and f.source_field == "name_es"]
+        deduped_identity = list(dict.fromkeys(identity))
+        functions = [x for x in deduped_identity if x not in {f.canonical_value or f.value for f in facts if f.semantic_type != "FUNCTION"}]
+        other_identity = [x for x in deduped_identity if x not in functions]
+        name = "".join(x for x in (brand + "牌" if brand else "", *functions, product_type, *other_identity) if x)
     elif brand and not name.startswith(brand + "牌"):
         # Confirmed brand evidence may decorate a dictionary title; an
         # explicit field-level manual override can opt out by passing the
@@ -83,8 +86,15 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     # plan so an older localization cannot freeze yesterday's unit price.
     unit_price = _dict_value(knowledge.get("unit_price_zh"), "value", "unit_price_zh") or format_unit_price(source.unit_price_es)
     ups = "knowledge" if _dict_value(knowledge.get("unit_price_zh"), "value", "unit_price_zh") else "official_unit_price"
-    desc, ds = value("desc_zh", format_text(source.desc_es))
-    details, dts = value("details_zh", format_details(source.details_es))
+    def replace_known(text: str, field_name: str) -> str:
+        rendered = str(text or "")
+        for fact in facts:
+            if fact.source_field != field_name or not fact.canonical_value or fact.canonical_value == fact.source_text:
+                continue
+            rendered = re.sub(rf"(?i)(?<!\w){re.escape(fact.source_text)}(?!\w)", fact.canonical_value, rendered)
+        return rendered
+    desc, ds = value("desc_zh", format_text(replace_known(source.desc_es, "desc_es")))
+    details, dts = value("details_zh", format_details(replace_known(source.details_es, "details_es")))
     details = format_details(details)
     placements = {"PRODUCT_TYPE": "name", "BRAND": "name", "SERIES": "name", "IP_CHARACTER": "name", "MODEL": "spec", "TECH_TOKEN": "spec", "STANDARD_UNIT": "spec", "SIZE_DIMENSION": "spec", "CAPACITY": "spec", "WEIGHT": "spec", "QUANTITY": "spec", "COLOR": "spec", "VARIANT": "spec", "MATERIAL": "name", "FUNCTION": "description", "COMPATIBILITY": "spec", "VOLTAGE": "spec", "POWER": "spec", "CURRENT": "spec", "FREQUENCY": "spec", "BATTERY_CAPACITY": "spec", "SOCKET": "spec", "INTERFACE": "spec", "PROTECTION_RATING": "spec", "CARE": "details", "NUTRITION": "name", "DETAIL_KEY": "details", "DESCRIPTION_FACT": "description"}
     planned_facts = tuple(

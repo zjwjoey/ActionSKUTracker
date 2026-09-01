@@ -14,6 +14,7 @@ from ..dictionary import (
     OVERRIDE_HEADERS, PRODUCT_DICTIONARY_HEADERS, TERM_DICTIONARY_HEADERS,
     is_confirmed_brand_record, normalize_category_key,
 )
+from ..dictionary import product_source_hash
 
 NEW_SCHEMAS: dict[str, tuple[str, ...]] = {
     "product_type_dictionary.csv": ("schema_version", "product_type_id", "source_term", "source_aliases", "cat1_es", "cat2_es", "canonical_zh", "confidence", "review_status", "notes"),
@@ -28,6 +29,12 @@ NEW_KEYS: dict[str, tuple[str, ...]] = {
     "tech_token_dictionary.csv": ("token",),
     "phrase_dictionary.csv": ("source_phrase",),
 }
+
+# Canonical knowledge trust states.  Review Queue task states (APPROVED,
+# RESOLVED, ...) are intentionally a different contract and are not accepted
+# here.  SEED_REVIEWED is used for repository-provided deterministic seeds.
+KNOWLEDGE_STATUSES = frozenset({"PENDING", "AI_CANDIDATE", "SEED_REVIEWED", "HUMAN_REVIEWED", "LOCKED", "REJECTED"})
+ACCEPTED_KNOWLEDGE_STATUSES = frozenset({"SEED_REVIEWED", "HUMAN_REVIEWED", "LOCKED"})
 
 
 class KnowledgeContext(dict[str, Any]):
@@ -49,10 +56,14 @@ class KnowledgeLoader:
         self.directory = Path(directory)
 
     def load(self) -> dict[str, Any]:
-        result: KnowledgeContext = KnowledgeContext({"brands": set(), "cat1_map": {}, "cat2_map": {}, "product_by_sku": {}, "product_types": {}, "product_type_rows": [], "detail_keys": {}, "tech_tokens": {}, "phrases": {}, "terms": [], "manual_overrides": []})
+        result: KnowledgeContext = KnowledgeContext({"brands": set(), "cat1_map": {}, "cat2_map": {}, "product_by_sku": {}, "product_types": {}, "product_type_rows": [], "detail_keys": {}, "tech_tokens": {}, "phrases": {}, "terms": [], "manual_overrides": [], "manual_by_sku": {}, "model_by_sku": {}, "source_damage_by_sku": {}})
         brand = self.directory / "brand_dictionary.csv"
         if brand.exists():
             for row in csv.DictReader(brand.open(encoding="utf-8-sig")):
+                # Brand evidence has its own confidence gate, but it still
+                # participates in the canonical knowledge trust contract.
+                if str(row.get("review_status") or "").strip().upper() not in ACCEPTED_KNOWLEDGE_STATUSES:
+                    continue
                 if not is_confirmed_brand_record(row):
                     continue
                 value = str(row.get("brand_name_zh") or row.get("brand_zh") or row.get("brand_name") or row.get("canonical_name") or "").strip()
@@ -67,11 +78,28 @@ class KnowledgeLoader:
         term = self.directory / "term_dictionary.csv"
         if term.exists():
             with term.open(encoding="utf-8-sig", newline="") as fh:
-                result["terms"] = [row for row in csv.DictReader(fh) if str(row.get("review_status") or "").upper() in {"HUMAN_REVIEWED", "LOCKED", "APPROVED"}]
+                result["terms"] = [row for row in csv.DictReader(fh) if str(row.get("review_status") or "").upper() in ACCEPTED_KNOWLEDGE_STATUSES]
         overrides = self.directory / "manual_overrides.csv"
         if overrides.exists():
             with overrides.open(encoding="utf-8-sig", newline="") as fh:
                 result["manual_overrides"] = list(csv.DictReader(fh))
+            for row in result["manual_overrides"]:
+                if str(row.get("scope") or "").strip().casefold() == "product":
+                    result["manual_by_sku"].setdefault(str(row.get("key") or "").strip(), {})[str(row.get("field") or "").strip()] = row
+        model = self.directory / "model_translation_overrides.csv"
+        if model.exists():
+            with model.open(encoding="utf-8-sig", newline="") as fh:
+                for row in csv.DictReader(fh):
+                    quality = str(row.get("quality_status") or "").strip().upper()
+                    if quality in {"OK", "HUMAN_REVIEWED", "VERIFIED"}:
+                        result["model_by_sku"][str(row.get("sku") or "").strip()] = row
+        damage = self.directory / "source_damage_report.csv"
+        if damage.exists():
+            with damage.open(encoding="utf-8-sig", newline="") as fh:
+                for row in csv.DictReader(fh):
+                    if str(row.get("status") or "").strip().upper() in {"SOURCE_DAMAGED", "SOURCE_POLLUTED"}:
+                        fields = {part.strip() for part in str(row.get("damaged_fields") or "").split(",") if part.strip()}
+                        result["source_damage_by_sku"][str(row.get("sku") or "").strip()] = fields
         category = self.directory / "category_dictionary.csv"
         if category.exists():
             for row in csv.DictReader(category.open(encoding="utf-8-sig")):
@@ -94,12 +122,11 @@ class KnowledgeLoader:
             if path.exists():
                 validate_knowledge_file(path, NEW_SCHEMAS[filename], NEW_KEYS[filename])
                 rows = list(csv.DictReader(path.open(encoding="utf-8-sig")))
-                accepted = {"HUMAN_REVIEWED", "LOCKED", "APPROVED"}
-                result[key] = [row for row in rows if str(row.get("review_status") or "").upper() in accepted]
+                result[key] = [row for row in rows if str(row.get("review_status") or "").upper() in ACCEPTED_KNOWLEDGE_STATUSES]
                 rows = result[key]
                 if filename == "product_type_dictionary.csv":
                     result["product_type_rows"] = rows
-                    result["product_types"] = {str(row.get("source_term") or "").casefold(): str(row.get("canonical_zh") or "") for row in rows if str(row.get("review_status") or "").upper() in {"HUMAN_REVIEWED", "LOCKED", "APPROVED"}}
+                    result["product_types"] = {str(row.get("source_term") or "").casefold(): str(row.get("canonical_zh") or "") for row in rows}
                 if filename == "tech_token_dictionary.csv":
                     result["tech_tokens"] = {str(row.get("token") or ""): str(row.get("canonical_token") or row.get("token") or "") for row in rows}
         result["hash"] = self.content_hash()
@@ -156,7 +183,7 @@ def validate_knowledge_file(path: Path, headers: tuple[str, ...], key_fields: tu
         reader = csv.DictReader(fh)
         if tuple(reader.fieldnames or ()) != tuple(headers):
             raise ValueError(f"KNOWLEDGE_SCHEMA_MISMATCH:{path.name}")
-        seen: set[tuple[str, ...]] = set(); count = 0
+        seen: set[tuple[str, ...]] = set(); count = 0; invalid_status: tuple[int, str] | None = None
         for row in reader:
             count += 1
             if str(row.get("schema_version") or "").strip() != "1.0":
@@ -167,4 +194,9 @@ def validate_knowledge_file(path: Path, headers: tuple[str, ...], key_fields: tu
             if key in seen:
                 raise ValueError(f"KNOWLEDGE_DUPLICATE_KEY:{path.name}:{key}")
             seen.add(key)
+            status = str(row.get("review_status") or "").strip().upper()
+            if status not in KNOWLEDGE_STATUSES and invalid_status is None:
+                invalid_status = (count, status)
+        if invalid_status is not None:
+            raise ValueError(f"KNOWLEDGE_REVIEW_STATUS:{path.name}:{invalid_status[0]}:{invalid_status[1]}")
     return {"path": str(path), "rows": count, "sha256": _sha(path)}

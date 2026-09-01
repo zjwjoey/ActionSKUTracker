@@ -414,7 +414,16 @@ def decide_review(
                 "zh_value": value or row.get("suggested_zh") or row.get("suggested_value"),
                 "confidence": "1.0", "status": "HUMAN_REVIEWED", "validator_status": "PASS",
             }
-            result = KnowledgePromotionRouter(Path(cfg["paths"]["dictionary"])).promote(candidate, human_approved=True)
+            checker = None
+            storage = cfg.get("storage") or {}
+            if storage.get("db_path"):
+                from .database.integration import database_path
+                from .database.repository import ProductionRepository
+                from .localization.promotion import validate_candidate_freshness
+                records = ProductionRepository(database_path(cfg)).load_current_export_records()
+                current = {str(item.get("sku") or item.get("official_sku") or ""): item for item in records}
+                checker = lambda item: validate_candidate_freshness(item, current)
+            result = KnowledgePromotionRouter(Path(cfg["paths"]["dictionary"]), freshness_checker=checker).promote(candidate, human_approved=True)
             route = str(result.get("route") or "knowledge_dictionary")
         elif row["issue_type"] in {"NAME_REVIEW", "SPEC_REVIEW", "CATEGORY_REVIEW", "PRODUCT_TYPE_REVIEW", "SERIES_REVIEW", "TECH_TOKEN_REVIEW", "SPEC_FORMAT_REVIEW", "UNIT_REVIEW", "DESCRIPTION_REVIEW", "DETAIL_KEY_REVIEW", "DETAIL_VALUE_REVIEW", "SPANISH_RESIDUAL", "NUMERIC_FACT_MISMATCH"}:
             if not value or not row["sku"]:

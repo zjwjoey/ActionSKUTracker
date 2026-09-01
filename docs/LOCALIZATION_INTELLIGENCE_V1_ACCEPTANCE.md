@@ -1,48 +1,60 @@
-# Localization Intelligence V1 验收记录
+# Localization Intelligence V1 Final Closure
 
-本分支以 `CHINESE_LOCALIZATION_STANDARD_V1`、`NAMING_AND_SPEC_PLANNING_STANDARD_V1` 为策略基线。稳定主线基线为 `a3cbb6bfb49431d7ddf4dc502d302e6efb44a3f2`；本分支完成后在 feature 分支运行 CI，等待用户决定是否合并。
+更新时间：2026-09-01。工作分支：`feat/chinese-localization-intelligence-v1`；main 基线：`a3cbb6bfb49431d7ddf4dc502d302e6efb44a3f2`。本轮只收口 Localization Intelligence，不改 Presence、Lifecycle、Price、PRIMARY 事实，也不执行正式 Apply。
 
-## 已实现边界
+## Code / Architecture
 
-- `src/action_tracker/localization/` 提供 SourceFacts → SemanticFacts → LocalizationPlan → Validator 的唯一确定性核心路径。
-- 七个中文字段均带 value、source、status、source_hash、freshness_status、policy_version、review_reasons、provenance。
-- 品名与规格规划分离；技术型号/接口/单位保留，规格统一使用 `×`、`–`、`｜` 和紧凑单位。
-- 四个版本化知识 CSV 会安全初始化，manifest 记录哈希；已有字典只读复用。
-- AI provider 只允许显式 UNKNOWN 适配器调用，默认 DisabledProvider；密钥仅从环境变量读取。
-- learning candidates 聚合到 `runtime/localization/reports/<run_id>/`，不会伪造人工确认。
-- `localization-enrich` / `localization-audit` / `localization-learning-report` / `localization-promote` / `localization-apply` CLI 已提供；apply 默认 dry-run，生产开关关闭时拒绝正式写入。
-- 本轮补齐本地 OpenAI-compatible Provider（可配置 Ollama/LM Studio/vLLM/Qwen 等端点）、严格 JSON prompt/response contract、只读 `localization-ai-status` 与虚构 SKU `localization-ai-check`。
-- AI 候选现在与确定性候选进入同一 Learning Pool；`KnowledgePromotionRouter` 仅在显式人工批准、Validator PASS、source hash 通过且无冲突时写入所属知识 CSV，并原子更新治理 manifest；不执行 Git、PRIMARY 或自动批准。
-- Review Queue 增加可选 candidate/knowledge 元数据，并使用 `REVIEW_FIELD_TO_OVERRIDE_FIELD` 做字段级旧字典适配；描述/详情不会被强塞进旧商品覆盖表。
-- `Sin alcohol`、`Sin cafeína`、`Sin azúcar`、`Sin gluten` 保持否定语义；SemanticFact 增加 coverage 状态，Validator 对未覆盖事实报 `FACT_NOT_COVERED`。
+- Knowledge 状态合同统一为 `PENDING`、`AI_CANDIDATE`、`SEED_REVIEWED`、`HUMAN_REVIEWED`、`LOCKED`、`REJECTED`；正式加载只接受后三个可信状态。四个 V1 seed CSV 共迁移 14 行 `HUMAN_APPROVED → SEED_REVIEWED`。
+- Review Queue 的 `APPROVED` 仍是任务状态，与 Knowledge 状态分离。
+- 解析优先级实际落地为 Manual Override → Product Dictionary → 已确认 Brand/Category/Term/扩展 Knowledge → 同源可信 Model Cache → Deterministic → AI UNKNOWN → Review。
+- `manual_by_sku`、同源可信 `model_by_sku`、字段级 `source_damage_by_sku` 已进入 `audit_current`；源损坏字段标记 `SOURCE_BLOCKED` 且不进入 AI。
+- Promotion 对所有带 SKU evidence 的候选重新校验当前 PRIMARY 六字段 Localization source hash；CLI 不再硬编码 `source_hash_match=True`。
+- `tests/test_localization_intelligence.py` 已加入 `tests/ci_safe_tests.txt`。
 
-## 验收命令
+## Tests
 
-```text
-PYTHONPATH=src python -m pytest -q
-PYTHONPATH=src python -m action_tracker localization-audit --current
-PYTHONPATH=src python -m action_tracker localization-apply --run-id <run_id> --dry-run
-```
+- 专项：`27 passed`。
+- 必测集合（Localization、Dictionary、Review Queue、Translation、DB Production、Post-merge safety）：`109 passed`。
+- 全量：`390 passed`。
+- Manual Override、Model Cache、Source Damage、Learning E2E、Promotion stale/pass contract 均有回归覆盖。
 
-正式 apply 必须同时满足 SQLite PRIMARY、显式 `knowledge.production_apply_enabled=true`、Validator PASS 和审批状态；本分支不自动开启该开关。
+## Local Qwen3:8B
 
-## 不变量
+- Endpoint：本机 Ollama OpenAI-compatible `http://127.0.0.1:11434/v1`（仅临时烟测，未写入生产配置）。
+- Model：`qwen3:8b`；health：`PASS`。
+- 实际 smoke：`FAIL / LOCAL_QWEN_NOT_VERIFIED`。模型返回未包裹在合同要求的 `fields` 对象中，并出现英文/乱码；Validator 正确拒绝。数字保护烟测同样不得因此放宽。
+- 生产默认仍为 `localization.ai.enabled=false`、`knowledge.production_apply_enabled=false`、`translation.auto_approval_enabled=false`，无密钥或本机绝对 endpoint 提交。
 
-Localization 核心不访问官网，不修改 Presence、Lifecycle、Price history、ES 事实、图片或 Selection/Artifact。普通日常提交不应将既有中文 STALE 无条件改回 CURRENT；正式修正必须使用独立 correction commit 并保留来源哈希、审批和字段 provenance。
+## CURRENT read-only audit
 
-## 本次 feature 验证记录
+数据源：`F:\ActionSKUTracker\runtime\db\action_tracker.db`，run：`localization-v1-final-closure`；未写入 PRIMARY。
 
-- implementation feature head：本轮提交完成后以 `git rev-parse HEAD` 记录（不预写未来 SHA）。
-- 基线：`a3cbb6bfb49431d7ddf4dc502d302e6efb44a3f2`
-- 初次全量 dry-run（`v1-feature-audit-20260901b`）曾错误地把 5,379 条全部标记为 `SOURCE_HASH_CHANGED`。根因是 V1 JSON hash 与 SQLite canonical hash 不一致；该报告不再作为质量基线。
-- Hash closure 后，V1 直接复用 SQLite 的 canonical `localization_source_hash`；PRIMARY 已完成仅新增列的迁移，`product_localizations` 现可持久化第七字段 `unit_price` 及其 `unit_price_source`。
-- 全量只读 audit：5,379 CURRENT；ready 376、review_required 5,003、普通西语残留 1,716、数字事实 mismatch 334、真实 `SOURCE_HASH_CHANGED` / `STALE_LOCALIZATION` 各 13、AI calls 0（`v1-determinism-a-20260901`）。
-- 相同 PRIMARY head 上连续两次独立进程 audit 的 `localization_audit.csv` SHA-256 完全一致：`DDFE33529BBA5DDE0C51F52478148C15DFA1645796A57385F81D89B3BFFB143B`；品牌集合已排序，避免 Python set 遍历导致非确定性。
-- 第七字段的历史存量尚未被反写；当前 Audit/Export 会从官方单价实时规范化，之后只有通过正式 Apply Gate 的行才写入该字段。
-- `localization-apply --dry-run` 已执行（run `v1-feature-apply-dry-run-20260901`），未写入 PRIMARY。
-- GitHub Actions exact-head CI：Ubuntu 与 Windows 均 PASS，run `33447471041`（head 与 implementation feature head 一致）。
-- 本轮补充了 SourceFacts 官方来源字段、SemanticFact 证据字段、跨字段数字保护、知识 CSV 唯一键/schema 校验、AI 身份/价格/结构校验、Apply 源哈希门禁，以及 unchanged daily 的中文 provenance/updated_at 保留；Hash closure 后本地回归共 382 项通过。
-- 最终补充回归后本地全量测试：`385 passed`（目标 feature worktree，含 Learning E2E）。本机 Qwen 未启用，`localization-ai-status` 返回 `DISABLED`，因此没有网络依赖。
-- 只读 CURRENT 审计（使用现有 PRIMARY 数据库快照，未写入 PRIMARY）：5,379 CURRENT；READY 394、REVIEW_REQUIRED 4,985；普通西语残留 1,671；数字事实 mismatch 334；FACT_NOT_COVERED 0；AI calls 0；AI avoidance 100%。
+| 指标 | 实际值 |
+| --- | ---: |
+| CURRENT | 5,379 |
+| READY | 389 |
+| REVIEW_REQUIRED | 4,990 |
+| 普通西语残留 | 1,671 |
+| 数字事实 mismatch | 334 |
+| FACT_NOT_COVERED | 0 |
+| SOURCE_BLOCKED | 7 |
+| SOURCE_HASH_CHANGED | 13 |
+| STALE_LOCALIZATION | 13 |
+| knowledge hit count / rate | 5,379 / 1.0 |
+| AI eligible | 4,983 |
+| AI calls / candidates | 0 / 0 |
+| AI avoidance | 100% |
 
-当前结论：`LOCALIZATION_V1_NOT_ACCEPTED DO_NOT_MERGE`。原因是全量质量门禁尚未 PASS（仍有西语残留、数字事实 mismatch 和待审候选），且生产 AI/apply/auto-approval 开关保持关闭。Learning/Promotion/Review Queue/Provider 合同已闭合，但不能把未审核候选直接当作正式中文结果。
+## CI / Git
+
+- 本地 feature HEAD 在提交后记录；相对 `origin/main` 仅前进，不落后。
+- 由于本轮环境无法连接 GitHub（fetch 返回代理连接失败），最新 feature HEAD 的 Ubuntu/Windows exact-head workflow、run ID 和 job 状态暂记 `NOT VERIFIED`；不得声称 CI PASS。
+- 本轮不 merge main、不 force push；完成本地验证后再推送 feature 分支。
+
+## 分层结论
+
+- Code：`LOCALIZATION_V1_CODE_ACCEPTANCE_PENDING`（本地回归全部通过，但 exact-head CI 未验证，且 Qwen smoke 未通过）。
+- Data：`LOCALIZATION_DATA_REVIEW_REQUIRED`。
+- Production Apply：`NOT_READY / DISABLED`。
+- Local AI：`LOCAL_QWEN_NOT_VERIFIED`。
+- Recommendation：`DO NOT MERGE`，待 exact-head 双平台 CI 与本地模型合同 smoke 分别完成后再复核；任何情况下不得因 READY 数量不足而自动 Apply。

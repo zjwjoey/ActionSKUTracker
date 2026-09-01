@@ -3,19 +3,19 @@
   "manifest_schema_version": 2,
   "files": {
     "product_type_dictionary.csv": {
-      "sha256": "b59df122ac315ecfea10ed45f3d37ee04de99a48bf7ffbcdc3f5f87445c7348a",
+      "sha256": "363363023fe5309a5d875fc2407df06c1ff18fb15b83ad06324f1f712851bb70",
       "schema_version": "1.0"
     },
     "detail_key_dictionary.csv": {
-      "sha256": "b6a9f925e97287f91aea93d5c32b1bc04938f5cca9586aa5cfb91bfd8afb67ec",
+      "sha256": "fde3259a31382ac867c91c6142ebdbfc651a0ad142ee39e25355f29767f76ab5",
       "schema_version": "1.0"
     },
     "tech_token_dictionary.csv": {
-      "sha256": "cd540661dcfabb7f3b27cf68383ebf06e962dc0a019be7288a1164b3bc135747",
+      "sha256": "ec6acc2caee0849870c092cfec99505dc53fc4818de2c07a8d7072f6cde4fb9f",
       "schema_version": "1.0"
     },
     "phrase_dictionary.csv": {
-      "sha256": "4e54656a461a4407b9dd6bd1faf6b3fdaf4b7b1f4af1900df2104960236213b3",
+      "sha256": "ffe28103199a75d5c43736f5282f9e8c471985b783409f6b3c50e31abf2a54c4",
       "schema_version": "1.0"
     },
     "product_dictionary.csv": {
