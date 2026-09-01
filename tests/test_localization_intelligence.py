@@ -49,7 +49,7 @@ def test_local_provider_is_configurable_and_does_not_require_an_api_key():
 
 def test_ai_response_contract_rejects_malformed_identity_numbers_and_unknown_fields():
     source = SourceFacts.from_record({"sku": "TEST-QWEN", "name_es": "Lámpara LED USB-C", "spec_es": "220 V | 10 W | 4000 mAh | IP44"})
-    valid = {"sku": source.sku, "source_hash": source.source_hash, "fields": {"name": "LED灯", "spec": "220V｜10W｜4000毫安时｜IP44"}}
+    valid = {"sku": source.sku, "source_hash": source.source_hash, "fields": {"name": "LED USB-C灯", "spec": "220V｜10W｜4000毫安时｜IP44"}}
     assert validate_ai_response(valid, source, ("name", "spec")) == (True, ())
     cases = [
         ({"name": "灯"}, "AI_FIELDS_NOT_OBJECT"),

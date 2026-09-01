@@ -14,3 +14,10 @@ The offline Qwen3:8B adapter pilot also completed on 2026-09-01 using 364 truste
 # Localization Intelligence V1 boundary
 
 AI 仅处理确定性知识无法覆盖的 UNKNOWN，默认 `DisabledProvider`。候选必须经过 source hash、SKU、数字、技术 Token 和普通西语残留校验；AI 候选从不直接写入 PRIMARY。
+# Field-contract hotfix
+
+All translation requests use the canonical fields `name`, `cat1`, `cat2`,
+`spec`, `description`, and `details`; `unit_price` is an official fact and is
+never model-generated.  `desc_zh` maps only to `description`, sourced from
+`desc_es`.  Source-damaged fields are excluded from requests.  Candidate
+validation also hard-fails dropped numeric facts and dropped technical tokens.

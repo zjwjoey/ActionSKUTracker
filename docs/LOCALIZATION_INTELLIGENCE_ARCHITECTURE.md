@@ -774,3 +774,29 @@ Learning Candidate 的语义身份仍由 `semantic_type + source_term + zh_value
 本地 Qwen3:8B 的训练数据不是普通的西语→中文平行语料。`scripts/build_local_qwen_dataset.py` 只选可信知识状态，并为每条样本写入完整的字段级规划投影：品名只表达商品身份，规格承载消费者选择参数，分类使用固定受控值，品牌/IP/技术 Token 只在有证据时保留，数字与源事实不可臆造或丢失。样本同时记录 `NAMING_AND_SPEC_PLANNING_STANDARD.md` 和 `CHINESE_LOCALIZATION_STANDARD.md` 的 SHA-256。
 
 训练脚本只接受 schema v2 且同时带有 `naming_policy_version`、字段策略覆盖和源文档 hash 的数据集；旧的简化提示数据会被拒绝。QLoRA 的 loss 只作用于 assistant JSON 输出，不训练模型复读规则和源文本。适配器输出仍是离线候选，必须经过既有 Validator/Learning/Promotion Gate，不能自动写入字典、SQLite PRIMARY 或正式 Export。
+# Final field-contract hotfix (2026-09-01)
+
+Localization has one canonical seven-field contract.  Official source facts
+flow through the canonical names and then to Chinese storage fields:
+
+| Source | Canonical | Chinese |
+|---|---|---|
+| name_es | name | name_zh |
+| cat1_es | cat1 | cat1_zh |
+| cat2_es | cat2 | cat2_zh |
+| spec_es | spec | spec_zh |
+| unit_price_es | unit_price | unit_price_zh |
+| desc_es | description | desc_zh |
+| details_es | details | details_zh |
+
+The mapping is defined in `localization/contracts.py`; no module may derive a
+field by removing `_zh`.  AI may request only the six non-price canonical
+fields.  Source damage blocks the matching canonical field (for example
+`desc_es → description`) and never sends either `description` or legacy `desc`
+to a provider.
+
+Final validation retains only structural/source reasons and recalculates
+field-resolvable reasons after manual overrides.  AI candidates must preserve
+source technical tokens such as LED, USB-C, E27 and IP44.  `EVIDENCE_CONFLICT`
+is a first-class learning state and blocks promotion until clean evidence is
+available.

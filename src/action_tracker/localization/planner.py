@@ -4,12 +4,12 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-from .contracts import LocalizationField, LocalizationPlan, SemanticFact, SourceFacts
+from .contracts import CANONICAL_TO_ZH, ZH_TO_CANONICAL, LocalizationField, LocalizationPlan, SemanticFact, SourceFacts
 from .formatter import format_details, format_spec, format_text, format_unit_price
 from .policy import FIXED_CAT1, has_ordinary_spanish, map_cat1
 from ..dictionary import normalize_category_key
 
-_FIELD_NAMES = {"name_zh": "name", "cat1_zh": "cat1", "cat2_zh": "cat2", "spec_zh": "spec", "unit_price_zh": "unit_price", "desc_zh": "description", "details_zh": "details"}
+_FIELD_NAMES = dict(ZH_TO_CANONICAL)
 
 
 def _dict_value(mapping: Mapping[str, Any] | None, *keys: str) -> str:

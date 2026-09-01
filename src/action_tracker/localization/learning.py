@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-STATES = ("UNKNOWN", "AI_CANDIDATE", "EVIDENCE_ACCUMULATED", "HUMAN_REVIEWED", "LOCKED", "REJECTED")
+STATES = ("UNKNOWN", "AI_CANDIDATE", "EVIDENCE_ACCUMULATED", "EVIDENCE_CONFLICT", "HUMAN_REVIEWED", "LOCKED", "REJECTED")
 
 
 def candidate_id(semantic_type: str, source_term: str, zh_value: str) -> str:
@@ -67,11 +67,16 @@ def aggregate_candidates(rows: Iterable[dict[str, Any]], directory: Path) -> dic
 
 def promotion_decision(candidate: dict[str, Any], *, human_approved: bool = False) -> dict[str, Any]:
     old = str(candidate.get("status") or "UNKNOWN")
+    if old == "EVIDENCE_CONFLICT":
+        return {"candidate_id": candidate.get("candidate_id"), "old_state": old,
+                "new_state": old, "promoted": False,
+                "promotion_blocked": True, "reason": "EVIDENCE_CONFLICT",
+                "policy_version": "CHINESE_LOCALIZATION_STANDARD_V1"}
     safe_auto = old == "EVIDENCE_ACCUMULATED" and str(candidate.get("semantic_type")) in {"STANDARD_UNIT", "TECH_TOKEN"}
     if human_approved: new = "LOCKED"
     elif safe_auto: new = "EVIDENCE_ACCUMULATED"
     else: new = old
-    return {"candidate_id": candidate.get("candidate_id"), "old_state": old, "new_state": new, "promoted": new != old, "policy_version": "CHINESE_LOCALIZATION_STANDARD_V1"}
+    return {"candidate_id": candidate.get("candidate_id"), "old_state": old, "new_state": new, "promoted": new != old, "promotion_blocked": False, "policy_version": "CHINESE_LOCALIZATION_STANDARD_V1"}
 
 
 def persist_promotion(candidate: dict[str, Any], directory: Path, *, human_approved: bool = False) -> dict[str, Any]:

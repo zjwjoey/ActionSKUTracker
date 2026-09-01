@@ -9,7 +9,10 @@ from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Protocol
 
-from .contracts import POLICY_VERSION, SourceFacts
+from .contracts import (
+    POLICY_VERSION, SourceFacts, CANONICAL_AI_FIELDS, CANONICAL_TO_SOURCE,
+    ZH_TO_CANONICAL,
+)
 from .policy import FIXED_CAT1, has_ordinary_spanish
 from .validator import _NUMBER
 
@@ -39,6 +42,33 @@ def _user_prompt(source: SourceFacts, requested_fields: tuple[str, ...]) -> str:
             "confidence": 0.0, "review_notes": "",
         },
     }, ensure_ascii=False)
+
+
+_KNOWN_TECH_TOKENS = (
+    "USB-C", "USB", "LED", "HDMI", "E27", "IP44", "A3", "AAA",
+    "Bluetooth", "Wi-Fi",
+)
+
+
+def extract_technical_tokens(text: str) -> tuple[str, ...]:
+    """Extract source technical identifiers that must survive translation.
+
+    Known identifiers are preferred over heuristic all-caps matching.  The
+    fallback keeps model/unit tokens containing digits or a hyphen while
+    avoiding ordinary Spanish words.
+    """
+    text = str(text or "")
+    found: list[str] = []
+    for token in _KNOWN_TECH_TOKENS:
+        if re.search(rf"(?<![A-Za-z0-9]){re.escape(token)}(?![A-Za-z0-9])", text, re.IGNORECASE):
+            found.append(token)
+    for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+(?![A-Za-z0-9])", text):
+        if token.casefold() not in {item.casefold() for item in found}:
+            found.append(token)
+    for token in re.findall(r"(?<![A-Za-z])(?:[A-Z]{2,}\d*|[A-Z]\d+|\d+[A-Za-z]+)(?![A-Za-z0-9])", text):
+        if token.casefold() not in {item.casefold() for item in found}:
+            found.append(token)
+    return tuple(found)
 
 
 class LocalizationAIProvider(Protocol):
@@ -134,6 +164,9 @@ class LocalOpenAICompatibleProvider(OpenAICompatibleProvider):
 def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, requested_fields: tuple[str, ...]) -> tuple[bool, tuple[str, ...]]:
     """Validate the provider envelope before it becomes a candidate."""
     reasons: list[str] = []
+    requested_fields = tuple(requested_fields)
+    if not set(requested_fields) <= set(CANONICAL_AI_FIELDS):
+        reasons.append("AI_REQUESTED_FIELD_NON_CANONICAL")
     if not isinstance(payload, Mapping):
         return False, ("AI_RESPONSE_NOT_OBJECT",)
     allowed_top = {"fields", "product_type_candidate", "semantic_items", "detail_key_candidates", "tech_token_candidates", "placement", "confidence", "review_notes", "sku", "canonical_id", "product_url", "current_price", "original_price", "source_hash"}
@@ -189,13 +222,18 @@ def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, reques
             reasons.append(f"AI_{str(key).upper()}_SPANISH_RESIDUAL")
         elif key == "cat1" and value not in FIXED_CAT1:
             reasons.append("AI_CATEGORY_NOT_FIXED")
-        elif key in {"name", "spec", "description", "details"}:
-            source_field = {"name": "name_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(key)
-            if source_field:
+        elif key in CANONICAL_AI_FIELDS:
+            source_field = CANONICAL_TO_SOURCE.get(key)
+            if source_field and source_field != "unit_price_es":
+                source_text = str(getattr(source, source_field) or "")
                 expected = {_n.replace(",", ".") for _n in _NUMBER.findall(str(getattr(source, source_field) or ""))}
                 found = {_n.replace(",", ".") for _n in _NUMBER.findall(value)}
                 if expected - found:
                     reasons.append(f"AI_{str(key).upper()}_NUMBER_DROPPED")
+                expected_tokens = extract_technical_tokens(source_text)
+                lowered = value.casefold()
+                if any(token.casefold() not in lowered for token in expected_tokens):
+                    reasons.append("AI_TECH_TOKEN_DROPPED")
     confidence = payload.get("confidence")
     if confidence is not None:
         try:
@@ -251,7 +289,10 @@ def resolve_unknown(engine, record: Mapping[str, Any], plan, provider: Localizat
     if plan.readiness in {"AUTO_READY", "READY"}:
         return None
     source = SourceFacts.from_record(record)
-    requested = requested_fields or tuple(key.removesuffix("_zh") for key, field in plan.fields.items() if field.status != "READY")
+    requested = requested_fields or tuple(
+        ZH_TO_CANONICAL[key] for key, field in plan.fields.items()
+        if field.status != "READY" and ZH_TO_CANONICAL[key] in CANONICAL_AI_FIELDS
+    )
     request_body = _user_prompt(source, requested)
     result = dict(provider.complete(source, requested))
     schema_ok, schema_reasons = validate_ai_response(result, source, requested)

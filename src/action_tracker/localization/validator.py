@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .contracts import LocalizationPlan, SourceFacts
+from .contracts import LocalizationPlan, SourceFacts, CANONICAL_TO_SOURCE, ZH_TO_CANONICAL
 from .policy import FIXED_CAT1, has_ordinary_spanish
 from .coverage import validate_fact_coverage
 
@@ -24,14 +24,30 @@ class LocalizationValidation:
     numeric_mismatches: tuple[str, ...] = ()
 
 
+# Reasons describing source/identity state survive a field correction.  All
+# other reasons are derived again from the final values below, so a good
+# manual override cannot remain blocked by a stale planner reason.
+PERSISTENT_REVIEW_REASONS = frozenset({
+    "SOURCE_BLOCKED", "SOURCE_HASH_CHANGED", "SOURCE_HASH_MISMATCH",
+    "STALE_LOCALIZATION", "DETAIL_SKU_MISMATCH", "LOCKED_CONFLICT",
+})
+
+
 def validate_plan(source: SourceFacts, plan: LocalizationPlan, *, allowed_tokens: set[str] | None = None) -> LocalizationValidation:
-    reasons: list[str] = list(plan.review_reasons)
+    reasons: list[str] = [reason for reason in plan.review_reasons if reason in PERSISTENT_REVIEW_REASONS]
     residue: list[str] = []
     for key, field in plan.fields.items():
         if has_ordinary_spanish(field.value, allowed_tokens=allowed_tokens):
             residue.append(key)
             reasons.append("SPANISH_RESIDUAL")
+    # Recompute field-level review reasons from final values.  Planner reasons
+    # such as NAME_REVIEW are intentionally not inherited: manual/product
+    # dictionary overrides may have resolved them.
+    if not str(plan.fields["name_zh"].value or "").strip():
+        reasons.append("NAME_REVIEW")
     if plan.fields["cat1_zh"].value not in FIXED_CAT1:
+        reasons.append("CATEGORY_REVIEW")
+    if source.cat2_es and has_ordinary_spanish(plan.fields["cat2_zh"].value, allowed_tokens=allowed_tokens):
         reasons.append("CATEGORY_REVIEW")
     if plan.source_hash != source.source_hash:
         reasons.append("SOURCE_HASH_MISMATCH")
@@ -75,6 +91,12 @@ def validate_plan(source: SourceFacts, plan: LocalizationPlan, *, allowed_tokens
         reasons.append("DETAIL_SKU_MISMATCH")
     if any(field.freshness_status == "STALE" for field in plan.fields.values()):
         reasons.append("STALE_LOCALIZATION")
+    if source.desc_es and has_ordinary_spanish(plan.fields["desc_zh"].value, allowed_tokens=allowed_tokens):
+        reasons.append("DESCRIPTION_REVIEW")
+    if source.details_es and has_ordinary_spanish(plan.fields["details_zh"].value, allowed_tokens=allowed_tokens):
+        reasons.append("DETAIL_VALUE_REVIEW")
+    if not any(f.semantic_type == "PRODUCT_TYPE" for f in plan.semantic_facts) and source.name_es:
+        reasons.append("PRODUCT_TYPE_REVIEW")
     coverage = validate_fact_coverage(plan)
     if not coverage.ok:
         reasons.append("FACT_NOT_COVERED")

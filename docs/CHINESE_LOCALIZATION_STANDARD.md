@@ -700,3 +700,11 @@ Review 项不得被伪装 PASS。
 ### 2026-09-01 V1 收口补充
 
 人工覆盖写入后必须再次经过最终 Validator；模型缓存只在可信质量状态且匹配当前 PRIMARY 四字段 source hash 时可用。Source Damage 按字段隔离：损坏字段禁止进入 AI，其他未知字段仍可按 `requested_fields` 进入 AI。任何 AI 结果都必须保持 JSON 合同、数字和技术 Token，不得因模型输出失败而降低校验规则。
+# Contract enforcement note (2026-09-01)
+
+The naming and localization rules are applied through the canonical field
+contract, not by string-suffix inference.  Technical identifiers (for example
+USB-C, LED, E27, IP44, A3 and AAA) remain in their original form unless an
+explicit approved dictionary normalization exists.  Manual corrections are
+validated again and clear resolved field issues while preserving structural
+source warnings.

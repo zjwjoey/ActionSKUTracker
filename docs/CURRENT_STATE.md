@@ -108,3 +108,11 @@ feature 分支新增统一 Localization Engine、语义/命名/规格规划、�
 
 本地训练状态：`scripts/build_local_qwen_dataset.py` 已按 `NAMING_AND_SPEC_PLANNING_STANDARD_V1.0` 与 `CHINESE_LOCALIZATION_STANDARD_V1.0` 生成 364 条可信候选（333 train / 31 valid，147/16 个 SKU 组），每条样本带字段级 placement policy、数字/技术 Token 保护和源文档 hash。QLoRA 已在 F 盘本地 Qwen3:8B 上完成 1 epoch（RTX 3060，训练 loss 0.34097，验证 loss 0.06060）；适配器位于 `F:\LocalAI\Adapters\action-localization-qwen3-8b`，离线夹具验证 `all_pass=true`。规格原始模型输出中的半角 `|` 由既有确定性 `format_spec` 归一为 `｜` 后通过门禁。模型仍是离线候选，未写入字典、SQLite PRIMARY 或生产配置。
 Ollama 的模型文件仍在 `F:\LocalAI\Models`；若通过 Ollama endpoint 使用，服务进程必须继承 `OLLAMA_MODELS=F:\LocalAI\Models`。本次只读探测到未继承该变量的服务返回空模型列表，因此不把当前 Ollama endpoint 记为新的 PASS；这不影响上述 HF/QLoRA 适配器验收。
+# Field-contract hotfix status (2026-09-01)
+
+Canonical mapping, source-damage blocking, post-override review rebuilding,
+numeric protection, technical-token preservation and evidence-conflict
+promotion blocking are implemented and covered by regression tests.  This is
+code acceptance only; Production AI, automatic approval and localization
+Apply remain disabled.  The current read-only audit remains data-review
+required and does not modify PRIMARY.

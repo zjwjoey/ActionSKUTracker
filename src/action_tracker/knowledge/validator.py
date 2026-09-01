@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from .contracts import KNOWLEDGE_FIELDS
+from ..localization.ai import extract_technical_tokens
+from ..localization.contracts import CANONICAL_TO_SOURCE
 
 _URL_RE = re.compile(r"(?:https?://|www\.)", re.IGNORECASE)
 _NUMBER_RE = re.compile(r"(?<![A-WYZ0-9a-wyz])\d+(?:[.,]\d+)?")
@@ -45,12 +47,15 @@ def validate_candidate(candidate: Mapping[str, Any], record: Mapping[str, Any]) 
         else:
             # A translation may change language, but it must not silently
             # drop numeric facts from the corresponding Spanish field.
-            source_field = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es",
-                            "spec": "spec_es", "description": "desc_es", "details": "details_es"}[field]
+            source_field = CANONICAL_TO_SOURCE[field]
             expected = set(_NUMBER_RE.findall(str(record.get(source_field) or "")))
             found = set(_NUMBER_RE.findall(value))
             if expected - found:
                 reasons.append(f"{field.upper()}_NUMBER_DROPPED")
+            expected_tokens = extract_technical_tokens(str(record.get(source_field) or ""))
+            lowered = value.casefold()
+            if any(token.casefold() not in lowered for token in expected_tokens):
+                reasons.append("TECH_TOKEN_DROPPED")
     confidence = candidate.get("confidence")
     if confidence is not None:
         try:

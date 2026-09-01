@@ -11,7 +11,10 @@ from typing import Any, Mapping
 from ..database.integration import database_path
 from ..database.repository import ProductionRepository
 from ..database.production import apply_localization_correction
-from .contracts import LOCALIZATION_FIELDS, LocalizationField
+from .contracts import (
+    LOCALIZATION_FIELDS, LOCALIZATION_FIELD_CONTRACT, CANONICAL_AI_FIELDS, CANONICAL_TO_SOURCE,
+    ZH_TO_CANONICAL, LocalizationField, LocalizationPlan,
+)
 from .engine import LocalizationEngine
 from .ai import provider_from_config, resolve_unknown
 from .knowledge import KnowledgeLoader
@@ -67,7 +70,6 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
                 old_field = plan.fields[target]
                 fields = dict(plan.fields)
                 fields[target] = LocalizationField(str(override["value"]).strip(), "manual_override", old_field.status, old_field.source_hash, old_field.freshness_status, old_field.policy_version, old_field.review_reasons, old_field.provenance)
-                from .contracts import LocalizationPlan
                 plan = LocalizationPlan(plan.sku, plan.source_hash, fields, plan.semantic_facts, plan.readiness, plan.review_reasons, plan.knowledge_hits, plan.ai_used)
         # A same-source, trusted model cache fills only fields still unknown;
         # it remains below product/formal dictionaries and above a new AI call.
@@ -81,17 +83,16 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
                     fields[target] = LocalizationField(cached, "model_cache", "READY", old_field.source_hash, old_field.freshness_status, old_field.policy_version, old_field.review_reasons, old_field.provenance)
                     changed = True
             if changed:
-                from .contracts import LocalizationPlan
                 plan = LocalizationPlan(plan.sku, plan.source_hash, fields, plan.semantic_facts, plan.readiness, plan.review_reasons, plan.knowledge_hits, plan.ai_used)
                 validation = engine_for_record.validate(record, plan)
         blocked = knowledge.get("source_damage_by_sku", {}).get(sku, set()) or set()
         if blocked:
             fields = dict(plan.fields)
-            for source_field, target in (("name_es", "name_zh"), ("cat1_es", "cat1_zh"), ("cat2_es", "cat2_zh"), ("spec_es", "spec_zh"), ("desc_es", "desc_zh"), ("details_es", "details_zh")):
+            for target in LOCALIZATION_FIELDS:
+                source_field = LOCALIZATION_FIELD_CONTRACT[target]["source"]
                 if source_field in blocked or source_field.replace("_es", "_es_raw") in blocked:
                     old_field = fields[target]
                     fields[target] = LocalizationField(old_field.value, "source_damage", "REVIEW_REQUIRED", old_field.source_hash, old_field.freshness_status, old_field.policy_version, tuple(dict.fromkeys((*old_field.review_reasons, "SOURCE_BLOCKED"))), old_field.provenance)
-            from .contracts import LocalizationPlan
             plan = LocalizationPlan(plan.sku, plan.source_hash, fields, plan.semantic_facts, "REVIEW_REQUIRED", tuple(dict.fromkeys((*plan.review_reasons, "SOURCE_BLOCKED"))), plan.knowledge_hits, plan.ai_used)
             validation = engine_for_record.validate(record, plan)
         # Manual overrides, model cache and source damage all change the
@@ -153,11 +154,14 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
             # AI is reserved for explicit unknown semantic or translation
             # work; the ordinary daily path keeps the old value stale.
             eligible_reasons = {"PRODUCT_TYPE_REVIEW", "SERIES_REVIEW", "TECH_TOKEN_REVIEW", "DETAIL_KEY_REVIEW", "DETAIL_VALUE_REVIEW", "NAME_REVIEW", "CATEGORY_REVIEW", "DESCRIPTION_REVIEW", "SPANISH_RESIDUAL"}
-            blocked_targets = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}
-            requested_fields = tuple(key.removesuffix("_zh") for key, field in plan.fields.items()
-                                     if field.status != "READY" and
-                                     blocked_targets.get(key.removesuffix("_zh"), key.removesuffix("_zh")) not in blocked and
-                                     blocked_targets.get(key.removesuffix("_zh"), key.removesuffix("_zh")).replace("_es", "_es_raw") not in blocked)
+            requested_fields = tuple(
+                canonical for zh_field, field in plan.fields.items()
+                if field.status != "READY"
+                for canonical in (ZH_TO_CANONICAL[zh_field],)
+                if canonical in CANONICAL_AI_FIELDS
+                and CANONICAL_TO_SOURCE[canonical] not in blocked
+                and CANONICAL_TO_SOURCE[canonical].replace("_es", "_es_raw") not in blocked
+            )
             if not requested_fields or not (set(plan.review_reasons) & eligible_reasons):
                 continue
             ai_eligible_count += 1

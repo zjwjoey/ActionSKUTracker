@@ -7,13 +7,14 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from ..services.hashing import localization_source_hash
+from ..localization.contracts import CANONICAL_AI_FIELDS, CANONICAL_TO_SOURCE
 
-SPANISH_FIELDS = ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")
-KNOWLEDGE_FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
-FIELD_TO_ES = dict(zip(KNOWLEDGE_FIELDS, SPANISH_FIELDS))
+KNOWLEDGE_FIELDS = CANONICAL_AI_FIELDS
+SPANISH_FIELDS = tuple(CANONICAL_TO_SOURCE[field] for field in KNOWLEDGE_FIELDS)
+FIELD_TO_ES = {field: CANONICAL_TO_SOURCE[field] for field in KNOWLEDGE_FIELDS}
 KNOWLEDGE_STATES = frozenset({
     "UNCHANGED", "AUTO_READY", "REVIEW_REQUIRED", "SOURCE_BLOCKED",
-    "AI_PENDING", "AI_CANDIDATE", "AI_REJECTED", "HUMAN_APPROVED",
+    "AI_PENDING", "AI_CANDIDATE", "EVIDENCE_CONFLICT", "AI_REJECTED", "HUMAN_APPROVED",
     "AUTO_APPROVED", "APPLIED",
 })
 FIELD_SOURCES = frozenset({

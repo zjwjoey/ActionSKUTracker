@@ -11,6 +11,13 @@ from .contracts import (
     SemanticFact,
     LocalizationField,
     LocalizationPlan,
+    LOCALIZATION_FIELD_CONTRACT,
+    ZH_TO_CANONICAL,
+    CANONICAL_TO_ZH,
+    CANONICAL_TO_SOURCE,
+    SOURCE_TO_CANONICAL,
+    CANONICAL_FIELDS,
+    CANONICAL_AI_FIELDS,
 )
 from .engine import LocalizationEngine
 from .knowledge import KnowledgeContext
@@ -18,4 +25,7 @@ from .knowledge import KnowledgeContext
 __all__ = [
     "POLICY_VERSION", "SourceFacts", "SemanticFact", "LocalizationField",
     "LocalizationPlan", "LocalizationEngine", "KnowledgeContext",
+    "LOCALIZATION_FIELD_CONTRACT", "ZH_TO_CANONICAL", "CANONICAL_TO_ZH",
+    "CANONICAL_TO_SOURCE", "SOURCE_TO_CANONICAL", "CANONICAL_FIELDS",
+    "CANONICAL_AI_FIELDS",
 ]

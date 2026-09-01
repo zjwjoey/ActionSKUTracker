@@ -189,8 +189,9 @@ def _resolve_record_v1(record: dict[str, Any], context: DictionaryContext) -> Re
     plan = engine.resolve(record, existing=existing if existing["source_hash"] else None)
     validation = engine.validate(record, plan)
     fields: dict[str, FieldResolution] = {}
+    from .localization.contracts import ZH_TO_CANONICAL
     for key, field in plan.fields.items():
-        legacy = {"desc_zh": "description", "details_zh": "details", "unit_price_zh": "unit_price"}.get(key, key.removesuffix("_zh"))
+        legacy = ZH_TO_CANONICAL[key]
         status = "READY" if field.status == "READY" else ("MISSING" if not field.value else ("FALLBACK" if field.status == "FALLBACK" else "REVIEW"))
         fields[legacy] = FieldResolution(field.value, field.source, status)
     brands = [fact.value for fact in plan.semantic_facts if fact.semantic_type == "BRAND"]

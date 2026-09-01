@@ -67,3 +67,16 @@
 - Local AI：`QWEN3_8B_SMOKE_PASS`；`QLORA_ADAPTER_OFFLINE_EVALUATION_PASS`（不代表已进入生产）。
 - Final code conclusion：`LOCALIZATION_V1_CODE_ACCEPTED`；`RECOMMEND MERGE FEATURE TO MAIN`（仅建议，不自动合并）。
 - Data/Production conclusion：`LOCALIZATION_DATA_REVIEW_REQUIRED`；`PRODUCTION_LOCALIZATION_APPLY_NOT_READY`；AI、Apply、Auto Approval 均保持关闭。
+# Final field-contract hotfix acceptance (2026-09-01)
+
+Status: `LOCALIZATION_V1_CODE_ACCEPTED` after the canonical field contract,
+description source-damage gate, numeric and technical-token guards, manual
+override reason rebuild, and `EVIDENCE_CONFLICT` promotion block were added.
+The full regression suite passed 406 tests; the hotfix/knowledge targeted set
+passed 148 tests.  Current audit is read-only (`5379 CURRENT`, `394 READY`,
+`4985 REVIEW_REQUIRED`, `1671 SPANISH_RESIDUAL`, `334 NUMERIC_MISMATCH`,
+`7 SOURCE_BLOCKED`, knowledge hit rate `1.0`, AI calls `0`).
+
+Production safety remains unchanged: Localization AI OFF, Production Apply
+OFF, Auto Approval OFF, PRIMARY untouched.  The feature branch is not merged
+to `main` by this acceptance.

@@ -608,3 +608,10 @@ Barra de cola
 - 数字事实保持
 
 知识命中顺序固定为 Manual Override → Product Dictionary → Confirmed Brand/Category → Product Type/Phrase/Term/Tech Token → 同源模型缓存 → 确定性规则 → 本地 AI UNKNOWN 候选。AI 只提供候选，不直接写正式字段；品名、规格规划必须保留技术 Token、数量和单位事实。
+# Localization field contract
+
+The planning standard is consumed through the shared seven-field mapping:
+`name_es→name→name_zh`, `cat1_es→cat1→cat1_zh`, `cat2_es→cat2→cat2_zh`,
+`spec_es→spec→spec_zh`, `unit_price_es→unit_price→unit_price_zh`,
+`desc_es→description→desc_zh`, and `details_es→details→details_zh`.
+Technical tokens are identity facts and cannot be translated away.
