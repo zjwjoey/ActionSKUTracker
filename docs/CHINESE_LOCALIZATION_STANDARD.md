@@ -708,3 +708,5 @@ USB-C, LED, E27, IP44, A3 and AAA) remain in their original form unless an
 explicit approved dictionary normalization exists.  Manual corrections are
 validated again and clear resolved field issues while preserving structural
 source warnings.
+
+人工覆盖是 SKU×字段级终止性决定：通过 Validator 后不再进入 AI 请求，也不被模型缓存覆盖；但仍必须通过西语残留、数字、技术 Token 和来源新鲜度校验。普通西语连字符词（如 `anti-edad`）不应被强制当作技术 Token 保留。

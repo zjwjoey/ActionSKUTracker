@@ -19,6 +19,8 @@ from ..services.hashing import localization_source_hash
 
 def can_promote(candidate: Mapping[str, Any], *, validator_pass: bool, source_hash_match: bool, human_approved: bool = False) -> tuple[bool, tuple[str, ...]]:
     reasons: list[str] = []
+    if str(candidate.get("status") or "").upper() == "EVIDENCE_CONFLICT":
+        reasons.append("EVIDENCE_CONFLICT")
     if not validator_pass: reasons.append("VALIDATOR_FAIL")
     if not source_hash_match: reasons.append("SOURCE_HASH_MISMATCH")
     kind = str(candidate.get("semantic_type") or "")
@@ -123,6 +125,11 @@ class KnowledgePromotionRouter:
         return fields if isinstance(fields, Mapping) else candidate
 
     def _gate(self, candidate: Mapping[str, Any], *, validator_pass: bool, source_hash_match: bool, human_approved: bool) -> None:
+        # Conflict is an explicit learning state, not a freshness side effect.
+        # Reject it before any approval/freshness checks and before a file can
+        # be staged.
+        if str(candidate.get("status") or "").upper() == "EVIDENCE_CONFLICT":
+            raise KnowledgePromotionError("EVIDENCE_CONFLICT")
         expected_hash = str(candidate.get("expected_source_hash") or candidate.get("source_hash_expected") or "")
         actual_hash = str(candidate.get("source_hash") or "")
         if expected_hash and actual_hash and expected_hash != actual_hash:

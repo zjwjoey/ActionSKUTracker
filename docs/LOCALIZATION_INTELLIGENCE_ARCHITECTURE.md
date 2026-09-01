@@ -800,3 +800,9 @@ field-resolvable reasons after manual overrides.  AI candidates must preserve
 source technical tokens such as LED, USB-C, E27 and IP44.  `EVIDENCE_CONFLICT`
 is a first-class learning state and blocks promotion until clean evidence is
 available.
+
+Manual Override is a terminal SKU × field authority: its value is revalidated
+for residual language, numeric facts, technical tokens and source freshness,
+but it is not re-requested from AI or replaced by model cache.  Promotion
+checks `EVIDENCE_CONFLICT` directly in both the pure decision API and the
+router, before freshness checks or dictionary staging.

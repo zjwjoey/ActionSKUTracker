@@ -46,7 +46,7 @@ def _user_prompt(source: SourceFacts, requested_fields: tuple[str, ...]) -> str:
 
 _KNOWN_TECH_TOKENS = (
     "USB-C", "USB", "LED", "HDMI", "E27", "IP44", "A3", "AAA",
-    "Bluetooth", "Wi-Fi",
+    "IP-44", "Bluetooth", "Wi-Fi",
 )
 
 
@@ -63,6 +63,12 @@ def extract_technical_tokens(text: str) -> tuple[str, ...]:
         if re.search(rf"(?<![A-Za-z0-9]){re.escape(token)}(?![A-Za-z0-9])", text, re.IGNORECASE):
             found.append(token)
     for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+(?![A-Za-z0-9])", text):
+        # A hyphen alone is not technical evidence: anti-edad and
+        # multi-usos are ordinary Spanish phrases.  Keep structured model
+        # tokens (digits/uppercase) and rely on the explicit allowlist for
+        # word-only identifiers such as USB-C and Wi-Fi.
+        if not (any(ch.isdigit() for ch in token) or token.isupper()) and has_ordinary_spanish(token, allowed_tokens=set(_KNOWN_TECH_TOKENS)):
+            continue
         if token.casefold() not in {item.casefold() for item in found}:
             found.append(token)
     for token in re.findall(r"(?<![A-Za-z])(?:[A-Z]{2,}\d*|[A-Z]\d+|\d+[A-Za-z]+)(?![A-Za-z0-9])", text):

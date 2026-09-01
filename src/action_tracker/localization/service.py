@@ -13,7 +13,7 @@ from ..database.repository import ProductionRepository
 from ..database.production import apply_localization_correction
 from .contracts import (
     LOCALIZATION_FIELDS, LOCALIZATION_FIELD_CONTRACT, CANONICAL_AI_FIELDS, CANONICAL_TO_SOURCE,
-    ZH_TO_CANONICAL, LocalizationField, LocalizationPlan,
+    ZH_TO_CANONICAL, TERMINAL_FIELD_SOURCES, LocalizationField, LocalizationPlan,
 )
 from .engine import LocalizationEngine
 from .ai import provider_from_config, resolve_unknown
@@ -69,7 +69,10 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
             if target and str(override.get("value") or "").strip():
                 old_field = plan.fields[target]
                 fields = dict(plan.fields)
-                fields[target] = LocalizationField(str(override["value"]).strip(), "manual_override", old_field.status, old_field.source_hash, old_field.freshness_status, old_field.policy_version, old_field.review_reasons, old_field.provenance)
+                # Manual override is a field-level terminal authority.  It is
+                # still validated below, but must not retain an old planner
+                # status or be eligible for later model exploration.
+                fields[target] = LocalizationField(str(override["value"]).strip(), "manual_override", "READY", old_field.source_hash, old_field.freshness_status, old_field.policy_version, (), old_field.provenance)
                 plan = LocalizationPlan(plan.sku, plan.source_hash, fields, plan.semantic_facts, plan.readiness, plan.review_reasons, plan.knowledge_hits, plan.ai_used)
         # A same-source, trusted model cache fills only fields still unknown;
         # it remains below product/formal dictionaries and above a new AI call.
@@ -157,6 +160,7 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
             requested_fields = tuple(
                 canonical for zh_field, field in plan.fields.items()
                 if field.status != "READY"
+                and field.source not in TERMINAL_FIELD_SOURCES
                 for canonical in (ZH_TO_CANONICAL[zh_field],)
                 if canonical in CANONICAL_AI_FIELDS
                 and CANONICAL_TO_SOURCE[canonical] not in blocked

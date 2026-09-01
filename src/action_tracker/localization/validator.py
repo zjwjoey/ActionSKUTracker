@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .contracts import LocalizationPlan, SourceFacts, CANONICAL_TO_SOURCE, ZH_TO_CANONICAL
+from .contracts import LocalizationPlan, SourceFacts, CANONICAL_TO_SOURCE, ZH_TO_CANONICAL, is_terminal_field
 from .policy import FIXED_CAT1, has_ordinary_spanish
 from .coverage import validate_fact_coverage
 
@@ -95,7 +95,9 @@ def validate_plan(source: SourceFacts, plan: LocalizationPlan, *, allowed_tokens
         reasons.append("DESCRIPTION_REVIEW")
     if source.details_es and has_ordinary_spanish(plan.fields["details_zh"].value, allowed_tokens=allowed_tokens):
         reasons.append("DETAIL_VALUE_REVIEW")
-    if not any(f.semantic_type == "PRODUCT_TYPE" for f in plan.semantic_facts) and source.name_es:
+    if (not any(f.semantic_type == "PRODUCT_TYPE" for f in plan.semantic_facts)
+            and source.name_es
+            and not is_terminal_field(plan.fields["name_zh"])):
         reasons.append("PRODUCT_TYPE_REVIEW")
     coverage = validate_fact_coverage(plan)
     if not coverage.ok:

@@ -120,3 +120,8 @@ required and does not modify PRIMARY.
 The final field-contract hotfix is pushed on
 `feat/chinese-localization-intelligence-v1` at `7bdb1a6`; exact-head CI run
 `33487876060` passed on Ubuntu and Windows.
+
+The final merge-gate closure adds terminal Manual Override semantics,
+independent conflict blocking in the promotion router, and a narrowed
+technical-token heuristic.  These changes remain candidate/review-only; no
+production localization Apply was executed.

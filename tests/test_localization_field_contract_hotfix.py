@@ -13,6 +13,8 @@ from action_tracker.localization.ai import validate_ai_response
 from action_tracker.localization.engine import LocalizationEngine
 from action_tracker.localization.learning import aggregate_candidates, promotion_decision, STATES
 from action_tracker.knowledge.validator import validate_candidate
+from action_tracker.localization.promotion import can_promote, KnowledgePromotionRouter, KnowledgePromotionError
+from action_tracker.localization.ai import FakeProvider, extract_technical_tokens
 
 
 def test_canonical_field_contract_is_reversible_for_all_seven_fields():
@@ -99,3 +101,109 @@ def test_evidence_conflict_is_stateful_and_blocks_promotion(tmp_path):
     assert "EVIDENCE_CONFLICT" in STATES and candidate["status"] == "EVIDENCE_CONFLICT"
     decision = promotion_decision(candidate)
     assert not decision["promoted"] and decision["promotion_blocked"] is True
+
+
+def _write_override(directory, sku, field, value):
+    import csv
+    from action_tracker.dictionary import OVERRIDE_HEADERS
+    with (directory / "manual_overrides.csv").open("w", encoding="utf-8-sig", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=OVERRIDE_HEADERS)
+        writer.writeheader()
+        writer.writerow({"scope": "product", "key": sku, "field": field, "value": value, "source": "TEST"})
+
+
+def test_manual_override_is_terminal_and_clears_product_type_review(tmp_path):
+    from action_tracker.localization.knowledge import ensure_schemas
+    from action_tracker.localization.service import audit_current
+    import csv
+
+    directory = tmp_path / "dict"; ensure_schemas(directory)
+    _write_override(directory, "MANUAL-GOOD", "name_zh_standard", "测试商品")
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    record = {"sku": "MANUAL-GOOD", "name_es": "Producto desconocido", "cat1_es": "家居布置", "spec_es": "10 gramos"}
+    result = audit_current(cfg, run_id="manual-terminal", records=[record])
+    row = next(csv.DictReader(open(result["audit"], encoding="utf-8-sig")))
+    assert row["new_name_zh"] == "测试商品"
+    assert row["readiness"] == "READY"
+    assert not {"PRODUCT_TYPE_REVIEW", "NAME_REVIEW", "SPANISH_RESIDUAL"} & set(filter(None, row["review_reasons"].split("|")))
+
+
+def test_manual_field_is_excluded_from_ai_and_other_unknown_field_is_requested(tmp_path, monkeypatch):
+    from action_tracker.localization.knowledge import ensure_schemas
+    from action_tracker.localization.service import audit_current
+    import json
+
+    directory = tmp_path / "dict"; ensure_schemas(directory)
+    _write_override(directory, "MANUAL-AI", "name_zh_standard", "测试商品")
+    provider = FakeProvider({"MANUAL-AI": {"fields": {"description": "适用于10m²"}, "confidence": 0.99}})
+    monkeypatch.setattr("action_tracker.localization.service.provider_from_config", lambda _config: provider)
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory},
+           "localization": {"ai": {"enabled": True, "provider": "fake"}}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    record = {"sku": "MANUAL-AI", "name_es": "Producto desconocido", "cat1_es": "家居布置", "spec_es": "10 gramos",
+              "desc_es": "Adecuado para 10 m²"}
+    result = audit_current(cfg, run_id="manual-ai-terminal", records=[record])
+    candidates = json.loads(open(result["ai_candidates"], encoding="utf-8").read())
+    assert provider.calls == 1
+    assert candidates and candidates[0]["requested_fields"] == ["description"]
+
+
+def test_manual_only_resolved_sku_makes_zero_ai_calls_even_without_product_type(tmp_path, monkeypatch):
+    from action_tracker.localization.knowledge import ensure_schemas
+    from action_tracker.localization.service import audit_current
+
+    directory = tmp_path / "dict"; ensure_schemas(directory)
+    _write_override(directory, "MANUAL-ONLY", "name_zh_standard", "测试商品")
+    provider = FakeProvider({})
+    monkeypatch.setattr("action_tracker.localization.service.provider_from_config", lambda _config: provider)
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory},
+           "localization": {"ai": {"enabled": True, "provider": "fake"}}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    record = {"sku": "MANUAL-ONLY", "name_es": "Producto desconocido", "cat1_es": "家居布置", "spec_es": "10 gramos"}
+    result = audit_current(cfg, run_id="manual-only-terminal", records=[record])
+    assert result["ai_call_count"] == 0
+
+
+def test_manual_spec_numeric_mismatch_remains_blocked_and_cache_cannot_replace_it(tmp_path):
+    from action_tracker.localization.knowledge import ensure_schemas
+    from action_tracker.localization.service import audit_current
+    import csv
+
+    directory = tmp_path / "dict"; ensure_schemas(directory)
+    _write_override(directory, "MANUAL-NUM", "spec_zh_standard", "20g")
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    record = {"sku": "MANUAL-NUM", "name_es": "Producto", "cat1_es": "家居布置", "spec_es": "10 gramos"}
+    result = audit_current(cfg, run_id="manual-numeric", records=[record])
+    row = next(csv.DictReader(open(result["audit"], encoding="utf-8-sig")))
+    assert row["new_spec_zh"] == "20g"
+    assert row["readiness"] == "REVIEW_REQUIRED"
+    assert "NUMERIC_FACT_MISMATCH" in row["review_reasons"]
+
+
+def test_evidence_conflict_is_hard_blocked_by_decision_and_router_without_file_change(tmp_path):
+    from action_tracker.localization.knowledge import ensure_schemas, NEW_SCHEMAS
+    import hashlib
+
+    candidate = {"candidate_id": "conflict", "status": "EVIDENCE_CONFLICT", "semantic_type": "TECH_TOKEN",
+                 "source_term": "LED", "zh_value": "LED", "source_hash": "h"}
+    ok, reasons = can_promote(candidate, validator_pass=True, source_hash_match=True, human_approved=True)
+    assert not ok and reasons == ("EVIDENCE_CONFLICT",)
+    ensure_schemas(tmp_path)
+    before = {name: hashlib.sha256((tmp_path / name).read_bytes()).hexdigest() for name in NEW_SCHEMAS}
+    try:
+        KnowledgePromotionRouter(tmp_path, freshness_checker=lambda _candidate: (True, "PASS")).promote(candidate, human_approved=True)
+    except KnowledgePromotionError as exc:
+        assert str(exc) == "EVIDENCE_CONFLICT"
+    else:
+        raise AssertionError("conflicting evidence was promoted")
+    after = {name: hashlib.sha256((tmp_path / name).read_bytes()).hexdigest() for name in NEW_SCHEMAS}
+    assert after == before
+
+
+def test_anti_edad_is_not_forced_as_technical_token():
+    assert "anti-edad" not in extract_technical_tokens("Crema anti-edad")
+    source = {"sku": "TECH-ES", "name_es": "Crema anti-edad"}
+    candidate = {"sku": "TECH-ES", "source_hash": source_hash(source), "fields": {"name": "抗衰老霜"}}
+    assert validate_candidate(candidate, source).ok

@@ -84,3 +84,12 @@ to `main` by this acceptance.
 Hotfix exact-head evidence: feature HEAD `7bdb1a631c1b560f60251190f717006a1fff2a63`;
 CI Run `33487876060` ran on that exact head and both Ubuntu and Windows jobs
 finished successfully.
+
+Final merge-gate closure: Manual Override is a terminal SKU × Field authority
+(`source=manual_override`, `status=READY`) while remaining subject to
+Validator fact/safety checks; it is excluded from AI requested fields and does
+not trigger a synthetic `PRODUCT_TYPE_REVIEW`.  `EVIDENCE_CONFLICT` is
+rejected independently by both `can_promote()` and
+`KnowledgePromotionRouter` before freshness or file staging.  Hyphenated
+ordinary Spanish tokens such as `anti-edad` are not treated as mandatory
+technical tokens.
