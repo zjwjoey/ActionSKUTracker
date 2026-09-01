@@ -35,13 +35,13 @@
 
 ## CURRENT read-only audit
 
-数据源：`F:\ActionSKUTracker\runtime\db\action_tracker.db`，run：`localization-v1-final-final`；未写入 PRIMARY。
+数据源：`F:\ActionSKUTracker\runtime\db\action_tracker.db`，run：`local-qwen-policy-final-audit`；未写入 PRIMARY。
 
 | 指标 | 实际值 |
 | --- | ---: |
 | CURRENT | 5,379 |
-| READY | 389 |
-| REVIEW_REQUIRED | 4,990 |
+| READY | 394 |
+| REVIEW_REQUIRED | 4,985 |
 | 普通西语残留 | 1,671 |
 | 数字事实 mismatch | 334 |
 | FACT_NOT_COVERED | 0 |
