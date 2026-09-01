@@ -102,7 +102,7 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
 
 feature 分支新增统一 Localization Engine、语义/命名/规格规划、格式化、token-level Validator、AI provider、学习候选与 CLI 审计；生产 AI 和正式 localization apply 默认关闭，等待验收后再决定合并。
 
-2026-09-01 收口状态：本地 Provider、结构化 Multi-SKU Learning/Promotion、Review Queue 字段适配、否定详情键和事实覆盖检查已实现；目标分支专项测试 32 passed、必测集合 114 passed、全量 399 passed。最新只读审计 run `local-qwen-policy-final-audit`：5,379 CURRENT、READY 394、REVIEW_REQUIRED 4,985、普通西语残留 1,671、数字事实 mismatch 334、FACT_NOT_COVERED 0、SOURCE_BLOCKED 7、SOURCE_HASH_CHANGED 13、STALE_LOCALIZATION 13、AI eligible 0（生产 AI 关闭）、AI calls 0、AI avoidance 100%。代码层 `LOCALIZATION_V1_CODE_ACCEPTED`；数据层 `LOCALIZATION_DATA_REVIEW_REQUIRED`；Production Apply/Auto Approval 保持关闭。
+2026-09-01 收口状态：本地 Provider、结构化 Multi-SKU Learning/Promotion、Review Queue 字段适配、否定详情键和事实覆盖检查已实现；目标分支专项测试 32 passed、必测集合 114 passed、全量 399 passed。最新只读审计 run `local-qwen-policy-final-audit`：5,379 CURRENT、READY 394、REVIEW_REQUIRED 4,985、普通西语残留 1,671、数字事实 mismatch 334、FACT_NOT_COVERED 0、SOURCE_BLOCKED 7、SOURCE_HASH_CHANGED 13、STALE_LOCALIZATION 13、AI eligible 0（生产 AI 关闭）、AI calls 0、AI avoidance 100%。`c0abe02` 的 exact-head CI run `33482549398` 已通过 Ubuntu/Windows。代码层 `LOCALIZATION_V1_CODE_ACCEPTED`；数据层 `LOCALIZATION_DATA_REVIEW_REQUIRED`；Production Apply/Auto Approval 保持关闭。
 
 此前本机 Ollama `qwen3:8b` endpoint health 与 product/numeric/technical-token JSON smoke 曾通过结构化合同和 Validator，记为历史 `LOCAL_QWEN_VERIFIED`，但没有写入生产；本次探测到未继承 F 盘模型目录的服务返回空模型列表，当前 endpoint 不重新记 PASS。新增本地训练提交已推送；`fa7824c` 的 exact-head CI run `33482383228` 已通过 Ubuntu/Windows，未改生产配置。
 
