@@ -17,7 +17,7 @@
 
 - 专项：`32 passed`。
 - 必测集合（Localization、Dictionary、Review Queue、Translation、DB Production、Post-merge safety）：`114 passed`。
-- 全量：`396 passed`（含离线 Qwen 训练集生成器回归）。
+- 全量：`399 passed`（含离线 Qwen 训练集生成器、QLoRA 数据门禁和适配器评估脚本回归）。
 - Manual Override、Model Cache、Source Damage、Learning E2E、Multi-SKU evidence、Promotion stale/pass contract、Qwen response contract 均有回归覆盖。
 
 ## Local Qwen3:8B
@@ -25,7 +25,12 @@
 - Endpoint：本机 Ollama OpenAI-compatible `http://127.0.0.1:11434/v1`（仅临时烟测，未写入生产配置）。
 - Model：`qwen3:8b`；health：`PASS`。
 - 实际 product smoke：`PASS`；numeric/technical-token smoke：`PASS`。两次响应均为合同要求的 JSON envelope，SKU/source_hash/字段白名单、中文残留检查及数字/技术 Token 保留均通过。PowerShell 控制台可能以 GBK 显示中文为乱码，但响应原始 UTF-8 已通过解析与 Validator。
-- 本次仅验证本地模型质量，不启用生产 AI，也不把 smoke 结果写入字典或 PRIMARY。
+- 本次完成了独立的本地 Qwen3:8B QLoRA 训练：364 条可信样本（333 train / 31 valid），
+  使用 `NAMING_AND_SPEC_PLANNING_STANDARD_V1.0` 的字段级 placement policy，训练 1 epoch，
+  train loss 0.34097、eval loss 0.06060。适配器和 `training_manifest.json` 保存在
+  `F:\LocalAI\Adapters\action-localization-qwen3-8b`；固定 product 与 numeric/technical-token
+  夹具评估 `all_pass=true`。规格原始候选的半角 `|` 经既有 `format_spec` 确定性归一为 `｜` 后通过 Validator。
+- 适配器仍是离线候选，不启用生产 AI，也不把训练或评估结果写入字典或 PRIMARY。
 - 生产默认仍为 `localization.ai.enabled=false`、`knowledge.production_apply_enabled=false`、`translation.auto_approval_enabled=false`，无密钥或本机绝对 endpoint 提交。
 
 ## CURRENT read-only audit
@@ -50,7 +55,7 @@
 
 ## CI / Git
 
-- implementation feature HEAD：`cc4e2edb083b4834ec68a10eba62eb05eebdc7f2`。
+- implementation feature HEAD：`aad2c54`（本地 Qwen 训练契约与格式门禁收口）。
 - exact-head CI：run `33467132288`，head SHA 与 implementation HEAD 一致；Ubuntu `SUCCESS`、Windows `SUCCESS`，并确认 allowlist 实际执行 `tests/test_localization_intelligence.py`。
 - 本轮不 merge main、不 force push；feature 分支已推送。
 
@@ -59,5 +64,5 @@
 - Code：本地回归 `PASS`；待本轮 implementation HEAD 的 exact-head 双平台 CI 完成后最终确认。
 - Data：`LOCALIZATION_DATA_REVIEW_REQUIRED`。
 - Production Apply：`NOT_READY / DISABLED`。
-- Local AI：`LOCAL_QWEN_VERIFIED`（仅 smoke，不代表已训练或已进入生产）。
+- Local AI：`QWEN3_8B_SMOKE_PASS`；`QLORA_ADAPTER_OFFLINE_EVALUATION_PASS`（不代表已进入生产）。
 - Recommendation：等待本轮 implementation HEAD 的 exact-head 双平台 CI 后再决定是否合并；任何情况下不得因 READY 数量不足而自动 Apply。
