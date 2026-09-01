@@ -19,6 +19,7 @@ from typing import Any, Iterable, Mapping
 
 from .connection import connect
 from .schema import migrate_v2
+from ..services.hashing import localization_source_hash, normalize_hash
 
 
 class ProductionDatabaseError(RuntimeError):
@@ -209,6 +210,15 @@ class ProductionWriter:
                 # those facts or reset badges/prices during an absence run.
                 if db.execute("SELECT 1 FROM products WHERE official_sku=?", (sku,)).fetchone():
                     continue
+            source_hash = normalize_hash(r.get("source_hash"))
+            # The product row is the durable identity projection.  Collection
+            # records do not always carry a precomputed hash, so fill it at
+            # this boundary from the same six Spanish fact fields used by
+            # product_localizations and Knowledge Production.  A newly seeded
+            # historical-minimal identity has no source facts; keep that hash
+            # explicitly unknown rather than inventing provenance.
+            if source_hash is None and not r.get("_historical_minimal"):
+                source_hash = localization_source_hash(r)
             db.execute(
                 """INSERT INTO products(canonical_id,official_sku,name_es,name_zh,current_price,original_price,unit_price_raw,raw_badges,
                 action_new_badge,promotion_active,sustainable_badge,status,consecutive_missing,product_url,image_url,first_seen_at,
@@ -224,7 +234,7 @@ class ProductionWriter:
                  r.get("raw_badges", r.get("raw_tags")), int(_to_bool(r.get("action_new_badge", r.get("is_new_badge", False)))),
                  int(_to_bool(r.get("promotion_active", r.get("promotion", False)))), int(_to_bool(r.get("sustainable_badge", r.get("sustainable", False)))),
                  r.get("status", "ACTIVE"), int(r.get("consecutive_missing", 0) or 0), r.get("product_url"), r.get("image_url"),
-                 r.get("first_seen_at", r.get("first_seen")), r.get("last_seen_at", r.get("last_seen")), r.get("last_checked_at", now), r.get("source_hash"), now),
+                 r.get("first_seen_at", r.get("first_seen")), r.get("last_seen_at", r.get("last_seen")), r.get("last_checked_at", now), source_hash, now),
             )
 
     @staticmethod
@@ -232,6 +242,13 @@ class ProductionWriter:
         for r in rows:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
             language = str(r.get("language") or "zh")
+            localization_hash = normalize_hash(r.get("source_hash"))
+            if localization_hash is None and language == "es":
+                localization_hash = localization_source_hash({
+                    "name_es": r.get("name"), "cat1_es": r.get("cat1"),
+                    "cat2_es": r.get("cat2"), "spec_es": r.get("spec"),
+                    "desc_es": r.get("description"), "details_es": r.get("details"),
+                })
             db.execute(
                 """INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,last_commit_id,
                  source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
@@ -244,7 +261,7 @@ class ProductionWriter:
                  details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,
                  approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""",
                 (sku, language, r.get("name"), r.get("cat1"), r.get("cat2"), r.get("spec"), r.get("description"), r.get("details"),
-                 r.get("source"), r.get("review_status"), now, commit_id, r.get("source_hash"),
+                 r.get("source"), r.get("review_status"), now, commit_id, localization_hash,
                  r.get("resolution_status"), r.get("name_source"), r.get("cat1_source"), r.get("cat2_source"),
                  r.get("spec_source"), r.get("description_source"), r.get("details_source"), r.get("freshness_status"),
                  r.get("approved_by"), r.get("approved_at"), r.get("applied_commit_id") or commit_id),
@@ -357,6 +374,52 @@ def database_status(path: Path) -> dict[str, Any]:
                     "products": db.execute("SELECT COUNT(*) FROM products").fetchone()[0], "lifecycle": None}
         return {"exists": True, "path": str(path), "metadata": metadata, "latest_commit": dict(latest) if latest else None,
                 "pending_export_sync": pending, "products": products, "lifecycle": lifecycle}
+
+
+def backfill_product_source_hashes(path: Path) -> dict[str, Any]:
+    """Backfill canonical hashes missing from legacy product projections.
+
+    Older PRIMARY commits populated ``product_localizations.source_hash`` but
+    left ``products.source_hash`` blank.  This idempotent repair derives the
+    value only from stored official Spanish facts and never overwrites a real
+    digest.  Identities with no Spanish source row remain explicitly unknown.
+    """
+    path = Path(path)
+    if not path.exists():
+        raise ProductionDatabaseError("DB_MISSING")
+    updated = 0
+    normalized_nulls = 0
+    skipped_without_source = 0
+    with connect(path) as db:
+        metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
+        if metadata.get("schema_family") != "ACTION_SQLITE_DATA":
+            raise ProductionDatabaseError("DB_V2_SCHEMA_REQUIRED")
+        rows = db.execute(
+            """SELECT p.official_sku,p.source_hash,es.name,es.cat1,es.cat2,es.spec,es.description,es.details
+               FROM products p LEFT JOIN product_localizations es
+               ON es.official_sku=p.official_sku AND es.language='es'"""
+        ).fetchall()
+        for row in rows:
+            raw = str(row[1] or "").strip()
+            current = normalize_hash(row[1])
+            if current is not None:
+                if raw.casefold() in {"none", "null", "nan", "n/a"}:
+                    db.execute("UPDATE products SET source_hash=NULL WHERE official_sku=?", (row[0],))
+                    normalized_nulls += 1
+                continue
+            if all(value is None or str(value).strip() == "" for value in row[2:]):
+                skipped_without_source += 1
+                continue
+            fact = {
+                "name_es": row[2], "cat1_es": row[3], "cat2_es": row[4],
+                "spec_es": row[5], "desc_es": row[6], "details_es": row[7],
+            }
+            db.execute(
+                "UPDATE products SET source_hash=?,updated_at=CURRENT_TIMESTAMP WHERE official_sku=?",
+                (localization_source_hash(fact), row[0]),
+            )
+            updated += 1
+    return {"updated": updated, "normalized_nulls": normalized_nulls, "skipped_without_source": skipped_without_source}
 
 
 def backup_database(source: Path, destination: Path) -> dict[str, Any]:

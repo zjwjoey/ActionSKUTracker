@@ -82,6 +82,30 @@ def test_diff_does_not_count_equal_value_as_actual_change():
     assert summary["unchanged_field_count"] == 6
 
 
+def test_apply_respects_explicit_field_level_approval_without_blocking_other_fields():
+    """A pending field must not be written just because the SKU is ready."""
+    master_records = {"1": {
+        "sku": "1", "name_zh": "旧名", "cat1_zh": "旧类目", "cat2_zh": "", "spec_zh": "旧规格",
+        "desc_zh": "旧描述", "details_zh": "旧详情",
+    }}
+    fields = {
+        "name": FieldResolution("新名", "manual_override", "READY", "HUMAN_APPROVED"),
+        "cat1": FieldResolution("新类目", "product_dictionary", "READY", "PENDING"),
+        "cat2": FieldResolution("新二级", "category_dictionary", "READY", "CONFIRMED"),
+        "spec": FieldResolution("新规格", "model_cache", "READY", "REJECTED"),
+        "description": FieldResolution("新描述", "product_dictionary", "READY"),
+        "details": FieldResolution("新详情", "product_dictionary", "READY"),
+    }
+    resolution = RecordResolution("1", fields, "MATCH", "OK", "AUTO_READY", ())
+
+    candidate = _build_allowlisted_records(master_records, [resolution])
+    assert candidate["1"]["name_zh"] == "新名"
+    assert candidate["1"]["cat1_zh"] == "旧类目"  # explicit PENDING is protected
+    assert candidate["1"]["cat2_zh"] == "新二级"
+    assert candidate["1"]["spec_zh"] == "旧规格"  # explicit REJECTED is protected
+    assert candidate["1"]["desc_zh"] == "新描述"
+
+
 def test_immutable_metric_compares_apply_candidate_not_a_different_date_snapshot():
     """A dated observation may differ from Master without an Apply mutation."""
     source = _record("1001", last_seen="2026-08-26", current=1.29)

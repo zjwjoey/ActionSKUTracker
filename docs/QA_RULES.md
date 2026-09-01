@@ -151,6 +151,13 @@ QA/FULL_COMMIT、未过期的 Audit、Resolver 全部 AUTO_READY、CURRENT SKU �
 manifest。`dictionary_apply.production_enabled=false` 时必须拒绝。
 未 AUTO_READY 的 SKU 只能进入 review_required.csv，不能部分写入 Master。
 
+Apply 还必须执行字段级审批保护：六个中文派生字段逐字段判断，只有白名单来源
+（人工覆盖、已确认商品/类目/术语字典、有效模型缓存或既有中文值）且状态为
+`READY` 的字段才可写入；若字段携带显式 `approval_status`，仅
+`APPROVED/HUMAN_APPROVED/AUTO_APPROVED/CONFIRMED/LOCKED/HUMAN_REVIEWED`
+可通过。`PENDING`、`REJECTED` 等状态只跳过该字段，不得因同一 SKU 其它字段
+可用而被连带写入。
+
 ## 8. Export 规则
 
 ### QA-EXP-001：正式来源

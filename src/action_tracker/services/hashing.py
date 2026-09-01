@@ -5,6 +5,23 @@ import hashlib
 from typing import Any
 
 
+def normalize_hash(value: Any) -> str | None:
+    """Return one canonical representation for an optional hash value.
+
+    Persistence boundaries receive values from CSV, SQLite and JSON, where an
+    absent hash may be represented as ``None``, an empty string, or a textual
+    null.  Those values all mean *unknown*, not a real digest.  Keeping this
+    normalization in one place prevents false matches while allowing callers
+    to distinguish an unknown hash (``None``) from a computed digest.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.casefold() in {"none", "null", "nan", "n/a"}:
+        return None
+    return text
+
+
 def _h(*parts: Any) -> str:
     h = hashlib.sha256()
     for p in parts:

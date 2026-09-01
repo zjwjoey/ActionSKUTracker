@@ -2,8 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from action_tracker.database.production import CommitBundle, ProductionDatabaseError, ProductionWriter, import_legacy_baseline_v2
+from action_tracker.database.production import (
+    CommitBundle, ProductionDatabaseError, ProductionWriter, backfill_product_source_hashes,
+    import_legacy_baseline_v2,
+)
 from action_tracker.database.connection import connect
+from action_tracker.services.hashing import normalize_hash
 
 
 def test_legacy_baseline_writer_is_blocked_in_sqlite_primary(tmp_path: Path):
@@ -37,6 +41,37 @@ def test_v2_commit_is_atomic_and_idempotent(tmp_path: Path):
         assert conn.execute("select count(*) from products").fetchone()[0] == 1
         assert conn.execute("select count(*) from observations").fetchone()[0] == 1
         assert conn.execute("select value from schema_metadata where key='schema_version'").fetchone()[0] == "2.0.0"
+
+
+def test_products_source_hash_is_filled_from_spanish_facts_and_empty_values_normalized(tmp_path: Path):
+    db = tmp_path / "action.db"
+    writer = ProductionWriter(db)
+    writer.commit(_bundle())
+    from action_tracker.services.hashing import localization_source_hash
+    expected = localization_source_hash({"name_es": "Producto"})
+    with connect(db) as conn:
+        row = conn.execute("select source_hash from products where official_sku='1001'").fetchone()
+    assert row[0] == expected
+
+    # A textual null from an external source is treated as unknown, not as a
+    # literal hash and not as a second empty representation.
+    assert normalize_hash(" None ") is None
+
+
+def test_backfill_product_source_hashes_repairs_legacy_empty_projection(tmp_path: Path):
+    db = tmp_path / "action.db"
+    ProductionWriter(db).commit(_bundle())
+    with connect(db) as conn:
+        conn.execute("UPDATE products SET source_hash=NULL")
+        ProductionWriter._upsert_localizations(
+            conn, [{"sku": "1001", "language": "es", "name": "Producto"}], "seed", "2026-08-30T00:00:00Z"
+        )
+    result = backfill_product_source_hashes(db)
+    assert result["updated"] == 1
+    with connect(db) as conn:
+        product_hash = conn.execute("SELECT source_hash FROM products WHERE official_sku='1001'").fetchone()[0]
+    from action_tracker.services.hashing import localization_source_hash
+    assert product_hash == localization_source_hash({"name_es": "Producto"})
 
 
 def test_base_commit_gate_rejects_stale_writer(tmp_path: Path):

@@ -6,6 +6,7 @@ import re
 from typing import Any
 
 from .dictionary import format_confirmed_brand_title, is_confirmed_brand_record
+from .services.hashing import normalize_hash
 from .exporting.dictionary_join import (
     DictionaryContext,
     _fact_source_hash,
@@ -13,6 +14,8 @@ from .exporting.dictionary_join import (
     _resolve_category_field,
     _resolve_existing_chinese_field,
     _resolve_product_field,
+    is_valid_chinese_category_value,
+    lookup_brand_row,
 )
 
 
@@ -45,6 +48,9 @@ class FieldResolution:
     value: str
     source: str
     status: str
+    # Optional explicit approval metadata.  Empty preserves the legacy
+    # trusted-source contract; when present, Apply must verify it.
+    approval_status: str = ""
 
 
 @dataclass(frozen=True)
@@ -77,7 +83,7 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
         fields[key] = FieldResolution(str(value or ""), "master_zh" if value and not fallback else ("fallback" if value else "missing"), "READY" if value and not fallback else ("FALLBACK" if value else "MISSING"))
 
     brand_id = str(product.get("brand_id") or "").strip()
-    brand_row = context.brand_by_id.get(brand_id, {})
+    brand_row = lookup_brand_row(context.brand_by_id, brand_id)
     brand_value = str(brand_row.get("canonical_name") or brand_id).strip()
     brand_classification = "NONE"
     if not brand_id:
@@ -85,7 +91,7 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
         # generic items.  That is not an unknown-brand defect; only a
         # non-empty, unrecognised brand identifier needs review.
         fields["brand"] = FieldResolution("", "none", "READY")
-    elif brand_id not in context.brand_by_id:
+    elif not brand_row:
         brand_classification = "UNKNOWN"
         fields["brand"] = FieldResolution(brand_value, "brand_dictionary", "REVIEW")
     else:
@@ -113,7 +119,8 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
 
     raw_source_quality = context.source_quality_by_sku.get(sku, "") or "OK"
     source_quality = raw_source_quality if raw_source_quality in {"OK", "SOURCE_DAMAGED", "SOURCE_POLLUTED"} else "SOURCE_UNTRUSTED"
-    source_hash_status = "MATCH" if str(product.get("source_hash") or "") == source_hash and source_hash else "MISMATCH"
+    product_hash = normalize_hash(product.get("source_hash"))
+    source_hash_status = "MATCH" if product_hash is not None and product_hash == source_hash and source_hash else "MISMATCH"
     reasons: list[str] = []
     if source_hash_status != "MATCH":
         reasons.append("SOURCE_HASH_CHANGED")
@@ -125,6 +132,8 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
         reasons.append("UNCONFIRMED_PRODUCT_DICTIONARY")
     cat1 = fields["cat1"].value
     if fields["cat1"].status == "MISSING" or cat1 not in FIXED_CAT1:
+        reasons.append("CATEGORY_REVIEW")
+    if fields["cat2"].status == "FALLBACK" or not is_valid_chinese_category_value(fields["cat2"].value):
         reasons.append("CATEGORY_REVIEW")
     if fields["name"].status in {"FALLBACK", "MISSING"}:
         reasons.append("NAME_REVIEW")
@@ -156,26 +165,37 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
 
 
 def _product_field(field: str, record: dict[str, Any], product: dict[str, str], manual: dict[str, str], model: dict[str, str], context: DictionaryContext, source_hash: str, fallback_field: str) -> FieldResolution:
+    sku = str(record.get("sku") or "").strip()
     manual_value = str(manual.get(field) or "").strip()
     if manual_value:
         return FieldResolution(manual_value, "manual_override", "READY")
     product_value = str(product.get(field) or "").strip()
     confirmed = str(product.get("translation_status") or "").strip() not in {"", "UNTRANSLATED", "NEEDS_REVIEW", "LEGACY_UNVERIFIED"}
-    if product_value and str(product.get("source_hash") or "") == source_hash and confirmed:
+    if product_value and normalize_hash(product.get("source_hash")) == source_hash and confirmed:
         return FieldResolution(product_value, "product_dictionary", "READY")
     model_value = str(model.get(field) or "").strip()
-    if model_value and str(model.get("source_hash") or "") == source_hash and str(model.get("quality_status") or "").upper() == "OK":
+    if model_value and normalize_hash(model.get("source_hash")) == source_hash and str(model.get("quality_status") or "").upper() == "OK":
         return FieldResolution(model_value, "model_cache", "READY")
+    # Source-damaged facts must fail closed.  In particular, a UI button copied
+    # into spec_es must never leak back into the Chinese export as a Spanish
+    # fallback when no trusted replacement exists.
+    damage_key = "spec_es_raw" if fallback_field == "spec_es" else ("name_es_raw" if fallback_field == "name_es" else "")
+    if damage_key and damage_key in context.damage_by_sku.get(sku, set()):
+        return FieldResolution("", "source_damage", "MISSING")
     fallback = str(record.get(fallback_field) or "").strip()
     return FieldResolution(fallback, "fallback", "FALLBACK" if fallback else "MISSING")
 
 
 def _category_field(field: str, record: dict[str, Any], product: dict[str, str], manual: dict[str, str], context: DictionaryContext, source_hash: str) -> FieldResolution:
     manual_value = str(manual.get(field) or "").strip()
-    if manual_value:
+    if manual_value and is_valid_chinese_category_value(manual_value):
         return FieldResolution(manual_value, "manual_override", "READY")
     product_value = str(product.get(field) or "").strip()
-    if product_value and str(product.get("source_hash") or "") == source_hash:
+    if (
+        product_value
+        and is_valid_chinese_category_value(product_value)
+        and normalize_hash(product.get("source_hash")) == source_hash
+    ):
         return FieldResolution(product_value, "product_dictionary", "READY")
     value, fallback = _resolve_category_field(field, record, product, manual, context, source_hash)
     value = str(value or "").strip()

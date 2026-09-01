@@ -44,6 +44,27 @@ IMMUTABLE_FIELDS = (
     "original_price", "unit_price", "product_url", "image_url", "status", "first_seen", "last_seen",
     "is_new_badge", "promotion", "sustainable", "discount", "raw_tags", "presence",
 )
+APPROVED_FIELD_STATUSES = frozenset({
+    "APPROVED", "HUMAN_APPROVED", "AUTO_APPROVED", "CONFIRMED", "LOCKED", "HUMAN_REVIEWED",
+})
+APPROVED_FIELD_SOURCES = frozenset({
+    "manual_override", "product_dictionary", "category_dictionary", "term_dictionary",
+    "model_cache", "master_zh",
+})
+
+
+def _field_applyable(result: Any) -> bool:
+    """Fail closed for explicit field-level approval metadata.
+
+    Existing dictionary sources predate the metadata column and are trusted by
+    their resolver status.  If a resolution carries an approval status, it is
+    authoritative for that field only; a pending/rejected field can never be
+    applied merely because the surrounding SKU is ``AUTO_READY``.
+    """
+    if result is None or result.status != "READY" or result.source not in APPROVED_FIELD_SOURCES:
+        return False
+    approval = str(getattr(result, "approval_status", "") or "").strip().upper()
+    return not approval or approval in APPROVED_FIELD_STATUSES
 
 
 def dictionary_apply(cfg: dict[str, Any], *, run_id: str, dry_run: bool = True) -> dict[str, Any]:
@@ -141,7 +162,7 @@ def _preview_rows(records: Iterable[dict[str, Any]], resolutions: list[RecordRes
         record = by_sku[item.sku]
         for field, target in ALLOWLIST.items():
             result = item.fields.get(field)
-            if not result or result.status != "READY" or result.source in {"fallback", "none", "missing"}:
+            if not _field_applyable(result):
                 continue
             old, new = str(record.get(target) or "").strip(), str(result.value or "").strip()
             if old == new:
@@ -274,7 +295,7 @@ def _build_allowlisted_records(
             continue
         for field, target in ALLOWLIST.items():
             result = item.fields.get(field)
-            if result and result.status == "READY" and result.source not in {"fallback", "none", "missing"}:
+            if _field_applyable(result):
                 updated[item.sku][target] = result.value
     return updated
 
