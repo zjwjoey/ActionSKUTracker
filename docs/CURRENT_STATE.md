@@ -125,3 +125,9 @@ The final merge-gate closure adds terminal Manual Override semantics,
 independent conflict blocking in the promotion router, and a narrowed
 technical-token heuristic.  These changes remain candidate/review-only; no
 production localization Apply was executed.
+
+Final merge-gate read-only audit: `5379 CURRENT`, `396 READY`,
+`4983 REVIEW_REQUIRED`, `1671 SPANISH_RESIDUAL`, `334 NUMERIC_MISMATCH`,
+`0 FACT_NOT_COVERED`, `7 SOURCE_BLOCKED`, `13 STALE_LOCALIZATION`,
+knowledge hit rate `1.0`, AI calls `0`. Final feature HEAD is
+`4988d1f`, with exact-head Ubuntu/Windows CI Run `33490269220` successful.

@@ -93,3 +93,11 @@ rejected independently by both `can_promote()` and
 `KnowledgePromotionRouter` before freshness or file staging.  Hyphenated
 ordinary Spanish tokens such as `anti-edad` are not treated as mandatory
 technical tokens.
+
+Final merge-gate audit (read-only, run
+`localization-v1-final-merge-gate`): `5379 CURRENT`, `396 READY`,
+`4983 REVIEW_REQUIRED`, `1671 SPANISH_RESIDUAL`, `334 NUMERIC_MISMATCH`,
+`0 FACT_NOT_COVERED`, `7 SOURCE_BLOCKED`, `13 SOURCE_HASH_CHANGED`,
+`13 STALE_LOCALIZATION`, knowledge hit rate `1.0`, AI calls `0`.
+Final pushed HEAD is `4988d1f6bae416a46543ec65fd0b62c8bd205ea8`; exact-head
+CI Run `33490269220` passed on Ubuntu and Windows.
