@@ -80,3 +80,7 @@ passed 148 tests.  Current audit is read-only (`5379 CURRENT`, `394 READY`,
 Production safety remains unchanged: Localization AI OFF, Production Apply
 OFF, Auto Approval OFF, PRIMARY untouched.  The feature branch is not merged
 to `main` by this acceptance.
+
+Hotfix exact-head evidence: feature HEAD `7bdb1a631c1b560f60251190f717006a1fff2a63`;
+CI Run `33487876060` ran on that exact head and both Ubuntu and Windows jobs
+finished successfully.
