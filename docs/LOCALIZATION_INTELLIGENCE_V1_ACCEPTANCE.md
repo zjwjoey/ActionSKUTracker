@@ -55,8 +55,8 @@
 
 ## CI / Git
 
-- implementation feature HEAD：`43df92f`（本地 Qwen 训练、格式门禁与最终只读审计文档收口）。
-- exact-head CI：run `33467132288`，head SHA 与 implementation HEAD 一致；Ubuntu `SUCCESS`、Windows `SUCCESS`，并确认 allowlist 实际执行 `tests/test_localization_intelligence.py`。
+- implementation feature HEAD：`fa7824c`（本地 Qwen 训练、格式门禁与最终只读审计文档收口）。
+- exact-head CI：run `33482383228`，head SHA 与 implementation HEAD 一致；Ubuntu `SUCCESS`、Windows `SUCCESS`，并确认 allowlist 实际执行 `tests/test_localization_intelligence.py`。
 - 本轮不 merge main、不 force push；feature 分支已推送。
 
 ## 分层结论
