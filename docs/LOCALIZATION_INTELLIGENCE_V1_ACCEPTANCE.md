@@ -42,7 +42,7 @@ Localization 核心不访问官网，不修改 Presence、Lifecycle、Price hist
 - `localization-apply --dry-run` 已执行（run `v1-feature-apply-dry-run-20260901`），未写入 PRIMARY。
 - GitHub Actions exact-head CI：Ubuntu 与 Windows 均 PASS，run `33447471041`（head 与 implementation feature head 一致）。
 - 本轮补充了 SourceFacts 官方来源字段、SemanticFact 证据字段、跨字段数字保护、知识 CSV 唯一键/schema 校验、AI 身份/价格/结构校验、Apply 源哈希门禁，以及 unchanged daily 的中文 provenance/updated_at 保留；Hash closure 后本地回归共 382 项通过。
-- 最终补充回归后本地全量测试：`384 passed`（目标 feature worktree）。本机 Qwen 未启用，`localization-ai-status` 返回 `DISABLED`，因此没有网络依赖。
+- 最终补充回归后本地全量测试：`385 passed`（目标 feature worktree，含 Learning E2E）。本机 Qwen 未启用，`localization-ai-status` 返回 `DISABLED`，因此没有网络依赖。
 - 只读 CURRENT 审计（使用现有 PRIMARY 数据库快照，未写入 PRIMARY）：5,379 CURRENT；READY 394、REVIEW_REQUIRED 4,985；普通西语残留 1,671；数字事实 mismatch 334；FACT_NOT_COVERED 0；AI calls 0；AI avoidance 100%。
 
 当前结论：`LOCALIZATION_V1_NOT_ACCEPTED DO_NOT_MERGE`。原因是全量质量门禁尚未 PASS（仍有西语残留、数字事实 mismatch 和待审候选），且生产 AI/apply/auto-approval 开关保持关闭。Learning/Promotion/Review Queue/Provider 合同已闭合，但不能把未审核候选直接当作正式中文结果。

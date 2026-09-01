@@ -102,4 +102,4 @@ daily 主链（`images.enabled=false`）。Windows 计划任务脚本已提供�
 
 feature 分支新增统一 Localization Engine、语义/命名/规格规划、格式化、token-level Validator、AI provider、学习候选与 CLI 审计；生产 AI 和正式 localization apply 默认关闭，等待验收后再决定合并。
 
-2026-09-01 收口状态：本地 Provider、统一 Learning/Promotion、Review Queue 字段适配、否定详情键和事实覆盖检查已实现；目标分支本地回归 384 passed。使用现有 PRIMARY 快照只读审计得到 5,379 CURRENT、READY 394、REVIEW_REQUIRED 4,985、普通西语残留 1,671、数字事实 mismatch 334、AI calls 0。由于质量门禁仍未清零，本分支仍 `LOCALIZATION_V1_NOT_ACCEPTED / DO_NOT_MERGE`。
+2026-09-01 收口状态：本地 Provider、统一 Learning/Promotion、Review Queue 字段适配、否定详情键和事实覆盖检查已实现；目标分支本地回归 385 passed（含 Learning E2E）。使用现有 PRIMARY 快照只读审计得到 5,379 CURRENT、READY 394、REVIEW_REQUIRED 4,985、普通西语残留 1,671、数字事实 mismatch 334、AI calls 0。由于质量门禁仍未清零，本分支仍 `LOCALIZATION_V1_NOT_ACCEPTED / DO_NOT_MERGE`。
