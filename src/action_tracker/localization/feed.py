@@ -272,14 +272,20 @@ def build_knowledge_feed(
             "evidence_json": json.dumps(evidence, ensure_ascii=False, sort_keys=True),
         })
     candidates.sort(key=lambda row: (-int(row["affected_sku_count"]), -int(row["evidence_sku_count"]), TYPE_PRIORITY[row["knowledge_type"]], row["normalized_source"]))
-    for index, row in enumerate(candidates, 1):
+    # Existing formal knowledge is retained in the complete evidence file for
+    # traceability, but must not consume a human-review ranking slot.
+    review_candidates = [row for row in candidates if row["status"] != "EXISTING_KNOWLEDGE"]
+    for index, row in enumerate(review_candidates, 1):
         row["priority_rank"] = index
+    for row in candidates:
+        if row["status"] == "EXISTING_KNOWLEDGE":
+            row["priority_rank"] = ""
     headers = ["candidate_id", "knowledge_type", "source_term", "normalized_source", "proposed_zh", "category_context", "affected_sku_count", "evidence_sku_count", "review_reason", "status", "existing_knowledge", "manual_conflict", "evidence_conflict", "needs_ai", "priority_rank", "evidence_json"]
     def write_csv(path: Path, rows: Iterable[Mapping[str, Any]], fields: list[str]) -> None:
         with path.open("w", encoding="utf-8-sig", newline="") as fh:
             writer = csv.DictWriter(fh, fieldnames=fields); writer.writeheader(); writer.writerows({field: row.get(field, "") for field in fields} for row in rows)
     write_csv(output_dir / "knowledge_feed_candidates.csv", candidates, headers)
-    write_csv(output_dir / "knowledge_feed_top_200.csv", candidates[:200], headers)
+    write_csv(output_dir / "knowledge_feed_top_200.csv", review_candidates[:200], headers)
     impact_rows = [{"candidate_id": row["candidate_id"], "knowledge_type": row["knowledge_type"], "source_term": row["source_term"], "affected_sku_count": row["affected_sku_count"], "affected_skus": "|".join(sorted({str(item.get("sku")) for item in json.loads(row["evidence_json"])}))} for row in candidates]
     write_csv(output_dir / "knowledge_feed_impact.csv", impact_rows, ["candidate_id", "knowledge_type", "source_term", "affected_sku_count", "affected_skus"])
     after = dictionary_hashes(dictionary_dir)
@@ -297,7 +303,8 @@ def build_knowledge_feed(
         "manual_conflicts": sum(row["status"] == "MANUAL_CONFLICT" for row in candidates),
         "evidence_conflicts": sum(row["status"] == "EVIDENCE_CONFLICT" for row in candidates),
         "needs_ai": sum(row["needs_ai"] == "true" for row in candidates),
-        "top_10_candidates": [{"rank": row["priority_rank"], "candidate_id": row["candidate_id"], "knowledge_type": row["knowledge_type"], "source_term": row["source_term"], "proposed_zh": row["proposed_zh"], "affected_sku_count": row["affected_sku_count"]} for row in candidates[:10]],
+        "review_candidate_count": len(review_candidates),
+        "top_10_candidates": [{"rank": row["priority_rank"], "candidate_id": row["candidate_id"], "knowledge_type": row["knowledge_type"], "source_term": row["source_term"], "proposed_zh": row["proposed_zh"], "affected_sku_count": row["affected_sku_count"]} for row in review_candidates[:10]],
         "estimated_impacted_skus": len({
             str(evidence.get("sku"))
             for row in candidates

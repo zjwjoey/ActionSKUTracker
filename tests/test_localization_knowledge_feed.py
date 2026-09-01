@@ -109,4 +109,7 @@ def test_existing_knowledge_is_excluded_from_review_pool(tmp_path):
     rows = list(csv.DictReader((output / "knowledge_feed_candidates.csv").open(encoding="utf-8-sig", newline="")))
     usb = next(row for row in rows if row["source_term"] == "USB-C")
     assert usb["status"] == "EXISTING_KNOWLEDGE"
+    top = list(csv.DictReader((output / "knowledge_feed_top_200.csv").open(encoding="utf-8-sig", newline="")))
+    assert all(row["status"] != "EXISTING_KNOWLEDGE" for row in top)
+    assert top[0]["source_term"] == "Goma"
     assert summary["existing_knowledge_skipped"] == 1

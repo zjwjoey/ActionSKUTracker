@@ -50,6 +50,7 @@ Run ID: `knowledge-feed-v1-baseline`
 | READY | 391 |
 | REVIEW_REQUIRED | 4,988 |
 | Total candidates | 83 |
+| Review candidates (excluding existing knowledge) | 73 |
 | PRODUCT_TYPE | 20 |
 | PHRASE | 0 |
 | TERM | 0 |
@@ -70,9 +71,12 @@ The read-only audit issue breakdown is: `PRODUCT_TYPE_REVIEW` 4,630,
 `STALE_LOCALIZATION` 13, `SOURCE_BLOCKED` 7, `FACT_NOT_COVERED` 0, and
 `DATA_INCONSISTENCY` 7.
 
-Top candidates are mostly high-impact detail keys and technical tokens. The
-complete ranked list is in `knowledge_feed_top_200.csv`; the SKU-level impact
-mapping is in `knowledge_feed_impact.csv`.
+The 83-row complete file retains 10 `EXISTING_KNOWLEDGE` rows for traceability.
+The ranked review file excludes them, so its first candidate is the new
+`material → 材质` mapping rather than the already-known `color → 颜色` mapping.
+Top candidates are still review-only; the complete ranked list is in
+`knowledge_feed_top_200.csv`, and the SKU-level impact mapping is in
+`knowledge_feed_impact.csv`.
 
 ## Artifacts
 
