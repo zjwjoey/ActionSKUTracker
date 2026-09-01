@@ -120,6 +120,8 @@ def build_parser() -> argparse.ArgumentParser:
     la = sub.add_parser("localization-audit", help="审计 CURRENT 中文字段、残留西语和数字事实")
     la.add_argument("--run-id", help="指定报告 run_id")
     la.add_argument("--current", action="store_true", help="审计 SQLite PRIMARY CURRENT")
+    sub.add_parser("localization-ai-status", help="检查本地 Localization AI Provider 配置与端点（只读）")
+    sub.add_parser("localization-ai-check", help="执行虚构数据的本地 AI JSON 合同 smoke test（只读）")
     lr = sub.add_parser("localization-learning-report", help="查看最近一次 Localization learning candidates")
     lr.add_argument("--run-id", help="指定报告 run_id")
     lp = sub.add_parser("localization-promote", help="记录候选知识晋升决定（默认只读）")
@@ -392,6 +394,26 @@ def main(argv=None) -> int:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False)); return 0
+    if args.command in {"localization-ai-status", "localization-ai-check"}:
+        from .localization.ai import provider_from_config, provider_health, validate_ai_response
+        from .localization.contracts import SourceFacts
+        ai_cfg = ((cfg.get("localization") or {}).get("ai") or {})
+        provider = provider_from_config(ai_cfg)
+        health = provider_health(provider)
+        result = {"provider": getattr(provider, "provider", type(provider).__name__),
+                  "model": getattr(provider, "model", ""), "endpoint": ai_cfg.get("base_url") or "",
+                  "enabled": bool(ai_cfg.get("enabled") or ai_cfg.get("ai_enabled")), "health": health}
+        if args.command == "localization-ai-check" and health.get("status") == "PASS":
+            source = SourceFacts.from_record({"sku": "TEST-LOCAL-QWEN", "name_es": "Espumador eléctrico portátil"})
+            try:
+                payload = provider.complete(source, ("name",))
+                ok, reasons = validate_ai_response(payload, source, ("name",))
+                result["smoke"] = {"status": "PASS" if ok else "FAIL", "reasons": reasons}
+            except Exception as exc:
+                result["smoke"] = {"status": "FAIL", "error": str(exc)}
+        elif args.command == "localization-ai-check":
+            result["smoke"] = {"status": "LOCAL_PROVIDER_NOT_VERIFIED", "reason": "endpoint health did not pass"}
+        print(json.dumps(result, ensure_ascii=False)); return 0
     if args.command == "localization-learning-report":
         from .localization.service import _report_root
         root = _report_root(cfg)
@@ -407,6 +429,7 @@ def main(argv=None) -> int:
         print(json.dumps({"run_id": target.name, "count": len(rows), "rows": rows}, ensure_ascii=False)); return 0
     if args.command == "localization-promote":
         from .localization.learning import persist_promotion
+        from .localization.promotion import KnowledgePromotionRouter, KnowledgePromotionError
         from .localization.service import _report_root
         import csv as _csv
         root = _report_root(cfg)
@@ -419,6 +442,14 @@ def main(argv=None) -> int:
         if not candidate:
             print(json.dumps({"error": "CANDIDATE_NOT_FOUND"}, ensure_ascii=False), file=sys.stderr); return 2
         result = persist_promotion(candidate, path.parent, human_approved=args.human_approved)
+        # The report decision is always retained.  Only an explicit human
+        # approval may additionally route the reusable knowledge into its
+        # owning dictionary; AI never writes this path implicitly.
+        if args.human_approved:
+            try:
+                result["knowledge_promotion"] = KnowledgePromotionRouter(Path(cfg["paths"].get("dictionary_baseline") or cfg["paths"]["dictionary"])).promote(candidate, human_approved=True, validator_pass=str(candidate.get("validator_status") or "PASS").upper() == "PASS", source_hash_match=True)
+            except KnowledgePromotionError as exc:
+                print(json.dumps({"error": str(exc), "decision": result}, ensure_ascii=False), file=sys.stderr); return 2
         print(json.dumps(result, ensure_ascii=False)); return 0
     if args.command == "localization-apply":
         from .localization.service import apply_from_audit

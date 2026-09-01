@@ -760,3 +760,7 @@ V1 完成后应具备：
 并做到：
 
 > 同一份西语事实在同一 Policy/Knowledge 版本下，重复运行得到确定性一致的字段规划和格式；已有知识不重复调用 AI；未知知识可审计地进入学习闭环。
+
+## V1 Final Closure Addendum
+
+本地 Qwen3:8B 通过可配置的 `LocalOpenAICompatibleProvider` 接入，默认关闭；AI 只处理 UNKNOWN，输出必须经 Validator 后进入统一 Learning Pool。人工批准由 `KnowledgePromotionRouter` 路由到对应知识 CSV，原子写入并更新 manifest，绝不直接修改 PRIMARY 或执行 Git。

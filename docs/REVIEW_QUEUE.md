@@ -42,6 +42,8 @@ python -m action_tracker review-queue decide --review-id <id> --decision APPROVE
 官网事实问题不会被人工中文覆盖，必须等待可信西语证据恢复后才会自然消失。
 
 Review Queue 的稳定 ID、去重和状态迁移在 CI 中使用临时队列验证；CI 不读取或修改本机正式审核队列。
+
+Localization 队列支持可选 candidate/knowledge 元数据。旧字段通过 `REVIEW_FIELD_TO_OVERRIDE_FIELD` 显式适配；描述/详情字段不得未经定义的 scoped schema 强塞进商品覆盖表，知识级候选必须经过人工批准后进入其所属字典。
 # Localization Intelligence V1 issue types
 
 统一队列新增：`PRODUCT_TYPE_REVIEW`、`SERIES_REVIEW`、`TECH_TOKEN_REVIEW`、`SPEC_FORMAT_REVIEW`、`UNIT_REVIEW`、`DESCRIPTION_REVIEW`、`DETAIL_KEY_REVIEW`、`DETAIL_VALUE_REVIEW`、`SPANISH_RESIDUAL`、`NUMERIC_FACT_MISMATCH`。这些项沿用既有稳定 `review_id` 和人工决定写回路径。

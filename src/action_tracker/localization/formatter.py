@@ -6,7 +6,8 @@ _DETAIL_KEY_MAP = {
     "color": "颜色", "cantidad": "数量", "contenido": "含量", "material": "材质",
     "número de producto": "商品编号", "numero de producto": "商品编号", "número del artículo": "商品编号", "numero del articulo": "商品编号", "tipo": "类型",
     "tamaño": "尺寸", "peso": "重量", "potencia": "功率", "voltaje": "电压",
-    "incluye": "包含", "sin alcohol": "含酒精", "sin cafeína": "无咖啡因",
+    "incluye": "包含", "sin alcohol": "不含酒精", "sin cafeína": "不含咖啡因",
+    "sin azúcar": "不含糖", "sin gluten": "不含麸质",
     "instrucciones de lavado": "洗涤说明", "instrucciones de planchado": "熨烫说明",
     "instrucciones de secado": "干燥说明", "uso previsto": "用途",
     "tipo de medio de limpieza / cuidado": "清洁/护理介质类型",
@@ -69,7 +70,7 @@ def format_text(value: str) -> str:
     phrase_map = {
         "varios colores": "多种颜色", "diferentes variantes": "多款可选",
         "apto para lavavajillas": "可用洗碗机清洗", "sin alcohol": "不含酒精",
-        "sin cafeína": "不含咖啡因", "uso general": "通用",
+        "sin cafeína": "不含咖啡因", "sin azúcar": "不含糖", "sin gluten": "不含麸质", "uso general": "通用",
     }
     for source, target in phrase_map.items():
         text = re.sub(rf"(?i)\b{re.escape(source)}\b", target, text)

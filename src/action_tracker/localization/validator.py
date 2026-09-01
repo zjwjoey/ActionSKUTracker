@@ -6,6 +6,7 @@ from typing import Any, Mapping
 
 from .contracts import LocalizationPlan, SourceFacts
 from .policy import FIXED_CAT1, has_ordinary_spanish
+from .coverage import validate_fact_coverage
 
 # Start at the beginning of a standalone number.  Including digits in the
 # look-behind prevents the regex from recovering a trailing digit of an
@@ -74,4 +75,7 @@ def validate_plan(source: SourceFacts, plan: LocalizationPlan, *, allowed_tokens
         reasons.append("DETAIL_SKU_MISMATCH")
     if any(field.freshness_status == "STALE" for field in plan.fields.values()):
         reasons.append("STALE_LOCALIZATION")
+    coverage = validate_fact_coverage(plan)
+    if not coverage.ok:
+        reasons.append("FACT_NOT_COVERED")
     return LocalizationValidation(not reasons, tuple(dict.fromkeys(reasons)), tuple(residue), tuple(numeric_bad))

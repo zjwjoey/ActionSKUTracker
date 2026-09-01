@@ -148,7 +148,7 @@ class ProductionRepository:
                    zh.source_hash,zh.resolution_status,zh.review_status,zh.freshness_status,
                    zh.name_source,zh.cat1_source,zh.cat2_source,zh.spec_source,
                    zh.description_source,zh.details_source,zh.approved_by,zh.approved_at,
-                   zh.last_commit_id,zh.applied_commit_id
+                   zh.last_commit_id,zh.applied_commit_id,zh.unit_price,zh.unit_price_source
                    FROM products p
                    LEFT JOIN product_localizations es ON es.official_sku=p.official_sku AND es.language='es'
                    LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'
@@ -169,6 +169,7 @@ class ProductionRepository:
                 "zh_name_source": row[32], "zh_cat1_source": row[33], "zh_cat2_source": row[34], "zh_spec_source": row[35],
                 "zh_description_source": row[36], "zh_details_source": row[37], "zh_approved_by": row[38], "zh_approved_at": row[39],
                 "zh_last_commit_id": row[40], "zh_applied_commit_id": row[41],
+                "unit_price_zh": row[42], "zh_unit_price_source": row[43],
                 "source_commit_id": source_commit_id, "source_run_id": source_run_id,
             })
         return records

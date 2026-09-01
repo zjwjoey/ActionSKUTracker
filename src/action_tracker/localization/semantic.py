@@ -48,6 +48,7 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     phrase_rows = dictionaries.get("phrases") or ()
     detail_rows = dictionaries.get("detail_keys") or ()
     tech_rows = dictionaries.get("tech_tokens") or ()
+    term_rows = dictionaries.get("terms") or ()
     if isinstance(product_rows, Mapping):
         product_rows = [{"source_term": key, "canonical_zh": value} for key, value in product_rows.items()]
     if isinstance(tech_rows, Mapping):
@@ -79,6 +80,13 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
             key_es = str(row.get("key_es") or "").strip(); key_zh = str(row.get("key_zh") or "").strip()
             if key_es and key_zh and re.search(rf"(?:^|[;|\n])\s*{re.escape(key_es)}\s*[:：]", lower):
                 add("DETAIL_KEY", key_es, key_zh, field, "detail_key_dictionary")
+        for row in term_rows if isinstance(term_rows, (list, tuple)) else ():
+            term = str(row.get("term_es") or "").strip()
+            zh = str(row.get("term_zh") or "").strip()
+            kind = str(row.get("term_type") or "DESCRIPTION_FACT").upper()
+            if term and zh and re.search(rf"(?<!\w){re.escape(term.casefold())}(?!\w)", lower):
+                semantic = kind if kind in {"PRODUCT_TYPE", "BRAND", "SERIES", "MODEL", "TECH_TOKEN", "MATERIAL", "FUNCTION", "CARE", "COMPATIBILITY", "DESCRIPTION_FACT"} else "DESCRIPTION_FACT"
+                add(semantic, term, zh, field, "term_dictionary")
         for term, (kind, zh) in _TERM_MAP.items():
             if term in lower and (kind, zh) not in seen:
                 add(kind, term, zh, field, term)
@@ -103,7 +111,10 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
                 # Chinese rendering and therefore cannot silently lose facts.
                 if (kind, raw.lower()) not in seen:
                     add(kind, raw, raw, field, raw)
-    for brand in known_brands or set():
+    # The knowledge loader stores aliases in a set.  Sorting is required here:
+    # otherwise Python hash randomisation can change fact order between CLI
+    # processes and therefore change the first brand selected by the planner.
+    for brand in sorted(known_brands or set(), key=lambda value: str(value).casefold()):
         if brand and brand.lower() in source.name_es.lower():
             add("BRAND", brand, brand, "name_es", brand)
     return tuple(facts)

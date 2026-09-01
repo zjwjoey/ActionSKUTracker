@@ -261,7 +261,7 @@ class ProductionWriter:
             incoming = dict(r)
             if language == "zh":
                 existing_row = db.execute(
-                    "SELECT name,cat1,cat2,spec,description,details,source,review_status,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id,last_commit_id,updated_at FROM product_localizations WHERE official_sku=? AND language='zh'",
+                    "SELECT name,cat1,cat2,spec,unit_price,description,details,source,review_status,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,unit_price_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id,last_commit_id,updated_at FROM product_localizations WHERE official_sku=? AND language='zh'",
                     (sku,),
                 ).fetchone()
                 if existing_row is not None:
@@ -285,20 +285,20 @@ class ProductionWriter:
                         if str(existing.get("freshness_status") or "").upper() == "STALE":
                             incoming["freshness_status"] = "STALE"
             db.execute(
-                """INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,last_commit_id,
-                 source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
-                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,unit_price,description,details,source,review_status,updated_at,last_commit_id,
+                 source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,unit_price_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
+                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                  ON CONFLICT(official_sku,language) DO UPDATE SET name=excluded.name,cat1=excluded.cat1,cat2=excluded.cat2,spec=excluded.spec,
-                 description=excluded.description,details=excluded.details,source=excluded.source,review_status=excluded.review_status,
+                 unit_price=excluded.unit_price,description=excluded.description,details=excluded.details,source=excluded.source,review_status=excluded.review_status,
                  updated_at=excluded.updated_at,last_commit_id=excluded.last_commit_id,source_hash=excluded.source_hash,
                  resolution_status=excluded.resolution_status,name_source=excluded.name_source,cat1_source=excluded.cat1_source,
-                 cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,description_source=excluded.description_source,
+                 cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,unit_price_source=excluded.unit_price_source,description_source=excluded.description_source,
                  details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,
                  approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""",
-                 (sku, language, incoming.get("name"), incoming.get("cat1"), incoming.get("cat2"), incoming.get("spec"), incoming.get("description"), incoming.get("details"),
+                 (sku, language, incoming.get("name"), incoming.get("cat1"), incoming.get("cat2"), incoming.get("spec"), incoming.get("unit_price"), incoming.get("description"), incoming.get("details"),
                   incoming.get("source"), incoming.get("review_status"), incoming.get("updated_at") or now, incoming.get("last_commit_id") or commit_id, incoming.get("source_hash"),
                   incoming.get("resolution_status"), incoming.get("name_source"), incoming.get("cat1_source"), incoming.get("cat2_source"),
-                  incoming.get("spec_source"), incoming.get("description_source"), incoming.get("details_source"), incoming.get("freshness_status"),
+                  incoming.get("spec_source"), incoming.get("unit_price_source"), incoming.get("description_source"), incoming.get("details_source"), incoming.get("freshness_status"),
                   incoming.get("approved_by"), incoming.get("approved_at"), incoming.get("applied_commit_id") or commit_id),
             )
 
@@ -920,7 +920,7 @@ def apply_localization_correction(
     mutation and becomes ``base_commit_id`` for the new correction version.
     """
     path = Path(path); migrate_v2(path, role="PRIMARY")
-    fields = {"name", "cat1", "cat2", "spec", "description", "details"}
+    fields = {"name", "cat1", "cat2", "spec", "unit_price", "description", "details"}
     with connect(path) as db:
         role = db.execute("SELECT value FROM schema_metadata WHERE key='database_role'").fetchone()
         if not role or str(role[0]) != "PRIMARY":
@@ -945,7 +945,8 @@ def apply_localization_correction(
             sku = str(sku).strip(); source_hash_value = str(source_hashes.get(sku) or "")
             if not source_hash_value: raise ProductionDatabaseError(f"LOCALIZATION_SOURCE_HASH_MISSING:{sku}")
             if db.execute("SELECT 1 FROM products WHERE official_sku=? AND status='CURRENT'", (sku,)).fetchone() is None: raise ProductionDatabaseError(f"LOCALIZATION_SKU_NOT_CURRENT:{sku}")
-            if set(values) - fields:
+            metadata_keys = {f"{f}_source" for f in fields} | {"provenance", "sources"}
+            if set(values) - fields - metadata_keys:
                 raise ProductionDatabaseError(f"LOCALIZATION_FIELD_NOT_ALLOWED:{sku}")
             from ..services.hashing import localization_source_hash
             es = db.execute("SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='es'", (sku,)).fetchone()
@@ -960,11 +961,14 @@ def apply_localization_correction(
             current = db.execute("SELECT * FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone()
             current_dict = dict(current) if current else {}
             vals = {f: current_dict.get(f) for f in fields}; src = {f: current_dict.get(f"{f}_source") for f in fields}
+            provenance = values.get("provenance") or values.get("sources") or {}
             for f, v in values.items():
-                if f in fields and v is not None: vals[f] = str(v); src[f] = "localization_engine"
-            db.execute("""INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,last_commit_id,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                ON CONFLICT(official_sku,language) DO UPDATE SET name=excluded.name,cat1=excluded.cat1,cat2=excluded.cat2,spec=excluded.spec,description=excluded.description,details=excluded.details,source=excluded.source,review_status=excluded.review_status,updated_at=excluded.updated_at,last_commit_id=excluded.last_commit_id,source_hash=excluded.source_hash,resolution_status=excluded.resolution_status,name_source=excluded.name_source,cat1_source=excluded.cat1_source,cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,description_source=excluded.description_source,details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""", (sku, "zh", vals["name"], vals["cat1"], vals["cat2"], vals["spec"], vals["description"], vals["details"], "LOCALIZATION", "APPROVED", now, commit_id, source_hash_value, "APPLIED", src["name"], src["cat1"], src["cat2"], src["spec"], src["description"], src["details"], "CURRENT", "LOCALIZATION", now, commit_id))
+                if f in fields and v is not None:
+                    vals[f] = str(v)
+                    src[f] = str(values.get(f"{f}_source") or (provenance.get(f) if isinstance(provenance, Mapping) else "") or "localization_engine")
+            db.execute("""INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,unit_price,description,details,source,review_status,updated_at,last_commit_id,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,unit_price_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(official_sku,language) DO UPDATE SET name=excluded.name,cat1=excluded.cat1,cat2=excluded.cat2,spec=excluded.spec,unit_price=excluded.unit_price,description=excluded.description,details=excluded.details,source=excluded.source,review_status=excluded.review_status,updated_at=excluded.updated_at,last_commit_id=excluded.last_commit_id,source_hash=excluded.source_hash,resolution_status=excluded.resolution_status,name_source=excluded.name_source,cat1_source=excluded.cat1_source,cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,unit_price_source=excluded.unit_price_source,description_source=excluded.description_source,details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""", (sku, "zh", vals["name"], vals["cat1"], vals["cat2"], vals["spec"], vals["unit_price"], vals["description"], vals["details"], "LOCALIZATION", "APPROVED", now, commit_id, source_hash_value, "APPLIED", src["name"], src["cat1"], src["cat2"], src["spec"], src["unit_price"], src["description"], src["details"], "CURRENT", "LOCALIZATION", now, commit_id))
             changed += 1
         db.commit()
     return {"status": "SUCCESS", "base_commit_id": base, "commit_id": commit_id, "correction_run_id": correction_run, "applied_skus": changed}

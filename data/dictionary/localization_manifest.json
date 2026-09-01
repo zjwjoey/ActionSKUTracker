@@ -1,0 +1,57 @@
+{
+  "schema_version": "LOCALIZATION_KNOWLEDGE_V1",
+  "manifest_schema_version": 2,
+  "files": {
+    "product_type_dictionary.csv": {
+      "sha256": "b59df122ac315ecfea10ed45f3d37ee04de99a48bf7ffbcdc3f5f87445c7348a",
+      "schema_version": "1.0"
+    },
+    "detail_key_dictionary.csv": {
+      "sha256": "b6a9f925e97287f91aea93d5c32b1bc04938f5cca9586aa5cfb91bfd8afb67ec",
+      "schema_version": "1.0"
+    },
+    "tech_token_dictionary.csv": {
+      "sha256": "cd540661dcfabb7f3b27cf68383ebf06e962dc0a019be7288a1164b3bc135747",
+      "schema_version": "1.0"
+    },
+    "phrase_dictionary.csv": {
+      "sha256": "4e54656a461a4407b9dd6bd1faf6b3fdaf4b7b1f4af1900df2104960236213b3",
+      "schema_version": "1.0"
+    },
+    "product_dictionary.csv": {
+      "sha256": "4e665c345677cb56455697547f80ccc4f17273a83f4055d2fc30a6608e901740",
+      "schema_version": "legacy",
+      "row_count": 8677
+    },
+    "brand_dictionary.csv": {
+      "sha256": "a71ba8116b8eb32f998d391adf12c3df6201b579e22d4bee662338bbbf49efa5",
+      "schema_version": "legacy",
+      "row_count": 589
+    },
+    "category_dictionary.csv": {
+      "sha256": "63ebc1486f0d75cf82101380016ac627c6467ed0afa79edcc955e8cff2632da4",
+      "schema_version": "legacy",
+      "row_count": 186
+    },
+    "term_dictionary.csv": {
+      "sha256": "c2763166078544a4e58a628a4be1f43bd1c042bce52edeee5e13785c52136a6b",
+      "schema_version": "legacy",
+      "row_count": 44
+    },
+    "manual_overrides.csv": {
+      "sha256": "07133645c547218be26b5f9ba14bb3190173cf96c67bbb873014f9776349a9ed",
+      "schema_version": "legacy",
+      "row_count": 237
+    },
+    "model_translation_overrides.csv": {
+      "sha256": "94829db913c8e867bc9d56e1d0cf740001e9c757402d33a5353f9e77b9a5e75b",
+      "schema_version": "legacy",
+      "row_count": 823
+    },
+    "source_damage_report.csv": {
+      "sha256": "0f057f4d797d047ceb176ea4eac97ce5c6de1b11069b70415dd24e7194f9094e",
+      "schema_version": "legacy",
+      "row_count": 130
+    }
+  }
+}

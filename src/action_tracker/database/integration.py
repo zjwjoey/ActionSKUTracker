@@ -17,6 +17,7 @@ from typing import Any, Mapping
 from .production import CommitBundle, ProductionWriter, ProductionDatabaseError, mark_export_sync
 from .connection import connect
 from ..knowledge.contracts import source_hash as knowledge_source_hash
+from ..localization.formatter import format_unit_price
 
 
 VALID_STORAGE_MODES = {"EXCEL_PRIMARY", "SQLITE_SHADOW", "SQLITE_PRIMARY"}
@@ -374,22 +375,22 @@ def _localization(record: Mapping[str, Any], language: str) -> dict[str, Any]:
     if language == "es":
         return {"sku": record.get("sku"), "language": "es", "name": record.get("name_es"),
                 "cat1": record.get("cat1_es"), "cat2": record.get("cat2_es"),
-                "spec": record.get("spec_es"), "description": record.get("desc_es"),
+                "spec": record.get("spec_es"), "unit_price": record.get("unit_price"), "description": record.get("desc_es"),
                 "details": record.get("details_es"), "source": "OFFICIAL_FACT",
                 "review_status": "VERIFIED", "source_hash": digest,
                 "resolution_status": "APPLIED", "freshness_status": "CURRENT",
                 "name_source": "official_fact", "cat1_source": "official_fact",
-                "cat2_source": "official_fact", "spec_source": "official_fact",
+                "cat2_source": "official_fact", "spec_source": "official_fact", "unit_price_source": "official_unit_price",
                 "description_source": "official_fact", "details_source": "official_fact"}
     return {"sku": record.get("sku"), "language": "zh", "name": record.get("name_zh"),
             "cat1": record.get("cat1_zh"), "cat2": record.get("cat2_zh"),
-            "spec": record.get("spec_zh"), "description": record.get("desc_zh"),
+            "spec": record.get("spec_zh"), "unit_price": format_unit_price(str(record.get("unit_price") or "")), "description": record.get("desc_zh"),
             "details": record.get("details_zh"), "source": "DICTIONARY_OR_FALLBACK",
             "review_status": record.get("translation_status") or "PENDING",
             "source_hash": digest, "resolution_status": record.get("translation_status") or "PENDING",
             "freshness_status": "CURRENT", "name_source": "dictionary_or_fallback",
             "cat1_source": "dictionary_or_fallback", "cat2_source": "dictionary_or_fallback",
-            "spec_source": "dictionary_or_fallback", "description_source": "dictionary_or_fallback",
+            "spec_source": "dictionary_or_fallback", "unit_price_source": "official_unit_price", "description_source": "dictionary_or_fallback",
             "details_source": "dictionary_or_fallback"}
 
 

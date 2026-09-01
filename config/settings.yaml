@@ -150,11 +150,14 @@ localization:
   policy_version: CHINESE_LOCALIZATION_STANDARD_V1
   ai:
     enabled: false
-    provider: openai_compatible
+    # Provider is interchangeable; local Qwen3:8B is an example, not a
+    # required runtime dependency.  Set enabled explicitly for a smoke test.
+    provider: local_openai_compatible
     base_url: null
-    model: null
-    api_key_env: ACTION_AI_API_KEY
+    model: qwen3:8b
+    api_key_env: null
     temperature: 0
+    timeout: 120
     max_batch_size: 20
     max_retries: 3
 

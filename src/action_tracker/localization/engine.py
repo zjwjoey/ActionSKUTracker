@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Any, Iterable
 
 from .contracts import LOCALIZATION_FIELDS, LocalizationField, LocalizationPlan, SourceFacts
+from .formatter import format_unit_price
 from .planner import plan_localization
 from .semantic import parse_semantic_facts
 from .validator import LocalizationValidation, validate_plan
@@ -68,7 +69,7 @@ class LocalizationEngine:
         fields = {}
         mapping = (("name_zh", "name"), ("cat1_zh", "cat1"), ("cat2_zh", "cat2"), ("spec_zh", "spec"), ("unit_price_zh", "unit_price"), ("desc_zh", "description"), ("details_zh", "details"))
         for output_key, _ in mapping:
-            value = str(record.get(output_key) or (record.get("unit_price") if output_key == "unit_price_zh" else "") or "").strip()
+            value = str(record.get(output_key) or (format_unit_price(str(record.get("unit_price") or "")) if output_key == "unit_price_zh" else "") or "").strip()
             source_name = "official_unit_price" if output_key == "unit_price_zh" else str(record.get("zh_" + output_key.removesuffix("_zh") + "_source") or "primary_localization")
             freshness = str(record.get("zh_freshness_status") or "CURRENT")
             status = "READY" if value and freshness != "STALE" else ("STALE" if value else "REVIEW_REQUIRED")

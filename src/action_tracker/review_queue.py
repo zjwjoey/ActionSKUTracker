@@ -26,12 +26,19 @@ from .dictionary import (
     load_dictionary_rows,
     write_dictionary_csv,
 )
+from .localization.promotion import KnowledgePromotionRouter
 
 
 REVIEW_QUEUE_HEADERS = [
     "review_id", "issue_type", "sku", "field", "current_value", "suggested_value",
     "evidence", "reason", "created_at", "status", "source", "updated_at", "resolution",
+    "candidate_id", "knowledge_type", "source_term", "suggested_zh", "target_dictionary",
 ]
+REVIEW_FIELD_TO_OVERRIDE_FIELD = {
+    "name_zh": "name_zh_standard", "name": "name_zh_standard",
+    "spec_zh": "spec_zh_standard", "spec": "spec_zh_standard",
+    "cat1_zh": "cat1_zh", "cat2_zh": "cat2_zh", "brand_id": "brand_id",
+}
 REVIEW_QUEUE_STATUSES = frozenset({"PENDING", "APPROVED", "REJECTED", "RESOLVED"})
 REVIEW_QUEUE_TYPES = frozenset({
     # 生命周期已有问题类型
@@ -86,6 +93,8 @@ def _normalize_row(raw: Mapping[str, object]) -> dict[str, str]:
         row["created_at"] = _now()
     if not row["updated_at"]:
         row["updated_at"] = row["created_at"]
+    for key in REVIEW_QUEUE_HEADERS[-5:]:
+        row[key] = _text(raw.get(key))
     return row
 
 
@@ -134,6 +143,7 @@ def _draft(*, issue_type: str, sku: str = "", field: str = "", current_value: st
         "current_value": current_value, "suggested_value": suggested_value, "evidence": evidence,
         "reason": reason, "created_at": _now(), "status": "PENDING", "source": source,
         "updated_at": _now(), "resolution": "",
+        "candidate_id": "", "knowledge_type": "", "source_term": "", "suggested_zh": "", "target_dictionary": "",
     })
 
 
@@ -334,6 +344,7 @@ def build_review_queue(cfg: dict[str, Any], *, run_id: str | None = None) -> dic
 
 
 def _upsert_product_override(cfg: dict[str, Any], *, sku: str, field: str, value: str, reason: str) -> None:
+    field = REVIEW_FIELD_TO_OVERRIDE_FIELD.get(field, field)
     if field not in PRODUCT_OVERRIDE_FIELDS:
         raise ReviewQueueError(f"UNSUPPORTED_PRODUCT_OVERRIDE_FIELD: {field}")
     product_path = Path(cfg["paths"]["dictionary"]) / "product_dictionary.csv"
@@ -394,9 +405,22 @@ def decide_review(
             _upsert_brand(cfg, value)
             _upsert_product_override(cfg, sku=row["sku"], field="brand_id", value=value, reason=f"review_id={review_id}")
             route = "brand_dictionary+manual_overrides"
+        elif row["issue_type"] in {"PRODUCT_TYPE_REVIEW", "TECH_TOKEN_REVIEW", "DETAIL_KEY_REVIEW"} and (row.get("knowledge_type") or row.get("source_term")):
+            candidate = {
+                "candidate_id": row.get("candidate_id") or row["review_id"],
+                "knowledge_type": row.get("knowledge_type") or row["issue_type"].replace("_REVIEW", ""),
+                "semantic_type": row.get("knowledge_type") or row["issue_type"].replace("_REVIEW", ""),
+                "source_term": row.get("source_term") or row.get("current_value"),
+                "zh_value": value or row.get("suggested_zh") or row.get("suggested_value"),
+                "confidence": "1.0", "status": "HUMAN_REVIEWED", "validator_status": "PASS",
+            }
+            result = KnowledgePromotionRouter(Path(cfg["paths"]["dictionary"])).promote(candidate, human_approved=True)
+            route = str(result.get("route") or "knowledge_dictionary")
         elif row["issue_type"] in {"NAME_REVIEW", "SPEC_REVIEW", "CATEGORY_REVIEW", "PRODUCT_TYPE_REVIEW", "SERIES_REVIEW", "TECH_TOKEN_REVIEW", "SPEC_FORMAT_REVIEW", "UNIT_REVIEW", "DESCRIPTION_REVIEW", "DETAIL_KEY_REVIEW", "DETAIL_VALUE_REVIEW", "SPANISH_RESIDUAL", "NUMERIC_FACT_MISMATCH"}:
             if not value or not row["sku"]:
                 raise ReviewQueueError("PRODUCT_APPROVAL_REQUIRES_SKU_AND_VALUE")
+            if row["field"] in {"desc_zh", "details_zh"}:
+                raise ReviewQueueError("DESCRIPTION_DETAILS_REQUIRE_KNOWLEDGE_OR_SCOPED_OVERRIDE")
             _upsert_product_override(cfg, sku=row["sku"], field=row["field"], value=value, reason=f"review_id={review_id}")
             route = "manual_overrides"
         elif row["issue_type"] == "TERM_CANDIDATE":

@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS schema_metadata (
 CREATE TABLE IF NOT EXISTS product_localizations (
  official_sku TEXT NOT NULL,
  language TEXT NOT NULL,
- name TEXT, cat1 TEXT, cat2 TEXT, spec TEXT, description TEXT, details TEXT,
+ name TEXT, cat1 TEXT, cat2 TEXT, spec TEXT, unit_price TEXT, description TEXT, details TEXT,
  source TEXT, review_status TEXT, updated_at TEXT NOT NULL, last_commit_id TEXT,
  PRIMARY KEY (official_sku, language),
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
@@ -372,8 +372,10 @@ def migrate_v2(path, *, role: str = "SHADOW"):
             ("cat1_source", "TEXT"),
             ("cat2_source", "TEXT"),
             ("spec_source", "TEXT"),
+            ("unit_price_source", "TEXT"),
             ("description_source", "TEXT"),
             ("details_source", "TEXT"),
+            ("unit_price", "TEXT"),
             ("freshness_status", "TEXT"),
             ("approved_by", "TEXT"),
             ("approved_at", "TEXT"),

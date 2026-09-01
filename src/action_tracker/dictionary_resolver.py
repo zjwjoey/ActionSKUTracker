@@ -61,8 +61,10 @@ class RecordResolution:
 def resolve_record(record: dict[str, Any], context: DictionaryContext) -> RecordResolution:
     # Once the versioned Localization Intelligence dictionaries are available,
     # production callers use the single semantic Planner/Validator path.  The
-    # compact legacy implementation below remains only for old fixtures and
-    # third-party callers whose dictionary directory predates V1.
+    # Production dictionaries use the V1 semantic planner as soon as the
+    # versioned files are present.  The compact implementation below remains
+    # a compatibility adapter for pre-V1 external dictionaries; it is not
+    # used by the V1 audit or PRIMARY export paths.
     if all((context.directory / filename).exists() for filename in (
         "product_type_dictionary.csv", "detail_key_dictionary.csv",
         "tech_token_dictionary.csv", "phrase_dictionary.csv",

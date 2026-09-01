@@ -7,6 +7,7 @@ from typing import Any
 from .contracts import LocalizationField, LocalizationPlan, SemanticFact, SourceFacts
 from .formatter import format_details, format_spec, format_text, format_unit_price
 from .policy import FIXED_CAT1, has_ordinary_spanish, map_cat1
+from ..dictionary import normalize_category_key
 
 _FIELD_NAMES = {"name_zh": "name", "cat1_zh": "cat1", "cat2_zh": "cat2", "spec_zh": "spec", "unit_price_zh": "unit_price", "desc_zh": "description", "details_zh": "details"}
 
@@ -50,8 +51,14 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         name = brand + "牌" + name
     if not name:
         name = source.name_es
-    cat1, cs = value("cat1_zh", map_cat1(source.cat1_es, knowledge.get("cat1_map")))
-    cat2, c2s = value("cat2_zh", _dict_value(knowledge.get("cat2_map"), source.cat2_es) or source.cat2_es)
+    cat1_map = knowledge.get("cat1_map") or {}
+    cat1_key = normalize_category_key(source.cat1_es)
+    cat1_raw = cat1_map.get(cat1_key) or cat1_map.get(source.cat1_es) or cat1_map.get(source.cat1_es.casefold(), "")
+    cat1, cs = value("cat1_zh", map_cat1(source.cat1_es, {source.cat1_es: cat1_raw}))
+    cat1 = map_cat1(source.cat1_es, {source.cat1_es: cat1})
+    cat2_map = knowledge.get("cat2_map") or {}
+    cat2_lookup = cat2_map.get((normalize_category_key(source.cat1_es), normalize_category_key(source.cat2_es)), "") if isinstance(cat2_map, Mapping) else ""
+    cat2, c2s = value("cat2_zh", cat2_lookup or _dict_value(knowledge.get("cat2_map"), source.cat2_es) or source.cat2_es)
     spec, ss = value("spec_zh")
     if not spec:
         spec = format_spec(source.spec_es)
@@ -71,12 +78,25 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
             spec = "｜".join(x for x in (spec, *extra) if x)
     else:
         spec = format_spec(spec)
-    unit_price, ups = value("unit_price_zh", format_unit_price(source.unit_price_es))
+    # Unit price is an official, volatile price fact rather than a retained
+    # translation.  Re-render it from the current official value on every
+    # plan so an older localization cannot freeze yesterday's unit price.
+    unit_price = _dict_value(knowledge.get("unit_price_zh"), "value", "unit_price_zh") or format_unit_price(source.unit_price_es)
+    ups = "knowledge" if _dict_value(knowledge.get("unit_price_zh"), "value", "unit_price_zh") else "official_unit_price"
     desc, ds = value("desc_zh", format_text(source.desc_es))
     details, dts = value("details_zh", format_details(source.details_es))
     details = format_details(details)
     placements = {"PRODUCT_TYPE": "name", "BRAND": "name", "SERIES": "name", "IP_CHARACTER": "name", "MODEL": "spec", "TECH_TOKEN": "spec", "STANDARD_UNIT": "spec", "SIZE_DIMENSION": "spec", "CAPACITY": "spec", "WEIGHT": "spec", "QUANTITY": "spec", "COLOR": "spec", "VARIANT": "spec", "MATERIAL": "name", "FUNCTION": "description", "COMPATIBILITY": "spec", "VOLTAGE": "spec", "POWER": "spec", "CURRENT": "spec", "FREQUENCY": "spec", "BATTERY_CAPACITY": "spec", "SOCKET": "spec", "INTERFACE": "spec", "PROTECTION_RATING": "spec", "CARE": "details", "NUTRITION": "name", "DETAIL_KEY": "details", "DESCRIPTION_FACT": "description"}
-    planned_facts = tuple(SemanticFact(f.semantic_type, f.source_text, f.value, f.canonical_value, f.source_field, f.evidence, f.confidence, placements.get(f.semantic_type, "review"), f.source_hash or source.source_hash) for f in facts)
+    planned_facts = tuple(
+        SemanticFact(
+            f.semantic_type, f.source_text, f.value, f.canonical_value, f.source_field,
+            f.evidence, f.confidence, placements.get(f.semantic_type, "review"),
+            f.source_hash or source.source_hash,
+            "PLACED" if placements.get(f.semantic_type, "review") in {"name", "spec", "description", "details", "cat1", "cat2"} else "REVIEW_REQUIRED",
+            "planned output field" if placements.get(f.semantic_type, "review") in {"name", "spec", "description", "details", "cat1", "cat2"} else "no deterministic placement policy",
+        )
+        for f in facts
+    )
     # Every semantic fact receives explicit placement evidence.  This is
     # intentionally field-level provenance rather than a single opaque
     # translator provenance string.

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from dataclasses import dataclass, field
 from typing import Any, Mapping
+
+from ..services.hashing import localization_source_hash
 
 POLICY_VERSION = "CHINESE_LOCALIZATION_STANDARD_V1"
 LOCALIZATION_FIELDS = (
@@ -19,12 +19,14 @@ SEMANTIC_TYPES = (
 
 
 def source_hash(record: Mapping[str, Any]) -> str:
-    """Stable hash of official Spanish facts only (never Chinese fields)."""
-    payload = {
-        key: str(record.get(key) or "")
-        for key in ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")
-    }
-    return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    """Canonical hash of the six official Spanish localization facts.
+
+    This delegates to the SQLite production hash implementation.  A
+    localization plan, its persisted ES evidence, and a correction commit
+    must all use the same hash; a second JSON implementation would make
+    every persisted localization appear stale and make Apply reject it.
+    """
+    return localization_source_hash(dict(record))
 
 
 @dataclass(frozen=True)
@@ -94,6 +96,8 @@ class SemanticFact:
     confidence: float = 1.0
     placement: str = ""
     fact_source_hash: str = ""
+    coverage_status: str = "REVIEW_REQUIRED"
+    coverage_reason: str = ""
 
     def __post_init__(self) -> None:
         if self.semantic_type not in SEMANTIC_TYPES:
@@ -107,7 +111,8 @@ class SemanticFact:
                 "confidence": self.confidence, "knowledge_source": self.knowledge_source,
                 "allowed_targets": list(self.allowed_targets), "preferred_target": self.preferred_target,
                 "keep_original": self.keep_original, "source_hash": self.source_hash,
-                "placement": self.placement}
+                "placement": self.placement, "coverage_status": self.coverage_status,
+                "coverage_reason": self.coverage_reason}
 
     @property
     def normalized_source(self) -> str:
@@ -119,7 +124,11 @@ class SemanticFact:
 
     @property
     def knowledge_source(self) -> str:
-        return "evidence" if self.evidence else "parser"
+        if not self.evidence:
+            return "deterministic_rule"
+        if self.evidence.endswith("_dictionary") or self.evidence in {"term_dictionary", "product_type_dictionary", "detail_key_dictionary", "tech_token_dictionary", "phrase_dictionary"}:
+            return self.evidence
+        return "deterministic_rule"
 
     @property
     def allowed_targets(self) -> tuple[str, ...]:

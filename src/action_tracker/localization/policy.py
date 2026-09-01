@@ -4,7 +4,7 @@ import re
 
 POLICY_VERSION = "CHINESE_LOCALIZATION_STANDARD_V1"
 FIXED_CAT1 = (
-    "DIY五金", "办公文具", "宠物用品", "厨房餐具", "服饰鞋包", "个人护理",
+    "DIY五金", "办公文具", "宠物用品", "厨房餐具", "服饰鞋包", "个人美容",
     "家居布置", "家务清洁", "旅行用品", "食品饮料", "数码影音", "玩具",
     "兴趣手作", "园艺户外", "运动用品",
 )
@@ -39,4 +39,6 @@ def map_cat1(value: str, mappings: dict[str, str] | None = None) -> str:
     if value in FIXED_CAT1:
         return value
     mapped = (mappings or {}).get(value, "")
-    return "个人护理" if mapped == "个人美容" else mapped
+    # 个人美容 is the sole canonical C06 label.  Older configs may still
+    # expose the historical alias 个人护理; normalize it at the boundary.
+    return "个人美容" if mapped in {"个人美容", "个人护理"} else mapped

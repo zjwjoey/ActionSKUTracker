@@ -185,6 +185,10 @@ presence[sku, date] = 0  否则
 - SQLite 不是当前数据模型的生产存储；
 - 任何迁移必须保留原文件、来源 hash、行数对账和可回滚证据。
 
+## Localization V1 hash/provenance boundary
+
+Localization source hash 与旧 Product Dictionary 四字段 hash 分离；SQLite `product_localizations` 保存六字段事实 hash 及逐字段 provenance/source。AI 候选和学习证据不属于 PRIMARY 数据。
+
 ## 11. CI 中的数据使用边界
 
 CI 测试只使用仓库中的 schema/配置和临时生成的最小 fixture，不把 `runtime/`、正式 Master、State、字典运行区或历史源文件作为云端写入目标。CI 可以验证实体结构和对账规则，但不能替代真实来源的覆盖率、QA 或 Presence 证据。

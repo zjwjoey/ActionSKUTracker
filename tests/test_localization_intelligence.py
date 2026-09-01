@@ -1,9 +1,10 @@
 from action_tracker.localization import LocalizationEngine
 from action_tracker.localization.contracts import SourceFacts, source_hash
+from action_tracker.services.hashing import localization_source_hash
 from action_tracker.localization.formatter import format_details, format_spec, format_unit_price
 from action_tracker.localization.learning import aggregate_candidates
 from action_tracker.localization.promotion import can_promote
-from action_tracker.localization.ai import FakeProvider, resolve_unknown, validate_ai_response
+from action_tracker.localization.ai import FakeProvider, LocalOpenAICompatibleProvider, provider_from_config, resolve_unknown, validate_ai_response
 from action_tracker.database.schema import migrate_v2
 from action_tracker.database.connection import connect
 from action_tracker.database.production import apply_localization_correction
@@ -17,7 +18,7 @@ def test_formatter_uses_retail_spec_contract():
     assert format_spec("50 x 60 cm | varios colores") == "50×60cm｜多种颜色"
     assert format_spec("100 gramos") == "100g"
     assert format_unit_price("0,33 €/ud.") == "0,33 €/件"
-    assert format_details("Color: Azul\nCantidad: 3 unidades\nSin alcohol: No") == "颜色：蓝色；数量：3件；含酒精：否"
+    assert format_details("Color: Azul\nCantidad: 3 unidades\nSin alcohol: No") == "颜色：蓝色；数量：3件；不含酒精：否"
 
 
 def test_known_product_type_resolves_without_ai():
@@ -28,6 +29,18 @@ def test_known_product_type_resolves_without_ai():
     assert plan.fields["cat1_zh"].value == "兴趣手作"
     assert plan.fields["spec_zh"].value == "100g"
     assert plan.ai_used is False
+
+
+def test_category_one_uses_personal_beauty_as_the_only_canonical_label():
+    from action_tracker.localization.policy import FIXED_CAT1, map_cat1
+    assert "个人美容" in FIXED_CAT1 and "个人护理" not in FIXED_CAT1
+    assert map_cat1("Cuidado personal", {"Cuidado personal": "个人护理"}) == "个人美容"
+
+
+def test_local_provider_is_configurable_and_does_not_require_an_api_key():
+    provider = provider_from_config({"enabled": True, "provider": "local_openai_compatible", "base_url": "http://127.0.0.1:11434/v1", "model": "qwen3:8b"})
+    assert isinstance(provider, LocalOpenAICompatibleProvider)
+    assert provider.api_key_env is None
 
 
 def test_technical_tokens_are_preserved_and_numeric_facts_checked():
@@ -102,14 +115,16 @@ def test_sqlite_localization_apply_creates_versioned_zh_only_commit(tmp_path):
     migrate_v2(path, role="PRIMARY")
     with connect(path) as db:
         db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('ACT1','1','CURRENT')")
+        db.execute("INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,updated_at) VALUES('1','es','Producto','Hogar','','2 unidades','','','now')")
         db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES('r1','2026-09-01','COMMITTED','PASS',0,'now','now','2.0.0')")
         db.execute("INSERT INTO commit_batches(commit_id,run_id,bundle_hash,schema_version,started_at,committed_at,status) VALUES('C1','r1','h','2.0.0','now','now','COMMITTED')")
-    result = apply_localization_correction(path, run_id="2026-09-01", localizations_by_sku={"1": {"name": "测试商品"}}, source_hashes={"1": "facts-hash"})
+    facts = {"name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "", "spec_es": "2 unidades", "desc_es": "", "details_es": ""}
+    result = apply_localization_correction(path, run_id="2026-09-01", localizations_by_sku={"1": {"name": "测试商品", "unit_price": "0,50 €/件"}}, source_hashes={"1": source_hash(facts)})
     assert result["base_commit_id"] == "C1"
     assert result["commit_id"] != "C1"
     with connect(path) as db:
-        row = db.execute("SELECT name,last_commit_id,source_hash,freshness_status FROM product_localizations WHERE official_sku='1' AND language='zh'").fetchone()
-        assert tuple(row) == ("测试商品", result["commit_id"], "facts-hash", "CURRENT")
+        row = db.execute("SELECT name,unit_price,last_commit_id,source_hash,freshness_status FROM product_localizations WHERE official_sku='1' AND language='zh'").fetchone()
+        assert tuple(row) == ("测试商品", "0,50 €/件", result["commit_id"], source_hash(facts), "CURRENT")
         assert db.execute("SELECT COUNT(*) FROM commit_batches").fetchone()[0] == 2
 
 
@@ -156,6 +171,19 @@ def test_source_and_semantic_contracts_keep_official_provenance():
     assert item["source_hash"] == plan.source_hash and isinstance(fact, str)
 
 
+def test_localization_v1_uses_the_sqlite_canonical_source_hash():
+    facts = {"name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "", "spec_es": "2 unidades", "desc_es": "", "details_es": ""}
+    assert source_hash(facts) == localization_source_hash(facts)
+
+
+def test_schema_persists_all_seven_localization_fields(tmp_path):
+    path = tmp_path / "primary.db"
+    migrate_v2(path, role="PRIMARY")
+    with connect(path) as db:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(product_localizations)")}
+    assert {"name", "cat1", "cat2", "spec", "unit_price", "description", "details", "unit_price_source"} <= columns
+
+
 def test_dictionary_rows_drive_phrase_product_type_and_tech_token():
     knowledge = {
         "product_types": [{"source_term": "caja de almacenamiento", "source_aliases": "caja", "canonical_zh": "收纳箱"}],
@@ -167,6 +195,13 @@ def test_dictionary_rows_drive_phrase_product_type_and_tech_token():
     assert plan.fields["name_zh"].value.startswith("收纳箱")
     assert "USB-C" in plan.fields["name_zh"].value and "多款可选" in plan.fields["spec_zh"].value
     assert any(f.evidence == "product_type_dictionary" for f in plan.semantic_facts)
+
+
+def test_brand_fact_order_is_deterministic_for_set_backed_knowledge():
+    record = {"sku": "1", "name_es": "Zeta Alpha auriculares", "spec_es": ""}
+    plan = LocalizationEngine(knowledge={"brands": {"Zeta", "Alpha"}}).resolve(record)
+    brands = [fact.value for fact in plan.semantic_facts if fact.semantic_type == "BRAND"]
+    assert brands == ["Alpha", "Zeta"]
 
 
 def test_validator_allows_numeric_movement_but_blocks_detail_sku_and_stale():
