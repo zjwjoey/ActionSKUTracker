@@ -47,8 +47,8 @@
 
 ## CI / Git
 
-- feature HEAD：`3921d767bb647948b40337cd4773b7d448b8b25b`；相对 `origin/main` 为 ahead 26、behind 0。
-- exact-head CI：run `33464610129`，head SHA 与上述 HEAD 一致；Ubuntu `SUCCESS`、Windows `SUCCESS`；`tests/test_localization_intelligence.py` 已由 allowlist 实际执行。
+- feature HEAD：`75aa6cc130bbbfd6bf0f83511e8c6cbd65e88cf7`；相对 `origin/main` 为 ahead 27、behind 0。
+- exact-head CI：run `33464728883`，head SHA 与上述 HEAD 一致；Ubuntu `SUCCESS`、Windows `SUCCESS`；`tests/test_localization_intelligence.py` 已由 allowlist 实际执行。
 - 本轮不 merge main、不 force push；feature 分支已推送。
 
 ## 分层结论
