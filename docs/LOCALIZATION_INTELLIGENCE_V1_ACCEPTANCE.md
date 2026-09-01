@@ -101,3 +101,11 @@ Final merge-gate audit (read-only, run
 `13 STALE_LOCALIZATION`, knowledge hit rate `1.0`, AI calls `0`.
 Final pushed HEAD is `4988d1f6bae416a46543ec65fd0b62c8bd205ea8`; exact-head
 CI Run `33490269220` passed on Ubuntu and Windows.
+
+## Final CI merge-gate closure (2026-09-01)
+
+The final field-contract hotfix test is explicitly included in
+`tests/ci_safe_tests.txt` (`tests/test_localization_field_contract_hotfix.py`).
+The allowlist-only change is committed at `4dd27c7` and exact-head CI Run
+`33491296736` passed on both Ubuntu and Windows. No localization business
+logic, production configuration, Dictionary, or SQLite PRIMARY data changed.

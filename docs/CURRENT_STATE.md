@@ -131,3 +131,11 @@ Final merge-gate read-only audit: `5379 CURRENT`, `396 READY`,
 `0 FACT_NOT_COVERED`, `7 SOURCE_BLOCKED`, `13 STALE_LOCALIZATION`,
 knowledge hit rate `1.0`, AI calls `0`. Final feature HEAD is
 `4988d1f`, with exact-head Ubuntu/Windows CI Run `33490269220` successful.
+
+## Final CI merge-gate closure (2026-09-01)
+
+`tests/test_localization_field_contract_hotfix.py` is now listed in
+`tests/ci_safe_tests.txt`. Commit `4dd27c7` passed exact-head CI Run
+`33491296736` on Ubuntu and Windows. This was a CI coverage-only change;
+production AI, automatic approval, localization Apply, Dictionary, and
+SQLite PRIMARY remain unchanged.
