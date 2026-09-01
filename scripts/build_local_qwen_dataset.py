@@ -35,6 +35,49 @@ TERM_FILES = (
     ("detail_key_dictionary.csv", "key_es", "key_zh", "DETAIL_KEY"),
 )
 
+# This is a compact, machine-readable projection of the two governing
+# standards.  It is deliberately field-specific: training the model with a
+# generic "translate accurately" instruction is not equivalent to teaching
+# the placement contract for 商品品名 / 规格 / 分类.  The source documents and
+# their hashes are recorded in the manifest for auditability.
+NAMING_POLICY_VERSION = "NAMING_AND_SPEC_PLANNING_STANDARD_V1.0"
+LOCALIZATION_POLICY_VERSION = "CHINESE_LOCALIZATION_STANDARD_V1.0"
+POLICY_DOCUMENTS = (
+    "docs/NAMING_AND_SPEC_PLANNING_STANDARD.md",
+    "docs/CHINESE_LOCALIZATION_STANDARD.md",
+)
+FIELD_POLICIES: dict[str, list[str]] = {
+    "name": [
+        "品名只回答这是什么商品：简短、稳定、可搜索，核心商品类型必须中文化且同类统一。",
+        "不把尺寸、容量、重量、数量、包装数、颜色、价格和促销机械塞进品名；这些是规格事实。",
+        "只在有正式证据且确实影响商品身份时保留确认品牌、系列/IP、接口、技术词或型号；禁止猜品牌、系列和营销形容词。",
+        "技术词、接口、标准和型号不得误翻或丢失；当其定义商品类型时可进入品名，否则由规格承载。",
+    ],
+    "spec": [
+        "规格回答同一商品买哪一种：优先尺寸、容量、重量、数量、尺码、颜色、接口、型号、适配范围和电气/技术参数。",
+        "规格只使用源事实；不得凭常识补参数。数字、型号、接口、技术 Token 必须保留，允许的仅是格式标准化。",
+        "格式：× 作为乘号，– 作为范围，｜ 分隔多项，、 分隔枚举；数字与单位不留空格，例如 50×60cm、220–240V、4000mAh。",
+        "数量量词须按商品语义，无法可靠判断才使用受控 fallback 件并标记低置信度。",
+    ],
+    "cat1": [
+        "分类1只能是固定的15个中文类目之一；未知映射必须进入 CATEGORY_REVIEW，禁止创造第16类。",
+    ],
+    "cat2": [
+        "分类2是受控字典映射，不是自由翻译；未知值只能候选或 Review，不能编造正式值。",
+    ],
+    "description": [
+        "描述是客观、简洁的用途和明确卖点摘要；源描述为空时必须保持空，禁止凭名称或常识创作。",
+    ],
+    "details": [
+        "详情使用已确认字段名和字段：值；格式；普通西语值要中文化，详情商品编号必须等于当前 SKU。",
+    ],
+}
+SYSTEM_POLICY = (
+    "你是商品结构化中文标准化引擎。只返回 JSON 对象，禁止 Markdown 和解释。"
+    "只处理 requested_fields；所有输出必须遵守随请求给出的字段级规划规则。"
+    "保留全部数字和允许的技术 Token，未知内容不得猜测，不得改变官网事实。"
+)
+
 
 def _text(value: object) -> str:
     return "" if value is None else str(value).strip()
@@ -103,7 +146,14 @@ def _record(*, sku: str, source_hash: str, field: str, source: str, target: str,
         "requested_fields": [field],
         "source_field": field,
         "source_text": source,
-        "naming_policy": "普通西班牙语翻译成简洁中文；品牌、型号、接口、技术词和标准单位保留；所有数字必须保留；不臆造商品事实。",
+        "naming_policy_version": NAMING_POLICY_VERSION,
+        "localization_policy_version": LOCALIZATION_POLICY_VERSION,
+        "field_policy": FIELD_POLICIES.get(field, FIELD_POLICIES["name"]),
+        "global_guardrails": [
+            "普通西班牙语零容忍；只有已确认品牌、系列/IP、技术 Token、型号和标准单位可保留拉丁 Token。",
+            "字典和人工覆盖优先；AI 只生成候选，不直接写入正式字段。",
+            "不得增加或删除官网事实；数字仅可做单位和格式规范化。",
+        ],
     }
     return {
         "messages": [
@@ -115,10 +165,27 @@ def _record(*, sku: str, source_hash: str, field: str, source: str, target: str,
     }
 
 
-def build_dataset(dictionary_dir: Path, output_dir: Path, *, valid_ratio: float = 0.1) -> dict[str, Any]:
+def _resolve_policy_documents(policy_docs: Iterable[Path] | None = None) -> dict[str, str]:
+    if policy_docs is None:
+        repository_root = Path(__file__).resolve().parents[1]
+        policy_docs = (repository_root / relative for relative in POLICY_DOCUMENTS)
+    resolved = {str(Path(path)): _sha256(Path(path)) for path in policy_docs}
+    if not resolved or any(not Path(path).exists() for path in resolved):
+        raise FileNotFoundError("NAMING_POLICY_DOCUMENT_MISSING")
+    return resolved
+
+
+def build_dataset(
+    dictionary_dir: Path,
+    output_dir: Path,
+    *,
+    valid_ratio: float = 0.1,
+    policy_docs: Iterable[Path] | None = None,
+) -> dict[str, Any]:
     dictionary_dir = Path(dictionary_dir)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    policy_document_hashes = _resolve_policy_documents(policy_docs)
     known_tokens = _known_tokens(dictionary_dir)
     examples: list[dict[str, Any]] = []
     skipped: Counter[str] = Counter()
@@ -193,8 +260,11 @@ def build_dataset(dictionary_dir: Path, output_dir: Path, *, valid_ratio: float 
     write_jsonl(output_dir / "valid.jsonl", valid)
     source_files = {path.name: _sha256(path) for path in sorted(dictionary_dir.glob("*.csv"))}
     manifest = {
-        "schema_version": 1,
-        "policy_version": "CHINESE_LOCALIZATION_STANDARD_V1",
+        "schema_version": 2,
+        "policy_version": LOCALIZATION_POLICY_VERSION,
+        "naming_policy_version": NAMING_POLICY_VERSION,
+        "policy_documents": policy_document_hashes,
+        "field_policy_coverage": sorted(FIELD_POLICIES),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "source_directory": str(dictionary_dir),
         "source_files": source_files,

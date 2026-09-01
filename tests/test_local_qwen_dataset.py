@@ -31,7 +31,13 @@ def test_build_local_qwen_dataset_uses_only_trusted_rows_and_is_offline(tmp_path
     assert result["skipped"]["UNTRUSTED_STATUS"] == 1
     assert result["skipped"]["NUMERIC_MISMATCH"] == 1
     assert result["model_calls"] == 0
+    assert result["naming_policy_version"] == "NAMING_AND_SPEC_PLANNING_STANDARD_V1.0"
+    assert result["policy_documents"]
+    assert {"name", "spec", "cat1", "cat2"} <= set(result["field_policy_coverage"])
     rows = [json.loads(line) for line in (tmp_path / "out" / "train.jsonl").read_text(encoding="utf-8").splitlines()]
     rows += [json.loads(line) for line in (tmp_path / "out" / "valid.jsonl").read_text(encoding="utf-8").splitlines()]
     assert rows and all(row["messages"][-1]["role"] == "assistant" for row in rows)
     assert all(row["metadata"]["sku"] != "B" for row in rows)
+    user_payloads = [json.loads(row["messages"][1]["content"]) for row in rows]
+    assert all(payload["naming_policy_version"] == "NAMING_AND_SPEC_PLANNING_STANDARD_V1.0" for payload in user_payloads)
+    assert all(payload["field_policy"] and payload["global_guardrails"] for payload in user_payloads)

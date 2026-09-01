@@ -768,3 +768,9 @@ V1 完成后应具备：
 ### Final Closure Evidence Contract（2026-09-01）
 
 Learning Candidate 的语义身份仍由 `semantic_type + source_term + zh_value` 决定，但事实证据必须按 SKU 保存为结构化 `evidence`：每条包含 `sku`、`source_hash`、`source_run_id`、`source_commit_id` 和 `source_example`。同一 SKU+hash 只保留一条；同一 SKU 出现不同 hash 标记 `EVIDENCE_CONFLICT`，不得静默覆盖。CSV 的 `evidence_json` 是正式 freshness 依据，`evidence_skus` 仅为派生展示列。Promotion 必须逐条核验当前 PRIMARY 的 Localization source hash，任何缺失、非当前 SKU 或不匹配都阻断 promotion。
+
+### Local Qwen training contract（2026-09-01）
+
+本地 Qwen3:8B 的训练数据不是普通的西语→中文平行语料。`scripts/build_local_qwen_dataset.py` 只选可信知识状态，并为每条样本写入完整的字段级规划投影：品名只表达商品身份，规格承载消费者选择参数，分类使用固定受控值，品牌/IP/技术 Token 只在有证据时保留，数字与源事实不可臆造或丢失。样本同时记录 `NAMING_AND_SPEC_PLANNING_STANDARD.md` 和 `CHINESE_LOCALIZATION_STANDARD.md` 的 SHA-256。
+
+训练脚本只接受 schema v2 且同时带有 `naming_policy_version`、字段策略覆盖和源文档 hash 的数据集；旧的简化提示数据会被拒绝。QLoRA 的 loss 只作用于 assistant JSON 输出，不训练模型复读规则和源文本。适配器输出仍是离线候选，必须经过既有 Validator/Learning/Promotion Gate，不能自动写入字典、SQLite PRIMARY 或正式 Export。
