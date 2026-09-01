@@ -7,11 +7,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from action_tracker.localization.ai import SourceFacts, validate_ai_response
+from action_tracker.localization.formatter import format_spec
+# Allow `python scripts/evaluate_qwen3_adapter.py` as well as module imports.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.build_local_qwen_dataset import FIELD_POLICIES, NAMING_POLICY_VERSION, SYSTEM_POLICY
 
 
@@ -40,6 +45,20 @@ def _parse_completion(text: str) -> dict[str, Any] | None:
     except json.JSONDecodeError:
         return None
     return value if isinstance(value, dict) else None
+
+
+def _policy_format_pass(payload: dict[str, Any], requested_fields: tuple[str, ...]) -> tuple[bool, list[str]]:
+    reasons: list[str] = []
+    fields = payload.get("fields") if isinstance(payload.get("fields"), dict) else {}
+    if "spec" in requested_fields:
+        spec = str(fields.get("spec", ""))
+        if "|" in spec:
+            reasons.append("SPEC_ASCII_PIPE")
+        if re.search(r"(?<=\d)[xX](?=\d)", spec):
+            reasons.append("SPEC_ASCII_MULTIPLY")
+        if re.search(r"\d\s+(?:mAh|ml|mg|kg|cm|mm|m|g|L|W|V|A|Hz|lm|°C)\b", spec):
+            reasons.append("SPEC_UNIT_SPACE")
+    return not reasons, reasons
 
 
 def evaluate_adapter(*, base_model: str, adapter_dir: Path, max_new_tokens: int = 256) -> dict[str, Any]:
@@ -74,12 +93,19 @@ def evaluate_adapter(*, base_model: str, adapter_dir: Path, max_new_tokens: int 
         continuation = generated[0][inputs["input_ids"].shape[1]:]
         raw = tokenizer.decode(continuation, skip_special_tokens=True)
         payload = _parse_completion(raw)
-        valid, reasons = validate_ai_response(payload or {}, source, fields)
-        results.append({"fixture": name, "raw": raw, "json_object": payload is not None, "validator_pass": valid, "validator_reasons": list(reasons)})
+        raw_format_valid, raw_format_reasons = _policy_format_pass(payload or {}, fields)
+        normalized_payload = dict(payload or {})
+        normalized_fields = dict(normalized_payload.get("fields") or {})
+        if "spec" in normalized_fields:
+            normalized_fields["spec"] = format_spec(normalized_fields["spec"])
+        normalized_payload["fields"] = normalized_fields
+        valid, reasons = validate_ai_response(normalized_payload, source, fields)
+        format_valid, format_reasons = _policy_format_pass(normalized_payload, fields)
+        results.append({"fixture": name, "raw": raw, "normalized_fields": normalized_fields, "json_object": payload is not None, "validator_pass": valid, "raw_policy_format_pass": raw_format_valid, "policy_format_pass": format_valid, "validator_reasons": list(reasons) + format_reasons, "raw_format_reasons": raw_format_reasons})
     report = {
         "created_at": datetime.now(timezone.utc).isoformat(), "base_model": base_model,
         "adapter_dir": str(adapter_dir), "results": results,
-        "all_pass": all(item["validator_pass"] for item in results),
+        "all_pass": all(item["validator_pass"] and item["policy_format_pass"] for item in results),
         "production_apply": False, "primary_write": False, "dictionary_write": False,
     }
     (adapter_dir / "adapter_evaluation.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

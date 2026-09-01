@@ -106,4 +106,4 @@ feature 分支新增统一 Localization Engine、语义/命名/规格规划、�
 
 本机 Ollama `qwen3:8b` endpoint health 可达；本轮 product 与 numeric/technical-token JSON smoke 均通过结构化合同和 Validator，记为 `LOCAL_QWEN_VERIFIED`，但没有写入生产。implementation HEAD `cc4e2edb083b4834ec68a10eba62eb05eebdc7f2` 的 exact-head CI run `33467132288` 已通过 Ubuntu/Windows；不合并前不改生产配置。
 
-本地训练准备：`scripts/build_local_qwen_dataset.py` 已离线生成 364 条可信候选（333 train / 31 valid，147/16 个 SKU 组），并输出至 `runtime/local_ai/training_data/`。未调用模型、未修改字典或 PRIMARY；QLoRA 微调尚未开始。
+本地训练状态：`scripts/build_local_qwen_dataset.py` 已按 `NAMING_AND_SPEC_PLANNING_STANDARD_V1.0` 与 `CHINESE_LOCALIZATION_STANDARD_V1.0` 生成 364 条可信候选（333 train / 31 valid，147/16 个 SKU 组），每条样本带字段级 placement policy、数字/技术 Token 保护和源文档 hash。QLoRA 已在 F 盘本地 Qwen3:8B 上完成 1 epoch（RTX 3060，训练 loss 0.34097，验证 loss 0.06060）；适配器位于 `F:\LocalAI\Adapters\action-localization-qwen3-8b`，离线夹具验证 `all_pass=true`。规格原始模型输出中的半角 `|` 由既有确定性 `format_spec` 归一为 `｜` 后通过门禁。模型仍是离线候选，未写入字典、SQLite PRIMARY 或生产配置。

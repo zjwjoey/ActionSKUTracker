@@ -128,6 +128,18 @@ def _target_ok(target: str, known_tokens: set[str]) -> bool:
     return not has_ordinary_spanish(target, allowed_tokens=known_tokens)
 
 
+def _normalize_target(field: str, target: str) -> str:
+    """Apply only deterministic output formatting required by the standard."""
+    if field != "spec":
+        return target
+    normalized = target.replace("|", "｜")
+    normalized = re.sub(r"(?<=\d)[xX](?=\d)", "×", normalized)
+    # Compact retail units (50 ml -> 50ml; 220 V -> 220V).  Do not touch
+    # ordinary Chinese word spacing because it may carry meaning.
+    normalized = re.sub(r"(?<=\d)\s+(?=(?:mAh|ml|mg|kg|cm|mm|m|g|L|W|V|A|Hz|lm|°C)\b)", "", normalized)
+    return normalized.strip()
+
+
 def _record(*, sku: str, source_hash: str, field: str, source: str, target: str, source_facts: dict[str, str], source_kind: str) -> dict[str, Any]:
     response = {
         "sku": sku,
@@ -201,7 +213,7 @@ def build_dataset(
             continue
         source_facts = {key: _text(row.get(key)) for key in ("name_es_raw", "cat1_es", "cat2_es", "spec_es_raw")}
         for field, source_key, target_key in PRODUCT_FIELDS:
-            source, target = _text(row.get(source_key)), _text(row.get(target_key))
+            source, target = _text(row.get(source_key)), _normalize_target(field, _text(row.get(target_key)))
             if not source or not target:
                 skipped[f"EMPTY_{field.upper()}"] += 1
                 continue
