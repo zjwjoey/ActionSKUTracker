@@ -4,6 +4,8 @@ from action_tracker.services.hashing import localization_source_hash
 from action_tracker.localization.formatter import format_details, format_spec, format_unit_price
 from action_tracker.localization.learning import aggregate_candidates
 from action_tracker.localization.promotion import can_promote
+from action_tracker.localization.promotion import KnowledgePromotionRouter
+from action_tracker.localization.knowledge import KnowledgeLoader, ensure_schemas
 from action_tracker.localization.ai import FakeProvider, LocalOpenAICompatibleProvider, provider_from_config, resolve_unknown, validate_ai_response
 from action_tracker.database.schema import migrate_v2
 from action_tracker.database.connection import connect
@@ -108,6 +110,27 @@ def test_promotion_requires_human_for_product_type():
     assert not ok and "HUMAN_APPROVAL_REQUIRED" in reasons
     ok, _ = can_promote({"semantic_type": "PRODUCT_TYPE", "status": "EVIDENCE_ACCUMULATED"}, validator_pass=True, source_hash_match=True, human_approved=True)
     assert ok
+
+
+def test_learning_e2e_promotes_product_type_and_future_run_avoids_ai(tmp_path):
+    directory = tmp_path / "knowledge"
+    ensure_schemas(directory)
+    record = {"sku": "TEST-ESPUMADOR", "name_es": "Espumador eléctrico portátil", "cat1_es": "Cuidado personal", "spec_es": "10 g"}
+    knowledge = {"cat1_map": {"cuidado personal": "个人美容"}}
+    engine = LocalizationEngine(knowledge=knowledge)
+    first = engine.resolve(record)
+    assert "PRODUCT_TYPE_REVIEW" in first.review_reasons
+    provider = FakeProvider({record["sku"]: {"fields": {"name": "奶泡器"}, "product_type_candidate": {"source_term": "espumador", "canonical_zh": "奶泡器"}, "confidence": 0.99}})
+    candidate = resolve_unknown(engine, record, first, provider)
+    assert candidate and candidate["schema_status"] == "PASS" and provider.calls == 1
+    ai_item = candidate["product_type_candidate"]
+    routed = KnowledgePromotionRouter(directory).promote({**ai_item, "knowledge_type": "PRODUCT_TYPE", "semantic_type": "PRODUCT_TYPE", "candidate_id": "e2e-espumador", "status": "AI_CANDIDATE", "validator_status": "PASS"}, human_approved=True)
+    assert routed["route"] == "product_type_dictionary.csv"
+    loaded = KnowledgeLoader(directory).load()
+    loaded["cat1_map"] = knowledge["cat1_map"]
+    second = LocalizationEngine(knowledge=loaded).resolve(record)
+    assert second.fields["name_zh"].value == "奶泡器"
+    assert "PRODUCT_TYPE_REVIEW" not in second.review_reasons
 
 
 def test_sqlite_localization_apply_creates_versioned_zh_only_commit(tmp_path):
