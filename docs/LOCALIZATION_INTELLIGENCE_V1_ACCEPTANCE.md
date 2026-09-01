@@ -47,9 +47,9 @@
 
 ## CI / Git
 
-- 本地 feature HEAD 在提交后记录；相对 `origin/main` 仅前进，不落后。
-- 由于本轮环境无法连接 GitHub（fetch 返回代理连接失败），最新 feature HEAD 的 Ubuntu/Windows exact-head workflow、run ID 和 job 状态暂记 `NOT VERIFIED`；不得声称 CI PASS。
-- 本轮不 merge main、不 force push；完成本地验证后再推送 feature 分支。
+- feature HEAD：`3921d767bb647948b40337cd4773b7d448b8b25b`；相对 `origin/main` 为 ahead 26、behind 0。
+- exact-head CI：run `33464610129`，head SHA 与上述 HEAD 一致；Ubuntu `SUCCESS`、Windows `SUCCESS`；`tests/test_localization_intelligence.py` 已由 allowlist 实际执行。
+- 本轮不 merge main、不 force push；feature 分支已推送。
 
 ## 分层结论
 
