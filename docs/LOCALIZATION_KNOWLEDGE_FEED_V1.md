@@ -47,6 +47,7 @@ Run ID: `knowledge-feed-v1-baseline`
 | Metric | Value |
 |---|---:|
 | CURRENT | 5,379 |
+| READY | 391 |
 | REVIEW_REQUIRED | 4,988 |
 | Total candidates | 83 |
 | PRODUCT_TYPE | 20 |
@@ -60,6 +61,14 @@ Run ID: `knowledge-feed-v1-baseline`
 | Candidates marked `needs_ai` | 73 |
 | Estimated unique affected SKUs | 5,151 |
 | AI calls | 0 |
+
+The read-only audit issue breakdown is: `PRODUCT_TYPE_REVIEW` 4,630,
+`SPANISH_RESIDUAL` 1,671, `DESCRIPTION_REVIEW` 931,
+`DETAIL_VALUE_REVIEW` 543, `NUMERIC_FACT_MISMATCH` 334,
+`TECH_TOKEN_REVIEW` 110, `CATEGORY_REVIEW` 103,
+`SPEC_FORMAT_REVIEW` 54, `SOURCE_HASH_CHANGED` 13,
+`STALE_LOCALIZATION` 13, `SOURCE_BLOCKED` 7, `FACT_NOT_COVERED` 0, and
+`DATA_INCONSISTENCY` 7.
 
 Top candidates are mostly high-impact detail keys and technical tokens. The
 complete ranked list is in `knowledge_feed_top_200.csv`; the SKU-level impact
