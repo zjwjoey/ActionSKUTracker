@@ -104,4 +104,4 @@ feature 分支新增统一 Localization Engine、语义/命名/规格规划、�
 
 2026-09-01 收口状态：本地 Provider、结构化 Multi-SKU Learning/Promotion、Review Queue 字段适配、否定详情键和事实覆盖检查已实现；目标分支专项测试 32 passed、必测集合 114 passed、全量 395 passed。最终只读审计：5,379 CURRENT、READY 389、REVIEW_REQUIRED 4,990、普通西语残留 1,671、数字事实 mismatch 334、FACT_NOT_COVERED 0、SOURCE_BLOCKED 7、SOURCE_HASH_CHANGED 13、STALE_LOCALIZATION 13、AI eligible 0（生产 AI 关闭）、AI calls 0、AI avoidance 100%。代码层待本轮 implementation HEAD 的 exact-head CI；数据层 `LOCALIZATION_DATA_REVIEW_REQUIRED`；Production Apply/Auto Approval 保持关闭。
 
-本机 Ollama `qwen3:8b` endpoint health 可达；本轮 product 与 numeric/technical-token JSON smoke 均通过结构化合同和 Validator，记为 `LOCAL_QWEN_VERIFIED`，但没有写入生产。implementation HEAD `2cc507c8f3f5ad903aa41b391d2507044fbed04c` 的 exact-head CI run `33466724737` 已通过 Ubuntu/Windows；不合并前不改生产配置。
+本机 Ollama `qwen3:8b` endpoint health 可达；本轮 product 与 numeric/technical-token JSON smoke 均通过结构化合同和 Validator，记为 `LOCAL_QWEN_VERIFIED`，但没有写入生产。implementation HEAD `cc4e2edb083b4834ec68a10eba62eb05eebdc7f2` 的 exact-head CI run `33467132288` 已通过 Ubuntu/Windows；不合并前不改生产配置。
