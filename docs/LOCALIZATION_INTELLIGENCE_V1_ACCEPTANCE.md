@@ -50,8 +50,8 @@
 
 ## CI / Git
 
-- implementation feature HEAD：本轮代码提交后记录；文档提交可在其后，仅更新验收文字。
-- exact-head CI：需在本轮代码提交推送后记录最新 run；Ubuntu 与 Windows 均须 `SUCCESS`，并确认 allowlist 实际执行 `tests/test_localization_intelligence.py`。
+- implementation feature HEAD：`2cc507c8f3f5ad903aa41b391d2507044fbed04c`。
+- exact-head CI：run `33466724737`，head SHA 与 implementation HEAD 一致；Ubuntu `SUCCESS`、Windows `SUCCESS`，并确认 allowlist 实际执行 `tests/test_localization_intelligence.py`。
 - 本轮不 merge main、不 force push；feature 分支已推送。
 
 ## 分层结论
