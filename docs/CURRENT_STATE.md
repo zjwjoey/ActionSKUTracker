@@ -104,4 +104,4 @@ feature 分支新增统一 Localization Engine、语义/命名/规格规划、�
 
 2026-09-01 收口状态：本地 Provider、统一 Learning/Promotion、Review Queue 字段适配、否定详情键和事实覆盖检查已实现；目标分支专项测试 27 passed、必测集合 109 passed、全量 390 passed。最终只读审计：5,379 CURRENT、READY 389、REVIEW_REQUIRED 4,990、普通西语残留 1,671、数字事实 mismatch 334、FACT_NOT_COVERED 0、SOURCE_BLOCKED 7、SOURCE_HASH_CHANGED 13、STALE_LOCALIZATION 13、AI calls 0、AI avoidance 100%。代码层 `LOCALIZATION_V1_CODE_ACCEPTANCE_PENDING`（exact-head CI 未验证且 Qwen smoke 未通过）；数据层 `LOCALIZATION_DATA_REVIEW_REQUIRED`；Production Apply/Auto Approval 保持关闭。
 
-本机 Ollama `qwen3:8b` endpoint health 可达，但真实 JSON smoke 返回缺少合同要求的 `fields` 包装并出现英文/乱码，按规则记为 `LOCAL_QWEN_NOT_VERIFIED`，不降低 Validator。精确 HEAD `75aa6cc130bbbfd6bf0f83511e8c6cbd65e88cf7` 的 GitHub Actions run `33464728883` 已通过 Ubuntu/Windows；Localization 测试已实际执行。不合并 main，等待模型合同修复后再复核。
+本机 Ollama `qwen3:8b` endpoint health 可达，但真实 JSON smoke 返回缺少合同要求的 `fields` 包装并出现英文/乱码，按规则记为 `LOCAL_QWEN_NOT_VERIFIED`，不降低 Validator。实现 HEAD `08d7b34e063875309f9eb85a9b7d44799f86c141` 的 GitHub Actions run `33464852944` 已通过 Ubuntu/Windows；后续仅有文档提交，Localization 测试已实际执行。不合并 main，等待模型合同修复后再复核。
