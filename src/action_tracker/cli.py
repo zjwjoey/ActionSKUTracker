@@ -120,6 +120,10 @@ def build_parser() -> argparse.ArgumentParser:
     la = sub.add_parser("localization-audit", help="审计 CURRENT 中文字段、残留西语和数字事实")
     la.add_argument("--run-id", help="指定报告 run_id")
     la.add_argument("--current", action="store_true", help="审计 SQLite PRIMARY CURRENT")
+    kf = sub.add_parser("localization-knowledge-feed", help="基于只读 SQLite 快照生成知识候选 Feed")
+    kf.add_argument("--snapshot", required=True, help="SQLite Backup API 生成的只读快照")
+    kf.add_argument("--output", required=True, help="Feed 输出目录")
+    kf.add_argument("--run-id", default="knowledge-feed-v1-baseline", help="本轮 Feed 标识")
     sub.add_parser("localization-ai-status", help="检查本地 Localization AI Provider 配置与端点（只读）")
     sub.add_parser("localization-ai-check", help="执行虚构数据的本地 AI JSON 合同 smoke test（只读）")
     lr = sub.add_parser("localization-learning-report", help="查看最近一次 Localization learning candidates")
@@ -392,6 +396,14 @@ def main(argv=None) -> int:
             result = audit_current(cfg, run_id=args.run_id)
         except Exception as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False)); return 0
+    if args.command == "localization-knowledge-feed":
+        from .localization.feed import run_feed
+        try:
+            result = run_feed(cfg, snapshot=Path(args.snapshot), output_dir=Path(args.output), run_id=args.run_id)
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False)); return 0
     if args.command in {"localization-ai-status", "localization-ai-check"}:
