@@ -226,6 +226,10 @@ def test_field_level_apply_preserves_unmentioned_localization_and_requires_gate(
     migrate_v2(db_path, role="PRIMARY")
     with connect(db_path) as db:
         db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('ACT1001','1001','CURRENT')")
+        db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES('base-run','2026-09-08','COMMITTED','PASS',0,'now','now','2.0.0')")
+        db.execute("INSERT INTO commit_batches(commit_id,run_id,bundle_hash,schema_version,started_at,committed_at,status) VALUES('c1','base-run','h','2.0.0','now','now','COMMITTED')")
+        es = _record()
+        db.execute("INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,updated_at,source_hash) VALUES(?,?,?,?,?,?,?,?,?,?)", ('1001','es',es['name_es'],es['cat1_es'],es['cat2_es'],es['spec_es'],es['desc_es'],es['details_es'],'now',source_hash(es)))
         db.execute("INSERT INTO product_localizations(official_sku,language,name,spec,updated_at) VALUES('1001','zh','旧名','旧规格','now')")
     store = KnowledgeStore(db_path, role="PRIMARY")
     record = _record()
@@ -237,7 +241,7 @@ def test_field_level_apply_preserves_unmentioned_localization_and_requires_gate(
         pass
     else:
         raise AssertionError("disabled apply was not blocked")
-    assert store.apply_localizations([candidate], {"1001": record}, enabled=True, commit_id="c1") == 1
+    assert store.apply_localizations([candidate], {"1001": record}, enabled=True, commit_id="legacy-run", expected_base_commit_id="c1") == 1
     with connect(db_path) as db:
         row = db.execute("SELECT name,spec,name_source FROM product_localizations WHERE official_sku='1001' AND language='zh'").fetchone()
     assert tuple(row) == ("新名", "旧规格", "human_approved_ai")

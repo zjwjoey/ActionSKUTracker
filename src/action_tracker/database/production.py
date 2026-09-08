@@ -1043,11 +1043,13 @@ def apply_approved_localization_patches(
             from .provenance import sync_localization_field_provenance
             for patch, approval, source_hash in patch_rows:
                 sku = patch["official_sku"]; field = patch["field_name"]; new_value = patch.get("new_value")
+                patch_source = str(approval.get("source_name") or "PATCH_APPROVED")
                 if db.execute("SELECT 1 FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone() is None:
                     db.execute("INSERT INTO product_localizations(official_sku,language,updated_at,source_hash,last_commit_id,applied_commit_id) VALUES(?,?,?,?,?,?)", (sku, "zh", now, source_hash, commit_id, commit_id))
-                db.execute(f"UPDATE product_localizations SET {field}=?,updated_at=?,last_commit_id=?,applied_commit_id=?,source_hash=? WHERE official_sku=? AND language='zh'", (new_value, now, commit_id, commit_id, source_hash, sku))
+                source_column = {"name": "name_source", "cat1": "cat1_source", "cat2": "cat2_source", "spec": "spec_source", "description": "description_source", "details": "details_source"}[field]
+                db.execute(f"UPDATE product_localizations SET {field}=?,{source_column}=?,updated_at=?,last_commit_id=?,applied_commit_id=?,source_hash=? WHERE official_sku=? AND language='zh'", (new_value, patch_source, now, commit_id, commit_id, source_hash, sku))
                 values = {"official_sku": sku, "language": "zh", field: new_value,
-                          f"{field}_source": "PATCH_APPROVED", f"{field}_review_status": "APPROVED",
+                          f"{field}_source": patch_source, f"{field}_review_status": "APPROVED",
                           f"{field}_freshness_status": "CURRENT", f"{field}_source_hash": source_hash,
                           f"{field}_approved_by": approval.get("actor") or actor, f"{field}_approved_at": now,
                           f"{field}_applied_commit_id": commit_id}

@@ -1,18 +1,22 @@
 """SQLite persistence for Knowledge Production previews and audits.
 
-This store intentionally has no production-apply method.  It records
-resolution/queue/candidate/audit artifacts; applying Chinese values remains
-behind the existing production gates until the SQLite Primary cutover.
+Knowledge applies are still explicitly disabled by configuration in normal
+production. If enabled by an authorized caller, this store stages immutable
+field patches and delegates the single-transaction apply gate to the PRIMARY
+database coordinator; it never performs a direct localization upsert.
 """
 from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
 from ..database.connection import connect
+from ..database.immutable_patches import append_patch_event, create_localization_patch
+from ..database.production import apply_approved_localization_patches
 from ..database.schema import migrate_v2
 from .approval import ApprovalDecision
 from .contracts import Resolution, source_hash
@@ -116,37 +120,65 @@ class KnowledgeStore:
         return preview
 
     def apply_localizations(self, candidates: Iterable[dict[str, Any]], records: dict[str, dict[str, Any]], *,
-                            enabled: bool = False, commit_id: str | None = None) -> int:
-        """Apply approved candidate fields to PRIMARY SQLite only.
+                            enabled: bool = False, commit_id: str | None = None,
+                            expected_base_commit_id: str | None = None) -> int:
+        """Stage approved candidates as immutable patches, then apply them.
 
-        This is intentionally explicit and field-level; it never touches
-        products, lifecycle, prices, events, Master.xlsx, or exports.
+        The old direct ``product_localizations`` upsert path is deliberately
+        gone.  A caller must provide the committed base explicitly; each
+        candidate field becomes one patch and the production apply coordinator
+        performs the single transaction with source-hash and old-value gates.
+        ``commit_id`` is retained only for source compatibility and is not
+        treated as an implicit base.
         """
         if not enabled:
             raise PermissionError("KNOWLEDGE_PRODUCTION_APPLY_DISABLED")
-        with connect(self.path) as db:
-            role = db.execute("SELECT value FROM schema_metadata WHERE key='database_role'").fetchone()
-            if not role or role[0] != "PRIMARY":
-                raise PermissionError("KNOWLEDGE_APPLY_REQUIRES_PRIMARY")
-            applied = 0
-            for candidate in candidates:
-                sku = str(candidate.get("sku") or "")
-                record = records.get(sku)
-                if not record or str(candidate.get("source_hash") or "") != source_hash(record):
-                    raise ValueError("STALE_TRANSLATION_PREVIEW")
-                if str(candidate.get("approval_status") or "APPROVED").upper() not in {"APPROVED", "HUMAN_APPROVED", "AUTO_APPROVED"}:
-                    raise PermissionError("CANDIDATE_NOT_APPROVED")
-                existing = db.execute("SELECT * FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone()
-                current = dict(existing) if existing else {}
-                values = {field: current.get(field) for field in ("name", "cat1", "cat2", "spec", "description", "details")}
-                sources = {field: current.get(f"{field}_source") for field in values}
-                for field, value in (candidate.get("fields") or {}).items():
-                    if field in values and isinstance(value, str):
-                        values[field] = value
-                        sources[field] = candidate.get("provenance", "human_approved_ai")
-                db.execute("""INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,last_commit_id,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                    ON CONFLICT(official_sku,language) DO UPDATE SET name=excluded.name,cat1=excluded.cat1,cat2=excluded.cat2,spec=excluded.spec,description=excluded.description,details=excluded.details,source=excluded.source,review_status=excluded.review_status,updated_at=excluded.updated_at,last_commit_id=excluded.last_commit_id,source_hash=excluded.source_hash,resolution_status=excluded.resolution_status,name_source=excluded.name_source,cat1_source=excluded.cat1_source,cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,description_source=excluded.description_source,details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""",
-                    (sku, "zh", values["name"], values["cat1"], values["cat2"], values["spec"], values["description"], values["details"], "KNOWLEDGE", "APPROVED", datetime.now(timezone.utc).isoformat(), commit_id, candidate["source_hash"], "APPLIED", sources["name"], sources["cat1"], sources["cat2"], sources["spec"], sources["description"], sources["details"], "CURRENT", "MANUAL", datetime.now(timezone.utc).isoformat(), commit_id))
-                applied += 1
-            return applied
+        if not expected_base_commit_id:
+            raise PermissionError("KNOWLEDGE_APPLY_BASE_COMMIT_REQUIRED")
+        patch_ids: list[str] = []
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        for candidate in candidates:
+            sku = str(candidate.get("sku") or "").strip()
+            record = records.get(sku)
+            if not record or str(candidate.get("source_hash") or "") != source_hash(record):
+                raise ValueError("STALE_TRANSLATION_PREVIEW")
+            approval_status = str(candidate.get("approval_status") or "APPROVED").upper()
+            if approval_status not in {"APPROVED", "HUMAN_APPROVED"}:
+                raise PermissionError("CANDIDATE_NOT_APPROVED")
+            provenance = str(candidate.get("provenance") or "human_approved_ai")
+            fields = candidate.get("fields") or {}
+            if not isinstance(fields, dict):
+                raise ValueError("CANDIDATE_FIELDS_INVALID")
+            with connect(self.path) as db:
+                current_row = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='zh'",
+                    (sku,),
+                ).fetchone()
+            current = dict(zip(("name", "cat1", "cat2", "spec", "description", "details"), current_row or (None,) * 6))
+            for field, value in fields.items():
+                if field not in current or not isinstance(value, str):
+                    continue
+                if current[field] == value:
+                    continue
+                patch_id = hashlib.sha256(
+                    f"knowledge|{sku}|zh|{field}|{candidate['source_hash']}|{expected_base_commit_id}|{value}".encode("utf-8")
+                ).hexdigest()
+                create_localization_patch(
+                    self.path, patch_id=patch_id, official_sku=sku, language="zh", field_name=field,
+                    old_value=current[field], new_value=value, source_hash=str(candidate["source_hash"]),
+                    source_allowlist=[provenance], created_by="human:knowledge",
+                    evidence={"field_name": field, "base_commit_id": expected_base_commit_id},
+                    reason="knowledge_candidate_apply",
+                )
+                append_patch_event(
+                    self.path, patch_id=patch_id, event_type="PATCH_APPROVED", actor="human:knowledge",
+                    evidence={"field_name": field, "base_commit_id": expected_base_commit_id, "source_name": provenance},
+                )
+                patch_ids.append(patch_id)
+        if not patch_ids:
+            return 0
+        result = apply_approved_localization_patches(
+            self.path, patch_ids=patch_ids, expected_base_commit_id=expected_base_commit_id,
+            actor="human:knowledge", run_id=f"knowledge_apply_{commit_id or uuid.uuid4().hex[:12]}",
+        )
+        return int(result["applied_fields"])
