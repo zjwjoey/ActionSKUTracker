@@ -127,3 +127,7 @@ Raw/Normalized Fact 现在保留 `raw_value` 与 `normalized_value` 的不可变
 Localization Patch 采用 `PATCH_CREATED → PATCH_APPROVED → PATCH_APPLIED/REVOKED`
 追加事件，并有 source hash、字段和来源 allowlist 的 Apply Gate。上述能力已在临时
 SQLite 通过合同测试，但按本阶段安全边界尚未迁移或写入真实 PRIMARY。
+
+`localization_field_provenance` 也已加入 SQLite V2 additive schema，并由后续
+ProductionWriter 提交同步六个字段的独立来源、审批状态、source hash、freshness
+和 applied commit；现有 PRIMARY 尚未执行迁移，因此当前生产数据仍按旧投影审计。
