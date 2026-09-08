@@ -70,6 +70,18 @@ def test_release_blocks_undeclared_display_mismatch():
     assert result.counts["UNDECLARED_DISPLAY_MISMATCH"] == 1
 
 
+def test_field_level_review_status_overrides_global_status():
+    row = _row(review_status="VERIFIED")
+    row["zh_field_provenance"] = {
+        field: {"review_status": "VERIFIED", "freshness_status": "CURRENT"}
+        for field in ("name", "cat1", "cat2", "spec", "description", "details")
+    }
+    row["zh_field_provenance"]["description"]["review_status"] = "PENDING"
+    result = audit_research_release([row])
+    assert not result.ok
+    assert "UNAPPROVED_ZH:1001:desc_zh:status=PENDING" in result.issues
+
+
 def test_research_release_is_chinese_only_contract():
     assert str(ExportValidationError("RESEARCH_RELEASE_ZH_ONLY")) == "RESEARCH_RELEASE_ZH_ONLY"
 

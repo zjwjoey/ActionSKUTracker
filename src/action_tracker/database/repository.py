@@ -90,6 +90,14 @@ class ProductionRepository:
             rows = db.execute(
                 "SELECT * FROM products WHERE status='CURRENT' ORDER BY official_sku"
             ).fetchall()
+            try:
+                provenance_rows = db.execute(
+                    """SELECT official_sku,field_name,value,source,review_status,source_hash,
+                       updated_at,applied_commit_id,approved_by,approved_at,freshness_status
+                       FROM localization_field_provenance WHERE language='zh'"""
+                ).fetchall()
+            except sqlite3.OperationalError:
+                provenance_rows = []
             columns = [column[1] for column in db.execute("PRAGMA table_info(products)").fetchall()]
         return {_sku(row, columns): _product_row(row, columns) for row in rows if _sku(row, columns)}
 
@@ -154,9 +162,24 @@ class ProductionRepository:
                    LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'
                    WHERE p.status='CURRENT' ORDER BY p.official_sku"""
             ).fetchall()
+            try:
+                provenance_rows = db.execute(
+                    """SELECT official_sku,field_name,value,source,review_status,source_hash,
+                       updated_at,applied_commit_id,approved_by,approved_at,freshness_status
+                       FROM localization_field_provenance WHERE language='zh'"""
+                ).fetchall()
+            except sqlite3.OperationalError:
+                provenance_rows = []
         source_commit_id = str(head_row[0]) if head_row else ""
         source_run_id = str(run_row[0]) if run_row else ""
         records = []
+        field_provenance: dict[str, dict[str, dict[str, Any]]] = {}
+        for item in provenance_rows:
+            field_provenance.setdefault(str(item[0]), {})[str(item[1])] = {
+                "value": item[2], "source": item[3], "review_status": item[4],
+                "source_hash": item[5], "updated_at": item[6], "applied_commit_id": item[7],
+                "approved_by": item[8], "approved_at": item[9], "freshness_status": item[10],
+            }
         for row in rows:
             records.append({
                 "canonical_id": row[0], "sku": row[1], "name_es": row[16] or row[2], "name_zh": row[22] or row[3],
@@ -171,6 +194,7 @@ class ProductionRepository:
                 "zh_last_commit_id": row[40], "zh_applied_commit_id": row[41],
                 "unit_price_zh": row[42], "zh_unit_price_source": row[43],
                 "source_commit_id": source_commit_id, "source_run_id": source_run_id,
+                "zh_field_provenance": field_provenance.get(str(row[1]), {}),
             })
         return records
 

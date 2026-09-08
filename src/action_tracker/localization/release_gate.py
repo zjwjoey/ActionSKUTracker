@@ -14,6 +14,10 @@ from .policy import has_ordinary_spanish
 
 
 REQUIRED_ZH_FIELDS = ("name_zh", "cat1_zh", "cat2_zh", "spec_zh", "desc_zh", "details_zh")
+PROVENANCE_FIELDS = {
+    "name_zh": "name", "cat1_zh": "cat1", "cat2_zh": "cat2", "spec_zh": "spec",
+    "desc_zh": "description", "details_zh": "details",
+}
 APPROVED_REVIEW_STATUSES = frozenset({"VERIFIED", "APPROVED", "HUMAN_REVIEWED"})
 CURRENT_FRESHNESS = "CURRENT"
 
@@ -88,19 +92,32 @@ def audit_research_release(
 
     for row in rows:
         sku = str(row.get("sku") or row.get("official_sku") or "").strip() or "<EMPTY>"
+        field_provenance = row.get("zh_field_provenance") or {}
         missing = [field for field in REQUIRED_ZH_FIELDS if not str(row.get(field) or "").strip()]
         if missing:
             counts["MISSING_REQUIRED_ZH"] += len(missing)
             counts["UNAPPROVED_ZH"] += 1
             issues.extend(f"UNAPPROVED_ZH:{sku}:{field}" for field in missing)
-        review_status = str(row.get("zh_review_status") or row.get("review_status") or "").strip().upper()
-        if review_status not in APPROVED_REVIEW_STATUSES:
-            counts["UNAPPROVED_ZH"] += 1
-            issues.append(f"UNAPPROVED_ZH:{sku}:status={review_status or '<EMPTY>'}")
-        freshness = str(row.get("zh_freshness_status") or row.get("freshness_status") or "").strip().upper()
-        if freshness != CURRENT_FRESHNESS:
-            counts["STALE_ZH"] += 1
-            issues.append(f"STALE_ZH:{sku}:{freshness or '<EMPTY>'}")
+        if field_provenance:
+            for field in REQUIRED_ZH_FIELDS:
+                metadata = field_provenance.get(PROVENANCE_FIELDS[field]) or {}
+                review_status = str(metadata.get("review_status") or "").strip().upper()
+                if review_status not in APPROVED_REVIEW_STATUSES:
+                    counts["UNAPPROVED_ZH"] += 1
+                    issues.append(f"UNAPPROVED_ZH:{sku}:{field}:status={review_status or '<EMPTY>'}")
+                freshness = str(metadata.get("freshness_status") or "").strip().upper()
+                if freshness != CURRENT_FRESHNESS:
+                    counts["STALE_ZH"] += 1
+                    issues.append(f"STALE_ZH:{sku}:{field}:{freshness or '<EMPTY>'}")
+        else:
+            review_status = str(row.get("zh_review_status") or row.get("review_status") or "").strip().upper()
+            if review_status not in APPROVED_REVIEW_STATUSES:
+                counts["UNAPPROVED_ZH"] += 1
+                issues.append(f"UNAPPROVED_ZH:{sku}:status={review_status or '<EMPTY>'}")
+            freshness = str(row.get("zh_freshness_status") or row.get("freshness_status") or "").strip().upper()
+            if freshness != CURRENT_FRESHNESS:
+                counts["STALE_ZH"] += 1
+                issues.append(f"STALE_ZH:{sku}:{freshness or '<EMPTY>'}")
         expected_hash = localization_source_hash(row)
         actual_hash = str(row.get("zh_source_hash") or row.get("source_hash") or "").strip()
         if not actual_hash or actual_hash != expected_hash:
