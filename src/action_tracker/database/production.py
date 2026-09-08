@@ -299,8 +299,10 @@ class ProductionWriter:
                   incoming.get("source"), incoming.get("review_status"), incoming.get("updated_at") or now, incoming.get("last_commit_id") or commit_id, incoming.get("source_hash"),
                   incoming.get("resolution_status"), incoming.get("name_source"), incoming.get("cat1_source"), incoming.get("cat2_source"),
                   incoming.get("spec_source"), incoming.get("unit_price_source"), incoming.get("description_source"), incoming.get("details_source"), incoming.get("freshness_status"),
-                  incoming.get("approved_by"), incoming.get("approved_at"), incoming.get("applied_commit_id") or commit_id),
+                 incoming.get("approved_by"), incoming.get("approved_at"), incoming.get("applied_commit_id") or commit_id),
             )
+            from .provenance import sync_localization_field_provenance
+            sync_localization_field_provenance(db, incoming, commit_id=commit_id, now=now)
 
     @staticmethod
     def _insert_observations(db: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> None:
