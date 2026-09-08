@@ -79,7 +79,7 @@ SOURCE_HASH_MISMATCH = 0
 
 完成标准：Knowledge Growth 已安全 fast-forward 到 main；Data Closure 从新 main 创建；闭环合同和测试通过；生产 Apply、AI、Auto Approval 仍关闭；历史迁移和 Edge Recovery 未启动。
 
-本分支当前回归结果：`430 passed`。其中两个原有的“最近事件”测试已改为相对当前日期，避免固定历史日期导致日期滚动后的假失败；没有放宽生产查询语义。
+本分支当前回归结果：`431 passed`。其中两个原有的“最近事件”测试已改为相对当前日期，避免固定历史日期导致日期滚动后的假失败；没有放宽生产查询语义。
 
 ## 5. 2026-09-08 数据修复审计结果
 
