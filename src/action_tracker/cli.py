@@ -120,6 +120,7 @@ def build_parser() -> argparse.ArgumentParser:
     la = sub.add_parser("localization-audit", help="审计 CURRENT 中文字段、残留西语和数字事实")
     la.add_argument("--run-id", help="指定报告 run_id")
     la.add_argument("--current", action="store_true", help="审计 SQLite PRIMARY CURRENT")
+    sub.add_parser("research-release-audit", help="只读执行严格 research_release 发布门禁")
     kf = sub.add_parser("localization-knowledge-feed", help="基于只读 SQLite 快照生成知识候选 Feed")
     kf.add_argument("--snapshot", required=True, help="SQLite Backup API 生成的只读快照")
     kf.add_argument("--output", required=True, help="Feed 输出目录")
@@ -398,6 +399,18 @@ def main(argv=None) -> int:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False)); return 0
+    if args.command == "research-release-audit":
+        from .database.integration import database_path
+        from .database.repository import ProductionRepository, ProductionRepositoryError
+        from .localization.release_gate import audit_research_release
+        try:
+            records = ProductionRepository(database_path(cfg)).load_current_export_records()
+            result = audit_research_release(records, expected_skus={str(row.get("sku") or "") for row in records})
+        except (ProductionRepositoryError, OSError, ValueError) as exc:
+            print(json.dumps({"status": "FAIL", "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result.as_dict(), ensure_ascii=False))
+        return 0 if result.ok else 3
     if args.command == "localization-knowledge-feed":
         from .localization.feed import run_feed
         try:
