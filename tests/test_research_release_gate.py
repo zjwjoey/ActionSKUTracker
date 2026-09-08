@@ -1,7 +1,10 @@
 from action_tracker.localization.release_gate import audit_research_release
 from action_tracker.services.hashing import localization_source_hash
 from action_tracker.exporting.service import ExportValidationError
+from action_tracker.exporting import service as export_service
 from action_tracker.cli import build_parser
+from types import SimpleNamespace
+import pytest
 
 
 def _row(**overrides):
@@ -91,3 +94,16 @@ def test_export_cli_exposes_explicit_research_release_mode():
         "export", "--lang", "zh", "--no-images", "--date", "2026-09-08", "--research-release",
     ])
     assert args.research_release is True
+
+
+def test_formal_export_blocks_non_sqlite_source_in_research_release(monkeypatch, tmp_path):
+    profile = SimpleNamespace(language="zh", profile_id="full_zh_no_images")
+    source = SimpleNamespace(kind="FORMAL_SNAPSHOT", source_commit_id=None, run_id="r1", records=tuple(),
+                             export_date="2026-09-08")
+    monkeypatch.setattr(export_service, "load_profile", lambda *args, **kwargs: profile)
+    monkeypatch.setattr(export_service, "resolve_formal_source", lambda *args, **kwargs: source)
+    with pytest.raises(ExportValidationError, match="RESEARCH_RELEASE_REQUIRES_SQLITE_APPLIED_SOURCE"):
+        export_service.export_catalog(
+            {"project_root": tmp_path, "paths": {"exports": tmp_path}},
+            language="zh", export_date="2026-09-08", no_images=True, research_release=True,
+        )
