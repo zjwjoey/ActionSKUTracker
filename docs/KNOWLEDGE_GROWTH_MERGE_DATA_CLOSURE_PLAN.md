@@ -78,3 +78,24 @@ SOURCE_HASH_MISMATCH = 0
 所有自动测试使用 temporary SQLite、仓库内 fixture 或 `tmp_path`，无网络、无浏览器、无模型、无生产路径。先跑 field provenance、patch、release gate、database production、dictionary apply 定向测试，再跑全量 pytest 和 Ubuntu/Windows CI。
 
 完成标准：Knowledge Growth 已安全 fast-forward 到 main；Data Closure 从新 main 创建；闭环合同和测试通过；生产 Apply、AI、Auto Approval 仍关闭；历史迁移和 Edge Recovery 未启动。
+
+## 5. 2026-09-08 数据修复审计结果
+
+本次只读审计使用当前 PRIMARY 数据库和活跃工作区的本地候选字典，未写入生产数据库、Master 或 State：
+
+| 项目 | 结果 |
+|---|---:|
+| CURRENT SKU | 5,547 |
+| 中文 `cat2` 空值 | 320 |
+| 西语 `cat2` 空值 | 4 |
+| 有本地人工审核类目映射的中文候选 | 280 |
+| 已用官方产品页主面包屑确认的西语候选 | 4 |
+| 缺少正式中文类目映射、必须人工补齐 | 40 |
+
+候选输出位于 `artifacts/data_repair_20260908/`。其中 `Action_Master_data_repair_candidate_20260908.xlsx`
+只写入 280 条中文二级类目候选和 4 条官方西语二级类目候选，不能直接替代正式 Master；
+`category_repair_candidates.json` 保存每个 SKU、字段、旧值、新值、来源和 Apply 状态。
+
+当前远端 `main` 的类目字典仍有 186 条记录但 0 条中文 `cat2_zh`，而活跃工作区的本地候选字典有
+77 条已填中文二级类目映射。本地候选字典必须先经过独立的 Dictionary/Field Apply 审批，不能直接进入
+`research_release`。40 条缺映射记录保持 `BLOCKED/REVIEW_REQUIRED`，禁止按标题或常识自动翻译。
