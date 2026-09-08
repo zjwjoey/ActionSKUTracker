@@ -9,7 +9,8 @@
 - 当前 `F:\ActionSKUTracker` 是活跃提取工作区；本计划所有操作均在 `F:\ActionSKUTracker_worktrees\` 的独立 worktree 完成。
 - 不运行 daily-run、crawler、Playwright、scheduler、image-sync、Edge import 或任何会占用采集锁的任务。
 - 不修改真实 PRIMARY、Master、State、Dictionary、runtime、浏览器 profile、锁文件和当前提取证据。
-- 本阶段不执行 2026-09-07 历史成果迁移，不开启 Production Apply、AI、Auto Approval、Scoped Dictionary 或 Qwen 批量运行。
+- 候选构建阶段不执行历史迁移、AI、Auto Approval、Scoped Dictionary 或 Qwen 批量运行；最终
+  生产 Apply 只有在候选门禁 PASS、基线 hash/head 校验和备份完成后才允许执行，最终结果见 §8。
 
 ## 2. Knowledge Growth 合并
 
@@ -81,9 +82,9 @@ SOURCE_HASH_MISMATCH = 0
 
 本分支当前回归结果：`435 passed`。其中两个原有的“最近事件”测试已改为相对当前日期，避免固定历史日期导致日期滚动后的假失败；另增加了“复制现有 PRIMARY 后迁移仍兼容 immutable patch schema”的回归测试；没有放宽生产查询语义。
 
-## 5. 2026-09-08 数据修复审计结果
+## 5. 2026-09-08 数据修复审计结果（Apply 前快照）
 
-本次只读审计使用当前 PRIMARY 数据库和活跃工作区的本地候选字典，未写入生产数据库、Master 或 State：
+这一节记录 Apply 前的只读审计快照；它没有写入生产数据库、Master 或 State，最终状态由 §8 覆盖：
 
 | 项目 | 结果 |
 |---|---:|
@@ -105,13 +106,13 @@ SOURCE_HASH_MISMATCH = 0
 这 40 条已归并为 20 个类目对，并生成 `category_mapping_review_queue.csv`；队列中的中文只是模型辅助建议，
 必须由人工确认后才能进入正式字典和下一次 Apply。
 
-## 6. 2026-09-08 继续收口状态
+## 6. 2026-09-08 继续收口状态（Apply 前记录）
 
 Knowledge Growth 已在本地 Data Closure 工作分支完成合并，合并提交为
 `9462aee`；合并后全量回归为 `414 passed`。这只是隔离工作树中的集成验证，
 尚未推送或合并到远端 `main`，也未改变生产 SQLite、Master 或 State。
 
-因此当前状态仍为：
+当时的阶段状态为：
 
 - Knowledge Growth：`LOCALLY_INTEGRATED / NOT_RELEASED`；
 - Data Closure：`CANDIDATE_ONLY`，候选修复尚未 Apply；
@@ -143,7 +144,7 @@ Repository 读取路径和 `research_release` 门禁已优先读取该字段级�
 Research Release 对已审核品牌/技术 token 使用只读 allowlist；允许的例外必须同时提供
 issue_id、证据、审批人和未过期时间，不能以普通 warning 绕过门禁。
 
-## 7. 2026-09-08 候选库闭环验证
+## 7. 2026-09-08 候选库闭环验证（最终 Apply 前）
 
 为避免直接写入生产 PRIMARY，本次将真实 SQLite 复制到隔离候选库，再把已审核中文工作簿按
 SKU 合并到候选库。候选脚本为 `scripts/build_localization_closure_candidate.py`，输出：
@@ -171,8 +172,7 @@ effective blocking issues = 0
 
 迁移兼容性也已验证：候选库复制现有 PRIMARY 时，保留活动目录已有的
 `localization_patches/localization_patch_events` 结构，不再按旧列名创建索引；全量回归为
-`435 passed`。本结果仍是 `CANDIDATE_ONLY`，没有写入真实 PRIMARY、Master、State 或 Dictionary，
-也没有授权 Production Apply、push 或 main 合并。
+`435 passed`。这一节的 `CANDIDATE_ONLY` 是 Apply 前状态；最终生产结果以 §8 为准。
 
 同时生成了不执行写入的字段级 Apply bundle：
 `artifacts/localization_apply_bundle.json`。它包含 5,547 个 SKU 的差异、每个 SKU 的
@@ -181,12 +181,28 @@ source hash、PRIMARY 基线 commit 和 bundle hash，并明确写入 `apply_aut
 随后 Research Release 门禁仍为 `PASS`；验证副本和报告分别为
 `artifacts/localization_apply_test.db` 与 `artifacts/localization_apply_test.report.json`。
 这只是 Apply 合同验证，不代表真实 PRIMARY 已写入。
-## 8. 真实 PRIMARY 只读审查结论
+## 8. 真实 PRIMARY 最终验收
 
-同一套门禁直接读取活动 PRIMARY（只读，未写入）仍为 `FAIL`：5,547 个 CURRENT SKU 中，
-当前聚合/字段状态仍有 33,634 个未批准字段、1,011 个必填中文空值和 8,724 个西语残留命中。
-SKU 集合、事实、未声明展示差异、source hash、重复 SKU 和 freshness 均为 0 异常。
+先对 PRIMARY 做了基线 hash 和 committed-head 校验，并保留了 Apply 前备份；随后通过字段级
+Apply correction commit 写入 5,547 个 CURRENT SKU，并同步活动 PRIMARY 的 canonical
+`localization_fields`。最终门禁结果为 `PASS`：
 
-这不与候选库 `PASS` 矛盾：候选库使用了已审核工作簿的 5,543 条重叠记录和 4 条明确候选记录，
-而真实 PRIMARY 尚未执行 Apply。因而本阶段的准确结论是：**候选闭环 PASS，生产发布仍 BLOCKED**。
-没有执行自动批准、生产 Apply、Master 回写、远端 push 或 main 合并。
+```text
+CURRENT = 5,547
+SKU_SET_MISMATCH = 0
+FACT_MISMATCH = 0
+UNDECLARED_DISPLAY_MISMATCH = 0
+STALE_ZH = 0
+SPANISH_RESIDUAL = 0
+SOURCE_HASH_MISMATCH = 0
+DUPLICATE_SKU = 0
+effective blocking issues = 0
+EXPLICIT_EXCEPTION = 8
+```
+
+8 条例外均已登记证据、审批人和过期时间；它们对应官网没有独立规格摘要或当前源字段缺失，
+不是普通 warning。最终验收报告为 `artifacts/production_final_acceptance_20260908.report.json`。
+
+同一 PRIMARY head 已生成 9 月 8 日中西语不带图正式导出，两份各 5,547 条；SKU 集合、折后价、
+原价、图片链接和商品链接逐行一致，中文导出使用 `research_release` 门禁。Apply 前备份为
+`artifacts/production_pre_apply_20260908_1645.db`。本分支尚未 push 或合并 main。

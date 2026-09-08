@@ -971,6 +971,31 @@ def apply_localization_correction(
             db.execute("""INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,unit_price,description,details,source,review_status,updated_at,last_commit_id,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,unit_price_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(official_sku,language) DO UPDATE SET name=excluded.name,cat1=excluded.cat1,cat2=excluded.cat2,spec=excluded.spec,unit_price=excluded.unit_price,description=excluded.description,details=excluded.details,source=excluded.source,review_status=excluded.review_status,updated_at=excluded.updated_at,last_commit_id=excluded.last_commit_id,source_hash=excluded.source_hash,resolution_status=excluded.resolution_status,name_source=excluded.name_source,cat1_source=excluded.cat1_source,cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,unit_price_source=excluded.unit_price_source,description_source=excluded.description_source,details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""", (sku, "zh", vals["name"], vals["cat1"], vals["cat2"], vals["spec"], vals["unit_price"], vals["description"], vals["details"], "LOCALIZATION", "APPROVED", now, commit_id, source_hash_value, "APPLIED", src["name"], src["cat1"], src["cat2"], src["spec"], src["unit_price"], src["description"], src["details"], "CURRENT", "LOCALIZATION", now, commit_id))
+            # The active PRIMARY reads field-level approval from the
+            # canonical localization_fields projection.  Keep it in the
+            # same transaction as the aggregate localization row so a
+            # successful correction can never leave the release gate seeing
+            # stale PENDING metadata.
+            from .provenance import sync_localization_field_provenance
+            sync_localization_field_provenance(
+                db,
+                {
+                    "official_sku": sku,
+                    "language": "zh",
+                    **vals,
+                    "source": "LOCALIZATION",
+                    "review_status": "APPROVED",
+                    "freshness_status": "CURRENT",
+                    "source_hash": source_hash_value,
+                    "name_source": src["name"], "cat1_source": src["cat1"],
+                    "cat2_source": src["cat2"], "spec_source": src["spec"],
+                    "description_source": src["description"], "details_source": src["details"],
+                    "approved_by": "LOCALIZATION", "approved_at": now,
+                    "applied_commit_id": commit_id,
+                },
+                commit_id=commit_id,
+                now=now,
+            )
             changed += 1
         db.commit()
     return {"status": "SUCCESS", "base_commit_id": base, "commit_id": commit_id, "correction_run_id": correction_run, "applied_skus": changed}

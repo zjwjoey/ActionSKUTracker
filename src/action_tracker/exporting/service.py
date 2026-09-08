@@ -121,11 +121,12 @@ def export_catalog(
         raise ExportValidationError(f"EXPORT_LANGUAGE_UNSUPPORTED: {language}")
     validate_output_rows(rows)
     if research_release:
-        from ..localization.release_gate import audit_research_release, load_allowed_tokens
+        from ..localization.release_gate import audit_research_release, load_allowed_tokens, load_explicit_exceptions
         release = audit_research_release(
             source.records,
             expected_skus={str(r.get("sku") or "") for r in source.records},
             allowed_tokens=load_allowed_tokens(Path(cfg["project_root"]) / "data" / "dictionary"),
+            explicit_exceptions=load_explicit_exceptions(Path(cfg["project_root"]) / "config" / "research_release_exceptions.json"),
         )
         if not release.ok:
             first = ",".join(release.issues[:8])

@@ -313,6 +313,8 @@ def test_sqlite_localization_apply_creates_versioned_zh_only_commit(tmp_path):
     with connect(path) as db:
         row = db.execute("SELECT name,unit_price,last_commit_id,source_hash,freshness_status FROM product_localizations WHERE official_sku='1' AND language='zh'").fetchone()
         assert tuple(row) == ("测试商品", "0,50 €/件", result["commit_id"], source_hash(facts), "CURRENT")
+        field_rows = db.execute("SELECT COUNT(*), MIN(review_status), MAX(applied_commit_id) FROM localization_fields WHERE official_sku='1' AND language='zh'").fetchone()
+        assert tuple(field_rows) == (6, "APPROVED", result["commit_id"])
         assert db.execute("SELECT COUNT(*) FROM commit_batches").fetchone()[0] == 2
 
 

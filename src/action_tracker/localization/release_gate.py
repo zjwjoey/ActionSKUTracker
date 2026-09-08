@@ -13,6 +13,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from ..services.hashing import localization_source_hash
 import re
+import json
 
 
 REQUIRED_ZH_FIELDS = ("name_zh", "cat1_zh", "cat2_zh", "spec_zh", "desc_zh", "details_zh")
@@ -214,6 +215,29 @@ def load_allowed_tokens(dictionary_root: Path) -> set[str]:
                             tokens.add(token)
                             tokens.update(part for part in token.split() if part)
     return tokens
+
+
+def load_explicit_exceptions(path: Path) -> list[dict[str, str]]:
+    """Load only evidence-backed, expiring release exceptions.
+
+    Missing files deliberately mean no exceptions.  The gate still validates
+    every entry's issue id, approver, evidence and expiry before suppressing
+    anything; this is not a general warning allowlist.
+    """
+    path = Path(path)
+    if not path.exists():
+        return []
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, dict):
+        payload = payload.get("exceptions", [])
+    if not isinstance(payload, list):
+        raise ValueError("RELEASE_EXCEPTIONS_SCHEMA_INVALID")
+    result: list[dict[str, str]] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            raise ValueError("RELEASE_EXCEPTION_ENTRY_INVALID")
+        result.append({key: str(item.get(key) or "").strip() for key in ("issue_id", "approved_by", "evidence", "expires_at")})
+    return result
 
 
 def _validated_exception_ids(exceptions: Iterable[Mapping[str, Any]]) -> set[str]:

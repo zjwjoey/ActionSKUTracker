@@ -1,4 +1,4 @@
-from action_tracker.localization.release_gate import audit_research_release, load_allowed_tokens
+from action_tracker.localization.release_gate import audit_research_release, load_allowed_tokens, load_explicit_exceptions
 from action_tracker.services.hashing import localization_source_hash
 from action_tracker.exporting.service import ExportValidationError
 from action_tracker.exporting import service as export_service
@@ -139,3 +139,14 @@ def test_explicit_exception_requires_audit_fields_and_can_close_one_issue():
     assert result.ok
     assert "UNAPPROVED_ZH:1001:cat2_zh" not in result.issues
     assert result.counts["EXPLICIT_EXCEPTION"] == 1
+
+
+def test_release_exception_file_is_explicit_and_structured(tmp_path):
+    path = tmp_path / "exceptions.json"
+    path.write_text(
+        '{"exceptions":[{"issue_id":"UNAPPROVED_ZH:1:spec_zh",'
+        '"approved_by":"reviewer","evidence":"source absent",'
+        '"expires_at":"2099-12-31"}]}',
+        encoding="utf-8",
+    )
+    assert load_explicit_exceptions(path)[0]["issue_id"] == "UNAPPROVED_ZH:1:spec_zh"
