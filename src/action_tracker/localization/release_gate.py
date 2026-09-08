@@ -7,10 +7,12 @@ formal export or before an explicit localization apply.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import csv
+from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from ..services.hashing import localization_source_hash
-from .policy import has_ordinary_spanish
+import re
 
 
 REQUIRED_ZH_FIELDS = ("name_zh", "cat1_zh", "cat2_zh", "spec_zh", "desc_zh", "details_zh")
@@ -20,6 +22,18 @@ PROVENANCE_FIELDS = {
 }
 APPROVED_REVIEW_STATUSES = frozenset({"VERIFIED", "APPROVED", "HUMAN_REVIEWED"})
 CURRENT_FRESHNESS = "CURRENT"
+_SPANISH_WORDS = {
+    "para", "con", "sin", "varios", "varias", "diferentes", "unidades", "unidad", "colores",
+    "negro", "blanco", "rojo", "azul", "verde", "de", "del", "la", "el", "y", "o", "en",
+    "tipo", "tamaño", "material", "contenido", "cantidad", "incluye", "lavable", "resistente",
+    "hogar", "limpieza", "cocina", "juguetes", "mascotas", "cuidado", "personal", "oficina",
+    "papelería", "ropa", "moda", "viajes", "jardín", "decoración", "iluminación", "audio",
+    "accesorios", "pilas", "muebles", "maquillaje", "bebé", "alimentación", "galletas", "bebidas",
+    "perro", "salud", "almacenamiento", "cartuchos", "tinta", "cables", "divisores", "baño",
+    "artículos", "deportivos", "fiesta", "papel", "escolar", "fácil", "aplicar", "más", "leer",
+    "caja", "plástico", "producto", "juego", "juguete", "botella", "set", "crema", "gel",
+}
+_WORD_RE = re.compile(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+")
 
 
 @dataclass(frozen=True)
@@ -30,6 +44,7 @@ class ResearchReleaseResult:
     counts: Mapping[str, int]
     issues: tuple[str, ...]
     records_checked: int
+    exceptions: tuple[str, ...] = ()
 
     @property
     def ok(self) -> bool:
@@ -42,6 +57,7 @@ class ResearchReleaseResult:
             "records_checked": self.records_checked,
             "counts": dict(self.counts),
             "issues": list(self.issues),
+            "exceptions": list(self.exceptions),
         }
 
 
@@ -52,6 +68,7 @@ def audit_research_release(
     exported_rows: Iterable[Mapping[str, Any]] | None = None,
     allowed_tokens: set[str] | None = None,
     display_mismatches: Iterable[str] | None = None,
+    explicit_exceptions: Iterable[Mapping[str, Any]] | None = None,
 ) -> ResearchReleaseResult:
     """Audit records against the non-negotiable research release contract.
 
@@ -124,7 +141,7 @@ def audit_research_release(
             counts["SOURCE_HASH_MISMATCH"] += 1
             issues.append(f"SOURCE_HASH_MISMATCH:{sku}")
         for field in REQUIRED_ZH_FIELDS:
-            if has_ordinary_spanish(str(row.get(field) or ""), allowed_tokens=allowed_tokens):
+            if _has_release_spanish_residual(str(row.get(field) or ""), allowed_tokens=allowed_tokens):
                 counts["SPANISH_RESIDUAL"] += 1
                 issues.append(f"SPANISH_RESIDUAL:{sku}:{field}")
 
@@ -150,8 +167,65 @@ def audit_research_release(
 
     if counts["UNDECLARED_DISPLAY_MISMATCH"]:
         issues.append("UNDECLARED_DISPLAY_MISMATCH")
-    status = "PASS" if not any(counts.values()) else "FAIL"
-    return ResearchReleaseResult(status, counts, tuple(dict.fromkeys(issues)), len(rows))
+    exception_ids = _validated_exception_ids(explicit_exceptions or ())
+    unique_issues = tuple(dict.fromkeys(issues))
+    suppressed = tuple(issue for issue in unique_issues if issue in exception_ids)
+    effective_issues = tuple(issue for issue in unique_issues if issue not in exception_ids)
+    counts["EXPLICIT_EXCEPTION"] = len(suppressed)
+    blocking_counts = {key: value for key, value in counts.items() if key != "EXPLICIT_EXCEPTION"}
+    status = "PASS" if not any(blocking_counts.values()) or not effective_issues and suppressed else "FAIL"
+    return ResearchReleaseResult(status, counts, effective_issues, len(rows), suppressed)
+
+
+def load_allowed_tokens(dictionary_root: Path) -> set[str]:
+    """Load reviewed brand/technical tokens without treating normal Spanish as safe."""
+    tokens: set[str] = set()
+    for filename, columns in (
+        ("brand_dictionary.csv", ("canonical_name", "aliases_es")),
+        ("tech_token_dictionary.csv", ("term_es", "term", "token")),
+    ):
+        path = Path(dictionary_root) / filename
+        if not path.exists():
+            continue
+        with path.open(encoding="utf-8-sig", newline="") as handle:
+            for row in csv.DictReader(handle):
+                status = str(row.get("review_status") or "").strip().upper()
+                if status and status not in {"HUMAN_REVIEWED", "VERIFIED", "CAT1_CONFIRMED"}:
+                    continue
+                for column in columns:
+                    for token in str(row.get(column) or "").replace("|", ",").split(","):
+                        token = token.strip()
+                        if token:
+                            tokens.add(token)
+                            tokens.update(part for part in token.split() if part)
+    return tokens
+
+
+def _validated_exception_ids(exceptions: Iterable[Mapping[str, Any]]) -> set[str]:
+    """Return only explicit, non-expired exceptions with audit evidence."""
+    from datetime import date
+    accepted: set[str] = set()
+    today = date.today().isoformat()
+    for item in exceptions:
+        issue_id = str(item.get("issue_id") or "").strip()
+        approved_by = str(item.get("approved_by") or "").strip()
+        evidence = str(item.get("evidence") or "").strip()
+        expires_at = str(item.get("expires_at") or "").strip()
+        if issue_id and approved_by and evidence and expires_at >= today:
+            accepted.add(issue_id)
+    return accepted
+
+
+def _has_release_spanish_residual(value: str, *, allowed_tokens: set[str] | None) -> bool:
+    """Detect known ordinary Spanish while allowing reviewed brand/model text."""
+    allowed = {token.lower() for token in (allowed_tokens or set())}
+    for word in _WORD_RE.findall(value or ""):
+        lower = word.lower()
+        if lower in allowed or lower in {"usb", "usb-c", "led", "lcd", "diy", "fsc"}:
+            continue
+        if lower in _SPANISH_WORDS:
+            return True
+    return False
 
 
 def _normalized(value: Any) -> str:

@@ -1,4 +1,4 @@
-from action_tracker.localization.release_gate import audit_research_release
+from action_tracker.localization.release_gate import audit_research_release, load_allowed_tokens
 from action_tracker.services.hashing import localization_source_hash
 from action_tracker.exporting.service import ExportValidationError
 from action_tracker.exporting import service as export_service
@@ -107,3 +107,35 @@ def test_formal_export_blocks_non_sqlite_source_in_research_release(monkeypatch,
             {"project_root": tmp_path, "paths": {"exports": tmp_path}},
             language="zh", export_date="2026-09-08", no_images=True, research_release=True,
         )
+
+
+def test_allowed_tokens_load_only_reviewed_dictionary_values(tmp_path):
+    (tmp_path / "brand_dictionary.csv").write_text(
+        "canonical_name,aliases_es,review_status\nBrand Uno,Brand Uno|Uno,HUMAN_REVIEWED\nBad,Bad,UNREVIEWED\n",
+        encoding="utf-8",
+    )
+    assert "Brand Uno" in load_allowed_tokens(tmp_path)
+    assert "Uno" in load_allowed_tokens(tmp_path)
+    assert "Bad" not in load_allowed_tokens(tmp_path)
+
+
+def test_release_residual_check_allows_series_but_blocks_known_spanish():
+    assert audit_research_release([_row(name_zh="Spidey 收纳盒")]).ok
+    result = audit_research_release([_row(name_zh="Hogar 收纳盒")])
+    assert not result.ok
+    assert result.counts["SPANISH_RESIDUAL"] == 1
+
+
+def test_explicit_exception_requires_audit_fields_and_can_close_one_issue():
+    result = audit_research_release(
+        [_row(cat2_zh="")],
+        explicit_exceptions=[{
+            "issue_id": "UNAPPROVED_ZH:1001:cat2_zh",
+            "approved_by": "reviewer",
+            "evidence": "official page has no category",
+            "expires_at": "2099-12-31",
+        }],
+    )
+    assert result.ok
+    assert "UNAPPROVED_ZH:1001:cat2_zh" not in result.issues
+    assert result.counts["EXPLICIT_EXCEPTION"] == 1

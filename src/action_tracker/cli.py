@@ -404,10 +404,14 @@ def main(argv=None) -> int:
     if args.command == "research-release-audit":
         from .database.integration import database_path
         from .database.repository import ProductionRepository, ProductionRepositoryError
-        from .localization.release_gate import audit_research_release
+        from .localization.release_gate import audit_research_release, load_allowed_tokens
         try:
             records = ProductionRepository(database_path(cfg)).load_current_export_records()
-            result = audit_research_release(records, expected_skus={str(row.get("sku") or "") for row in records})
+            result = audit_research_release(
+                records,
+                expected_skus={str(row.get("sku") or "") for row in records},
+                allowed_tokens=load_allowed_tokens(Path(cfg["project_root"]) / "data" / "dictionary"),
+            )
         except (ProductionRepositoryError, OSError, ValueError) as exc:
             print(json.dumps({"status": "FAIL", "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
