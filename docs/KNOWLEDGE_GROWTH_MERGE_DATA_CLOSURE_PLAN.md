@@ -128,9 +128,11 @@ Localization Patch 采用 `PATCH_CREATED → PATCH_APPROVED → PATCH_APPLIED/RE
 追加事件，并有 source hash、字段和来源 allowlist 的 Apply Gate。上述能力已在临时
 SQLite 通过合同测试，但按本阶段安全边界尚未迁移或写入真实 PRIMARY。
 
-`localization_field_provenance` 也已加入 SQLite V2 additive schema，并由后续
-ProductionWriter 提交同步六个字段的独立来源、审批状态、source hash、freshness
-和 applied commit；现有 PRIMARY 尚未执行迁移，因此当前生产数据仍按旧投影审计。
+SQLite V2 同时支持活动 PRIMARY 的 `localization_fields` canonical projection 和旧闭环
+fixture 的 `localization_field_provenance` 兼容投影。ProductionWriter 提交时按字段同步独立
+来源、审批状态、source hash、freshness 和 applied commit；Repository 优先读取 canonical
+projection，缺少字段级 freshness 时才回退到已存在的聚合状态。这样既不改变现有 PRIMARY
+事实，也不会把活动库的字段级审批误判成全量 stale。
 
 Repository 读取路径和 `research_release` 门禁已优先读取该字段级投影；旧数据库缺少
 该表时只走兼容回退，并保留明确的全局状态检查。
