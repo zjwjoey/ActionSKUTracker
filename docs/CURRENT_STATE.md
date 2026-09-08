@@ -15,7 +15,7 @@
 - SQLite integrity、foreign keys、presence states：`PASS`
 - Master/known_skus/offline_skus 兼容投影：`export_sync=SUCCESS`
 - 2026-09-08 中文/西语无图导出：各 5,547 条，SKU、价格、图片链接、商品链接逐条一致
-- 最新闭环代码分支：`feat/master-dictionary-export-closure-v1`；本轮修复将提交并推送到该分支，尚未合并 main
+- 最新闭环代码分支：`feat/master-dictionary-export-closure-v1`；本轮修复已提交并推送，尚未合并 main
 
 当前保留两类非阻断告警：部分官网详情/二级类目源字段本身为空（导出备注已显式标记），
 以及 51 个历史 SKU 没有可追溯的 `source_first_seen`、部分字典条目仍处于人工复核队列。
