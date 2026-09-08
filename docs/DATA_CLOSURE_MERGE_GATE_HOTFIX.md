@@ -55,6 +55,7 @@ source hash.
 
 The full local suite passes (`449 passed`). The CI-safe allowlist includes the
 field provenance, immutable patch, research release, category evidence,
-partial apply, and export atomicity modules. GitHub exact-head Ubuntu and
-Windows status still must be checked after the branch is pushed; this document
-does not treat an older run as evidence for a new commit.
+partial apply, and export atomicity modules. Exact-head run `34247898108` for
+commit `69dd59a1f3648b982034949304167759016493d1` passed on both Ubuntu and
+Windows; each job reported `449 passed`. The Node.js 20 deprecation notice is
+an upstream action warning and did not fail the run.
