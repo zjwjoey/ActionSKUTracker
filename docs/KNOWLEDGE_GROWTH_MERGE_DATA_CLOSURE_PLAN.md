@@ -134,3 +134,6 @@ ProductionWriter 提交同步六个字段的独立来源、审批状态、source
 
 Repository 读取路径和 `research_release` 门禁已优先读取该字段级投影；旧数据库缺少
 该表时只走兼容回退，并保留明确的全局状态检查。
+
+`category_backlog` 与事件表已加入 additive schema；关闭 `CATEGORY_MISSING` 必须提供
+官方商品页证据 URL、人工决策人和中文值，不能使用标题、常识或交叉分类自动关闭。
