@@ -104,3 +104,16 @@ SOURCE_HASH_MISMATCH = 0
 
 这 40 条已归并为 20 个类目对，并生成 `category_mapping_review_queue.csv`；队列中的中文只是模型辅助建议，
 必须由人工确认后才能进入正式字典和下一次 Apply。
+
+## 6. 2026-09-08 继续收口状态
+
+Knowledge Growth 已在本地 Data Closure 工作分支完成合并，合并提交为
+`9462aee`；合并后全量回归为 `414 passed`。这只是隔离工作树中的集成验证，
+尚未推送或合并到远端 `main`，也未改变生产 SQLite、Master 或 State。
+
+因此当前状态仍为：
+
+- Knowledge Growth：`LOCALLY_INTEGRATED / NOT_RELEASED`；
+- Data Closure：`CANDIDATE_ONLY`，候选修复尚未 Apply；
+- Category Backlog：`REVIEW_REQUIRED`；
+- Raw/Normalized Fact、Immutable Patch、Research Release Gate：`MISSING`。
