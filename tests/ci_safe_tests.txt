@@ -37,6 +37,7 @@ tests/test_writer.py
 tests/test_knowledge_production.py
 tests/test_localization_intelligence.py
 tests/test_localization_field_contract_hotfix.py
+tests/test_localization_knowledge_feed.py
 tests/test_local_qwen_dataset.py
 tests/test_qwen_qlora_training.py
 tests/test_qwen_qlora_adapter_eval.py
