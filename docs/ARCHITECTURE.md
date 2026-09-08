@@ -9,7 +9,8 @@
 3. 官网西语事实如何被稳定、可审计地标准化为中文？
 4. 如何生成固定、可复核的交付表，而不污染事实和 Master？
 
-系统是本地优先的 Excel/CSV/JSON 管线，不依赖数据库作为生产主链。
+系统是本地优先的 SQLite/Excel/CSV/JSON 管线。SQLite PRIMARY 是生产主链和唯一读事实源，
+Excel/CSV 只作为经过同步确认的兼容投影；旧 Excel Writer 不得绕过 SQLite PRIMARY 写入事实。
 
 ## 2. 五层架构
 
@@ -86,14 +87,16 @@ Detail 完整性单独记录。Presence 完整且已冻结后，Detail 中断不
 
 ## 6. Master 与 State
 
-生产主数据仍由以下文件承担：
+兼容投影和审计文件由以下路径承担，事实主链在 SQLite PRIMARY：
 
-- `runtime/master/Action_Master.xlsx`：CURRENT、长期商品、事件、Review 和 run 记录；
-- `runtime/state/known_skus.csv`：跨日生命周期事实；
-- `runtime/state/offline_skus.csv`：由 known_skus 派生的 OFFLINE 视图；
+- `runtime/db/action_tracker.db`：Product、Presence、Lifecycle、价格、事件和字段级本地化事实；
+- `runtime/master/Action_Master.xlsx`：SQLite PRIMARY 的兼容投影；
+- `runtime/state/known_skus.csv`：SQLite PRIMARY 的生命周期兼容投影；
+- `runtime/state/offline_skus.csv`：由 SQLite PRIMARY 派生的 OFFLINE 兼容视图；
 - Snapshot/Staging：每轮可追溯证据。
 
-SQLite 是未来预留层，当前冻结。任何 SQLite 迁移都必须单独设计事务、回滚、迁移和回归测试，不能混入字典或导出阶段。
+SQLite PRIMARY 已接管生产读路径。任何 schema/迁移仍必须单独设计事务、回滚、迁移和回归测试；
+导出和兼容投影必须绑定当前 SQLite committed head，并在 `export_sync` 中记录 SUCCESS。
 
 ## 7. Detail 补充链
 

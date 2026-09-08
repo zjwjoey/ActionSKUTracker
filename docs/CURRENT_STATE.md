@@ -4,6 +4,23 @@
 项目目录：`F:\\ActionSKUTracker_main_merge`（验证 worktree；生产数据仍在 `F:\\ActionSKUTracker\\runtime`）
 当前开发分支：`feat/chinese-localization-intelligence-v1`
 
+## 2026-09-08 最新生产验收覆盖
+
+以下是当前 PRIMARY 的最新状态，覆盖本文件后面的历史快照；后面的旧数量只作为当时验收记录：
+
+- SQLite PRIMARY：`F:\\ActionSKUTracker\\runtime\\db\\action_tracker.db`
+- products：9,033；CURRENT：5,547；MISSING：26；OFFLINE：23；HISTORICAL：2,610；ABSENT：827
+- 最新 committed head：`LOCALIZATION_PROVENANCE_REPAIR_20260908_localization_LOCALIZATION_PROVENANCE_REPAIR_20260908_bc9c848a_b35ca62aa1ef`
+- 最新 Apply run：QA `PASS`、`dry_run=0`，5,547 个 CURRENT SKU 已写入字段级本地化和 canonical provenance
+- SQLite integrity、foreign keys、presence states：`PASS`
+- Master/known_skus/offline_skus 兼容投影：`export_sync=SUCCESS`
+- 2026-09-08 中文/西语无图导出：各 5,547 条，SKU、价格、图片链接、商品链接逐条一致
+- 最新闭环代码分支：`feat/master-dictionary-export-closure-v1`；本轮修复将提交并推送到该分支，尚未合并 main
+
+当前保留两类非阻断告警：部分官网详情/二级类目源字段本身为空（导出备注已显式标记），
+以及 51 个历史 SKU 没有可追溯的 `source_first_seen`、部分字典条目仍处于人工复核队列。
+字典审计最新结果为 30 PASS / 2 WARN / 0 FAIL；西语导出 HTML、`null/undefined` 和双冒号残留均为 0。
+
 ## 当前结论
 
 Architecture V2 已合并到 `main@59adcb1`。当前 feature 分支只收口

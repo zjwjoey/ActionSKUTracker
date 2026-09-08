@@ -20,6 +20,7 @@ from action_tracker.excel.reader import ES_MAP, ZH_MAP
 from action_tracker.excel.writer import RUN_LOG_HEADERS
 from action_tracker.exporting.excel_writer import write_catalog_xlsx
 from action_tracker.exporting.service import ExportValidationError, export_catalog
+from action_tracker.exporting.service import _clean_display_text, _es_remarks
 from action_tracker.images.assets import ImageAssetRecord, ImageManifest
 from action_tracker.images.derivatives import ImageDerivativeService
 
@@ -119,6 +120,28 @@ def _write_dictionary(directory: Path, record: dict, *, product=None, manual=Non
     _write_csv(directory / "model_translation_overrides.csv", MODEL_TRANSLATION_HEADERS, model or [])
     _write_csv(directory / "source_damage_report.csv", SOURCE_DAMAGE_HEADERS, [])
     return source_hash
+
+
+def test_export_display_text_removes_legacy_null_sentinel_without_touching_payload():
+    assert _clean_display_text("null. Color: Negro") == "Color: Negro"
+    assert _clean_display_text("undefined. Texto") == "Texto"
+    assert _clean_display_text("null") == ""
+    assert _clean_display_text("Producto normal") == "Producto normal"
+
+
+def test_clean_display_text_removes_html_projection_pollution():
+    value = '<a href="https://example.test">Puedes ver aquí</a>\n>Texto <span>útil</span>'
+    cleaned = _clean_display_text(value)
+    assert "<a" not in cleaned and "<span" not in cleaned
+    assert ">" not in cleaned
+    assert "Puedes ver aquí" in cleaned and "Texto útil" in cleaned
+
+
+def test_es_export_remarks_expose_source_gaps():
+    remarks = _es_remarks({"sku": "1", "desc_es": "", "details_es": None, "cat2_es": ""})
+    assert "Descripción pendiente" in remarks
+    assert "Detalles pendientes" in remarks
+    assert "Categoría 2 pendiente" in remarks
 
 
 def test_es_export_reads_latest_formal_master_and_keeps_sources_read_only(tmp_path):
