@@ -101,3 +101,6 @@ SOURCE_HASH_MISMATCH = 0
 当前远端 `main` 的类目字典仍有 186 条记录但 0 条中文 `cat2_zh`，而活跃工作区的本地候选字典有
 77 条已填中文二级类目映射。本地候选字典必须先经过独立的 Dictionary/Field Apply 审批，不能直接进入
 `research_release`。40 条缺映射记录保持 `BLOCKED/REVIEW_REQUIRED`，禁止按标题或常识自动翻译。
+
+这 40 条已归并为 20 个类目对，并生成 `category_mapping_review_queue.csv`；队列中的中文只是模型辅助建议，
+必须由人工确认后才能进入正式字典和下一次 Apply。

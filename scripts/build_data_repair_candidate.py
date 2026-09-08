@@ -45,6 +45,31 @@ OFFICIAL_CAT2 = {
     },
 }
 
+# Suggestions are deliberately emitted into a review queue only.  They are
+# not written to the dictionary and cannot be applied by this command.
+SUGGESTED_ZH_CAT2 = {
+    ("Cuidado personal", "Depilación y afeitado"): "脱毛与剃须",
+    ("Moda", "Relojes y joyas"): "手表与珠宝",
+    ("Comer y beber", "Bebidas"): "饮料",
+    ("Mascotas", "Alimentación para animales"): "宠物食品",
+    ("Cuidado personal", "Maquillaje"): "彩妆",
+    ("Comer y beber", "Galletas"): "饼干",
+    ("Mascotas", "Perro"): "狗狗用品",
+    ("Cuidado personal", "Cuidado facial"): "面部护理",
+    ("Vivienda", "Accesorios de baño"): "浴室配件",
+    ("Jardín", "Decoración para el jardín"): "花园装饰",
+    ("Multimedia", "Audio"): "音频",
+    ("Jardín", "Iluminación exterior"): "户外照明",
+    ("Oficina y papelería", "Cartuchos de tinta"): "墨盒",
+    ("Multimedia", "Accesorios multimedia"): "多媒体配件",
+    ("Multimedia", "Pilas"): "电池",
+    ("Vivienda", "Muebles"): "家具",
+    ("Cuidado personal", "Cuidados para el bebé"): "婴儿护理",
+    ("Comer y beber", "Alimentación"): "食品",
+    ("Multimedia", "Cables y divisores"): "线材与分配器",
+    ("Vivienda", "Lámparas"): "灯具",
+}
+
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -147,11 +172,37 @@ def write_candidate(patches: list[dict[str, object]]) -> Path:
     return candidate
 
 
+def write_review_queue(rows: list[dict[str, object]], patches: list[dict[str, object]]) -> Path:
+    queue = OUT / "category_mapping_review_queue.csv"
+    counts: dict[tuple[str, str], int] = {}
+    for item in patches:
+        if item["apply_status"] != "BLOCKED" or item["language"] != "zh":
+            continue
+        prefix, pair = str(item["evidence"]).split(":", 1)
+        cat1, cat2 = pair.split("|", 1)
+        counts[(cat1, cat2)] = counts.get((cat1, cat2), 0) + 1
+    with queue.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=(
+            "cat1_es", "cat2_es", "sku_count", "suggested_cat2_zh",
+            "review_status", "reason",
+        ))
+        writer.writeheader()
+        for (cat1, cat2), count in sorted(counts.items()):
+            writer.writerow({
+                "cat1_es": cat1, "cat2_es": cat2, "sku_count": count,
+                "suggested_cat2_zh": SUGGESTED_ZH_CAT2.get((cat1, cat2), ""),
+                "review_status": "REVIEW_REQUIRED",
+                "reason": "当前正式字典无 cat2_zh；候选译名仅供人工确认，不得自动 Apply",
+            })
+    return queue
+
+
 def main() -> None:
     rows = load_current()
     category_map = load_dictionary()
     patches = build_patch(rows, category_map)
     candidate = write_candidate(patches)
+    review_queue = write_review_queue(rows, patches)
     patch_path = OUT / "category_repair_candidates.json"
     patch_path.write_text(json.dumps(patches, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     summary = {
@@ -172,6 +223,8 @@ def main() -> None:
         "blocked_candidates": sum(p["apply_status"] == "BLOCKED" for p in patches),
         "candidate_workbook": str(candidate),
         "patch_file": str(patch_path),
+        "review_queue": str(review_queue),
+        "blocked_pair_count": len({p["evidence"] for p in patches if p["apply_status"] == "BLOCKED"}),
     }
     (OUT / "audit.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False))
