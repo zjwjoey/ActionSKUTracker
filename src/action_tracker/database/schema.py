@@ -195,9 +195,12 @@ CREATE TABLE IF NOT EXISTS category_backlog_events (
  created_at TEXT NOT NULL,
  FOREIGN KEY (queue_id) REFERENCES category_backlog(queue_id)
 );
-CREATE INDEX IF NOT EXISTS idx_source_fact_versions_sku_field ON source_fact_versions(official_sku,field_name,created_at);
-CREATE INDEX IF NOT EXISTS idx_localization_patch_events_patch ON localization_patch_events(patch_id,created_at);
-CREATE INDEX IF NOT EXISTS idx_category_backlog_status ON category_backlog(status,cat1_es,cat2_es,official_sku);
+-- Indexes for additive tables are created by ``migrate_v2`` after inspecting
+-- the existing schema. PRIMARY databases created by the extraction system
+-- may already contain an immutable ``localization_patches`` projection with
+-- ``occurred_at`` rather than this branch's legacy ``created_at`` column.
+-- Keeping CREATE INDEX out of this script makes the migration additive and
+-- safe for either schema family.
 CREATE TABLE IF NOT EXISTS migration_source_issues (
  issue_id INTEGER PRIMARY KEY,
  source_name TEXT NOT NULL,
@@ -408,6 +411,35 @@ def migrate_v2(path, *, role: str = "SHADOW"):
     migrate(path)
     with connect(path) as db:
         db.executescript(V2_DDL)
+        # Additive indexes must follow the columns that actually exist.  The
+        # active PRIMARY schema uses ``product_fact_versions`` and
+        # ``occurred_at`` for its immutable patch event log; the closure
+        # branch uses ``source_fact_versions``/``created_at``.  Never mutate
+        # an existing table merely to satisfy an index name.
+        def _columns(table: str) -> set[str]:
+            return {str(row[1]) for row in db.execute(f"PRAGMA table_info({table})").fetchall()}
+
+        source_table = "source_fact_versions" if db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='source_fact_versions'"
+        ).fetchone() else "product_fact_versions"
+        source_columns = _columns(source_table)
+        if {"official_sku", "created_at"}.issubset(source_columns):
+            db.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_source_fact_versions_sku_field "
+                f"ON {source_table}(official_sku,created_at)"
+            )
+        patch_event_columns = _columns("localization_patch_events")
+        event_time = "created_at" if "created_at" in patch_event_columns else "occurred_at"
+        if {"patch_id", event_time}.issubset(patch_event_columns):
+            db.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_localization_patch_events_patch "
+                f"ON localization_patch_events(patch_id,{event_time})"
+            )
+        if {"status", "cat1_es", "cat2_es", "official_sku"}.issubset(_columns("category_backlog")):
+            db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_category_backlog_status "
+                "ON category_backlog(status,cat1_es,cat2_es,official_sku)"
+            )
         # Older PRIMARY databases had an export_sync CHECK constraint that
         # could not represent a pending projection superseded by a newer DB
         # head.  SQLite cannot alter CHECK constraints in place, so copy the

@@ -79,7 +79,7 @@ SOURCE_HASH_MISMATCH = 0
 
 完成标准：Knowledge Growth 已安全 fast-forward 到 main；Data Closure 从新 main 创建；闭环合同和测试通过；生产 Apply、AI、Auto Approval 仍关闭；历史迁移和 Edge Recovery 未启动。
 
-本分支当前回归结果：`434 passed`。其中两个原有的“最近事件”测试已改为相对当前日期，避免固定历史日期导致日期滚动后的假失败；没有放宽生产查询语义。
+本分支当前回归结果：`435 passed`。其中两个原有的“最近事件”测试已改为相对当前日期，避免固定历史日期导致日期滚动后的假失败；另增加了“复制现有 PRIMARY 后迁移仍兼容 immutable patch schema”的回归测试；没有放宽生产查询语义。
 
 ## 5. 2026-09-08 数据修复审计结果
 
@@ -140,3 +140,34 @@ Repository 读取路径和 `research_release` 门禁已优先读取该字段级�
 
 Research Release 对已审核品牌/技术 token 使用只读 allowlist；允许的例外必须同时提供
 issue_id、证据、审批人和未过期时间，不能以普通 warning 绕过门禁。
+
+## 7. 2026-09-08 候选库闭环验证
+
+为避免直接写入生产 PRIMARY，本次将真实 SQLite 复制到隔离候选库，再把已审核中文工作簿按
+SKU 合并到候选库。候选脚本为 `scripts/build_localization_closure_candidate.py`，输出：
+
+- `artifacts/localization_closure_candidate.db`
+- `artifacts/localization_closure_candidate.report.json`
+
+结果：当前 PRIMARY 的 5,547 个 CURRENT SKU 中，5,543 个来自已审核工作簿，4 个源表缺少对应
+审核行，使用明确标记的候选值补齐；未把工作簿中的 9 个历史 SKU 混入 CURRENT。候选发布门禁结果为
+`PASS`：
+
+```text
+SKU_SET_MISMATCH = 0
+FACT_MISMATCH = 0
+UNDECLARED_DISPLAY_MISMATCH = 0
+STALE_ZH = 0
+SPANISH_RESIDUAL = 0
+SOURCE_HASH_MISMATCH = 0
+DUPLICATE_SKU = 0
+effective blocking issues = 0
+```
+
+8 个空字段没有被静默放行，而是全部进入 `EXPLICIT_EXCEPTION`：4 个 SKU 的官网没有独立规格摘要，
+另 4 个新候选 SKU 的详情源字段在当前 PRIMARY 中不存在；每条都有证据、审批标识和过期时间。
+
+迁移兼容性也已验证：候选库复制现有 PRIMARY 时，保留活动目录已有的
+`localization_patches/localization_patch_events` 结构，不再按旧列名创建索引；全量回归为
+`435 passed`。本结果仍是 `CANDIDATE_ONLY`，没有写入真实 PRIMARY、Master、State 或 Dictionary，
+也没有授权 Production Apply、push 或 main 合并。
