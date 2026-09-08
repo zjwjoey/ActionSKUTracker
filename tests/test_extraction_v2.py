@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 
 from action_tracker.database.connection import connect
 from action_tracker.database.schema import migrate_v2
@@ -75,13 +76,14 @@ def test_latest_price_is_one_deterministic_row_per_sku(tmp_path: Path):
 
 def test_event_ranges_recent_offline_reappeared_and_historical_filters(tmp_path: Path):
     path = _db(tmp_path)
+    recent = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
     with connect(path) as db:
-        db.execute("INSERT INTO lifecycle_state(official_sku,canonical_id,current_status,offline_date,last_state_observation_date,updated_at) VALUES('1002','B','OFFLINE','2026-08-30','2026-08-30','2026-08-30')")
-        db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('A','1001','2026-08-30','REAPPEARED')")
+        db.execute("INSERT INTO lifecycle_state(official_sku,canonical_id,current_status,offline_date,last_state_observation_date,updated_at) VALUES('1002','B','OFFLINE',?,?,?)", (recent, recent, recent))
+        db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('A','1001',?,'REAPPEARED')", (recent,))
         db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,old_price,new_price,change_type) VALUES('A','1001','2026-08-20',1.5,1.0,'DOWN')")
-        db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,old_price,new_price,change_type) VALUES('A','1001','2026-08-30',1.0,1.4,'UP')")
+        db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,old_price,new_price,change_type) VALUES('A','1001',?,1.0,1.4,'UP')", (recent,))
     svc = ExtractionService(path)
-    assert svc.execute({"event_types": ["REAPPEARED"], "event_from": "2026-08-30", "event_to": "2026-08-30", "limit": 10}).matched_count == 1
+    assert svc.execute({"event_types": ["REAPPEARED"], "event_from": recent, "event_to": recent, "limit": 10}).matched_count == 1
     assert svc.execute({"event_types": ["REAPPEARED"], "event_from": "2026-08-01", "event_to": "2026-08-29", "limit": 10}).matched_count == 0
     assert svc.execute({"statuses": ["OFFLINE"], "event_types": ["OFFLINE"], "event_last_n_days": 7, "limit": 10}).matched_count == 1
     assert svc.execute({"historical_low_max": 1.0, "limit": 10}).matched_count == 1
@@ -90,8 +92,9 @@ def test_event_ranges_recent_offline_reappeared_and_historical_filters(tmp_path:
 
 def test_extraction_contract_time_dimensions_and_canonical_id(tmp_path: Path):
     path = _db(tmp_path)
+    recent = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
     with connect(path) as db:
-        db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('A','1001','2026-08-30','PRICE_DOWN')")
+        db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('A','1001',?,'PRICE_DOWN')", (recent,))
     svc = ExtractionService(path)
     assert ExtractionQuery().normalized()["statuses"] == ExtractionQuery.from_dict({}).normalized()["statuses"] == ["current"]
     assert svc.execute({"canonical_id": "A", "first_seen_from": "2026-08-01", "first_seen_to": "2026-08-01"}).matched_count == 1
