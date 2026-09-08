@@ -31,6 +31,7 @@ def write_template1_xlsx(
     zh_rows: list[dict[str, Any]],
     image_root: Path | None = None,
     embed_zh_images: bool = False,
+    allowed_image_skus: set[str] | None = None,
 ) -> dict[str, int]:
     workbook = openpyxl.Workbook()
     first = workbook.active
@@ -40,6 +41,7 @@ def write_template1_xlsx(
     image_stats = _write_catalog_sheet(
         workbook.create_sheet("今日中文清单"), zh_rows,
         image_root=image_root, embed_images=embed_zh_images,
+        allowed_image_skus=allowed_image_skus,
     )
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -171,6 +173,7 @@ def _write_catalog_sheet(
     *,
     image_root: Path | None = None,
     embed_images: bool = False,
+    allowed_image_skus: set[str] | None = None,
 ) -> dict[str, int]:
     ws.append(list(CATALOG_HEADERS))
     for row in rows:
@@ -191,7 +194,9 @@ def _write_catalog_sheet(
         if embed_images:
             sku = str(rows[row_no - 2].get("编号") or "").strip()
             image_path = image_root / f"{sku}.png" if image_root and sku else None
-            if image_path and image_path.exists():
+            if image_path and image_path.exists() and (
+                allowed_image_skus is None or sku in allowed_image_skus
+            ):
                 image = ExcelImage(str(image_path))
                 image.width = 250
                 image.height = 250

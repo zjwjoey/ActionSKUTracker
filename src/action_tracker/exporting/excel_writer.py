@@ -20,6 +20,7 @@ def write_catalog_xlsx(
     workbook_format: dict[str, Any],
     image_root: Path | None = None,
     embed_images: bool = False,
+    allowed_image_skus: set[str] | None = None,
 ) -> dict[str, int]:
     """原子写入单工作表商品清单。调用方负责所有业务校验。"""
     materialized = list(rows)
@@ -36,7 +37,7 @@ def write_catalog_xlsx(
     for cell in ws[1]:
         cell.fill = fill
         cell.font = font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=bool(header_cfg.get("wrap_text", False)))
 
     ws.freeze_panes = str(workbook_format.get("freeze_panes") or "A2")
     if workbook_format.get("auto_filter", True):
@@ -51,10 +52,13 @@ def write_catalog_xlsx(
         "折后价": 13, "原价": 13, "单价": 16, "描述": 48, "产品详情": 56,
         "图片链接": 42, "商品链接": 58, "备注": 34,
     }
+    widths.update({str(key): float(value) for key, value in (workbook_format.get("column_widths") or {}).items()})
     for header, col in index.items():
         ws.column_dimensions[get_column_letter(col)].width = widths.get(header, 18)
 
     price_format = str((workbook_format.get("price") or {}).get("number_format") or "€#,##0.00")
+    date_columns = set(workbook_format.get("date_columns") or ())
+    date_format = str(workbook_format.get("date_number_format") or "yyyy-mm-dd")
     embedded_count = 0
     missing_count = 0
     for row_no in range(2, len(materialized) + 2):
@@ -68,16 +72,24 @@ def write_catalog_xlsx(
                 cell.number_format = "@"
             elif header in {"折后价", "原价"} and cell.value is not None:
                 cell.number_format = price_format
+            elif header in date_columns and cell.value is not None:
+                cell.number_format = date_format
             elif header in {"图片链接", "商品链接"} and cell.value:
                 target = str(cell.value)
-                cell.value = str(hyperlink_labels.get(header) or target)
+                # Keep the actual URL visible in the cell.  The workbook still
+                # carries a clickable hyperlink, but exports must remain
+                # machine-readable and start with http(s), not display labels
+                # such as “查看图片” or “查看商品”.
+                cell.value = target
                 cell.hyperlink = target
                 cell.style = "Hyperlink"
         if embed_images:
             sku = str(materialized[row_no - 2].get("编号") or "").strip()
             image_path = image_root / f"{sku}.png" if image_root and sku else None
             image_column = index.get("图片")
-            if image_column and image_path and image_path.exists():
+            if image_column and image_path and image_path.exists() and (
+                allowed_image_skus is None or sku in allowed_image_skus
+            ):
                 image = ExcelImage(str(image_path))
                 image.width = 250
                 image.height = 250

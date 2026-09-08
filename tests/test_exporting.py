@@ -19,6 +19,7 @@ from action_tracker.dictionary import (
 from action_tracker.excel.reader import ES_MAP, ZH_MAP
 from action_tracker.excel.writer import RUN_LOG_HEADERS
 from action_tracker.exporting.service import ExportValidationError, export_catalog
+from action_tracker.exporting.excel_writer import write_catalog_xlsx
 
 
 def _cfg(tmp_path: Path) -> dict:
@@ -33,6 +34,7 @@ def _cfg(tmp_path: Path) -> dict:
             "dictionary": tmp_path / "dictionary",
             "dictionary_baseline": tmp_path / "dictionary_baseline",
         },
+        "history_sources_path": tmp_path / "history_sources.yaml",
     }
 
 
@@ -141,7 +143,7 @@ def test_es_export_reads_latest_formal_master_and_keeps_sources_read_only(tmp_pa
         assert ws.cell(2, 7).value == 2.5
         assert ws.cell(2, 8).value == 3.0
         assert ws.cell(3, 8).value is None  # 原价等于当前价，不能显示为促销原价
-        assert ws.cell(2, 13).value == "查看商品"
+        assert ws.cell(2, 13).value == "https://www.action.com/es-es/p/1001/"
         assert ws.cell(2, 13).hyperlink.target == "https://www.action.com/es-es/p/1001/"
     finally:
         workbook.close()
@@ -149,6 +151,28 @@ def test_es_export_reads_latest_formal_master_and_keeps_sources_read_only(tmp_pa
     assert manifest["run_id"] == run_id
     assert manifest["source_master_file_hash"] == before
     assert len(manifest["source_master_hash"]) == 64
+    assert manifest["history_stats"]["status"] == "NOT_CONFIGURED"
+
+
+def test_image_export_writer_requires_manifest_eligible_sku_when_provided(tmp_path):
+    image_path = tmp_path / "images" / "1001.png"
+    image_path.parent.mkdir(parents=True)
+    Image.new("RGB", (2, 2), "white").save(image_path, format="PNG")
+    output = tmp_path / "out.xlsx"
+    write_catalog_xlsx(
+        output,
+        headers=["图片", "编号"],
+        rows=[{"图片": None, "编号": "1001"}],
+        workbook_format={"sheet_name": "商品全量", "auto_filter": True, "freeze_panes": "A2"},
+        image_root=image_path.parent,
+        embed_images=True,
+        allowed_image_skus=set(),
+    )
+    workbook = openpyxl.load_workbook(output)
+    try:
+        assert len(workbook["商品全量"]._images) == 0
+    finally:
+        workbook.close()
 
 
 def test_es_historical_export_reads_formal_snapshot_not_newer_master(tmp_path):
