@@ -79,7 +79,7 @@ SOURCE_HASH_MISMATCH = 0
 
 完成标准：Knowledge Growth 已安全 fast-forward 到 main；Data Closure 从新 main 创建；闭环合同和测试通过；生产 Apply、AI、Auto Approval 仍关闭；历史迁移和 Edge Recovery 未启动。
 
-本分支当前回归结果：`431 passed`。其中两个原有的“最近事件”测试已改为相对当前日期，避免固定历史日期导致日期滚动后的假失败；没有放宽生产查询语义。
+本分支当前回归结果：`434 passed`。其中两个原有的“最近事件”测试已改为相对当前日期，避免固定历史日期导致日期滚动后的假失败；没有放宽生产查询语义。
 
 ## 5. 2026-09-08 数据修复审计结果
 
@@ -137,3 +137,6 @@ Repository 读取路径和 `research_release` 门禁已优先读取该字段级�
 
 `category_backlog` 与事件表已加入 additive schema；关闭 `CATEGORY_MISSING` 必须提供
 官方商品页证据 URL、人工决策人和中文值，不能使用标题、常识或交叉分类自动关闭。
+
+Research Release 对已审核品牌/技术 token 使用只读 allowlist；允许的例外必须同时提供
+issue_id、证据、审批人和未过期时间，不能以普通 warning 绕过门禁。
