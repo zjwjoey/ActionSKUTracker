@@ -118,6 +118,45 @@ CREATE TABLE IF NOT EXISTS source_records (
  FOREIGN KEY (run_id) REFERENCES runs(run_id),
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
+CREATE TABLE IF NOT EXISTS source_fact_versions (
+ fact_id TEXT PRIMARY KEY,
+ run_id TEXT NOT NULL,
+ official_sku TEXT NOT NULL,
+ field_name TEXT NOT NULL,
+ raw_value TEXT,
+ normalized_value TEXT,
+ raw_hash TEXT NOT NULL,
+ normalized_hash TEXT NOT NULL,
+ source_name TEXT NOT NULL,
+ observed_at TEXT,
+ created_at TEXT NOT NULL,
+ UNIQUE(official_sku, field_name, raw_hash, normalized_hash, run_id),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS localization_patches (
+ patch_id TEXT PRIMARY KEY,
+ official_sku TEXT NOT NULL,
+ language TEXT NOT NULL,
+ field_name TEXT NOT NULL,
+ old_value TEXT,
+ new_value TEXT NOT NULL,
+ source_hash TEXT NOT NULL,
+ source_allowlist TEXT NOT NULL,
+ created_by TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS localization_patch_events (
+ event_id TEXT PRIMARY KEY,
+ patch_id TEXT NOT NULL,
+ event_type TEXT NOT NULL CHECK (event_type IN ('PATCH_CREATED','PATCH_APPROVED','PATCH_APPLIED','PATCH_REVOKED')),
+ actor TEXT NOT NULL,
+ evidence_json TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY (patch_id) REFERENCES localization_patches(patch_id)
+);
+CREATE INDEX IF NOT EXISTS idx_source_fact_versions_sku_field ON source_fact_versions(official_sku,field_name,created_at);
+CREATE INDEX IF NOT EXISTS idx_localization_patch_events_patch ON localization_patch_events(patch_id,created_at);
 CREATE TABLE IF NOT EXISTS migration_source_issues (
  issue_id INTEGER PRIMARY KEY,
  source_name TEXT NOT NULL,
