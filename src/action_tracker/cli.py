@@ -31,6 +31,27 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("detail-apply", help="将完整且通过 QA 的详情重试结果写回 Master")
     a.add_argument("--run-id", required=True, help="已正式提交的父 observation run_id")
 
+    ei = sub.add_parser("detail-edge-import", help="导入 Edge 浏览器低频采集的详情证据；仅更新西语详情字段")
+    ei.add_argument("--run-id", required=True, help="已正式提交且详情重试进入 BLOCKED 的父 observation run_id")
+    ei.add_argument("--input", required=True, help="Edge 插件导出的 UTF-8 JSON 文件")
+    ei.add_argument("--commit", action="store_true", help="校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
+
+    di = sub.add_parser("detail-deferred-import", help="将正式 run 延迟的 MISSING_FIELD 详情受控写入 PRIMARY/Master")
+    di.add_argument("--run-id", required=True, help="QA PASS 且已正式提交的父 observation run_id")
+    di.add_argument("--input", required=True, help="Edge 插件导出的 UTF-8 JSON 文件")
+    di.add_argument("--commit", action="store_true", help="校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
+
+    elr = sub.add_parser("edge-listing-reconcile", help="将已核验的 Edge 类目、新品和首次发现日期按字段权限回填 PRIMARY")
+    elr.add_argument("--run-id", required=True, help="已正式提交且详情阶段 BLOCKED 的父 observation run_id")
+    elr.add_argument("--details", required=True, help="已验证的 Edge 详情证据 UTF-8 JSON 文件")
+    elr.add_argument("--category-completion", required=True, help="补齐官方面包屑的 Edge 证据 UTF-8 JSON 文件")
+    elr.add_argument("--commit", action="store_true", help="校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
+
+    ees = sub.add_parser("detail-edge-export", help="将 Edge 详情证据写入独立待审核表，不写入 Master")
+    ees.add_argument("--run-id", required=True, help="已正式提交且详情重试进入 BLOCKED 的父 observation run_id")
+    ees.add_argument("--input", required=True, action="append", help="Edge 插件导出的 UTF-8 JSON 文件；可重复传入多个批次")
+    ees.add_argument("--output", required=True, help="待审核 XLSX 输出路径")
+
     h = sub.add_parser("detail-backfill", help="用已验证的历史详情证据填补 CURRENT 空字段")
     h.add_argument("--run-id", required=True, help="详情已完整的历史 source run_id")
 
@@ -94,6 +115,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    # Windows PowerShell commonly exposes a GBK stdout.  JSON responses from
+    # export/staging commands contain the frozen Master headers (including €
+    # and Chinese text), so force UTF-8 at the CLI boundary instead of letting
+    # a successful operation fail while printing its result.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            reconfigure(encoding="utf-8", errors="strict")
     from .config import ensure_runtime_dirs, load_settings
     from .log import setup_logging
 
@@ -123,6 +152,50 @@ def main(argv=None) -> int:
     if args.command == "detail-apply":
         from .orchestrator.detail_retry import apply_detail_retry
         res = apply_detail_retry(cfg, args.run_id)
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if args.command == "detail-edge-import":
+        from .orchestrator.detail_edge_import import EdgeDetailImportError, run_edge_detail_import
+        from .database.production import ProductionDatabaseError
+        try:
+            res = run_edge_detail_import(cfg, run_id=args.run_id, input_path=Path(args.input), commit=bool(args.commit))
+        except (EdgeDetailImportError, ProductionDatabaseError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if args.command == "detail-deferred-import":
+        from .orchestrator.detail_edge_import import EdgeDetailImportError, run_deferred_detail_import
+        from .database.production import ProductionDatabaseError
+        try:
+            res = run_deferred_detail_import(cfg, run_id=args.run_id, input_path=Path(args.input), commit=bool(args.commit))
+        except (EdgeDetailImportError, ProductionDatabaseError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if args.command == "edge-listing-reconcile":
+        from .orchestrator.edge_listing_reconcile import (
+            EdgeListingReconcileError, preview_or_apply_edge_listing_reconciliation,
+        )
+        from .database.production import ProductionDatabaseError
+        try:
+            res = preview_or_apply_edge_listing_reconciliation(
+                cfg, run_id=args.run_id, details_path=Path(args.details),
+                category_completion_path=Path(args.category_completion), commit=bool(args.commit),
+            )
+        except (EdgeListingReconcileError, ProductionDatabaseError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if args.command == "detail-edge-export":
+        from .orchestrator.detail_edge_import import EdgeDetailImportError, export_edge_detail_table
+        try:
+            res = export_edge_detail_table(cfg, run_id=args.run_id, input_path=[Path(p) for p in args.input], output_path=Path(args.output))
+        except (EdgeDetailImportError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
         print(json.dumps(res, ensure_ascii=False))
         return 0
     if args.command == "detail-backfill":
