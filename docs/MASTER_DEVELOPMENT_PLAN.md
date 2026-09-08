@@ -1,12 +1,13 @@
 # ActionSKUTracker 统一开发计划
 
-更新日期：2026-08-30
+更新日期：2026-09-08
 
 本计划把两个方案合并管理：
 
 1. **Export Foundation V1 正式发布**；
 2. **SQLite Production Source of Truth 正式接管**。
 3. **Image Foundation V1 + With-Images Export**。
+4. **Knowledge Growth Merge + Master/Dictionary/Export Closure V1**。
 
 “一起加入开发计划”表示两条主线纳入同一个最终交付目标，**不表示跳过中间门禁、把所有代码压成一个提交，或直接硬切生产**。每一阶段都必须可验证、可回滚。
 
@@ -366,6 +367,50 @@ ImageDerivativeService
 SQLite PRIMARY 稳定后，再新增 `image_assets` 元数据表；图片文件继续保存在文件系统，
 SQLite 只保存 URL、路径、hash、尺寸、状态和错误信息。`image_manifest.csv` 降级为兼容视图。
 
+### Phase 14：Knowledge Growth Merge + Master/Dictionary/Export Closure V1
+
+本阶段承接 Knowledge Production 与 SQLite PRIMARY，目标是将已验收的 Knowledge Growth 安全合入
+最新 `main`，再从新 `main` 建立 Data Closure 分支，收口 Master、Dictionary 与正式 Export 的数据闭环。
+本阶段不是生产采集，也不执行历史成品迁移。
+
+#### 14.1 活跃提取隔离
+
+- `F:\ActionSKUTracker` 视为 `ACTIVE_EXTRACTION_WORKSPACE`，不得 checkout、switch、merge、reset、clean、pull；
+- 所有合并、分支、测试和文档工作只在 `F:\ActionSKUTracker_worktrees\` 独立 worktree 中进行；
+- 不运行 daily-run、crawler、Playwright、scheduler、image-sync 或 Edge import；
+- 不修改 runtime、state、browser profile、lock、生产日志或当前提取证据；
+- 真实 PRIMARY 只做只读审计，本阶段不做 Production Apply、历史迁移、批量字典 promotion 或 Qwen 批处理。
+
+#### 14.2 两个 worktree 与合并门禁
+
+1. 只读记录 `origin/main`、`origin/feat/localization-knowledge-growth-v1`、`origin/feat/export-foundation-v1` 的实际 SHA；
+2. Knowledge Growth 分支必须以最新 `origin/main` 为祖先，并取得 exact-head Ubuntu/Windows CI 成功证据；
+3. 从 `origin/main` 创建 `merge/knowledge-growth-v1`，只允许 `git merge --ff-only`；
+4. 定向测试通过后，push `HEAD:main` 前再次确认 merge base 未变化，并记录 old main、feature HEAD、new main；
+5. 从新的 `origin/main` 创建 `feat/master-dictionary-export-closure-v1`；
+6. 旧 `feat/export-foundation-v1` 只作参考，禁止整分支合并或 rebase；
+7. `ff7421d1` Edge Detail Recovery 不纳入本阶段，另立下一阶段。
+
+#### 14.3 数据闭环合同
+
+以 [`MASTER_DICTIONARY_EXPORT_CLOSURE_PLAN.md`](MASTER_DICTIONARY_EXPORT_CLOSURE_PLAN.md) 为正式合同，必须逐模块盘点最新 main，区分 `ALREADY_IMPLEMENTED`、
+`PARTIALLY_IMPLEMENTED`、`MISSING`、`SUPERSEDED`：
+
+- 六个中文字段各自保存 value、source、review_status、source_hash、freshness 和 applied_commit_id；
+- raw fact 与 normalized fact 分离，格式清洗不得销毁官网原始证据；
+- Official Fact Patch 与 Localization Patch 均为一 SKU 一字段的 append-only revision；
+- Apply 必须同时满足 source hash、字段审批、source allowlist 和当前西语事实一致；
+- `research_release` 只能读取已 Apply 的 SQLite localization，禁止现场 Dictionary Join、fallback 或临时 Excel 修复；
+- Release Gate 阻断 SKU/Fact/Display mismatch、未批准中文、STALE、Spanish residual、source-hash mismatch；例外必须是可审计的 `EXPLICIT_EXCEPTION`；
+- `CATEGORY_MISSING` 只能由官方主面包屑/详情正式分类事实关闭，禁止标题、常识或交叉陈列推断；
+- AI、Production Apply、Auto Approval、Scoped Dictionary 生产开关始终保持关闭。
+
+#### 14.4 验收与停止点
+
+必须通过 Knowledge Growth fast-forward、Data Closure 代码盘点、字段 provenance、raw/normalized fact、immutable patch、Apply Gate、Release Gate、正式 Export 数据源、category backlog、targeted/full pytest 与 Ubuntu/Windows CI。
+
+完成后停止，不进入：2026-09-07 历史成果迁移、Edge Detail Recovery、Qwen 批量运行、Production Apply 或 AI/Auto Approval 开启。
+
 ## 四、SQLite PRIMARY 最终验收
 
 必须全部通过：
@@ -408,6 +453,9 @@ SQLite 只保存 URL、路径、hash、尺寸、状态和错误信息。`image_m
 16. Image 性能、错图和缺图验收
 17. image_assets 元数据接入 SQLite
 18. Dictionary Apply 和自动翻译增强
+19. Knowledge Growth fast-forward merge（独立 worktree、exact-head CI）
+20. Master/Dictionary/Export Closure contracts、Release Gate 与 Data Closure 分支
+21. targeted/full/双平台 CI 通过后停止，等待下一阶段历史成果迁移或 Edge Recovery
 ```
 
 ## 六、每阶段分支和发布原则
