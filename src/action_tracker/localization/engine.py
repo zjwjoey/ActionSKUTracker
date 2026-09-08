@@ -71,10 +71,15 @@ class LocalizationEngine:
         for output_key, _ in mapping:
             value = str(record.get(output_key) or (format_unit_price(str(record.get("unit_price") or "")) if output_key == "unit_price_zh" else "") or "").strip()
             canonical = ZH_TO_CANONICAL[output_key]
-            source_name = "official_unit_price" if output_key == "unit_price_zh" else str(record.get("zh_" + canonical + "_source") or "primary_localization")
-            freshness = str(record.get("zh_freshness_status") or "CURRENT")
-            status = "READY" if value and freshness != "STALE" else ("STALE" if value else "REVIEW_REQUIRED")
-            fields[output_key] = LocalizationField(value, source_name, status, str(record.get("zh_source_hash") or ""), freshness, self.policy_version, () if status == "READY" else (("STALE_LOCALIZATION",) if status == "STALE" else ("MISSING_LOCALIZATION",)))
+            metadata = (record.get("zh_field_provenance") or {}).get(canonical) or {}
+            source_name = "official_unit_price" if output_key == "unit_price_zh" else str(metadata.get("source") or record.get("zh_" + canonical + "_source") or "primary_localization")
+            freshness = str(metadata.get("freshness_status") or record.get("zh_freshness_status") or "CURRENT").upper()
+            review = str(metadata.get("review_status") or record.get("zh_review_status") or "").upper()
+            approved = review in {"VERIFIED", "APPROVED", "HUMAN_REVIEWED"}
+            source_absent = review == "APPROVED_SOURCE_ABSENT"
+            status = "READY" if freshness == "CURRENT" and ((value and (approved or output_key == "unit_price_zh")) or source_absent) else ("STALE" if value and freshness == "STALE" else "REVIEW_REQUIRED")
+            reasons = () if status == "READY" else (("STALE_LOCALIZATION",) if status == "STALE" else ("MISSING_LOCALIZATION",))
+            fields[output_key] = LocalizationField(value, source_name, status, str(metadata.get("source_hash") or record.get("zh_source_hash") or ""), freshness, self.policy_version, reasons)
         reasons = tuple(dict.fromkeys(r for f in fields.values() for r in f.review_reasons))
         return LocalizationPlan(source.sku, source.source_hash, fields, (), "AUTO_READY" if not reasons else "REVIEW_REQUIRED", reasons, (), False)
 

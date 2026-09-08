@@ -427,6 +427,17 @@ def migrate_v2(path, *, role: str = "SHADOW"):
         raise ValueError("DB_ROLE_MISMATCH_REQUIRES_EXPLICIT_CUTOVER")
     migrate(path)
     with connect(path) as db:
+        # Capture the fact-version table that existed before this migration.
+        # V2's compatibility DDL creates ``source_fact_versions`` on older
+        # fixtures, so checking only after ``executescript`` would incorrectly
+        # make that compatibility table authoritative even when an active
+        # PRIMARY already uses ``product_fact_versions``.
+        preexisting_fact_tables = {
+            str(row[0]) for row in db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name IN ('product_fact_versions','source_fact_versions')"
+            ).fetchall()
+        }
         db.executescript(V2_DDL)
         # Additive indexes must follow the columns that actually exist.  The
         # active PRIMARY schema uses ``product_fact_versions`` and
@@ -436,9 +447,10 @@ def migrate_v2(path, *, role: str = "SHADOW"):
         def _columns(table: str) -> set[str]:
             return {str(row[1]) for row in db.execute(f"PRAGMA table_info({table})").fetchall()}
 
-        source_table = "source_fact_versions" if db.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='source_fact_versions'"
-        ).fetchone() else "product_fact_versions"
+        source_table = (
+            "product_fact_versions" if "product_fact_versions" in preexisting_fact_tables
+            else "source_fact_versions"
+        )
         source_columns = _columns(source_table)
         if {"official_sku", "created_at"}.issubset(source_columns):
             db.execute(
@@ -481,6 +493,7 @@ def migrate_v2(path, *, role: str = "SHADOW"):
             "schema_family": "ACTION_SQLITE_DATA",
             "schema_version": "2.0.0",
             "database_role": role,
+            "fact_version_authority": source_table,
         }.items():
             db.execute("INSERT INTO schema_metadata(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
         for table, column, definition in (
@@ -513,6 +526,20 @@ def migrate_v2(path, *, role: str = "SHADOW"):
         ):
             try:
                 db.execute(f"ALTER TABLE product_localizations ADD COLUMN {column} {definition}")
+            except Exception as exc:
+                if "duplicate column" not in str(exc).lower():
+                    raise
+        # ``localization_fields`` is the canonical field-level contract.  The
+        # legacy provenance table already carried these audit columns, but
+        # older PRIMARY databases may have created the canonical projection
+        # before the contract was closed.  Keep this migration additive.
+        for column, definition in (
+            ("approved_by", "TEXT"),
+            ("approved_at", "TEXT"),
+            ("freshness_status", "TEXT"),
+        ):
+            try:
+                db.execute(f"ALTER TABLE localization_fields ADD COLUMN {column} {definition}")
             except Exception as exc:
                 if "duplicate column" not in str(exc).lower():
                     raise

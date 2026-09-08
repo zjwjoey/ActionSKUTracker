@@ -7,6 +7,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
+from urllib.parse import urlparse
 
 from .connection import connect
 from .schema import migrate_v2
@@ -51,6 +52,8 @@ def decide_category_backlog(
     value: str = "",
     actor: str,
     evidence_url: str,
+    page_product_number: str | None = None,
+    current_source_hash: str | None = None,
 ) -> str:
     """Approve/reject only with official main-breadcrumb evidence."""
     if decision not in {"APPROVED", "REJECTED"}:
@@ -59,19 +62,31 @@ def decide_category_backlog(
         raise CategoryBacklogError("CATEGORY_OFFICIAL_EVIDENCE_REQUIRED")
     if decision == "APPROVED" and not value.strip():
         raise CategoryBacklogError("CATEGORY_APPROVAL_VALUE_MISSING")
+    parsed = urlparse(evidence_url)
+    if parsed.hostname not in {"action.com", "www.action.com"}:
+        raise CategoryBacklogError("CATEGORY_OFFICIAL_DOMAIN_REQUIRED")
     now = _now()
     with connect(Path(db_path)) as db:
         migrate_v2(Path(db_path))
-        row = db.execute("SELECT status FROM category_backlog WHERE queue_id=?", (queue_id,)).fetchone()
+        row = db.execute("SELECT status,official_sku,source_hash FROM category_backlog WHERE queue_id=?", (queue_id,)).fetchone()
         if not row:
             raise CategoryBacklogError("CATEGORY_QUEUE_NOT_FOUND")
         if row[0] not in {"CATEGORY_MISSING", "REVIEW_REQUIRED"}:
             raise CategoryBacklogError("CATEGORY_QUEUE_NOT_OPEN")
+        sku_match = __import__("re").search(r"/p/(\d+)(?:/|$)", parsed.path)
+        if sku_match and sku_match.group(1) != str(row[1]):
+            raise CategoryBacklogError("CATEGORY_EVIDENCE_SKU_MISMATCH")
+        if not sku_match and str(page_product_number or "").strip() != str(row[1]):
+            raise CategoryBacklogError("CATEGORY_EVIDENCE_SKU_REQUIRED")
+        if current_source_hash and str(current_source_hash) != str(row[2]):
+            raise CategoryBacklogError("CATEGORY_EVIDENCE_STALE")
         db.execute(
             "UPDATE category_backlog SET status=?,decision_value=?,decided_by=?,decided_at=?,evidence_url=? WHERE queue_id=?",
             (decision, value, actor, now, evidence_url, queue_id),
         )
-        _event(db, queue_id, decision, actor, {"evidence_url": evidence_url, "value": value}, now)
+        _event(db, queue_id, decision, actor, {"evidence_url": evidence_url, "value": value,
+                                                "page_product_number": page_product_number or (sku_match.group(1) if sku_match else None),
+                                                "source_hash": current_source_hash or row[2]}, now)
     return decision
 
 

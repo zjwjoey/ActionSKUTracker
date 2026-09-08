@@ -201,8 +201,8 @@ def _read_field_provenance(db: sqlite3.Connection) -> list[sqlite3.Row | tuple]:
     try:
         rows = db.execute(
             """SELECT official_sku,field_name,value,source,review_status,source_hash,
-                      updated_at,applied_commit_id,NULL AS approved_by,
-                      NULL AS approved_at,NULL AS freshness_status
+                      updated_at,applied_commit_id,approved_by,
+                      approved_at,freshness_status
                FROM localization_fields WHERE language='zh'"""
         ).fetchall()
         if rows:

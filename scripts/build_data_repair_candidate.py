@@ -12,6 +12,7 @@ import hashlib
 import json
 import shutil
 import sqlite3
+import argparse
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,10 +20,6 @@ import openpyxl
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ACTIVE_ROOT = Path(r"F:/ActionSKUTracker")
-DB = ACTIVE_ROOT / "runtime/db/action_tracker.db"
-MASTER = ACTIVE_ROOT / "runtime/master/Action_Master.xlsx"
-OUT = ROOT / "artifacts/data_repair_20260908"
 
 # These are official product-page breadcrumb facts already checked separately;
 # they are proposed evidence only and are not applied to PRIMARY here.
@@ -75,11 +72,11 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def load_dictionary() -> dict[tuple[str, str], dict[str, str]]:
+def load_dictionary(path: Path) -> dict[tuple[str, str], dict[str, str]]:
     # The active workspace may contain locally reviewed mappings that are not
     # yet part of the remote main branch.  Read them as candidate evidence;
     # never copy them into PRIMARY or the closure branch automatically.
-    path = ACTIVE_ROOT / "data/dictionary/category_dictionary.csv"
+    path = Path(path)
     out: dict[tuple[str, str], dict[str, str]] = {}
     with path.open(encoding="utf-8-sig", newline="") as handle:
         for row in csv.DictReader(handle):
@@ -89,8 +86,8 @@ def load_dictionary() -> dict[tuple[str, str], dict[str, str]]:
     return out
 
 
-def load_current() -> list[dict[str, object]]:
-    uri = f"file:{DB.as_posix()}?mode=ro"
+def load_current(db_path: Path) -> list[dict[str, object]]:
+    uri = f"file:{Path(db_path).absolute().as_posix()}?mode=ro"
     query = """
     SELECT p.official_sku, p.status,
            es.cat1 AS cat1_es, es.cat2 AS cat2_es,
@@ -147,10 +144,10 @@ def build_patch(rows: list[dict[str, object]], category_map: dict[tuple[str, str
     return patches
 
 
-def write_candidate(patches: list[dict[str, object]]) -> Path:
-    OUT.mkdir(parents=True, exist_ok=True)
-    candidate = OUT / "Action_Master_data_repair_candidate_20260908.xlsx"
-    shutil.copy2(MASTER, candidate)
+def write_candidate(patches: list[dict[str, object]], master_path: Path, output_dir: Path) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    candidate = output_dir / "Action_Master_data_repair_candidate_20260908.xlsx"
+    shutil.copy2(master_path, candidate)
     wb = openpyxl.load_workbook(candidate)
     try:
         for sheet, language in (("01_SKU_ZH_CURRENT", "zh"), ("02_SKU_ES_CURRENT", "es")):
@@ -172,8 +169,9 @@ def write_candidate(patches: list[dict[str, object]]) -> Path:
     return candidate
 
 
-def write_review_queue(rows: list[dict[str, object]], patches: list[dict[str, object]]) -> Path:
-    queue = OUT / "category_mapping_review_queue.csv"
+def write_review_queue(rows: list[dict[str, object]], patches: list[dict[str, object]], output_dir: Path) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    queue = output_dir / "category_mapping_review_queue.csv"
     counts: dict[tuple[str, str], int] = {}
     for item in patches:
         if item["apply_status"] != "BLOCKED" or item["language"] != "zh":
@@ -198,23 +196,29 @@ def write_review_queue(rows: list[dict[str, object]], patches: list[dict[str, ob
 
 
 def main() -> None:
-    rows = load_current()
-    category_map = load_dictionary()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source-db", type=Path, required=True)
+    parser.add_argument("--source-master", type=Path, required=True)
+    parser.add_argument("--dictionary-root", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path, required=True)
+    args = parser.parse_args()
+    rows = load_current(args.source_db)
+    category_map = load_dictionary(args.dictionary_root / "category_dictionary.csv")
     patches = build_patch(rows, category_map)
-    candidate = write_candidate(patches)
-    review_queue = write_review_queue(rows, patches)
-    patch_path = OUT / "category_repair_candidates.json"
+    candidate = write_candidate(patches, args.source_master, args.output_dir)
+    review_queue = write_review_queue(rows, patches, args.output_dir)
+    patch_path = args.output_dir / "category_repair_candidates.json"
     patch_path.write_text(json.dumps(patches, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     summary = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "production_write": False,
         "database_mode": "READ_ONLY",
-        "source_database": str(DB),
-        "source_database_sha256": sha256(DB),
-        "source_master": str(MASTER),
-        "source_master_sha256": sha256(MASTER),
-        "candidate_dictionary": str(ACTIVE_ROOT / "data/dictionary/category_dictionary.csv"),
-        "candidate_dictionary_sha256": sha256(ACTIVE_ROOT / "data/dictionary/category_dictionary.csv"),
+        "source_database": str(args.source_db),
+        "source_database_sha256": sha256(args.source_db),
+        "source_master": str(args.source_master),
+        "source_master_sha256": sha256(args.source_master),
+        "candidate_dictionary": str(args.dictionary_root / "category_dictionary.csv"),
+        "candidate_dictionary_sha256": sha256(args.dictionary_root / "category_dictionary.csv"),
         "current_sku_count": len(rows),
         "candidate_count": len(patches),
         "zh_cat2_candidates": sum(p["language"] == "zh" for p in patches),
@@ -226,7 +230,7 @@ def main() -> None:
         "review_queue": str(review_queue),
         "blocked_pair_count": len({p["evidence"] for p in patches if p["apply_status"] == "BLOCKED"}),
     }
-    (OUT / "audit.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (args.output_dir / "audit.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False))
 
 

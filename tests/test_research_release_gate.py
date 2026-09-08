@@ -67,6 +67,32 @@ def test_release_compares_export_identity_and_fact_projection():
     assert result.counts["FACT_MISMATCH"] == 1
 
 
+def test_release_allows_equal_legacy_original_price_display_normalization():
+    row = _row(current_price=1.99, original_price=1.99, product_url="https://example/1001")
+    result = audit_research_release(
+        [row],
+        exported_rows=[{
+            "sku": "1001", "折后价": 1.99, "原价": None,
+            "商品链接": "https://example/1001",
+        }],
+    )
+    assert result.ok
+    assert result.counts["FACT_MISMATCH"] == 0
+
+
+def test_release_blocks_real_original_price_mismatch_after_display_normalization():
+    row = _row(current_price=1.99, original_price=3.99, product_url="https://example/1001")
+    result = audit_research_release(
+        [row],
+        exported_rows=[{
+            "sku": "1001", "折后价": 1.99, "原价": 2.99,
+            "商品链接": "https://example/1001",
+        }],
+    )
+    assert not result.ok
+    assert result.counts["FACT_MISMATCH"] == 1
+
+
 def test_release_blocks_undeclared_display_mismatch():
     result = audit_research_release([_row()], display_mismatches=["1001:详情"])
     assert not result.ok

@@ -53,3 +53,21 @@ def test_v2_migration_accepts_active_immutable_patch_schema(tmp_path):
         ).fetchone()
         indexes = {row[1] for row in db.execute("PRAGMA index_list(localization_patch_events)")}
         assert "idx_localization_patch_events_patch" in indexes
+
+
+def test_v2_migration_keeps_preexisting_product_fact_store_authoritative(tmp_path):
+    path = tmp_path / "primary-with-fact-store.sqlite"
+    migrate(path)
+    with connect(path) as db:
+        db.execute("""CREATE TABLE product_fact_versions (
+            fact_id TEXT PRIMARY KEY, official_sku TEXT NOT NULL, run_id TEXT NOT NULL,
+            raw_fact_json TEXT NOT NULL, normalized_fact_json TEXT NOT NULL,
+            raw_fact_hash TEXT NOT NULL, normalized_fact_hash TEXT NOT NULL,
+            raw_fact_available INTEGER NOT NULL DEFAULT 1,
+            normalization_version TEXT NOT NULL, created_at TEXT NOT NULL
+        )""")
+    migrate_v2(path, role="PRIMARY")
+    with connect(path) as db:
+        assert db.execute(
+            "SELECT value FROM schema_metadata WHERE key='fact_version_authority'"
+        ).fetchone()[0] == "product_fact_versions"

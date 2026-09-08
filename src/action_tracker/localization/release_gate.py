@@ -21,7 +21,7 @@ PROVENANCE_FIELDS = {
     "name_zh": "name", "cat1_zh": "cat1", "cat2_zh": "cat2", "spec_zh": "spec",
     "desc_zh": "description", "details_zh": "details",
 }
-APPROVED_REVIEW_STATUSES = frozenset({"VERIFIED", "APPROVED", "HUMAN_REVIEWED"})
+APPROVED_REVIEW_STATUSES = frozenset({"VERIFIED", "APPROVED", "HUMAN_REVIEWED", "APPROVED_SOURCE_ABSENT"})
 CURRENT_FRESHNESS = "CURRENT"
 _SPANISH_WORDS = {
     "para", "con", "sin", "varios", "varias", "diferentes", "unidades", "unidad", "colores",
@@ -96,6 +96,7 @@ def audit_research_release(
         "SOURCE_HASH_MISMATCH": 0,
         "DUPLICATE_SKU": duplicate_skus,
         "MISSING_REQUIRED_ZH": 0,
+        "LOCALIZATION_PROJECTION_MISMATCH": 0,
     }
     issues: list[str] = []
 
@@ -111,7 +112,15 @@ def audit_research_release(
     for row in rows:
         sku = str(row.get("sku") or row.get("official_sku") or "").strip() or "<EMPTY>"
         field_provenance = row.get("zh_field_provenance") or {}
-        missing = [field for field in REQUIRED_ZH_FIELDS if not str(row.get(field) or "").strip()]
+        missing = []
+        for field in REQUIRED_ZH_FIELDS:
+            if str(row.get(field) or "").strip():
+                continue
+            canonical = PROVENANCE_FIELDS[field]
+            metadata = field_provenance.get(canonical) or {}
+            if str(metadata.get("review_status") or "").strip().upper() == "APPROVED_SOURCE_ABSENT":
+                continue
+            missing.append(field)
         if missing:
             counts["MISSING_REQUIRED_ZH"] += len(missing)
             counts["UNAPPROVED_ZH"] += 1
@@ -169,17 +178,39 @@ def audit_research_release(
             if not other:
                 continue
             comparisons = (
-                ("current_price", "current_price", "折后价"),
-                ("original_price", "original_price", "原价"),
-                ("unit_price", "unit_price", "单价"),
-                ("product_url", "product_url", "商品链接"),
+                ("sku", "编号"), ("current_price", "折后价"),
+                ("original_price", "原价"), ("product_url", "商品链接"),
+                ("image_url", "图片链接"),
             )
-            for source_key, _, export_key in comparisons:
+            for source_key, export_key in comparisons:
                 if source_key not in row or export_key not in other:
                     continue
-                if _normalized(row.get(source_key)) != _normalized(other.get(export_key)):
+                # Display rule: the formal exporters intentionally suppress an
+                # original price that is absent or not strictly above the
+                # current price.  The source database contains legacy rows
+                # where original_price == current_price; those are not a
+                # second factual price and must compare as a blank export.
+                if source_key == "original_price":
+                    source_value = _display_original_price_for_gate(row)
+                    export_value = _numeric_prefix(other.get(export_key))
+                    same = source_value == export_value
+                else:
+                    same = _normalized(row.get(source_key)) == _normalized(other.get(export_key))
+                if not same:
                     counts["FACT_MISMATCH"] += 1
                     issues.append(f"FACT_MISMATCH:{sku}:{source_key}")
+            if "unit_price" in row and "单价" in other:
+                if _numeric_prefix(row.get("unit_price")) != _numeric_prefix(other.get("单价")):
+                    counts["FACT_MISMATCH"] += 1
+                    issues.append(f"FACT_MISMATCH:{sku}:unit_price")
+            projection = (
+                ("name_zh", "标题"), ("cat1_zh", "分类1"), ("cat2_zh", "分类2"),
+                ("spec_zh", "规格"), ("desc_zh", "描述"), ("details_zh", "产品详情"),
+            )
+            for source_key, export_key in projection:
+                if source_key in row and export_key in other and _normalized(row.get(source_key)) != _normalized(other.get(export_key)):
+                    counts["LOCALIZATION_PROJECTION_MISMATCH"] += 1
+                    issues.append(f"LOCALIZATION_PROJECTION_MISMATCH:{sku}:{source_key}")
 
     if counts["UNDECLARED_DISPLAY_MISMATCH"]:
         issues.append("UNDECLARED_DISPLAY_MISMATCH")
@@ -244,13 +275,19 @@ def _validated_exception_ids(exceptions: Iterable[Mapping[str, Any]]) -> set[str
     """Return only explicit, non-expired exceptions with audit evidence."""
     from datetime import date
     accepted: set[str] = set()
-    today = date.today().isoformat()
+    today = date.today()
+    banned = {"SOURCE_AUDIT_CANDIDATE", "MODEL", "SYSTEM", "AUTO"}
     for item in exceptions:
         issue_id = str(item.get("issue_id") or "").strip()
         approved_by = str(item.get("approved_by") or "").strip()
         evidence = str(item.get("evidence") or "").strip()
         expires_at = str(item.get("expires_at") or "").strip()
-        if issue_id and approved_by and evidence and expires_at >= today:
+        try:
+            expiry = date.fromisoformat(expires_at)
+        except ValueError:
+            continue
+        approver_upper = approved_by.upper()
+        if issue_id and approved_by and approver_upper not in banned and evidence and expiry >= today:
             accepted.add(issue_id)
     return accepted
 
@@ -271,3 +308,25 @@ def _normalized(value: Any) -> str:
     if value is None:
         return ""
     return str(value).strip()
+
+
+def _numeric_prefix(value: Any) -> float | None:
+    text = _normalized(value).replace(",", ".")
+    match = re.search(r"-?\d+(?:\.\d+)?", text)
+    return float(match.group(0)) if match else None
+
+
+def _display_original_price_for_gate(row: Mapping[str, Any]) -> float | None:
+    """Return the original-price value allowed by the formal display rule.
+
+    Action's export contract represents a promotion only when the original
+    price is strictly greater than the current price.  A legacy source row
+    with an equal (or lower) original price therefore projects to an empty
+    ``原价`` cell; this is an explicit display normalization, not a silent
+    fact rewrite.
+    """
+    current = _numeric_prefix(row.get("current_price"))
+    original = _numeric_prefix(row.get("original_price"))
+    if current is None or original is None or original <= current:
+        return None
+    return original

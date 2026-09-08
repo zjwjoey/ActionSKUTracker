@@ -126,6 +126,7 @@ def export_catalog(
         release = audit_research_release(
             source.records,
             expected_skus={str(r.get("sku") or "") for r in source.records},
+            exported_rows=rows,
             allowed_tokens=load_allowed_tokens(Path(cfg["project_root"]) / "data" / "dictionary"),
             explicit_exceptions=load_explicit_exceptions(Path(cfg["project_root"]) / "config" / "research_release_exceptions.json"),
         )
@@ -739,6 +740,10 @@ def _publish_export_pair(
     manifest_tmp: Path | None = None
     old_output_tmp: Path | None = None
     old_manifest_tmp: Path | None = None
+    had_old_output = output_path.exists()
+    had_old_manifest = manifest_path.exists()
+    output_replaced = False
+    manifest_replaced = False
     try:
         fd, manifest_name = tempfile.mkstemp(prefix=f".{manifest_path.stem}.", suffix=".tmp", dir=output_path.parent)
         os.close(fd)
@@ -767,16 +772,23 @@ def _publish_export_pair(
                 raise
             old_manifest_tmp = backup
         preview_path.replace(output_path)
+        output_replaced = True
         manifest_tmp.replace(manifest_path)
+        manifest_replaced = True
     except BaseException:
-        if old_output_tmp and old_output_tmp.exists():
-            old_output_tmp.replace(output_path)
-        elif output_path.exists() and not old_output_tmp:
-            output_path.unlink()
-        if old_manifest_tmp and old_manifest_tmp.exists():
-            old_manifest_tmp.replace(manifest_path)
-        elif manifest_path.exists() and not old_manifest_tmp:
-            manifest_path.unlink()
+        # Roll back only files that were actually replaced.  A backup-copy
+        # failure must never be interpreted as a replacement failure and must
+        # therefore leave the old pair untouched.
+        if output_replaced:
+            if had_old_output and old_output_tmp and old_output_tmp.exists():
+                old_output_tmp.replace(output_path)
+            elif not had_old_output and output_path.exists():
+                output_path.unlink()
+        if manifest_replaced:
+            if had_old_manifest and old_manifest_tmp and old_manifest_tmp.exists():
+                old_manifest_tmp.replace(manifest_path)
+            elif not had_old_manifest and manifest_path.exists():
+                manifest_path.unlink()
         raise
     finally:
         for path in (manifest_tmp, old_output_tmp, old_manifest_tmp):

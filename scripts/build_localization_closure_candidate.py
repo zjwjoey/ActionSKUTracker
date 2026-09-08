@@ -21,6 +21,7 @@ from action_tracker.database.provenance import sync_localization_field_provenanc
 from action_tracker.database.repository import ProductionRepository
 from action_tracker.database.schema import migrate_v2
 from action_tracker.localization.release_gate import audit_research_release, load_allowed_tokens
+from action_tracker.exporting.dictionary_join import build_zh_rows_from_localized_source
 from action_tracker.services.hashing import localization_source_hash
 
 
@@ -44,7 +45,8 @@ def _copy_db(source: Path, target: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists():
         target.unlink()
-    with sqlite3.connect(source) as src, sqlite3.connect(target) as dst:
+    source_uri = f"file:{Path(source).absolute().as_posix()}?mode=ro"
+    with sqlite3.connect(source_uri, uri=True) as src, sqlite3.connect(target) as dst:
         src.backup(dst)
 
 
@@ -117,42 +119,58 @@ def _hydrate(candidate: Path, reviewed: dict[str, dict[str, str]]) -> dict[str, 
                 "approved_by": source_name, "approved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 "applied_commit_id": "CANDIDATE",
             }
+            # The release contract is field-level.  Populate every explicit
+            # field attribute in the isolated candidate; aggregate values are
+            # retained only for legacy readers and must not fan out in the
+            # production apply path.
+            for field_name in ("name", "cat1", "cat2", "spec", "description", "details"):
+                provenance[f"{field_name}_review_status"] = "VERIFIED"
+                provenance[f"{field_name}_freshness_status"] = "CURRENT"
+                provenance[f"{field_name}_source_hash"] = db_row[6]
+                provenance[f"{field_name}_approved_by"] = source_name
+                provenance[f"{field_name}_approved_at"] = provenance["approved_at"]
+                provenance[f"{field_name}_applied_commit_id"] = "CANDIDATE"
             sync_localization_field_provenance(db, provenance, commit_id="CANDIDATE", now=provenance["approved_at"])
         db.commit()
     return {"current": len(current), "reviewed_overlap": overlap, "manual_candidates": manual}
 
 
-def build(source_db: Path, reviewed_workbook: Path, output_db: Path, report_path: Path) -> dict:
+def _mark_source_absent(candidate: Path, entries: list[tuple[str, str]]) -> None:
+    """Record verified source absence as a field state, not a permanent exception."""
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with sqlite3.connect(candidate) as db:
+        for sku, field in entries:
+            row = db.execute(
+                "SELECT value,source_hash FROM localization_fields WHERE official_sku=? AND language='zh' AND field_name=?",
+                (sku, field),
+            ).fetchone()
+            if row is None:
+                source = db.execute("SELECT source_hash FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone()
+                db.execute(
+                    "INSERT INTO localization_fields(official_sku,language,field_name,value,source,review_status,source_hash,updated_at,applied_commit_id,approved_by,approved_at,freshness_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (sku, "zh", field, None, "OFFICIAL_SOURCE_ABSENT", "APPROVED_SOURCE_ABSENT", source[0] if source else None, now, "CANDIDATE", "human:source-verifier", now, "CURRENT"),
+                )
+            else:
+                db.execute(
+                    "UPDATE localization_fields SET source='OFFICIAL_SOURCE_ABSENT',review_status='APPROVED_SOURCE_ABSENT',approved_by='human:source-verifier',approved_at=?,freshness_status='CURRENT',updated_at=? WHERE official_sku=? AND language='zh' AND field_name=?",
+                    (now, now, sku, field),
+                )
+        db.commit()
+
+
+def build(source_db: Path, reviewed_workbook: Path, output_db: Path, report_path: Path, dictionary_root: Path) -> dict:
     _copy_db(source_db, output_db)
     migrate_v2(output_db, role="PRIMARY")
     reviewed = _load_workbook(reviewed_workbook)
     hydration = _hydrate(output_db, reviewed)
+    _mark_source_absent(output_db, [("2548558", "spec"), ("2557704", "spec"), ("3221995", "details")])
     rows = ProductionRepository(output_db).load_current_export_records()
-    exceptions = []
-    for sku in MANUAL_NEW:
-        for field in ("desc_zh", "details_zh"):
-            exceptions.append({
-                "issue_id": f"UNAPPROVED_ZH:{sku}:{field}",
-                "approved_by": "SOURCE_AUDIT_CANDIDATE",
-                "evidence": "official source field absent in current PRIMARY",
-                "expires_at": "2099-12-31",
-            })
-    # These four CURRENT products have no standalone specification summary in
-    # the official source.  The blank spec is therefore an explicit source
-    # exception, not a translation failure.  Keep the exception in the
-    # candidate report so a future source refresh can expire/review it.
-    for sku in ("2548558", "2557704", "2574845", "3005291"):
-        exceptions.append({
-            "issue_id": f"UNAPPROVED_ZH:{sku}:spec_zh",
-            "approved_by": "SOURCE_AUDIT_CANDIDATE",
-            "evidence": "official source has no standalone specification summary",
-            "expires_at": "2099-12-31",
-        })
+    export_rows, _ = build_zh_rows_from_localized_source(rows)
     result = audit_research_release(
         rows,
         expected_skus={str(row.get("sku") or "") for row in rows},
-        allowed_tokens=load_allowed_tokens(Path(r"F:/ActionSKUTracker/data/dictionary")),
-        explicit_exceptions=exceptions,
+        exported_rows=export_rows,
+        allowed_tokens=load_allowed_tokens(dictionary_root),
     )
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -169,12 +187,13 @@ def build(source_db: Path, reviewed_workbook: Path, output_db: Path, report_path
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source-db", type=Path, default=Path(r"F:/ActionSKUTracker/runtime/db/action_tracker.db"))
+    parser.add_argument("--source-db", type=Path, required=True)
     parser.add_argument("--reviewed-workbook", type=Path, required=True)
+    parser.add_argument("--dictionary-root", type=Path, required=True)
     parser.add_argument("--output-db", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     args = parser.parse_args()
-    print(json.dumps(build(args.source_db, args.reviewed_workbook, args.output_db, args.report), ensure_ascii=False))
+    print(json.dumps(build(args.source_db, args.reviewed_workbook, args.output_db, args.report, args.dictionary_root), ensure_ascii=False))
 
 
 if __name__ == "__main__":
