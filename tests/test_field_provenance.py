@@ -19,6 +19,8 @@ def test_field_provenance_is_independent_per_field(tmp_path: Path):
         from action_tracker.database.provenance import sync_localization_field_provenance
         sync_localization_field_provenance(db, row, commit_id="c1", now="2026-09-08T00:00:00Z")
         rows = db.execute("SELECT field_name,source,review_status FROM localization_field_provenance ORDER BY field_name").fetchall()
+        canonical_rows = db.execute("SELECT field_name,source,review_status FROM localization_fields ORDER BY field_name").fetchall()
     assert len(rows) == 6
     assert dict((field, source) for field, source, _ in rows)["name"] == "MANUAL"
     assert dict((field, source) for field, source, _ in rows)["description"] == "MODEL"
+    assert canonical_rows == rows

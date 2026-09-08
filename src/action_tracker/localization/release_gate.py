@@ -118,11 +118,26 @@ def audit_research_release(
         if field_provenance:
             for field in REQUIRED_ZH_FIELDS:
                 metadata = field_provenance.get(PROVENANCE_FIELDS[field]) or {}
-                review_status = str(metadata.get("review_status") or "").strip().upper()
+                # Active PRIMARY stores field values in localization_fields;
+                # freshness/approval audit columns may still live on the
+                # legacy aggregate projection.  Fall back to the aggregate
+                # value only when the field-level column is absent, never
+                # overwrite an explicit field-level decision.
+                review_status = str(
+                    metadata.get("review_status")
+                    or row.get("zh_review_status")
+                    or row.get("review_status")
+                    or ""
+                ).strip().upper()
                 if review_status not in APPROVED_REVIEW_STATUSES:
                     counts["UNAPPROVED_ZH"] += 1
                     issues.append(f"UNAPPROVED_ZH:{sku}:{field}:status={review_status or '<EMPTY>'}")
-                freshness = str(metadata.get("freshness_status") or "").strip().upper()
+                freshness = str(
+                    metadata.get("freshness_status")
+                    or row.get("zh_freshness_status")
+                    or row.get("freshness_status")
+                    or ""
+                ).strip().upper()
                 if freshness != CURRENT_FRESHNESS:
                     counts["STALE_ZH"] += 1
                     issues.append(f"STALE_ZH:{sku}:{field}:{freshness or '<EMPTY>'}")

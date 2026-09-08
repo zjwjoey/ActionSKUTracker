@@ -90,14 +90,7 @@ class ProductionRepository:
             rows = db.execute(
                 "SELECT * FROM products WHERE status='CURRENT' ORDER BY official_sku"
             ).fetchall()
-            try:
-                provenance_rows = db.execute(
-                    """SELECT official_sku,field_name,value,source,review_status,source_hash,
-                       updated_at,applied_commit_id,approved_by,approved_at,freshness_status
-                       FROM localization_field_provenance WHERE language='zh'"""
-                ).fetchall()
-            except sqlite3.OperationalError:
-                provenance_rows = []
+            provenance_rows = _read_field_provenance(db)
             columns = [column[1] for column in db.execute("PRAGMA table_info(products)").fetchall()]
         return {_sku(row, columns): _product_row(row, columns) for row in rows if _sku(row, columns)}
 
@@ -162,14 +155,7 @@ class ProductionRepository:
                    LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'
                    WHERE p.status='CURRENT' ORDER BY p.official_sku"""
             ).fetchall()
-            try:
-                provenance_rows = db.execute(
-                    """SELECT official_sku,field_name,value,source,review_status,source_hash,
-                       updated_at,applied_commit_id,approved_by,approved_at,freshness_status
-                       FROM localization_field_provenance WHERE language='zh'"""
-                ).fetchall()
-            except sqlite3.OperationalError:
-                provenance_rows = []
+            provenance_rows = _read_field_provenance(db)
         source_commit_id = str(head_row[0]) if head_row else ""
         source_run_id = str(run_row[0]) if run_row else ""
         records = []
@@ -201,6 +187,36 @@ class ProductionRepository:
 
 def _sku(row: sqlite3.Row | tuple, columns: list[str]) -> str:
     return str(row[columns.index("official_sku")] or "").strip()
+
+
+def _read_field_provenance(db: sqlite3.Connection) -> list[sqlite3.Row | tuple]:
+    """Read the active canonical projection with legacy fallback.
+
+    PRIMARY databases use ``localization_fields``.  Older closure fixtures
+    used ``localization_field_provenance`` and carry three extra audit
+    columns.  Returning a stable eleven-column shape keeps the repository
+    read path compatible without treating the legacy table as authoritative
+    when the canonical projection is populated.
+    """
+    try:
+        rows = db.execute(
+            """SELECT official_sku,field_name,value,source,review_status,source_hash,
+                      updated_at,applied_commit_id,NULL AS approved_by,
+                      NULL AS approved_at,NULL AS freshness_status
+               FROM localization_fields WHERE language='zh'"""
+        ).fetchall()
+        if rows:
+            return rows
+    except sqlite3.OperationalError:
+        pass
+    try:
+        return db.execute(
+            """SELECT official_sku,field_name,value,source,review_status,source_hash,
+                      updated_at,applied_commit_id,approved_by,approved_at,freshness_status
+               FROM localization_field_provenance WHERE language='zh'"""
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
 
 
 def _value(row, columns: list[str], key: str, default=None):

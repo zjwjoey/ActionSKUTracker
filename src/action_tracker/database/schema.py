@@ -39,6 +39,22 @@ CREATE TABLE IF NOT EXISTS product_localizations (
  PRIMARY KEY (official_sku, language),
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
+-- Canonical field-level projection used by the active PRIMARY schema.  The
+-- compatibility table below is retained for older closure fixtures and is
+-- synchronized by database.provenance when present.
+CREATE TABLE IF NOT EXISTS localization_fields (
+ official_sku TEXT NOT NULL,
+ language TEXT NOT NULL,
+ field_name TEXT NOT NULL CHECK (field_name IN ('name','cat1','cat2','spec','description','details')),
+ value TEXT,
+ source TEXT,
+ review_status TEXT,
+ source_hash TEXT,
+ updated_at TEXT NOT NULL,
+ applied_commit_id TEXT,
+ PRIMARY KEY (official_sku, language, field_name),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
 CREATE TABLE IF NOT EXISTS localization_field_provenance (
  official_sku TEXT NOT NULL,
  language TEXT NOT NULL,
@@ -382,6 +398,7 @@ CREATE TABLE IF NOT EXISTS artifacts (
 CREATE INDEX IF NOT EXISTS idx_products_status_price ON products(status,current_price,official_sku);
 CREATE INDEX IF NOT EXISTS idx_products_seen ON products(last_seen_at,official_sku);
 CREATE INDEX IF NOT EXISTS idx_localizations_lang_name ON product_localizations(language,name,official_sku);
+CREATE INDEX IF NOT EXISTS idx_localization_fields_status ON localization_fields(language,field_name,review_status,official_sku);
 CREATE INDEX IF NOT EXISTS idx_localization_field_status ON localization_field_provenance(language,field_name,review_status,freshness_status,official_sku);
 CREATE INDEX IF NOT EXISTS idx_images_status ON image_assets(status,official_sku);
 CREATE INDEX IF NOT EXISTS idx_events_type_date ON event_history(event_type,occurred_at,official_sku);
