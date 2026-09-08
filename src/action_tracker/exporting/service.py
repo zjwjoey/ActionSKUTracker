@@ -68,6 +68,7 @@ def export_catalog(
     no_images: bool,
     run_id: str | None = None,
     selection_id: str | None = None,
+    research_release: bool = False,
 ) -> dict[str, Any]:
     """导出一个正式全量清单；整个过程只读取来源并写入 exports 目录。"""
     _validate_date(export_date)
@@ -78,6 +79,11 @@ def export_catalog(
     if profile.language != language:
         raise ExportValidationError(f"EXPORT_PROFILE_LANGUAGE_MISMATCH: {profile.profile_id}")
     source = resolve_formal_source(cfg, export_date=export_date, requested_run_id=run_id, profile=profile)
+    if research_release:
+        if language != "zh":
+            raise ExportValidationError("RESEARCH_RELEASE_ZH_ONLY")
+        if source.kind != "SQLITE_CURRENT":
+            raise ExportValidationError("RESEARCH_RELEASE_REQUIRES_SQLITE_APPLIED_SOURCE")
     artifact_source_commit_id = source.source_commit_id or _commit_id_for_run(_database_path(cfg), source.run_id)
     selection_source_commit_id = None
     if selection_id:
@@ -114,6 +120,15 @@ def export_catalog(
     else:
         raise ExportValidationError(f"EXPORT_LANGUAGE_UNSUPPORTED: {language}")
     validate_output_rows(rows)
+    if research_release:
+        from ..localization.release_gate import audit_research_release
+        release = audit_research_release(
+            source.records,
+            expected_skus={str(r.get("sku") or "") for r in source.records},
+        )
+        if not release.ok:
+            first = ",".join(release.issues[:8])
+            raise ExportValidationError(f"RESEARCH_RELEASE_GATE_FAILED:{first}")
 
     date_compact = export_date.replace("-", "")
     output_name = profile.filename_for(date_compact)
@@ -164,6 +179,7 @@ def export_catalog(
             "selection_id": selection_id,
             "selection_source_commit_id": selection_source_commit_id,
             "artifact_source_commit_id": artifact_source_commit_id,
+            "release_mode": "research_release" if research_release else "preview",
         }
         if language == "zh":
             manifest["dictionary_hash"] = dictionary_hash
@@ -196,6 +212,7 @@ def export_catalog(
         "image_eligible_count": sum(1 for eligible in (image_eligibility or {}).values() if eligible),
         "selection_id": selection_id,
         "artifact_source_commit_id": artifact_source_commit_id,
+        "release_mode": "research_release" if research_release else "preview",
     }
 
 

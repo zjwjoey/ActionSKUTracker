@@ -1,5 +1,7 @@
 from action_tracker.localization.release_gate import audit_research_release
 from action_tracker.services.hashing import localization_source_hash
+from action_tracker.exporting.service import ExportValidationError
+from action_tracker.cli import build_parser
 
 
 def _row(**overrides):
@@ -66,3 +68,14 @@ def test_release_blocks_undeclared_display_mismatch():
     result = audit_research_release([_row()], display_mismatches=["1001:详情"])
     assert not result.ok
     assert result.counts["UNDECLARED_DISPLAY_MISMATCH"] == 1
+
+
+def test_research_release_is_chinese_only_contract():
+    assert str(ExportValidationError("RESEARCH_RELEASE_ZH_ONLY")) == "RESEARCH_RELEASE_ZH_ONLY"
+
+
+def test_export_cli_exposes_explicit_research_release_mode():
+    args = build_parser().parse_args([
+        "export", "--lang", "zh", "--no-images", "--date", "2026-09-08", "--research-release",
+    ])
+    assert args.research_release is True
