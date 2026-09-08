@@ -116,8 +116,14 @@ Knowledge Growth 已在本地 Data Closure 工作分支完成合并，合并提�
 - Knowledge Growth：`LOCALLY_INTEGRATED / NOT_RELEASED`；
 - Data Closure：`CANDIDATE_ONLY`，候选修复尚未 Apply；
 - Category Backlog：`REVIEW_REQUIRED`；
-- Raw/Normalized Fact、Immutable Patch：`MISSING`；Research Release Gate：`INTEGRATED_BUT_BLOCKED_BY_DATA`。
+- Raw/Normalized Fact、Immutable Patch、Apply Gate：`IMPLEMENTED_IN_CONTRACT_TESTS_NOT_APPLIED_PRODUCTION`；
+  Research Release Gate：`INTEGRATED_BUT_BLOCKED_BY_DATA`。
 
 本地已增加只读 `research-release-audit` 命令、临时 SQLite 合同测试，并把
 `export --research-release` 接入正式中文导出路径。当前门禁会在数据未完整审批时阻断发布；
 它不会自动 Apply 或修改生产数据。
+
+Raw/Normalized Fact 现在保留 `raw_value` 与 `normalized_value` 的不可变版本；
+Localization Patch 采用 `PATCH_CREATED → PATCH_APPROVED → PATCH_APPLIED/REVOKED`
+追加事件，并有 source hash、字段和来源 allowlist 的 Apply Gate。上述能力已在临时
+SQLite 通过合同测试，但按本阶段安全边界尚未迁移或写入真实 PRIMARY。
