@@ -173,3 +173,12 @@ effective blocking issues = 0
 `localization_patches/localization_patch_events` 结构，不再按旧列名创建索引；全量回归为
 `435 passed`。本结果仍是 `CANDIDATE_ONLY`，没有写入真实 PRIMARY、Master、State 或 Dictionary，
 也没有授权 Production Apply、push 或 main 合并。
+## 8. 真实 PRIMARY 只读审查结论
+
+同一套门禁直接读取活动 PRIMARY（只读，未写入）仍为 `FAIL`：5,547 个 CURRENT SKU 中，
+当前聚合/字段状态仍有 33,634 个未批准字段、1,011 个必填中文空值和 8,724 个西语残留命中。
+SKU 集合、事实、未声明展示差异、source hash、重复 SKU 和 freshness 均为 0 异常。
+
+这不与候选库 `PASS` 矛盾：候选库使用了已审核工作簿的 5,543 条重叠记录和 4 条明确候选记录，
+而真实 PRIMARY 尚未执行 Apply。因而本阶段的准确结论是：**候选闭环 PASS，生产发布仍 BLOCKED**。
+没有执行自动批准、生产 Apply、Master 回写、远端 push 或 main 合并。
