@@ -131,3 +131,6 @@ SQLite 通过合同测试，但按本阶段安全边界尚未迁移或写入真�
 `localization_field_provenance` 也已加入 SQLite V2 additive schema，并由后续
 ProductionWriter 提交同步六个字段的独立来源、审批状态、source hash、freshness
 和 applied commit；现有 PRIMARY 尚未执行迁移，因此当前生产数据仍按旧投影审计。
+
+Repository 读取路径和 `research_release` 门禁已优先读取该字段级投影；旧数据库缺少
+该表时只走兼容回退，并保留明确的全局状态检查。
