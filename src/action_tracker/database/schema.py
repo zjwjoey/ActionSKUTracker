@@ -171,8 +171,33 @@ CREATE TABLE IF NOT EXISTS localization_patch_events (
  created_at TEXT NOT NULL,
  FOREIGN KEY (patch_id) REFERENCES localization_patches(patch_id)
 );
+CREATE TABLE IF NOT EXISTS category_backlog (
+ queue_id TEXT PRIMARY KEY,
+ official_sku TEXT NOT NULL,
+ cat1_es TEXT,
+ cat2_es TEXT,
+ suggested_cat2_zh TEXT,
+ evidence_url TEXT,
+ source_hash TEXT NOT NULL,
+ status TEXT NOT NULL CHECK (status IN ('CATEGORY_MISSING','REVIEW_REQUIRED','APPROVED','REJECTED','APPLIED')),
+ decision_value TEXT,
+ decided_by TEXT,
+ decided_at TEXT,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS category_backlog_events (
+ event_id TEXT PRIMARY KEY,
+ queue_id TEXT NOT NULL,
+ event_type TEXT NOT NULL CHECK (event_type IN ('CATEGORY_MISSING','REVIEW_REQUIRED','APPROVED','REJECTED','APPLIED')),
+ actor TEXT NOT NULL,
+ evidence_json TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY (queue_id) REFERENCES category_backlog(queue_id)
+);
 CREATE INDEX IF NOT EXISTS idx_source_fact_versions_sku_field ON source_fact_versions(official_sku,field_name,created_at);
 CREATE INDEX IF NOT EXISTS idx_localization_patch_events_patch ON localization_patch_events(patch_id,created_at);
+CREATE INDEX IF NOT EXISTS idx_category_backlog_status ON category_backlog(status,cat1_es,cat2_es,official_sku);
 CREATE TABLE IF NOT EXISTS migration_source_issues (
  issue_id INTEGER PRIMARY KEY,
  source_name TEXT NOT NULL,
