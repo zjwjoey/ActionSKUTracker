@@ -19,7 +19,7 @@ from typing import Any, Iterable, Mapping
 
 from .connection import connect
 from .schema import migrate_v2
-from ..services.hashing import localization_source_hash, normalize_hash
+from ..services.hashing import content_hash, localization_source_hash, normalize_hash
 
 
 class ProductionDatabaseError(RuntimeError):
@@ -112,7 +112,9 @@ class ProductionWriter:
                 self._validate_localization_coverage(db, bundle)
                 self._insert_run(db, bundle, now)
                 self._upsert_products(db, bundle.current_products, commit_id, now)
+                self._record_fact_versions(db, bundle.current_products, bundle.run_id, commit_id, now)
                 self._upsert_localizations(db, bundle.localization_updates, commit_id, now)
+                self._upsert_localization_fields(db, bundle.localization_updates, commit_id, now)
                 self._insert_observations(db, bundle.observations)
                 self._upsert_lifecycle(db, bundle.lifecycle_updates, now)
                 self._insert_prices(db, bundle.price_events, bundle.run_id)
@@ -208,7 +210,17 @@ class ProductionWriter:
                 # Existing historical identities already hold their official
                 # facts.  A minimal lifecycle-only row must never null out
                 # those facts or reset badges/prices during an absence run.
+                # It must, however, advance the durable lifecycle projection;
+                # otherwise MISSING_FIRST rows remain CURRENT in the PRIMARY
+                # product table and leak back into CURRENT exports.
                 if db.execute("SELECT 1 FROM products WHERE official_sku=?", (sku,)).fetchone():
+                    db.execute(
+                        "UPDATE products SET status=?, consecutive_missing=?, "
+                        "last_checked_at=?, updated_at=? WHERE official_sku=?",
+                        (r.get("status", "ACTIVE"),
+                         int(r.get("consecutive_missing", r.get("missing_count", 0)) or 0),
+                         now, now, sku),
+                    )
                     continue
             source_hash = normalize_hash(r.get("source_hash"))
             # The product row is the durable identity projection.  Collection
@@ -264,7 +276,94 @@ class ProductionWriter:
                  r.get("source"), r.get("review_status"), now, commit_id, localization_hash,
                  r.get("resolution_status"), r.get("name_source"), r.get("cat1_source"), r.get("cat2_source"),
                  r.get("spec_source"), r.get("description_source"), r.get("details_source"), r.get("freshness_status"),
-                 r.get("approved_by"), r.get("approved_at"), r.get("applied_commit_id") or commit_id),
+                r.get("approved_by"), r.get("approved_at"), r.get("applied_commit_id") or commit_id),
+            )
+
+    @staticmethod
+    def _upsert_localization_fields(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], commit_id: str, now: str) -> None:
+        """Persist provenance one field at a time.
+
+        ``product_localizations.review_status`` remains a compatibility
+        summary.  The normalized projection used by new gates is this table,
+        where approval and source hash are independently auditable for every
+        localized field.
+        """
+        fields = ("name", "cat1", "cat2", "spec", "description", "details")
+        for row in rows:
+            sku = str(row.get("official_sku") or row.get("sku") or "").strip()
+            language = str(row.get("language") or "zh").strip()
+            if not sku or language not in {"es", "zh"}:
+                continue
+            row_hash = normalize_hash(row.get("source_hash"))
+            if row_hash is None and language == "es":
+                row_hash = localization_source_hash({
+                    "name_es": row.get("name"), "cat1_es": row.get("cat1"),
+                    "cat2_es": row.get("cat2"), "spec_es": row.get("spec"),
+                    "desc_es": row.get("description"), "details_es": row.get("details"),
+                })
+            for field_name in fields:
+                value = row.get(field_name)
+                source = row.get(f"{field_name}_source") or row.get("source")
+                review_status = row.get(f"{field_name}_review_status") or row.get("review_status")
+                field_hash = normalize_hash(row.get(f"{field_name}_source_hash")) or row_hash
+                db.execute(
+                    """
+                    INSERT INTO localization_fields(
+                        official_sku,language,field_name,value,source,review_status,source_hash,updated_at,applied_commit_id
+                    ) VALUES(?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(official_sku,language,field_name) DO UPDATE SET
+                        value=excluded.value, source=excluded.source, review_status=excluded.review_status,
+                        source_hash=excluded.source_hash, updated_at=excluded.updated_at,
+                        applied_commit_id=excluded.applied_commit_id
+                    """,
+                    (sku, language, field_name, value, source, review_status, field_hash, now, row.get("applied_commit_id") or commit_id),
+                )
+
+    @staticmethod
+    def _record_fact_versions(
+        db: sqlite3.Connection, rows: Iterable[dict[str, Any]], run_id: str, commit_id: str, now: str,
+    ) -> None:
+        """Retain raw and normalized fact payloads for every committed SKU.
+
+        Collectors may provide ``raw_fact``/``normalized_fact`` mappings.  If
+        raw evidence is not present in an older bundle, the normalized input
+        is retained as an explicitly unavailable raw capture rather than being
+        presented as original website evidence.
+        """
+        fact_fields = (
+            "name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es",
+            "current_price", "original_price", "unit_price", "product_url", "image_url", "raw_tags",
+        )
+        for row in rows:
+            sku = str(row.get("official_sku") or row.get("sku") or "").strip()
+            if not sku or row.get("_historical_minimal"):
+                continue
+            normalized = row.get("normalized_fact")
+            if not isinstance(normalized, Mapping):
+                normalized = {key: row.get(key) for key in fact_fields}
+            raw = row.get("raw_fact")
+            raw_available = isinstance(raw, Mapping)
+            if not raw_available:
+                raw = {key: row.get(key) for key in fact_fields}
+            raw_payload = json.dumps(dict(raw), ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
+            normalized_payload = json.dumps(dict(normalized), ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
+            raw_hash = hashlib.sha256(raw_payload.encode("utf-8")).hexdigest()
+            normalized_hash = hashlib.sha256(normalized_payload.encode("utf-8")).hexdigest()
+            fact_id = hashlib.sha256(f"{run_id}\x1f{sku}\x1f{raw_hash}\x1f{normalized_hash}".encode("utf-8")).hexdigest()
+            db.execute(
+                """
+                INSERT INTO product_fact_versions(
+                    fact_id,official_sku,run_id,raw_fact_json,normalized_fact_json,raw_fact_hash,
+                    normalized_fact_hash,raw_fact_available,normalization_version,created_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(official_sku,run_id) DO UPDATE SET
+                    fact_id=excluded.fact_id, raw_fact_json=excluded.raw_fact_json,
+                    normalized_fact_json=excluded.normalized_fact_json, raw_fact_hash=excluded.raw_fact_hash,
+                    normalized_fact_hash=excluded.normalized_fact_hash, raw_fact_available=excluded.raw_fact_available,
+                    normalization_version=excluded.normalization_version, created_at=excluded.created_at
+                """,
+                (fact_id, sku, run_id, raw_payload, normalized_payload, raw_hash, normalized_hash,
+                 int(raw_available), str(row.get("normalization_version") or "facts-v1"), now),
             )
 
     @staticmethod
@@ -355,6 +454,254 @@ def _to_bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     return str(value or "").strip().casefold() in {"1", "true", "yes", "y", "on", "是", "有"}
+
+
+def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
+                              import_id: str, evidence: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Atomically apply verified Spanish detail fields to a PRIMARY database.
+
+    This narrow recovery writer is used when the normal detail session is
+    BLOCKED but an authorised browser (for example Edge) has produced page
+    evidence.  It may write *only* the Spanish ``description`` and
+    ``details`` fields.  Listing-owned fields (name, categories, spec, URLs,
+    images, prices and badges), lifecycle, Presence and all Chinese fields
+    remain immutable.  Callers validate page evidence, SKU membership and URL
+    ownership before invoking it.
+    """
+    from ..services.hashing import content_hash, localization_source_hash
+
+    payload = [dict(row) for row in rows]
+    if not payload:
+        raise ProductionDatabaseError("DETAIL_IMPORT_EMPTY")
+    if not import_id or any(not str(row.get("sku") or "").strip() for row in payload):
+        raise ProductionDatabaseError("DETAIL_IMPORT_SKU_MISSING")
+    now = datetime.now(timezone.utc).isoformat()
+    changed_skus = 0
+    changed_fields = 0
+    with connect(Path(path)) as db:
+        metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
+        if metadata.get("schema_family") != "ACTION_SQLITE_DATA" or metadata.get("database_role") != "PRIMARY":
+            raise ProductionDatabaseError("PRIMARY_V2_DATABASE_REQUIRED")
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            for row in payload:
+                sku = str(row.get("sku") or "").strip()
+                product = db.execute(
+                    "SELECT canonical_id,status,name_es,product_url,image_url FROM products WHERE official_sku=?", (sku,)
+                ).fetchone()
+                if product is None:
+                    raise ProductionDatabaseError(f"DETAIL_IMPORT_SKU_NOT_FOUND:{sku}")
+                if str(product[1]) != "CURRENT":
+                    raise ProductionDatabaseError(f"DETAIL_IMPORT_SKU_NOT_CURRENT:{sku}")
+                loc = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+                    "WHERE official_sku=? AND language='es'", (sku,)
+                ).fetchone()
+                if loc is None:
+                    raise ProductionDatabaseError(f"DETAIL_IMPORT_ES_LOCALIZATION_MISSING:{sku}")
+                # An Edge page may expose title, breadcrumb, spec and URLs as
+                # supporting evidence.  Those fields are deliberately not
+                # accepted as mutations: their authority remains the listing
+                # observation frozen before detail enrichment.
+                incoming = {
+                    "description": row.get("desc_es", row.get("description_es", row.get("description"))),
+                    "details": row.get("details_es", row.get("details")),
+                }
+                old = dict(zip(("name", "cat1", "cat2", "spec", "description", "details"), loc))
+                merged = dict(old)
+                for field, value in incoming.items():
+                    if value not in (None, ""):
+                        merged[field] = value
+                if not merged["description"] or not merged["details"]:
+                    raise ProductionDatabaseError(f"DETAIL_IMPORT_CONTENT_INCOMPLETE:{sku}")
+                fact = {"name_es": merged["name"], "cat1_es": merged["cat1"], "cat2_es": merged["cat2"],
+                        "spec_es": merged["spec"], "desc_es": merged["description"], "details_es": merged["details"]}
+                source_hash = localization_source_hash(fact)
+                # Repair the three historical Edge imports that changed only
+                # the Action hostname.  This canonicalises the *stored* URL;
+                # it never trusts or writes an URL supplied by this importer.
+                stored_url = str(product[3] or "")
+                product_url = (
+                    "https://www.action.com/" + stored_url[len("https://action.com/"):]
+                    if stored_url.startswith("https://action.com/")
+                    else stored_url
+                )
+                image_url = product[4]
+                product_fields = ["source_hash=?", "content_hash=?", "updated_at=?"]
+                product_args: list[Any] = [source_hash, content_hash({**fact, "product_url": product_url, "image_url": image_url}), now]
+                if product_url != stored_url:
+                    product_fields.insert(0, "product_url=?")
+                    product_args.insert(0, product_url)
+                product_args.append(sku)
+                db.execute(f"UPDATE products SET {', '.join(product_fields)} WHERE official_sku=?", product_args)
+                db.execute(
+                    "UPDATE product_localizations SET description=?,details=?,source=?,"
+                    "review_status=?,source_hash=?,resolution_status=?,freshness_status=?,updated_at=?,last_commit_id=? "
+                    "WHERE official_sku=? AND language='es'",
+                    (merged["description"], merged["details"],
+                     "EDGE_PLUGIN", "VERIFIED", source_hash, "DETAIL_IMPORTED", "CURRENT", now, import_id, sku),
+                )
+                db.execute(
+                    "UPDATE product_localizations SET source_hash=?, updated_at=? WHERE official_sku=? AND language='zh'",
+                    (source_hash, now, sku),
+                )
+                changed = sum(
+                    old[field] != merged[field]
+                    for field in ("description", "details")
+                ) + int(product_url != stored_url)
+                if changed:
+                    changed_skus += 1
+                    changed_fields += changed
+                db.execute(
+                    "INSERT INTO migration_source_issues(source_name,issue_type,entity_id,details) VALUES(?,?,?,?)",
+                    ("edge_detail_import", "DETAIL_FIELDS_APPLIED", sku,
+                     json.dumps({"import_id": import_id, **(dict(evidence or {}))}, ensure_ascii=False, sort_keys=True)),
+                )
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+    return {"status": "APPLIED", "import_id": import_id, "rows": len(payload),
+            "changed_skus": changed_skus, "changed_fields": changed_fields}
+
+
+def apply_verified_listing_reconciliation(path: Path, rows: Iterable[Mapping[str, Any]], *,
+                                          import_id: str,
+                                          evidence: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Apply a narrow, fully evidenced repair to listing/lifecycle projections.
+
+    This is deliberately separate from :func:`apply_detail_only_updates`.
+    It is for a committed, QA-passing observation whose product details were
+    recovered in a user-controlled browser, and can write only three classes
+    of facts after they have been cross-validated by the caller:
+
+    * the two Spanish breadcrumb categories from an official product page;
+    * ``action_new_badge``, re-derived from the already stored listing
+      ``raw_badges`` value (never from a spreadsheet display cell); and
+    * a blank ``products.first_seen_at`` value, hydrated from the existing
+      lifecycle-state date without altering lifecycle state itself.
+
+    It cannot update prices, URLs, product names, specifications, details,
+    Chinese localizations, Presence or any lifecycle decision.  Every SKU is
+    independently journaled in ``migration_source_issues``.
+    """
+    payload = [dict(row) for row in rows]
+    if not payload:
+        raise ProductionDatabaseError("LISTING_RECONCILIATION_EMPTY")
+    if not import_id:
+        raise ProductionDatabaseError("LISTING_RECONCILIATION_IMPORT_ID_MISSING")
+    from ..products.badges import parse_badges
+
+    now = datetime.now(timezone.utc).isoformat()
+    seen: set[str] = set()
+    category_fields_changed = 0
+    badge_fields_changed = 0
+    first_seen_fields_hydrated = 0
+    changed_skus = 0
+    with connect(Path(path)) as db:
+        metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
+        if metadata.get("schema_family") != "ACTION_SQLITE_DATA" or metadata.get("database_role") != "PRIMARY":
+            raise ProductionDatabaseError("PRIMARY_V2_DATABASE_REQUIRED")
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            for row in payload:
+                sku = str(row.get("sku") or "").strip()
+                if not sku or sku in seen:
+                    raise ProductionDatabaseError(f"LISTING_RECONCILIATION_SKU_INVALID:{sku}")
+                seen.add(sku)
+                cat1 = str(row.get("cat1_es") or "").strip()
+                cat2 = str(row.get("cat2_es") or "").strip()
+                first_seen = str(row.get("first_seen") or "").strip()[:10]
+                supplied_badge = row.get("action_new_badge")
+                if not cat1 or not cat2:
+                    raise ProductionDatabaseError(f"LISTING_RECONCILIATION_CATEGORY_INCOMPLETE:{sku}")
+                if supplied_badge not in (True, False, 0, 1):
+                    raise ProductionDatabaseError(f"LISTING_RECONCILIATION_BADGE_INVALID:{sku}")
+                if len(first_seen) != 10:
+                    raise ProductionDatabaseError(f"LISTING_RECONCILIATION_FIRST_SEEN_INVALID:{sku}")
+
+                product = db.execute(
+                    "SELECT canonical_id,status,product_url,image_url,raw_badges,action_new_badge,first_seen_at "
+                    "FROM products WHERE official_sku=?", (sku,)
+                ).fetchone()
+                if product is None:
+                    raise ProductionDatabaseError(f"LISTING_RECONCILIATION_SKU_NOT_FOUND:{sku}")
+                if str(product[1] or "") != "CURRENT":
+                    raise ProductionDatabaseError(f"LISTING_RECONCILIATION_SKU_NOT_CURRENT:{sku}")
+                lifecycle = db.execute(
+                    "SELECT first_seen_date FROM lifecycle_state WHERE official_sku=?", (sku,)
+                ).fetchone()
+                lifecycle_first_seen = str(lifecycle[0] or "").strip()[:10] if lifecycle else ""
+                if lifecycle_first_seen != first_seen:
+                    raise ProductionDatabaseError(f"LISTING_RECONCILIATION_FIRST_SEEN_NOT_LIFECYCLE:{sku}")
+                expected_badge = bool(parse_badges(product[4]).action_new_badge)
+                if bool(supplied_badge) != expected_badge:
+                    raise ProductionDatabaseError(f"LISTING_RECONCILIATION_BADGE_NOT_RAW_TAG:{sku}")
+                existing_first_seen = str(product[6] or "").strip()[:10]
+                if existing_first_seen and existing_first_seen != first_seen:
+                    raise ProductionDatabaseError(f"LISTING_RECONCILIATION_FIRST_SEEN_CONFLICT:{sku}")
+                loc = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+                    "WHERE official_sku=? AND language='es'", (sku,)
+                ).fetchone()
+                if loc is None:
+                    raise ProductionDatabaseError(f"LISTING_RECONCILIATION_ES_LOCALIZATION_MISSING:{sku}")
+
+                old = dict(zip(("name", "cat1", "cat2", "spec", "description", "details"), loc))
+                fact = {
+                    "name_es": old["name"], "cat1_es": cat1, "cat2_es": cat2,
+                    "spec_es": old["spec"], "desc_es": old["description"], "details_es": old["details"],
+                }
+                source_hash = localization_source_hash(fact)
+                product_url = str(product[2] or "")
+                image_url = product[3]
+                db.execute(
+                    "UPDATE products SET action_new_badge=?,first_seen_at=?,source_hash=?,content_hash=?,updated_at=? "
+                    "WHERE official_sku=?",
+                    (int(expected_badge), first_seen, source_hash,
+                     content_hash({**fact, "product_url": product_url, "image_url": image_url}), now, sku),
+                )
+                db.execute(
+                    "UPDATE product_localizations SET cat1=?,cat2=?,source=?,review_status=?,source_hash=?,"
+                    "resolution_status=?,freshness_status=?,cat1_source=?,cat2_source=?,updated_at=?,last_commit_id=? "
+                    "WHERE official_sku=? AND language='es'",
+                    (cat1, cat2, "OFFICIAL_FACT", "VERIFIED", source_hash,
+                     "LISTING_RECONCILED", "CURRENT", "official_breadcrumb", "official_breadcrumb",
+                     now, import_id, sku),
+                )
+                # Localized Chinese values are intentionally untouched.  Their
+                # source hash tracks the changed Spanish fact basis exactly as
+                # the narrow detail importer already does.
+                db.execute(
+                    "UPDATE product_localizations SET source_hash=?,updated_at=? "
+                    "WHERE official_sku=? AND language='zh'", (source_hash, now, sku),
+                )
+                category_changed = int(old["cat1"] != cat1) + int(old["cat2"] != cat2)
+                badge_changed = int(bool(product[5]) != expected_badge)
+                first_seen_changed = int(not existing_first_seen)
+                category_fields_changed += category_changed
+                badge_fields_changed += badge_changed
+                first_seen_fields_hydrated += first_seen_changed
+                changed_skus += int(bool(category_changed or badge_changed or first_seen_changed))
+                db.execute(
+                    "INSERT INTO migration_source_issues(source_name,issue_type,entity_id,details) VALUES(?,?,?,?)",
+                    ("edge_listing_reconciliation", "LISTING_FIELDS_RECONCILED", sku,
+                     json.dumps({
+                         "import_id": import_id, "category": {"old_cat1": old["cat1"], "old_cat2": old["cat2"],
+                                                               "new_cat1": cat1, "new_cat2": cat2},
+                         "action_new_badge": int(expected_badge), "first_seen": first_seen,
+                         **dict(evidence or {}),
+                     }, ensure_ascii=False, sort_keys=True)),
+                )
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+    return {
+        "status": "APPLIED", "import_id": import_id, "rows": len(payload), "changed_skus": changed_skus,
+        "category_fields_changed": category_fields_changed, "badge_fields_changed": badge_fields_changed,
+        "first_seen_fields_hydrated": first_seen_fields_hydrated,
+    }
 
 
 def database_status(path: Path) -> dict[str, Any]:

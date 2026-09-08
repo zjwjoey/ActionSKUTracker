@@ -17,8 +17,10 @@ from .service import (
     validate_source_records,
     validate_spanish_source_fields,
     validate_zh_rows_against_source,
+    _available_image_skus,
 )
 from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, verify_template1_xlsx, write_template1_xlsx
+from .release_gate import evaluate_release_gate
 
 
 def export_template1(
@@ -49,6 +51,8 @@ def export_template1(
         validate_zh_rows_against_source(zh_rows, records)
         validate_output_rows(es_rows)
         validate_output_rows(zh_rows)
+        es_release_gate = evaluate_release_gate(records, es_rows, language="es", strict=source.kind == "SQLITE_CURRENT")
+        zh_release_gate = evaluate_release_gate(records, zh_rows, language="zh", strict=source.kind == "SQLITE_CURRENT")
         history = load_presence_history(cfg)
         history_rows = build_presence_rows(
             history, export_date=export_date, current_records=records,
@@ -84,6 +88,7 @@ def export_template1(
         history_dates=history.dates + ((export_date,) if export_date not in history.dates else ()),
         es_rows=es_rows, zh_rows=zh_rows,
         image_root=image_root, embed_zh_images=with_images,
+        allowed_image_skus=_available_image_skus(cfg) if with_images else None,
     )
     try:
         verification = verify_template1_xlsx(
@@ -120,6 +125,7 @@ def export_template1(
         "history_seed_row_count": history.seed_row_count,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "validation_results": {"history": "PASS", "cross_sheet": "PASS", "workbook": "PASS"},
+        "release_gate": {"es": es_release_gate, "zh": zh_release_gate},
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return {

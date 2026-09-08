@@ -39,6 +39,71 @@ CREATE TABLE IF NOT EXISTS product_localizations (
  PRIMARY KEY (official_sku, language),
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
+CREATE TABLE IF NOT EXISTS localization_fields (
+ official_sku TEXT NOT NULL,
+ language TEXT NOT NULL,
+ field_name TEXT NOT NULL CHECK (field_name IN ('name','cat1','cat2','spec','description','details')),
+ value TEXT,
+ source TEXT,
+ review_status TEXT,
+ source_hash TEXT,
+ updated_at TEXT NOT NULL,
+ applied_commit_id TEXT,
+ PRIMARY KEY (official_sku, language, field_name),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS product_fact_versions (
+ fact_id TEXT PRIMARY KEY,
+ official_sku TEXT NOT NULL,
+ run_id TEXT NOT NULL,
+ raw_fact_json TEXT NOT NULL,
+ normalized_fact_json TEXT NOT NULL,
+ raw_fact_hash TEXT NOT NULL,
+ normalized_fact_hash TEXT NOT NULL,
+ raw_fact_available INTEGER NOT NULL DEFAULT 0,
+ normalization_version TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ UNIQUE (official_sku, run_id),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku),
+ FOREIGN KEY (run_id) REFERENCES runs(run_id)
+);
+CREATE TABLE IF NOT EXISTS localization_patches (
+ patch_id TEXT PRIMARY KEY,
+ parent_patch_id TEXT,
+ official_sku TEXT NOT NULL,
+ language TEXT NOT NULL,
+ field_name TEXT NOT NULL CHECK (field_name IN ('name','cat1','cat2','spec','description','details')),
+ old_value TEXT,
+ new_value TEXT,
+ source_hash TEXT NOT NULL,
+ reason TEXT NOT NULL,
+ created_by TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ revision INTEGER NOT NULL,
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku),
+ FOREIGN KEY (parent_patch_id) REFERENCES localization_patches(patch_id)
+);
+CREATE TABLE IF NOT EXISTS localization_patch_events (
+ event_id TEXT PRIMARY KEY,
+ patch_id TEXT NOT NULL,
+ event_type TEXT NOT NULL CHECK (event_type IN ('PATCH_CREATED','PATCH_APPROVED','PATCH_APPLIED','PATCH_REVOKED')),
+ actor TEXT NOT NULL,
+ reason TEXT,
+ event_json TEXT NOT NULL,
+ occurred_at TEXT NOT NULL,
+ FOREIGN KEY (patch_id) REFERENCES localization_patches(patch_id)
+);
+CREATE INDEX IF NOT EXISTS ix_localization_fields_source_hash ON localization_fields(language, source_hash);
+CREATE INDEX IF NOT EXISTS ix_product_fact_versions_sku ON product_fact_versions(official_sku, created_at);
+CREATE INDEX IF NOT EXISTS ix_localization_patch_events_patch ON localization_patch_events(patch_id, occurred_at);
+CREATE TRIGGER IF NOT EXISTS trg_localization_patches_no_update
+ BEFORE UPDATE ON localization_patches BEGIN SELECT RAISE(ABORT, 'LOCALIZATION_PATCH_IMMUTABLE'); END;
+CREATE TRIGGER IF NOT EXISTS trg_localization_patches_no_delete
+ BEFORE DELETE ON localization_patches BEGIN SELECT RAISE(ABORT, 'LOCALIZATION_PATCH_IMMUTABLE'); END;
+CREATE TRIGGER IF NOT EXISTS trg_localization_patch_events_no_update
+ BEFORE UPDATE ON localization_patch_events BEGIN SELECT RAISE(ABORT, 'LOCALIZATION_PATCH_EVENT_IMMUTABLE'); END;
+CREATE TRIGGER IF NOT EXISTS trg_localization_patch_events_no_delete
+ BEFORE DELETE ON localization_patch_events BEGIN SELECT RAISE(ABORT, 'LOCALIZATION_PATCH_EVENT_IMMUTABLE'); END;
 CREATE TABLE IF NOT EXISTS lifecycle_state (
  official_sku TEXT PRIMARY KEY,
  canonical_id TEXT NOT NULL,
@@ -285,5 +350,28 @@ def migrate_v2(path, *, role: str = "SHADOW"):
             except Exception as exc:
                 if "duplicate column" not in str(exc).lower():
                     raise
+        # Build the field-level provenance projection for legacy V2 rows.  The
+        # old row-level review/source values remain intact for compatibility;
+        # this additive backfill is deliberately INSERT OR IGNORE so a newer
+        # field decision is never overwritten during a later migration.
+        for field_name, value_column, source_column, status_column in (
+            ("name", "name", "name_source", "review_status"),
+            ("cat1", "cat1", "cat1_source", "review_status"),
+            ("cat2", "cat2", "cat2_source", "review_status"),
+            ("spec", "spec", "spec_source", "review_status"),
+            ("description", "description", "description_source", "review_status"),
+            ("details", "details", "details_source", "review_status"),
+        ):
+            db.execute(
+                f"""
+                INSERT OR IGNORE INTO localization_fields(
+                    official_sku,language,field_name,value,source,review_status,source_hash,updated_at,applied_commit_id
+                )
+                SELECT official_sku,language,?,{value_column},{source_column},{status_column},source_hash,
+                       COALESCE(updated_at,CURRENT_TIMESTAMP),applied_commit_id
+                FROM product_localizations
+                """,
+                (field_name,),
+            )
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_price_history_event_key ON price_history(event_key) WHERE event_key IS NOT NULL")
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_event_history_event_key ON event_history(event_key) WHERE event_key IS NOT NULL")

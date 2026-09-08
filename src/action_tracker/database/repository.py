@@ -142,14 +142,36 @@ class ProductionRepository:
                    p.unit_price_raw,p.raw_badges,p.action_new_badge,p.promotion_active,p.sustainable_badge,
                    p.status,p.product_url,p.image_url,p.first_seen_at,p.last_seen_at,
                    es.name,es.cat1,es.cat2,es.spec,es.description,es.details,
-                   zh.name,zh.cat1,zh.cat2,zh.spec,zh.description,zh.details
+                   zh.name,zh.cat1,zh.cat2,zh.spec,zh.description,zh.details,
+                   p.source_hash
                    FROM products p
                    LEFT JOIN product_localizations es ON es.official_sku=p.official_sku AND es.language='es'
                    LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'
                    WHERE p.status='CURRENT' ORDER BY p.official_sku"""
             ).fetchall()
+            provenance_rows = db.execute(
+                """
+                SELECT official_sku,language,field_name,value,source,review_status,source_hash,updated_at,applied_commit_id
+                FROM localization_fields
+                WHERE language IN ('es','zh')
+                """
+            ).fetchall()
         records = []
+        provenance: dict[tuple[str, str], dict[str, Any]] = {}
+        for item in provenance_rows:
+            provenance[(str(item[0]), str(item[1]), str(item[2]))] = {
+                "value": item[3], "source": item[4], "review_status": item[5],
+                "source_hash": item[6], "updated_at": item[7], "applied_commit_id": item[8],
+            }
         for row in rows:
+            zh_provenance = {
+                field: provenance.get((str(row[1]), "zh", field), {})
+                for field in ("name", "cat1", "cat2", "spec", "description", "details")
+            }
+            es_provenance = {
+                field: provenance.get((str(row[1]), "es", field), {})
+                for field in ("name", "cat1", "cat2", "spec", "description", "details")
+            }
             records.append({
                 "canonical_id": row[0], "sku": row[1], "name_es": row[16] or row[2], "name_zh": row[22] or row[3],
                 "current_price": row[4], "original_price": row[5], "unit_price": row[6], "raw_tags": row[7],
@@ -157,6 +179,9 @@ class ProductionRepository:
                 "status": row[11], "product_url": row[12], "image_url": row[13], "first_seen": row[14], "last_seen": row[15],
                 "cat1_es": row[17], "cat2_es": row[18], "spec_es": row[19], "desc_es": row[20], "details_es": row[21],
                 "cat1_zh": row[23], "cat2_zh": row[24], "spec_zh": row[25], "desc_zh": row[26], "details_zh": row[27],
+                "source_hash": row[28],
+                "_localization_provenance": zh_provenance,
+                "_es_localization_provenance": es_provenance,
             })
         return records
 

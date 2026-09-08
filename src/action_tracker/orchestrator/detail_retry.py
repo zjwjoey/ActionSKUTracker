@@ -18,7 +18,7 @@ from ..services.browser import BrowserSession
 from ..services.runtime import RunLock, madrid_now
 
 
-_DETAIL_REASONS = {"NEW", "REAPPEARED", "MISSING_FIELD", "DETAIL_REFRESH"}
+_DETAIL_REASONS = {"NEW", "REAPPEARED", "MISSING_FIELD", "CATEGORY_MISSING", "DETAIL_REFRESH"}
 
 # These are factual fields obtained from a product-detail page.  An apply must
 # never use a retry to alter availability, pricing, badges, or lifecycle data:
@@ -76,6 +76,14 @@ def _plans(parent: Path) -> list[dict]:
     updates = _rows(parent / "product_updates.csv")
     if not updates:
         raise ValueError("PARENT_DETAIL_CANDIDATES_MISSING: product_updates.csv")
+    # Older committed snapshots planned every NEW/REAPPEARED SKU for Detail,
+    # including rows seen only by Listing.  When Presence evidence is
+    # available, keep retry behavior consistent with the live planner and
+    # retry only independently confirmed (BOTH) rows.  Snapshots without the
+    # evidence file retain their historical behavior for backwards
+    # compatibility and test fixtures.
+    presence_rows = _rows(parent / "presence_evidence.csv")
+    presence_by_sku = {str(row.get("sku") or ""): row for row in presence_rows}
     products = {row.get("sku"): row for row in _rows(parent / "products_normalized.csv")}
     listings = {row.get("sku"): row for row in _rows(parent / "listing_products.csv")}
     out = []
@@ -83,12 +91,21 @@ def _plans(parent: Path) -> list[dict]:
         needs = str(row.get("need_detail", "")).lower() in {"1", "true", "yes"}
         if "need_detail" not in row:
             needs = row.get("reason") in _DETAIL_REASONS
+        # A daily run may retain excess candidates as a recorded backlog.  A
+        # retry reproduces only the batch that was actually authorized for
+        # that parent observation; it must not bypass the per-run access
+        # budget by expanding deferred rows into a one-off bulk request.
+        if "detail_selected" in row:
+            needs = needs and str(row.get("detail_selected", "")).lower() in {"1", "true", "yes"}
         if not needs:
             continue
         sku = str(row.get("sku") or "")
+        if presence_rows and row.get("reason") in {"NEW", "REAPPEARED"}:
+            if presence_by_sku.get(sku, {}).get("source_flag") != "BOTH":
+                continue
         light = dict(listings.get(sku) or {})
         light.update({k: v for k, v in (products.get(sku) or {}).items()
-                      if k in {"product_url", "current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es"} and v not in (None, "")})
+                      if k in {"product_url", "current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "cat2_es"} and v not in (None, "")})
         out.append({"sku": sku, "canonical_id": row.get("canonical_id") or "", "reason": row.get("reason") or "DETAIL_REFRESH",
                     "need_detail": True, "light": light})
     return out

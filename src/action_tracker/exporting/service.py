@@ -27,7 +27,9 @@ from .dictionary_join import (
     unresolved_brand_ids_for_records,
 )
 from .excel_writer import write_catalog_xlsx
+from .history import HistoryExportError, load_presence_history
 from .profiles import ExportProfile, ExportProfileError, load_profile
+from .release_gate import evaluate_release_gate
 
 
 class ExportValidationError(ValueError):
@@ -91,6 +93,18 @@ def export_catalog(
     else:
         raise ExportValidationError(f"EXPORT_LANGUAGE_UNSUPPORTED: {language}")
     validate_output_rows(rows)
+    release_gate = evaluate_release_gate(
+        source.records,
+        rows,
+        language=language,
+        # A PRIMARY SQLite projection is the formal production path.  Legacy
+        # snapshot/master fixtures remain preview-compatible while they are
+        # migrated to field-level provenance.
+        strict=source.kind == "SQLITE_CURRENT",
+    )
+    # Keep history provenance in every formal manifest, not only Template 1.
+    # Fixture projects without a history config record that explicitly.
+    history_manifest = _history_manifest(cfg)
 
     date_compact = export_date.replace("-", "")
     output_path = Path(cfg["paths"]["exports"]) / profile.filename_for(date_compact)
@@ -99,11 +113,13 @@ def export_catalog(
     # 先写入并验证旁路临时文件；工作簿和 manifest 通过校验后成对发布，
     # 避免验证失败或 manifest 写入失败时留下半套导出物。
     preview_path = output_path.with_name(f".{output_path.stem}.preview.xlsx")
+    allowed_image_skus = _available_image_skus(cfg) if not no_images else None
     try:
         image_stats = write_catalog_xlsx(
             preview_path, headers=headers, rows=rows, workbook_format=profile.workbook_format,
             image_root=(Path(cfg["paths"]["images"]) / "derivatives" / "excel_250") if not no_images else None,
             embed_images=not no_images,
+            allowed_image_skus=allowed_image_skus,
         )
         _verify_written_workbook(preview_path, headers=headers, expected_skus=expected_skus,
                                  expect_images=not no_images, expected_image_count=image_stats["embedded_count"])
@@ -126,7 +142,10 @@ def export_catalog(
                 "source_records": "PASS",
                 "output_rows": "PASS",
                 "workbook": "PASS",
+                "release_gate": "PASS" if release_gate["passed"] else "PREVIEW_ONLY",
             },
+            "release_gate": release_gate,
+            "history_stats": history_manifest,
             "detail_retry_ids": _detail_retry_ids(source),
             "image_profile": "excel_250_white_v1" if not no_images else None,
             "image_embedded_count": image_stats["embedded_count"],
@@ -151,6 +170,50 @@ def export_catalog(
         "image_embedded_count": image_stats["embedded_count"],
         "image_missing_count": image_stats["missing_count"],
     }
+
+
+def _history_manifest(cfg: dict[str, Any]) -> dict[str, Any]:
+    config_path = Path(cfg.get("history_sources_path") or Path(cfg.get("project_root") or ".") / "config" / "history_sources.yaml")
+    if not config_path.exists():
+        return {"status": "NOT_CONFIGURED", "dates": [], "source_count": 0, "sources": []}
+    try:
+        history = load_presence_history(cfg)
+    except HistoryExportError as exc:
+        raise ExportValidationError(f"EXPORT_HISTORY_PROVENANCE_INVALID: {exc}") from exc
+    return {
+        "status": "PASS",
+        "dates": list(history.dates),
+        "source_count": len(history.source_stats),
+        "sources": [
+            {
+                "date": stat.date,
+                "path": stat.path,
+                "record_count": stat.raw_rows,
+                "unique_skus": stat.unique_skus,
+                "presence_capability": stat.presence_capability,
+                "absence_capability": stat.absence_capability,
+                "observation_complete": stat.observation_complete,
+                "evidence_level": stat.evidence_level,
+                "status": stat.status,
+            }
+            for stat in history.source_stats
+        ],
+    }
+
+
+def _available_image_skus(cfg: dict[str, Any]) -> set[str] | None:
+    """Use manifest-confirmed assets when a configured manifest exists."""
+    image_cfg = cfg.get("images") or {}
+    raw = image_cfg.get("manifest_path")
+    root = Path((cfg.get("paths") or {}).get("images") or Path(cfg.get("project_root") or ".") / "runtime" / "images")
+    path = Path(str(raw)) if raw else root / "manifests" / "image_manifest.csv"
+    if not path.is_absolute():
+        path = Path(cfg.get("project_root") or ".") / path
+    if not path.exists():
+        return None
+    from ..images.assets import ImageManifest
+    manifest = ImageManifest(path)
+    return {sku for sku, record in manifest.records.items() if record.available}
 
 
 def resolve_formal_source(

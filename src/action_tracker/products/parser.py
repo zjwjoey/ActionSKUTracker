@@ -29,7 +29,15 @@ _EXTRACT_JS = r"""
     const title = txt(document.querySelector('h1')) ||
         document.title.replace(/\s*\|\s*Action.*$/i, '').trim();
 
-    const crumbs = [...document.querySelectorAll('[data-testid="breadcrumb-label"]')].map(e => e.textContent.trim());
+    // Product pages have used more than one breadcrumb markup over time.
+    // Prefer the explicit test id, then fall back to the semantic breadcrumb
+    // nav.  Deduplicate adjacent/identical labels without inventing a
+    // category from the listing card.
+    const crumbNodes = [
+        ...document.querySelectorAll('[data-testid="breadcrumb-label"]'),
+        ...document.querySelectorAll('nav[aria-label*="breadcrumb" i] a, nav[aria-label*="breadcrumb" i] span'),
+    ];
+    const crumbs = [...new Set(crumbNodes.map(e => txt(e)).filter(Boolean))];
     const cat1 = crumbs.length > 1 ? (crumbs[crumbs.length - 3] || crumbs[0]) : (crumbs[0] || '');
     const cat2 = crumbs.length > 1 ? crumbs[crumbs.length - 2] : '';
 

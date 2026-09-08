@@ -58,6 +58,33 @@ def test_products_source_hash_is_filled_from_spanish_facts_and_empty_values_norm
     assert normalize_hash(" None ") is None
 
 
+def test_commit_preserves_raw_and_normalized_fact_versions(tmp_path: Path):
+    db = tmp_path / "action.db"
+    raw = {"name_es": "Material:: Plástico&nbsp;", "details_es": "<p>Material</p>"}
+    normalized = {"name_es": "Material: Plástico", "details_es": "Material"}
+    bundle = CommitBundle(
+        run_id="raw-run", observation_date="2026-08-30", qa_state="PASS",
+        current_products=({"sku": "1001", "name_es": "Material: Plástico", "current_price": 2.5,
+                           "raw_fact": raw, "normalized_fact": normalized, "normalization_version": "facts-v2"},),
+        localization_updates=({"sku": "1001", "language": "zh", "name": "塑料材料",
+                                "review_status": "HUMAN_REVIEWED", "name_review_status": "HUMAN_REVIEWED"},),
+        lifecycle_updates=({"sku": "1001", "current_status": "ACTIVE", "last_run_id": "raw-run"},),
+        observations=({"run_id": "raw-run", "sku": "1001", "observation_date": "2026-08-30",
+                        "presence_state": "PRESENT", "observation_complete": True, "absence_capable": True},),
+    )
+    ProductionWriter(db).commit(bundle)
+    with connect(db) as conn:
+        row = conn.execute(
+            "SELECT raw_fact_json,normalized_fact_json,raw_fact_available,normalization_version "
+            "FROM product_fact_versions WHERE official_sku='1001' AND run_id='raw-run'"
+        ).fetchone()
+        assert row[0] != row[1]
+        assert row[2] == 1
+        assert row[3] == "facts-v2"
+        assert conn.execute("SELECT COUNT(*) FROM localization_fields WHERE official_sku='1001' AND language='zh'").fetchone()[0] == 6
+        assert conn.execute("SELECT review_status FROM localization_fields WHERE official_sku='1001' AND language='zh' AND field_name='name'").fetchone()[0] == "HUMAN_REVIEWED"
+
+
 def test_backfill_product_source_hashes_repairs_legacy_empty_projection(tmp_path: Path):
     db = tmp_path / "action.db"
     ProductionWriter(db).commit(_bundle())
@@ -153,6 +180,27 @@ def test_v2_uses_dedicated_reviews_table_and_events_view(tmp_path: Path):
     with connect(db) as conn:
         assert conn.execute("SELECT COUNT(*) FROM reviews").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 0
+
+
+def test_localization_patch_lifecycle_is_append_only(tmp_path: Path):
+    import sqlite3
+    from action_tracker.database.patches import append_patch_event, create_patch, patch_state
+
+    db = tmp_path / "action.db"
+    ProductionWriter(db).commit(_bundle())
+    with connect(db) as conn:
+        patch_id = create_patch(
+            conn, official_sku="1001", language="zh", field_name="name", old_value="旧名",
+            new_value="新名", source_hash="a" * 64, reason="人工确认", created_by="tester",
+        )
+        assert patch_state(conn, patch_id) == "PATCH_CREATED"
+        append_patch_event(conn, patch_id, "PATCH_APPROVED", actor="reviewer", reason="确认")
+        append_patch_event(conn, patch_id, "PATCH_APPLIED", actor="writer", reason="入库")
+        assert patch_state(conn, patch_id) == "PATCH_APPLIED"
+        with pytest.raises(sqlite3.IntegrityError, match="LOCALIZATION_PATCH_IMMUTABLE"):
+            conn.execute("UPDATE localization_patches SET new_value='篡改' WHERE patch_id=?", (patch_id,))
+        with pytest.raises(sqlite3.IntegrityError, match="LOCALIZATION_PATCH_EVENT_IMMUTABLE"):
+            conn.execute("DELETE FROM localization_patch_events WHERE patch_id=?", (patch_id,))
 
 
 def test_database_boolean_parser_does_not_treat_false_text_as_true():

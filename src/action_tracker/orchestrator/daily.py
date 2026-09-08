@@ -38,7 +38,39 @@ from ..translation.service import apply_zh
 
 log = logging.getLogger(__name__)
 
-_LIGHT_FIELDS = ["current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "product_url"]
+_LIGHT_FIELDS = ["current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "cat2_es", "product_url"]
+
+_DETAIL_REASON_PRIORITY = {
+    # Existing missing Detail is backlog from an earlier interrupted or
+    # deferred enrichment run.  Drain it before spending the limited daily
+    # budget on ordinary refreshes.
+    "MISSING_FIELD": 0,
+    # A Detail page is the only reliable source for the second-level
+    # category.  Drain this backlog before ordinary refreshes so category
+    # completeness improves deterministically across runs.
+    "CATEGORY_MISSING": 0,
+    "NEW": 1,
+    "REAPPEARED": 1,
+    "DETAIL_REFRESH": 2,
+}
+
+
+def _select_detail_plans(plans: list[dict], max_per_run: int) -> tuple[list[dict], list[dict]]:
+    """Select a bounded deterministic Detail batch and retain the remainder.
+
+    Presence and Listing facts are already frozen before this point.  A
+    deferred candidate keeps its blank Detail fields, so it is automatically
+    re-planned as ``MISSING_FIELD`` on a later formal run; no lifecycle state
+    or availability decision depends on this queue.
+    """
+    candidates = [plan for plan in plans if plan.get("need_detail")]
+    candidates.sort(key=lambda plan: (
+        _DETAIL_REASON_PRIORITY.get(str(plan.get("reason") or ""), 9),
+        str(plan.get("sku") or ""),
+    ))
+    if max_per_run <= 0:
+        return [], candidates
+    return candidates[:max_per_run], candidates[max_per_run:]
 
 
 def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
@@ -257,6 +289,16 @@ def run_daily(
         nuevo_skus=nuevo_skus, promo_skus=promo_skus)
     log.info("需要更新的 SKU: %d (原因: %s)",
              len(plans), {r: sum(1 for p in plans if p["reason"] == r) for r in {p["reason"] for p in plans}})
+    detail_candidates = [plan for plan in plans if plan["need_detail"]]
+    detail_selected, detail_deferred = _select_detail_plans(
+        plans, int(cfg["run"].get("max_detail_per_run", 20) or 0))
+    detail_candidate_skus = {plan["sku"] for plan in detail_candidates}
+    detail_selected_skus = {plan["sku"] for plan in detail_selected}
+    detail_deferred_skus = {plan["sku"] for plan in detail_deferred}
+    if detail_deferred:
+        log.info("详情候选=%d，本轮计划=%d，延后=%d（max_detail_per_run=%d）",
+                 len(detail_candidates), len(detail_selected), len(detail_deferred),
+                 int(cfg["run"].get("max_detail_per_run", 20) or 0))
 
     # ---- 合并今日记录 ----
     updated: dict[str, dict] = {}
@@ -264,7 +306,7 @@ def run_daily(
     if do_detail:
         try:
             _, updated = updater_mod.fetch_and_merge(
-                browser, [p for p in plans if p["need_detail"]], baseline, snap_dir,
+                browser, detail_selected, baseline, snap_dir,
                 cfg["lifecycle"]["max_detail_retries"], nuevo_skus=nuevo_skus, promo_skus=promo_skus,
                 access_controller=access, detail_evidence=detail_evidence,
                 detail_completed_skus=detail_completed_skus,
@@ -349,7 +391,6 @@ def run_daily(
         baseline, updated, statuses, today_set, run_date)
     # Snapshot-level field provenance. Partial Detail is explicit and never
     # presented as freshly collected data.
-    detail_plan_skus = {p["sku"] for p in plans if p["need_detail"]}
     completed_detail_set = set(detail_completed_skus)
     for sku, rec in today_records.items():
         stat = statuses.get(sku)
@@ -358,11 +399,14 @@ def run_daily(
         if sku in completed_detail_set:
             rec["detail_status"] = "COMPLETE"
             rec["detail_fields_source"] = "DETAIL_CURRENT_RUN"
-        elif sku in detail_plan_skus:
+        elif sku in detail_selected_skus:
             old = baseline.get(sku) or {}
             has_old_detail = bool(old.get("desc_es") or old.get("details_es") or old.get("spec_es"))
             rec["detail_status"] = "ACCESS_INTERRUPTED" if access.state.value != "NORMAL" else "PENDING"
             rec["detail_fields_source"] = "BASELINE" if has_old_detail else "PENDING"
+        elif sku in detail_deferred_skus:
+            rec["detail_status"] = "PENDING"
+            rec["detail_fields_source"] = "BACKLOG"
         else:
             rec["detail_status"] = "NOT_REQUIRED"
             rec["detail_fields_source"] = "BASELINE"
@@ -399,7 +443,8 @@ def run_daily(
     run_report = _run_report(cfg, run_id, run_date, dry_run, len(baseline), len(today_set), statuses,
                              price_events, badge_events, content_events, anomalies, qa, snap_dir,
                              observation_complete, primary_coverage,
-                             detail_planned=len([p for p in plans if p["need_detail"]]),
+                             detail_candidates=len(detail_candidates), detail_planned=len(detail_selected),
+                             detail_deferred=len(detail_deferred),
                              detail_completed=len(detail_completed_skus), detail_evidence=detail_evidence,
                              access_state=access.state.value, access_report=access.report(),
                              presence_access_state=presence_access_state,
@@ -433,8 +478,13 @@ def run_daily(
             **browser.manifest(),
         },
         "detail_evidence": detail_evidence,
+        "detail_backlog": [{
+            "sku": plan["sku"], "canonical_id": plan["canonical_id"], "reason": plan["reason"],
+            "queue_status": "DEFERRED", "detail_fields_source": "BACKLOG",
+        } for plan in detail_deferred],
         "product_updates": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"],
-                             "need_detail": p["need_detail"]} for p in plans],
+                             "need_detail": p["need_detail"],
+                             "detail_selected": p["sku"] in detail_selected_skus} for p in plans],
         "translation_updates": translation_updates,
         "qa_report": qa.to_dict(),
         "run_report": run_report,
@@ -443,7 +493,8 @@ def run_daily(
     stage_data = {
         "sku_changes": sku_delta_rows,
         "product_changes": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"],
-                            "need_detail": p["need_detail"]} for p in plans],
+                            "need_detail": p["need_detail"],
+                            "detail_selected": p["sku"] in detail_selected_skus} for p in plans],
         "price_changes": price_events,
         "translation_changes": translation_updates,
         "event_changes": event_events,
@@ -568,7 +619,8 @@ def _run_log_row(run_id, run_date, start_time, counts: dict, qa, dry_run: bool,
 def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
                 price_events, badge_events, content_events, anomalies, qa, snap_dir,
                 observation_complete: bool, category_coverage: dict[str, bool],
-                detail_planned: int = 0, detail_completed: int = 0,
+                detail_candidates: int = 0, detail_planned: int = 0, detail_deferred: int = 0,
+                detail_completed: int = 0,
                 detail_evidence: list[dict] | None = None, access_state: str = "NORMAL",
                 access_report: dict | None = None, presence_access_state: str = "NORMAL",
                 presence_mode: str = "FULL",
@@ -576,9 +628,15 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
                 sitemap_only: int = 0, listing_only: int = 0, both_sources: int = 0) -> dict:
     from .. import __version__
     detail_evidence = detail_evidence or []
+    # Backward-compatible default for direct callers/tests that predate the
+    # explicit candidate/backlog counters.
+    if detail_candidates == 0 and detail_planned:
+        detail_candidates = detail_planned
     blocked = next((x for x in detail_evidence if x.get("error_type") == "DETAIL_BLOCKED"), None)
-    if detail_planned == 0:
+    if detail_candidates == 0:
         detail_status = "NOT_REQUIRED"
+    elif detail_deferred:
+        detail_status = "PENDING"
     elif detail_completed == detail_planned and access_state == "NORMAL":
         detail_status = "COMPLETE"
     elif access_state != "NORMAL":
@@ -607,9 +665,11 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "observation_complete": observation_complete,
         "presence_mode": presence_mode,
         "category_coverage": category_coverage,
+        "detail_candidates": detail_candidates,
         "detail_planned": detail_planned,
+        "detail_deferred": detail_deferred,
         "detail_completed": detail_completed,
-        "detail_incomplete": max(0, detail_planned - detail_completed),
+        "detail_incomplete": max(0, detail_candidates - detail_completed),
         "detail_status": detail_status,
         "detail_skipped_due_block": blocked.get("skipped_count", 0) if blocked else 0,
         "detail_blocked_at_sku": blocked.get("sku") if blocked else None,

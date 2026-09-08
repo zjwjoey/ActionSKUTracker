@@ -52,7 +52,15 @@ def plan_updates(
 
         if status in ("NEW", "REAPPEARED"):
             reason = status
-            need_detail = True
+            # Presence is authoritative for lifecycle decisions, but a
+            # listing-only observation is not sufficient evidence to spend a
+            # detail-page request.  In particular, sitemap/listing drift can
+            # otherwise turn every listing-only NEW SKU into a large detail
+            # batch and immediately trip the detail access controller.
+            # Only a SKU seen by both independent Presence sources is eligible
+            # for the initial detail fetch.  The SKU remains in the update
+            # plan so its listing facts and lifecycle state are still written.
+            need_detail = getattr(st, "source_flag", "") == "BOTH"
         elif status == "ACTIVE" and base and light:
             # 轻量比较
             old_price = base.get("current_price")
@@ -64,6 +72,14 @@ def plan_updates(
                 reason = "BADGE_CHANGE"
             elif (base.get("image_url") or "") != (light.get("image_url") or ""):
                 reason = "IMAGE_CHANGE"
+            elif not _text(base.get("cat2_es")):
+                # Listing cards do not carry a reliable second-level category.
+                # Re-queue records missing it so a later Detail observation can
+                # fill it from the product page breadcrumb.  Keep the same
+                # Presence safety boundary as NEW/REAPPEARED: listing-only
+                # evidence is written but must not trigger a detail request.
+                reason = "CATEGORY_MISSING"
+                need_detail = getattr(st, "source_flag", "") == "BOTH"
             elif _missing_field(base):
                 reason = "MISSING_FIELD"
                 need_detail = True
@@ -95,7 +111,19 @@ def _badge_changed(base: dict, in_nuevo: bool, in_promo: bool) -> bool:
 
 
 def _missing_field(rec: dict) -> bool:
-    return not (rec.get("desc_es") or rec.get("details_es") or rec.get("spec_es"))
+    """Return whether the record lacks all detail-page-only content.
+
+    ``spec_es`` is available from a Listing card and therefore cannot prove
+    Detail enrichment has succeeded.  Treating it as sufficient left products
+    whose listing supplied a size/weight but whose Description and Product
+    Details had never been collected permanently outside the retry plan.
+    """
+    return not (rec.get("desc_es") or rec.get("details_es"))
+
+
+def _text(value: Any) -> str:
+    """Normalize an optional text field for missing-value checks."""
+    return "" if value is None else str(value).strip()
 
 
 def _stale_detail(rec: dict, detail_refresh_days: int) -> bool:
@@ -174,7 +202,7 @@ def fetch_and_merge(
                 log.warning("  #%s 详情抓取失败，保留既有字段", sku)
         if plan.get("light"):
             light = plan["light"]
-            for k in ("current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "product_url"):
+            for k in ("current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "cat2_es", "product_url"):
                 v = light.get(k)
                 if v is None:
                     continue
