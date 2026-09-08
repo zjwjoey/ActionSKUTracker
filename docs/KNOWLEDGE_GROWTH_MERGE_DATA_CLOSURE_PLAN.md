@@ -173,6 +173,14 @@ effective blocking issues = 0
 `localization_patches/localization_patch_events` 结构，不再按旧列名创建索引；全量回归为
 `435 passed`。本结果仍是 `CANDIDATE_ONLY`，没有写入真实 PRIMARY、Master、State 或 Dictionary，
 也没有授权 Production Apply、push 或 main 合并。
+
+同时生成了不执行写入的字段级 Apply bundle：
+`artifacts/localization_apply_bundle.json`。它包含 5,547 个 SKU 的差异、每个 SKU 的
+source hash、PRIMARY 基线 commit 和 bundle hash，并明确写入 `apply_authorized=false`。
+在候选库副本上实际走了一次 `apply_localization_correction`，结果为 5,547 个 SKU 成功、
+随后 Research Release 门禁仍为 `PASS`；验证副本和报告分别为
+`artifacts/localization_apply_test.db` 与 `artifacts/localization_apply_test.report.json`。
+这只是 Apply 合同验证，不代表真实 PRIMARY 已写入。
 ## 8. 真实 PRIMARY 只读审查结论
 
 同一套门禁直接读取活动 PRIMARY（只读，未写入）仍为 `FAIL`：5,547 个 CURRENT SKU 中，
