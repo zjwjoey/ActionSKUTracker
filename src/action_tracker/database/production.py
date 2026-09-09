@@ -19,6 +19,8 @@ from typing import Any, Iterable, Mapping
 
 from .connection import connect
 from .schema import migrate_v2
+from ..services.hashing import localization_source_hash
+from ..services.normalization import normalize_official_text
 
 
 class ProductionDatabaseError(RuntimeError):
@@ -235,6 +237,16 @@ class ProductionWriter:
                         (r.get("status") or "HISTORICAL", int(r.get("consecutive_missing", 0) or 0), r.get("last_checked_at", now), now, sku),
                     )
                     continue
+            current_price = r.get("current_price")
+            original_price = r.get("original_price")
+            # An original price is meaningful only for a real promotion.  A
+            # missing detail-page node must not become an equal original price
+            # and make every regular product look discounted.
+            try:
+                if current_price is not None and original_price is not None and float(original_price) <= float(current_price):
+                    original_price = None
+            except (TypeError, ValueError):
+                pass
             db.execute(
                 """INSERT INTO products(canonical_id,official_sku,name_es,name_zh,current_price,original_price,unit_price_raw,raw_badges,
                 action_new_badge,promotion_active,sustainable_badge,status,consecutive_missing,product_url,image_url,first_seen_at,
@@ -246,7 +258,7 @@ class ProductionWriter:
                 sustainable_badge=excluded.sustainable_badge,status=excluded.status,consecutive_missing=excluded.consecutive_missing,
                 product_url=excluded.product_url,image_url=excluded.image_url,first_seen_at=excluded.first_seen_at,last_seen_at=excluded.last_seen_at,
                 last_checked_at=excluded.last_checked_at,source_hash=excluded.source_hash,updated_at=excluded.updated_at""",
-                (cid, sku, r.get("name_es"), r.get("name_zh"), r.get("current_price"), r.get("original_price"), r.get("unit_price_raw", r.get("unit_price")),
+                (cid, sku, r.get("name_es"), r.get("name_zh"), current_price, original_price, r.get("unit_price_raw", r.get("unit_price")),
                  r.get("raw_badges", r.get("raw_tags")), int(_to_bool(r.get("action_new_badge", r.get("is_new_badge", False)))),
                  int(_to_bool(r.get("promotion_active", r.get("promotion", False)))), int(_to_bool(r.get("sustainable_badge", r.get("sustainable", False)))),
                  r.get("status", "ACTIVE"), int(r.get("consecutive_missing", 0) or 0), r.get("product_url"), r.get("image_url"),
@@ -259,6 +271,17 @@ class ProductionWriter:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
             language = str(r.get("language") or "zh")
             incoming = dict(r)
+            if language == "es":
+                for field, kind in (("spec", "spec"), ("description", "description"), ("details", "details")):
+                    incoming[field] = normalize_official_text(incoming.get(field), field=kind)
+                incoming["source_hash"] = localization_source_hash({
+                    "name_es": incoming.get("name"),
+                    "cat1_es": incoming.get("cat1"),
+                    "cat2_es": incoming.get("cat2"),
+                    "spec_es": incoming.get("spec"),
+                    "desc_es": incoming.get("description"),
+                    "details_es": incoming.get("details"),
+                })
             if language == "zh":
                 existing_row = db.execute(
                     "SELECT name,cat1,cat2,spec,unit_price,description,details,source,review_status,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,unit_price_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id,last_commit_id,updated_at FROM product_localizations WHERE official_sku=? AND language='zh'",

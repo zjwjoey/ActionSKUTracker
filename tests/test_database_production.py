@@ -127,6 +127,31 @@ def test_database_boolean_parser_does_not_treat_false_text_as_true():
     assert _to_bool("true") is True
 
 
+def test_writer_normalizes_official_text_and_rejects_equal_original_price(tmp_path: Path):
+    db = tmp_path / "action.db"
+    bundle = CommitBundle(
+        run_id="normalization-run",
+        observation_date="2026-09-09",
+        qa_state="PASS",
+        current_products=({"sku": "1001", "name_es": "Producto", "current_price": 2.5, "original_price": 2.5},),
+        localization_updates=({
+            "sku": "1001", "language": "es", "name": "Producto", "cat1": "Hogar", "cat2": "",
+            "spec": "Añadir a tus favoritos", "description": "Descripción\n<p>Texto</p>\nLeer más",
+            "details": "Material:: Plástico; Número del artículo; 1001",
+        },),
+        lifecycle_updates=({"sku": "1001", "current_status": "ACTIVE", "last_run_id": "normalization-run"},),
+        observations=({"run_id": "normalization-run", "sku": "1001", "observation_date": "2026-09-09", "presence_state": "PRESENT", "observation_complete": True, "absence_capable": True},),
+    )
+    ProductionWriter(db).commit(bundle)
+    with connect(db) as conn:
+        assert conn.execute("SELECT original_price FROM products WHERE official_sku='1001'").fetchone()[0] is None
+        row = conn.execute(
+            "SELECT spec,description,details,source_hash FROM product_localizations WHERE official_sku='1001' AND language='es'"
+        ).fetchone()
+        assert tuple(row[:3]) == (None, "Texto", "Material: Plástico; Número del artículo: 1001")
+        assert row[3]
+
+
 def test_legacy_baseline_rebuilds_incompatible_v1_database_atomically(tmp_path: Path):
     db = tmp_path / "legacy.db"
     master = tmp_path / "master.xlsx"
