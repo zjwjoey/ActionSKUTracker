@@ -309,13 +309,14 @@ def test_sqlite_localization_apply_creates_versioned_zh_only_commit(tmp_path):
     facts = {"name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "", "spec_es": "2 unidades", "desc_es": "", "details_es": ""}
     result = apply_localization_correction(path, run_id="2026-09-01", localizations_by_sku={"1": {"name": "测试商品", "unit_price": "0,50 €/件"}}, source_hashes={"1": source_hash(facts)})
     assert result["base_commit_id"] == "C1"
-    assert result["commit_id"] != "C1"
+    assert result["status"] == "PATCHES_CREATED"
+    assert len(result["patch_ids"]) == 1
     with connect(path) as db:
         row = db.execute("SELECT name,unit_price,last_commit_id,source_hash,freshness_status FROM product_localizations WHERE official_sku='1' AND language='zh'").fetchone()
-        assert tuple(row) == ("测试商品", "0,50 €/件", result["commit_id"], source_hash(facts), "CURRENT")
+        assert row is None
         field_rows = db.execute("SELECT COUNT(*), MIN(review_status), MAX(applied_commit_id) FROM localization_fields WHERE official_sku='1' AND language='zh'").fetchone()
-        assert tuple(field_rows) == (6, "APPROVED", result["commit_id"])
-        assert db.execute("SELECT COUNT(*) FROM commit_batches").fetchone()[0] == 2
+        assert tuple(field_rows) == (0, None, None)
+        assert db.execute("SELECT COUNT(*) FROM commit_batches").fetchone()[0] == 1
 
 
 def test_daily_bundle_preserves_old_zh_and_marks_stale_when_es_hash_changes(tmp_path):

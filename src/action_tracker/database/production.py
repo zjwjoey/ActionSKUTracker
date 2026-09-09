@@ -918,15 +918,14 @@ def apply_localization_correction(
     source_hashes: Mapping[str, str],
     apply_date: str | None = None,
 ) -> dict[str, Any]:
-    """Create an immutable zh-only correction commit on SQLite PRIMARY.
+    """Prepare immutable zh-only patches without approving or applying them.
 
-    This deliberately has no SQL path for products, observations, prices,
-    lifecycle or ES rows.  The current committed head is locked before any
-    mutation and becomes ``base_commit_id`` for the new correction version.
+    This legacy compatibility entry point is intentionally PREPARE-only.  It
+    creates ``PATCH_CREATED`` rows and returns their ids; a separate reviewer
+    must append ``PATCH_APPROVED`` and a separate apply coordinator must call
+    :func:`apply_approved_localization_patches`.  A caller cannot turn an
+    arbitrary candidate into an approved production write by using this API.
     """
-    # The compatibility entry point now stages immutable field patches and
-    # delegates the actual write to the approved-patch gate below.  It no
-    # longer writes an arbitrary six-field localization dictionary directly.
     path = Path(path); migrate_v2(path, role="PRIMARY")
     expected_base_commit_id = None
     with connect(path) as db:
@@ -934,7 +933,7 @@ def apply_localization_correction(
         expected_base_commit_id = str(row[0]) if row else None
     if not expected_base_commit_id:
         raise ProductionDatabaseError("LOCALIZATION_CORRECTION_HEAD_MISSING")
-    from .immutable_patches import create_localization_patch, append_patch_event
+    from .immutable_patches import create_localization_patch
     from ..services.hashing import localization_source_hash
     patch_ids: list[str] = []
     for sku, values in sorted(localizations_by_sku.items()):
@@ -957,17 +956,18 @@ def apply_localization_correction(
                 source_allowlist=(str(values.get(f"{field}_source") or "LOCALIZATION"),),
                 created_by="LOCALIZATION", evidence={"field_name": field, "base_commit_id": expected_base_commit_id},
             )
-            append_patch_event(path, patch_id=patch_id, event_type="PATCH_APPROVED", actor="LOCALIZATION",
-                               evidence={"field_name": field, "base_commit_id": expected_base_commit_id, "source_name": str(values.get(f"{field}_source") or "LOCALIZATION")})
             patch_ids.append(patch_id)
             current_values[field] = str(value)
     if not patch_ids:
-        return {"status": "NOOP", "base_commit_id": expected_base_commit_id, "applied_skus": 0, "applied_fields": 0}
-    return apply_approved_localization_patches(
-        path, patch_ids=patch_ids, expected_base_commit_id=expected_base_commit_id,
-        actor="LOCALIZATION", run_id=f"{run_id}_{uuid.uuid4().hex[:8]}",
-        unit_prices={sku: values.get("unit_price") for sku, values in localizations_by_sku.items() if values.get("unit_price") is not None},
-    )
+        return {"status": "NOOP", "base_commit_id": expected_base_commit_id, "patch_ids": [], "prepared_fields": 0}
+    return {
+        "status": "PATCHES_CREATED", "base_commit_id": expected_base_commit_id,
+        "patch_ids": patch_ids, "prepared_fields": len(patch_ids),
+        "unit_prices_pending": {
+            sku: values.get("unit_price") for sku, values in localizations_by_sku.items()
+            if values.get("unit_price") is not None
+        },
+    }
 
 
 def apply_approved_localization_patches(
@@ -988,7 +988,7 @@ def apply_approved_localization_patches(
     if not expected_base_commit_id:
         raise ProductionDatabaseError("LOCALIZATION_APPLY_BASE_COMMIT_REQUIRED")
     path = Path(path); migrate_v2(path, role="PRIMARY")
-    from .immutable_patches import ImmutablePatchError, _append_event, _columns, _latest_event
+    from .immutable_patches import ImmutablePatchError, _append_event, _columns, _validate_patch_apply_in_connection
     from ..services.hashing import localization_source_hash
     ids = list(dict.fromkeys(str(value).strip() for value in patch_ids if str(value).strip()))
     if not ids:
@@ -1010,29 +1010,36 @@ def apply_approved_localization_patches(
             patch_rows = []
             for patch_id in ids:
                 row = db.execute("SELECT * FROM localization_patches WHERE patch_id=?", (patch_id,)).fetchone()
-                if row is None: raise ProductionDatabaseError("PATCH_NOT_FOUND:" + patch_id)
-                patch = dict(zip([str(item[1]) for item in db.execute("PRAGMA table_info(localization_patches)").fetchall()], row))
-                # The event log is append-only; rowid is the stable sequence
-                # even when old writers use second precision and newer
-                # writers use microsecond timestamps.
-                latest = db.execute(f"SELECT event_type,{event_payload} FROM localization_patch_events WHERE patch_id=? ORDER BY rowid DESC LIMIT 1", (patch_id,)).fetchone()
-                if not latest or latest[0] != "PATCH_APPROVED": raise ProductionDatabaseError("PATCH_NOT_APPROVED:" + patch_id)
-                approval = json.loads(latest[1] or "{}")
-                if approval.get("base_commit_id") and approval.get("base_commit_id") != expected_base_commit_id:
-                    raise ProductionDatabaseError("STALE_LOCALIZATION_APPLY_BUNDLE")
-                if patch.get("language") != "zh" or patch.get("field_name") not in {"name", "cat1", "cat2", "spec", "description", "details"}:
-                    raise ProductionDatabaseError("PATCH_FIELD_NOT_ALLOWED:" + patch_id)
+                if row is None:
+                    raise ProductionDatabaseError("PATCH_NOT_FOUND:" + patch_id)
+                patch_columns = [str(item[1]) for item in db.execute("PRAGMA table_info(localization_patches)").fetchall()]
+                patch = dict(zip(patch_columns, row))
                 es = db.execute("SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='es'", (patch["official_sku"],)).fetchone()
                 if es is None: raise ProductionDatabaseError("PATCH_SOURCE_ROW_MISSING:" + patch["official_sku"])
                 source_hash = localization_source_hash({"name_es": es[0], "cat1_es": es[1], "cat2_es": es[2], "spec_es": es[3], "desc_es": es[4], "details_es": es[5]})
-                if str(source_hash) != str(patch.get("source_hash") or ""):
-                    raise ProductionDatabaseError("PATCH_SOURCE_HASH_MISMATCH:" + patch_id)
                 current = db.execute(f"SELECT {patch['field_name']} FROM product_localizations WHERE official_sku=? AND language='zh'", (patch["official_sku"],)).fetchone()
                 current_value = "" if current is None or current[0] is None else str(current[0])
-                old_value = "" if patch.get("old_value") is None else str(patch.get("old_value"))
-                if current_value != old_value:
-                    raise ProductionDatabaseError("PATCH_BASE_VALUE_MISMATCH:" + patch_id)
-                patch_rows.append((patch, approval, source_hash))
+                source_name = ""
+                # The shared validator reads the approval event and enforces
+                # the patch's source allowlist (or the explicit legacy policy).
+                approval_probe = db.execute(
+                    f"SELECT {event_payload} FROM localization_patch_events WHERE patch_id=? "
+                    "ORDER BY rowid DESC LIMIT 1", (patch_id,)
+                ).fetchone()
+                if approval_probe:
+                    try:
+                        source_name = str((json.loads(approval_probe[0] or "{}")).get("source_name") or "")
+                    except json.JSONDecodeError:
+                        source_name = ""
+                try:
+                    validated = _validate_patch_apply_in_connection(
+                        db, patch_id=patch_id, current_source_hash=source_hash,
+                        source_name=source_name, current_value=current_value,
+                        expected_base_commit_id=expected_base_commit_id,
+                    )
+                except ImmutablePatchError as exc:
+                    raise ProductionDatabaseError(str(exc) + ":" + patch_id) from exc
+                patch_rows.append((patch, validated["approval_evidence"], validated["approval_actor"], validated["approval_at"], source_hash))
             bundle_hash = hashlib.sha256(json.dumps({"base_commit_id": expected_base_commit_id, "patch_ids": ids}, sort_keys=True).encode()).hexdigest()
             commit_id = f"{datetime.now(timezone.utc).date().isoformat()}_{run_id}_{bundle_hash[:12]}"
             db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES(?,?,?,?,?,?,?,?)", (run_id, str(datetime.now(timezone.utc).date()), "COMMITTED", "PASS", 0, now, now, "2.0.0"))
@@ -1041,7 +1048,7 @@ def apply_approved_localization_patches(
             db.execute("INSERT INTO export_sync(commit_id,status) VALUES(?, 'PENDING')", (commit_id,))
             supersede_older_export_sync(db, commit_id)
             from .provenance import sync_localization_field_provenance
-            for patch, approval, source_hash in patch_rows:
+            for patch, approval, approval_actor, approval_at, source_hash in patch_rows:
                 sku = patch["official_sku"]; field = patch["field_name"]; new_value = patch.get("new_value")
                 patch_source = str(approval.get("source_name") or "PATCH_APPROVED")
                 if db.execute("SELECT 1 FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone() is None:
@@ -1051,7 +1058,7 @@ def apply_approved_localization_patches(
                 values = {"official_sku": sku, "language": "zh", field: new_value,
                           f"{field}_source": patch_source, f"{field}_review_status": "APPROVED",
                           f"{field}_freshness_status": "CURRENT", f"{field}_source_hash": source_hash,
-                          f"{field}_approved_by": approval.get("actor") or actor, f"{field}_approved_at": now,
+                          f"{field}_approved_by": approval_actor or actor, f"{field}_approved_at": approval_at or now,
                           f"{field}_applied_commit_id": commit_id}
                 sync_localization_field_provenance(db, values, commit_id=commit_id, now=now)
                 evidence = {"commit_id": commit_id, "run_id": run_id, "official_sku": sku, "field_name": field,

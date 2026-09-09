@@ -129,12 +129,9 @@ def append_patch_event(db_path: Path, *, patch_id: str, event_type: str, actor: 
         if not db.execute("SELECT 1 FROM localization_patches WHERE patch_id=?", (patch_id,)).fetchone(): raise ImmutablePatchError("PATCH_NOT_FOUND")
         current = _latest_event(db, patch_id)
         transitions = _TRANSITIONS
-        # Legacy fixtures predate compensating revoke events.  Keep their
-        # historical contract, while the active PRIMARY revision schema gets
-        # the append-only APPLIED -> REVOKED transition.
-        patch_columns = _columns(db, "localization_patches")
-        if "parent_patch_id" not in patch_columns or "revision" not in patch_columns:
-            transitions = {**_TRANSITIONS, "PATCH_APPLIED": set()}
+        # Revoke is a business lifecycle transition, not a schema feature.
+        # Both the legacy and active PRIMARY shapes must support the same
+        # append-only APPLIED -> REVOKED contract.
         if event_type not in transitions.get(current[0] if current else None, set()): raise ImmutablePatchError("PATCH_INVALID_TRANSITION")
         _append_event(db, patch_id, event_type, actor, evidence or {}, now, event_id=event_id)
     return event_id
@@ -146,24 +143,88 @@ def validate_patch_apply(
 ) -> dict[str, Any]:
     """Validate an approved patch without mutating any production field."""
     with connect(Path(db_path)) as db:
-        _migrate_compatible(Path(db_path)); columns = _columns(db, "localization_patches")
-        select = ["official_sku", "language", "field_name", "old_value", "new_value", "source_hash"]
-        if "source_allowlist" in columns: select.append("source_allowlist")
-        patch = db.execute(f"SELECT {','.join(select)} FROM localization_patches WHERE patch_id=?", (patch_id,)).fetchone()
-        if not patch: raise ImmutablePatchError("PATCH_NOT_FOUND")
-        latest = _latest_event(db, patch_id)
-    if not latest or latest[0] != "PATCH_APPROVED": raise ImmutablePatchError("PATCH_NOT_APPROVED")
-    if str(patch[5] or "") != str(current_source_hash or ""): raise ImmutablePatchError("PATCH_SOURCE_HASH_MISMATCH")
+        _migrate_compatible(Path(db_path))
+        return _validate_patch_apply_in_connection(
+            db, patch_id=patch_id, current_source_hash=current_source_hash,
+            source_name=source_name, current_value=current_value,
+            expected_base_commit_id=expected_base_commit_id,
+        )
+
+
+def _approval_event_record(db, patch_id: str) -> dict[str, Any] | None:
+    """Read the latest approval event with actor and timestamp preserved."""
+    columns = _columns(db, "localization_patch_events")
+    time_column = "occurred_at" if "occurred_at" in columns else "created_at"
+    evidence_column = "event_json" if "event_json" in columns else "evidence_json"
+    row = db.execute(
+        f"SELECT event_type,actor,{evidence_column},{time_column} "
+        "FROM localization_patch_events WHERE patch_id=? ORDER BY rowid DESC LIMIT 1",
+        (patch_id,),
+    ).fetchone()
+    if not row:
+        return None
+    return {"event_type": row[0], "actor": row[1], "evidence": row[2], "occurred_at": row[3]}
+
+
+def _validate_patch_apply_in_connection(
+    db,
+    *,
+    patch_id: str,
+    current_source_hash: str,
+    source_name: str,
+    current_value: str | None = None,
+    expected_base_commit_id: str | None = None,
+) -> dict[str, Any]:
+    """Single transaction-safe validation contract used by read/apply paths."""
+    columns = _columns(db, "localization_patches")
+    select = ["official_sku", "language", "field_name", "old_value", "new_value", "source_hash"]
     if "source_allowlist" in columns:
-        try: allowlist = set(json.loads(patch[6] or "[]"))
-        except json.JSONDecodeError as exc: raise ImmutablePatchError("PATCH_SOURCE_ALLOWLIST_INVALID") from exc
-        if source_name not in allowlist: raise ImmutablePatchError("PATCH_SOURCE_NOT_ALLOWED")
-    try: evidence = json.loads(latest[1] or "{}")
-    except json.JSONDecodeError as exc: raise ImmutablePatchError("PATCH_APPROVAL_EVIDENCE_INVALID") from exc
-    if evidence.get("field_name") and evidence.get("field_name") != patch[2]: raise ImmutablePatchError("PATCH_APPROVAL_FIELD_MISMATCH")
-    if expected_base_commit_id and evidence.get("base_commit_id") and evidence.get("base_commit_id") != expected_base_commit_id: raise ImmutablePatchError("STALE_LOCALIZATION_APPLY_BUNDLE")
-    if current_value is not None and _text(current_value) != _text(patch[3]): raise ImmutablePatchError("PATCH_BASE_VALUE_MISMATCH")
-    return {"patch_id": patch_id, "official_sku": patch[0], "language": patch[1], "field_name": patch[2], "old_value": patch[3], "new_value": patch[4], "source_hash": patch[5], "status": "APPROVED"}
+        select.append("source_allowlist")
+    row = db.execute(
+        f"SELECT {','.join(select)} FROM localization_patches WHERE patch_id=?", (patch_id,)
+    ).fetchone()
+    if not row:
+        raise ImmutablePatchError("PATCH_NOT_FOUND")
+    patch = dict(zip(select, row))
+    approval = _approval_event_record(db, patch_id)
+    if not approval or approval["event_type"] != "PATCH_APPROVED":
+        raise ImmutablePatchError("PATCH_NOT_APPROVED")
+    try:
+        evidence = json.loads(approval["evidence"] or "{}")
+    except json.JSONDecodeError as exc:
+        raise ImmutablePatchError("PATCH_APPROVAL_EVIDENCE_INVALID") from exc
+    if str(patch.get("source_hash") or "") != str(current_source_hash or ""):
+        raise ImmutablePatchError("PATCH_SOURCE_HASH_MISMATCH")
+    if "source_allowlist" in columns:
+        try:
+            allowlist = set(json.loads(patch.get("source_allowlist") or "[]"))
+        except json.JSONDecodeError as exc:
+            raise ImmutablePatchError("PATCH_SOURCE_ALLOWLIST_INVALID") from exc
+        if not allowlist or source_name not in allowlist:
+            raise ImmutablePatchError("PATCH_SOURCE_NOT_ALLOWED")
+    else:
+        # Active PRIMARY databases created before the allowlist column use an
+        # explicit legacy adapter policy: approval must name the source and
+        # the caller must validate against that exact source.  Missing source
+        # evidence is never treated as "allow all".
+        approved_source = str(evidence.get("source_name") or "").strip()
+        if not approved_source or approved_source != str(source_name or "").strip():
+            raise ImmutablePatchError("PATCH_LEGACY_SOURCE_NOT_ALLOWED")
+    if evidence.get("field_name") and evidence.get("field_name") != patch["field_name"]:
+        raise ImmutablePatchError("PATCH_APPROVAL_FIELD_MISMATCH")
+    if expected_base_commit_id and evidence.get("base_commit_id") and evidence.get("base_commit_id") != expected_base_commit_id:
+        raise ImmutablePatchError("STALE_LOCALIZATION_APPLY_BUNDLE")
+    if current_value is not None and _text(current_value) != _text(patch.get("old_value")):
+        raise ImmutablePatchError("PATCH_BASE_VALUE_MISMATCH")
+    return {
+        "patch_id": patch_id, "official_sku": patch["official_sku"],
+        "language": patch["language"], "field_name": patch["field_name"],
+        "old_value": patch.get("old_value"), "new_value": patch.get("new_value"),
+        "source_hash": patch.get("source_hash"), "status": "APPROVED",
+        "approval_actor": str(approval.get("actor") or ""),
+        "approval_at": approval.get("occurred_at"),
+        "approval_evidence": evidence,
+    }
 
 
 def patch_status(db_path: Path, patch_id: str) -> str | None:

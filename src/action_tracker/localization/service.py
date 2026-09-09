@@ -267,6 +267,9 @@ def apply_from_audit(cfg: Mapping[str, Any], *, run_id: str, commit: bool = Fals
         if row.get("readiness") in {"READY", "AUTO_READY"} and str(row.get("old_review_status") or "").upper() not in {"LOCKED", "HUMAN_APPROVED", "APPROVED"}:
             candidates[row["sku"]] = {"name": row["new_name_zh"], "cat1": row["new_cat1_zh"], "cat2": row["new_cat2_zh"], "spec": row["new_spec_zh"], "unit_price": row["new_unit_price_zh"], "description": row["new_desc_zh"], "details": row["new_details_zh"]}
             source_hashes[row["sku"]] = row["source_hash"]
-    applied = apply_localization_correction(db_path, run_id=run_id, localizations_by_sku=candidates, source_hashes=source_hashes)
-    result.update({"formal_apply": True, "applied": applied.get("applied_skus", 0), "correction_commit": applied})
+    prepared = apply_localization_correction(db_path, run_id=run_id, localizations_by_sku=candidates, source_hashes=source_hashes)
+    # The compatibility entry point is PREPARE-only.  A human approval step
+    # and the explicit immutable-patch apply coordinator are required before
+    # any production field can change.
+    result.update({"formal_apply": False, "prepared": prepared.get("prepared_fields", 0), "correction_patches": prepared})
     return result

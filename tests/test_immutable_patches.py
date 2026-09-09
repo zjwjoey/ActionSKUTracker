@@ -43,8 +43,8 @@ def test_patch_requires_one_field_and_immutable_transition(tmp_path):
     assert validate_patch_apply(path, patch_id="p1", current_source_hash="h1", source_name="MANUAL")["status"] == "APPROVED"
     append_patch_event(path, patch_id="p1", event_type="PATCH_APPLIED", actor="system", evidence={"commit": "c1"})
     assert patch_status(path, "p1") == "PATCH_APPLIED"
-    with pytest.raises(ImmutablePatchError, match="PATCH_INVALID_TRANSITION"):
-        append_patch_event(path, patch_id="p1", event_type="PATCH_REVOKED", actor="reviewer")
+    append_patch_event(path, patch_id="p1", event_type="PATCH_REVOKED", actor="human:reviewer")
+    assert patch_status(path, "p1") == "PATCH_REVOKED"
 
 
 def test_apply_gate_rejects_changed_source_or_unapproved_source(tmp_path):

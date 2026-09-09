@@ -95,7 +95,7 @@ def test_active_primary_patch_schema_adapter_supports_full_lifecycle(tmp_path):
         """)
     create_localization_patch(path, patch_id="active-p1", official_sku="1001", language="zh", field_name="name",
                               old_value="旧", new_value="新", source_hash="h", created_by="human", reason="review")
-    append_patch_event(path, patch_id="active-p1", event_type="PATCH_APPROVED", actor="human", evidence={"field_name": "name"})
+    append_patch_event(path, patch_id="active-p1", event_type="PATCH_APPROVED", actor="human", evidence={"field_name": "name", "source_name": "MANUAL"})
     assert validate_patch_apply(path, patch_id="active-p1", current_source_hash="h", source_name="MANUAL")["status"] == "APPROVED"
     append_patch_event(path, patch_id="active-p1", event_type="PATCH_APPLIED", actor="system", evidence={"commit_id": "C1"})
     append_patch_event(path, patch_id="active-p1", event_type="PATCH_REVOKED", actor="human", evidence={"reason": "correction", "superseding_patch_id": "active-p2"})
