@@ -352,30 +352,46 @@ class ProductionWriter:
             if not sku or not run_id:
                 raise ProductionDatabaseError("DB_SOURCE_FACT_IDENTITY_MISSING")
             facts = row.get("facts") or {}
-            for field_name, values in facts.items():
-                if not isinstance(values, Mapping):
-                    values = {"raw": values, "normalized": values}
-                raw = values.get("raw")
-                normalized = values.get("normalized")
-                raw_text = "" if raw is None else str(raw)
-                normalized_text = "" if normalized is None else str(normalized)
-                raw_hash = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
-                normalized_hash = hashlib.sha256(normalized_text.encode("utf-8")).hexdigest()
-                if table == "product_fact_versions":
-                    fact_id = hashlib.sha256(
-                        f"{run_id}|{sku}|{raw_hash}|{normalized_hash}".encode("utf-8")
-                    ).hexdigest()
-                    db.execute(
-                        """INSERT OR IGNORE INTO product_fact_versions
-                        (fact_id,official_sku,run_id,raw_fact_json,normalized_fact_json,
-                         raw_fact_hash,normalized_fact_hash,raw_fact_available,normalization_version,created_at)
-                        VALUES(?,?,?,?,?,?,?,?,?,?)""",
-                        (fact_id, sku, run_id,
-                         json.dumps({field_name: raw_text}, ensure_ascii=False, sort_keys=True),
-                         json.dumps({field_name: normalized_text}, ensure_ascii=False, sort_keys=True),
-                         raw_hash, normalized_hash, 1, source_name, now),
-                    )
-                else:
+            if table == "product_fact_versions":
+                # PRIMARY product facts are one complete SKU/run snapshot, not
+                # field-level rows. Preserve None versus empty string in the
+                # canonical JSON so raw evidence remains faithful.
+                raw_payload: dict[str, Any] = {}
+                normalized_payload: dict[str, Any] = {}
+                raw_available = False
+                for field_name, values in facts.items():
+                    if not isinstance(values, Mapping):
+                        values = {"raw": values, "normalized": values}
+                    raw = values.get("raw")
+                    normalized = values.get("normalized")
+                    raw_payload[str(field_name)] = raw
+                    normalized_payload[str(field_name)] = normalized
+                    raw_available = raw_available or raw is not None
+                raw_json = json.dumps(raw_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                normalized_json = json.dumps(normalized_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                raw_hash = hashlib.sha256(raw_json.encode("utf-8")).hexdigest()
+                normalized_hash = hashlib.sha256(normalized_json.encode("utf-8")).hexdigest()
+                fact_id = hashlib.sha256(
+                    f"{run_id}|{sku}|{raw_hash}|{normalized_hash}".encode("utf-8")
+                ).hexdigest()
+                db.execute(
+                    """INSERT OR IGNORE INTO product_fact_versions
+                    (fact_id,official_sku,run_id,raw_fact_json,normalized_fact_json,
+                     raw_fact_hash,normalized_fact_hash,raw_fact_available,normalization_version,created_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                    (fact_id, sku, run_id, raw_json, normalized_json,
+                     raw_hash, normalized_hash, int(raw_available), source_name, now),
+                )
+            else:
+                for field_name, values in facts.items():
+                    if not isinstance(values, Mapping):
+                        values = {"raw": values, "normalized": values}
+                    raw = values.get("raw")
+                    normalized = values.get("normalized")
+                    raw_text = "" if raw is None else str(raw)
+                    normalized_text = "" if normalized is None else str(normalized)
+                    raw_hash = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
+                    normalized_hash = hashlib.sha256(normalized_text.encode("utf-8")).hexdigest()
                     fact_id = hashlib.sha256(
                         f"{run_id}|{sku}|{field_name}|{raw_hash}|{normalized_hash}".encode("utf-8")
                     ).hexdigest()

@@ -171,6 +171,49 @@ def test_writer_appends_raw_and_normalized_source_facts(tmp_path: Path):
         assert tuple(row) == ("Material:: Plástico", "Material: Plástico")
 
 
+def test_writer_aggregates_product_fact_snapshot(tmp_path: Path):
+    db = tmp_path / "action.db"
+    with connect(db) as conn:
+        conn.executescript("""
+            CREATE TABLE product_fact_versions (
+                fact_id TEXT PRIMARY KEY,
+                official_sku TEXT NOT NULL,
+                run_id TEXT NOT NULL,
+                raw_fact_json TEXT NOT NULL,
+                normalized_fact_json TEXT NOT NULL,
+                raw_fact_hash TEXT NOT NULL,
+                normalized_fact_hash TEXT NOT NULL,
+                raw_fact_available INTEGER NOT NULL,
+                normalization_version TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(official_sku, run_id)
+            );
+        """)
+    bundle = _bundle("product-facts")
+    object.__setattr__(bundle, "source_fact_versions", ({
+        "sku": "1001", "run_id": "product-facts", "source_name": "detail",
+        "facts": {
+            "name": {"raw": "Producto", "normalized": "Producto"},
+            "cat1": {"raw": None, "normalized": ""},
+            "cat2": {"raw": "", "normalized": ""},
+            "details": {"raw": "Material:: Plástico", "normalized": "Material: Plástico"},
+        },
+    },))
+    ProductionWriter(db).commit(bundle)
+    with connect(db) as conn:
+        rows = conn.execute(
+            "SELECT raw_fact_json,normalized_fact_json,raw_fact_hash,normalized_fact_hash,raw_fact_available "
+            "FROM product_fact_versions WHERE official_sku='1001' AND run_id='product-facts'"
+        ).fetchall()
+        assert len(rows) == 1
+        raw_json, normalized_json, raw_hash, normalized_hash, available = rows[0]
+        assert raw_json == '{"cat1":null,"cat2":"","details":"Material:: Plástico","name":"Producto"}'
+        assert normalized_json == '{"cat1":"","cat2":"","details":"Material: Plástico","name":"Producto"}'
+        assert raw_hash == __import__("hashlib").sha256(raw_json.encode("utf-8")).hexdigest()
+        assert normalized_hash == __import__("hashlib").sha256(normalized_json.encode("utf-8")).hexdigest()
+        assert available == 1
+
+
 def test_legacy_baseline_rebuilds_incompatible_v1_database_atomically(tmp_path: Path):
     db = tmp_path / "legacy.db"
     master = tmp_path / "master.xlsx"
