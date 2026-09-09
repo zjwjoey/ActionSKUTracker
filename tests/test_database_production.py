@@ -152,6 +152,21 @@ def test_writer_normalizes_official_text_and_rejects_equal_original_price(tmp_pa
         assert row[3]
 
 
+def test_writer_appends_raw_and_normalized_source_facts(tmp_path: Path):
+    db = tmp_path / "action.db"
+    bundle = _bundle("raw-facts")
+    object.__setattr__(bundle, "source_fact_versions", ({
+        "sku": "1001", "run_id": "raw-facts", "source_name": "detail",
+        "facts": {"details": {"raw": "Material:: Plástico", "normalized": "Material: Plástico"}},
+    },))
+    ProductionWriter(db).commit(bundle)
+    with connect(db) as conn:
+        row = conn.execute(
+            "SELECT raw_value,normalized_value FROM source_fact_versions WHERE official_sku='1001'"
+        ).fetchone()
+        assert tuple(row) == ("Material:: Plástico", "Material: Plástico")
+
+
 def test_legacy_baseline_rebuilds_incompatible_v1_database_atomically(tmp_path: Path):
     db = tmp_path / "legacy.db"
     master = tmp_path / "master.xlsx"

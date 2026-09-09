@@ -79,8 +79,7 @@ _EXTRACT_JS = r"""
                 return cells.join(': ');
             })
             .filter(Boolean)
-            .join('; ')
-            .replace(/::/g, ':');
+            .join('; ');
     }
 
     const skuMatch = details.match(/Número del artículo\s*:\s*(\d+)/);
@@ -169,18 +168,27 @@ def _normalize_detail(raw: dict, url: str) -> dict:
     orig = parse_price(raw.get("original_price") or "")
     if cur is None and orig is not None:
         cur = orig
+    raw_spec = raw.get("spec_es") or ""
+    raw_desc = raw.get("desc_es") or ""
+    raw_details = raw.get("details_es") or ""
     return {
         "sku": str(raw.get("sku") or ""),
         "name_es": raw.get("name_es") or "",
         "cat1_es": raw.get("cat1_es") or "",
         "cat2_es": raw.get("cat2_es") or "",
-        "spec_es": normalize_official_text(raw.get("spec_es"), field="spec") or "",
+        "spec_es": normalize_official_text(raw_spec, field="spec") or "",
         "current_price": cur,
         "original_price": orig,
         "unit_price": raw.get("unit_price") or "",
         "discount": parse_discount_percent(raw.get("discount") or ""),
-        "desc_es": normalize_official_text(raw.get("desc_es"), field="description") or "",
-        "details_es": normalize_official_text(raw.get("details_es"), field="details") or "",
+        "desc_es": normalize_official_text(raw_desc, field="description") or "",
+        "details_es": normalize_official_text(raw_details, field="details") or "",
+        # Keep official raw evidence alongside normalized fields.  Downstream
+        # writers may discard the private transport keys from exports, but
+        # PRIMARY source_fact_versions records retain both representations.
+        "_raw_spec_es": raw_spec,
+        "_raw_desc_es": raw_desc,
+        "_raw_details_es": raw_details,
         "product_url": url,
         "image_url": raw.get("image_url") or "",
         "raw_tags": raw.get("raw_tags") or "",

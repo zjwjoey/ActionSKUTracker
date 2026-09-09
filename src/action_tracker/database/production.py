@@ -53,6 +53,7 @@ class CommitBundle:
     price_events: tuple[dict[str, Any], ...] = ()
     event_events: tuple[dict[str, Any], ...] = ()
     review_rows: tuple[dict[str, Any], ...] = ()
+    source_fact_versions: tuple[dict[str, Any], ...] = ()
     run_record: dict[str, Any] = field(default_factory=dict)
     snapshot_path: str | None = None
     snapshot_hash: str | None = None
@@ -73,6 +74,7 @@ class CommitBundle:
             "price_events": self.price_events,
             "event_events": self.event_events,
             "review_rows": self.review_rows,
+            "source_fact_versions": self.source_fact_versions,
             "run_record": self.run_record,
             "snapshot_path": self.snapshot_path,
             "snapshot_hash": self.snapshot_hash,
@@ -128,6 +130,7 @@ class ProductionWriter:
                 self._insert_run(db, bundle, now)
                 self._upsert_products(db, bundle.current_products, commit_id, now)
                 self._upsert_localizations(db, bundle.localization_updates, commit_id, now)
+                self._insert_source_fact_versions(db, bundle.source_fact_versions, now)
                 self._insert_observations(db, bundle.observations)
                 self._upsert_lifecycle(db, bundle.lifecycle_updates, now)
                 self._insert_prices(db, bundle.price_events, bundle.run_id)
@@ -329,6 +332,60 @@ class ProductionWriter:
             )
             from .provenance import sync_localization_field_provenance
             sync_localization_field_provenance(db, incoming, commit_id=commit_id, now=now)
+
+    @staticmethod
+    def _insert_source_fact_versions(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], now: str) -> None:
+        """Append raw/normalized official facts when a daily bundle provides them."""
+        tables = {str(row[0]) for row in db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )}
+        table = "product_fact_versions" if "product_fact_versions" in tables else (
+            "source_fact_versions" if "source_fact_versions" in tables else None
+        )
+        if table is None:
+            return
+        for row in rows:
+            sku = str(row.get("official_sku") or row.get("sku") or "").strip()
+            run_id = str(row.get("run_id") or "").strip()
+            source_name = str(row.get("source_name") or "daily").strip()
+            if not sku or not run_id:
+                raise ProductionDatabaseError("DB_SOURCE_FACT_IDENTITY_MISSING")
+            facts = row.get("facts") or {}
+            for field_name, values in facts.items():
+                if not isinstance(values, Mapping):
+                    values = {"raw": values, "normalized": values}
+                raw = values.get("raw")
+                normalized = values.get("normalized")
+                raw_text = "" if raw is None else str(raw)
+                normalized_text = "" if normalized is None else str(normalized)
+                raw_hash = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
+                normalized_hash = hashlib.sha256(normalized_text.encode("utf-8")).hexdigest()
+                if table == "product_fact_versions":
+                    fact_id = hashlib.sha256(
+                        f"{run_id}|{sku}|{raw_hash}|{normalized_hash}".encode("utf-8")
+                    ).hexdigest()
+                    db.execute(
+                        """INSERT OR IGNORE INTO product_fact_versions
+                        (fact_id,official_sku,run_id,raw_fact_json,normalized_fact_json,
+                         raw_fact_hash,normalized_fact_hash,raw_fact_available,normalization_version,created_at)
+                        VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                        (fact_id, sku, run_id,
+                         json.dumps({field_name: raw_text}, ensure_ascii=False, sort_keys=True),
+                         json.dumps({field_name: normalized_text}, ensure_ascii=False, sort_keys=True),
+                         raw_hash, normalized_hash, 1, source_name, now),
+                    )
+                else:
+                    fact_id = hashlib.sha256(
+                        f"{run_id}|{sku}|{field_name}|{raw_hash}|{normalized_hash}".encode("utf-8")
+                    ).hexdigest()
+                    db.execute(
+                        """INSERT OR IGNORE INTO source_fact_versions
+                        (fact_id,run_id,official_sku,field_name,raw_value,normalized_value,
+                         raw_hash,normalized_hash,source_name,observed_at,created_at)
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                        (fact_id, run_id, sku, str(field_name), raw_text, normalized_text,
+                         raw_hash, normalized_hash, source_name, row.get("observed_at"), now),
+                    )
 
     @staticmethod
     def _insert_observations(db: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> None:
