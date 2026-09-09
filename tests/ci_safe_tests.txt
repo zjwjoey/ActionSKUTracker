@@ -53,3 +53,4 @@ tests/test_category_backlog.py
 tests/test_localization_correction_apply.py
 tests/test_export_publish_atomicity.py
 tests/test_final_approval_provenance_gate.py
+tests/test_official_text_normalization.py

@@ -6,8 +6,113 @@ Action 西班牙站使用西语小数逗号格式，例如 "3,99 €"、"1.234,5
 from __future__ import annotations
 
 import datetime as dt
+import html
 import re
 from typing import Any
+
+
+_HTML_TAG_RE = re.compile(r"<[^>]*>")
+_UI_SPEC_RE = re.compile(
+    r"^\s*(?:añadir\s+a\s+tus\s+favoritos|todo\s+de\s+.+?)\s*$",
+    re.IGNORECASE,
+)
+
+# Detail rows are sometimes flattened as ``Key; Value`` or ``Key<TAB>Value``.
+# Restrict repairs to known official labels so arbitrary Spanish prose is never
+# reinterpreted as a key/value pair.
+_DETAIL_KEYS = tuple(sorted({
+    "Ancho", "Altura", "Capacidad", "Cantidad", "Color", "Color suave",
+    "Contenido", "Destinado a", "Diámetro", "Diámetro del cable", "Forma",
+    "Longitud", "Longitud del cable", "Material", "Método de fijación",
+    "Número de artículo", "Número del artículo", "Número de piezas",
+    "Número de pilas necesarias", "Peso", "Potencia", "Tipo", "Tipo de batería",
+    "Tipo de dispensador", "Tipo de accesorio para el cabello",
+    "Tipo de material para fabricación de joyas", "Tipo de agarre",
+    "Tipo de abrazadera", "Tipo de ambientador / desodorante", "Tipo de producto",
+    "Incluye abalorios", "Incluye cable", "Incluye caja de almacenaje", "Incluye cierre",
+    "Incluye tenazas", "Incluye recarga", "Tamaño", "Tensión", "Voltaje", "Volumen",
+    "Edad recomendada", "Advertencias de seguridad", "Contenido del paquete", "Incluye",
+}, key=len, reverse=True))
+_DETAIL_KEY_RE = re.compile(
+    r"^(?P<key>" + "|".join(re.escape(key) for key in _DETAIL_KEYS) + r")\s*:?(?P<value>.*)$",
+    re.IGNORECASE,
+)
+
+
+def _normalize_detail_pairs(text: str) -> str:
+    """Repair safe detail delimiters without removing duplicate official facts."""
+    tokens = [
+        re.sub(r"\s+", " ", token).strip()
+        for line in text.split("\n")
+        for token in re.split(r";|\t", line)
+        if re.sub(r"\s+", " ", token).strip()
+    ]
+    output: list[str] = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        match = _DETAIL_KEY_RE.match(token)
+        if not match:
+            output.append(token)
+            index += 1
+            continue
+        key = match.group("key").strip()
+        value = match.group("value").strip()
+        # Bare generic labels must not turn a value such as "Tipo de..." into
+        # an invented two-column detail row.
+        if key.casefold() in {"tipo", "incluye"} and value and not re.match(
+            rf"^{re.escape(key)}\s*:", token, re.IGNORECASE
+        ):
+            output.append(token)
+            index += 1
+        elif value:
+            output.append(f"{key}: {value}")
+            index += 1
+        elif index + 1 < len(tokens) and not _DETAIL_KEY_RE.match(tokens[index + 1]):
+            output.append(f"{key}: {tokens[index + 1]}")
+            index += 2
+        else:
+            output.append(f"{key}:")
+            index += 1
+    return "; ".join(output)
+
+
+def normalize_official_text(value: Any, *, field: str = "") -> str | None:
+    """Remove Action transport/UI residue while preserving official Spanish facts.
+
+    This is deliberately mechanical: it never translates, deduplicates fields,
+    or fills values that are absent from the official page.
+    """
+    if value is None:
+        return None
+    text = html.unescape(str(value)).replace("\r\n", "\n").replace("\r", "\n")
+    if field == "spec" and _UI_SPEC_RE.fullmatch(text):
+        return None
+    if re.search(r"</?\w|>\s*>", text):
+        def replacement(match: re.Match[str]) -> str:
+            tag = match.group(0).casefold()
+            return "\n" if tag.startswith(("<p", "</p", "<div", "</div", "<br")) else ""
+        text = _HTML_TAG_RE.sub(replacement, text).replace(">", "").replace("<", "")
+    lines: list[str] = []
+    for line in text.split("\n"):
+        line = re.sub(r"[ \t]+", " ", line).strip()
+        if not line:
+            continue
+        if field == "description" and re.fullmatch(r"descripci[oó]n|leer\s+m[aá]s", line, re.IGNORECASE):
+            continue
+        lines.append(line)
+    text = "\n".join(lines).strip()
+    text = re.sub(r"^(?:null|undefined)\.?\s*", "", text, flags=re.IGNORECASE)
+    if field == "description":
+        text = re.sub(r"\s*(?:leer\s+m[aá]s)\s*$", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"(?:>\s*){2,}", "", text)
+    if field == "details":
+        text = re.sub(r"\s*::+\s*", ": ", text)
+        text = re.sub(r"\s*;\s*", "; ", text)
+        text = _normalize_detail_pairs(text)
+        text = re.sub(r"\s*:\s*;", ":", text)
+        text = re.sub(r";\s*;", "; ", text)
+    return text or None
 
 # ---- Canonical_ID：ACT + SKU 前补零到 7 位（与现有 Master 一致）----
 
