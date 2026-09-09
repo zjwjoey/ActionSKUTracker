@@ -130,6 +130,7 @@ class ProductionWriter:
                 self._insert_run(db, bundle, now)
                 self._upsert_products(db, bundle.current_products, commit_id, now)
                 self._upsert_localizations(db, bundle.localization_updates, commit_id, now)
+                self._enqueue_missing_categories(db, bundle.localization_updates, bundle.current_products, now)
                 self._insert_source_fact_versions(db, bundle.source_fact_versions, now)
                 self._insert_observations(db, bundle.observations)
                 self._upsert_lifecycle(db, bundle.lifecycle_updates, now)
@@ -386,6 +387,54 @@ class ProductionWriter:
                         (fact_id, run_id, sku, str(field_name), raw_text, normalized_text,
                          raw_hash, normalized_hash, source_name, row.get("observed_at"), now),
                     )
+
+    @staticmethod
+    def _enqueue_missing_categories(
+        db: sqlite3.Connection,
+        localizations: Iterable[dict[str, Any]],
+        products: Iterable[dict[str, Any]],
+        now: str,
+    ) -> None:
+        """Queue current official rows without cat2 for official-evidence repair."""
+        tables = {str(row[0]) for row in db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )}
+        if "category_backlog" not in tables or "category_backlog_events" not in tables:
+            return
+        urls = {
+            str(row.get("sku") or row.get("official_sku") or ""): str(row.get("product_url") or "")
+            for row in products
+            if not row.get("_historical_minimal")
+        }
+        for row in localizations:
+            if str(row.get("language") or "").strip() != "es":
+                continue
+            sku = str(row.get("sku") or row.get("official_sku") or "").strip()
+            cat2 = str(row.get("cat2") or "").strip()
+            source_hash = str(row.get("source_hash") or "").strip()
+            if not source_hash:
+                source_hash = localization_source_hash({
+                    "name_es": row.get("name"), "cat1_es": row.get("cat1"),
+                    "cat2_es": row.get("cat2"), "spec_es": row.get("spec"),
+                    "desc_es": row.get("description"), "details_es": row.get("details"),
+                })
+            if not sku or cat2 or not source_hash:
+                continue
+            queue_id = f"category-gap-{sku}-{source_hash[:16]}"
+            db.execute(
+                """INSERT OR IGNORE INTO category_backlog
+                (queue_id,official_sku,cat1_es,cat2_es,suggested_cat2_zh,evidence_url,source_hash,status,created_at)
+                VALUES(?,?,?,?,?,?,?,?,?)""",
+                (queue_id, sku, row.get("cat1"), None, "", urls.get(sku, ""), source_hash, "CATEGORY_MISSING", now),
+            )
+            event_id = hashlib.sha256(f"{queue_id}|CATEGORY_MISSING".encode("utf-8")).hexdigest()
+            db.execute(
+                """INSERT OR IGNORE INTO category_backlog_events
+                (event_id,queue_id,event_type,actor,evidence_json,created_at)
+                VALUES(?,?,?,?,?,?)""",
+                (event_id, queue_id, "CATEGORY_MISSING", "production-writer",
+                 json.dumps({"source_hash": source_hash, "reason": "CAT2_EMPTY"}, ensure_ascii=False, sort_keys=True), now),
+            )
 
     @staticmethod
     def _insert_observations(db: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> None:

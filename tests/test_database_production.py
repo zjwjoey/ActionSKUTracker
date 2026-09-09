@@ -150,6 +150,10 @@ def test_writer_normalizes_official_text_and_rejects_equal_original_price(tmp_pa
         ).fetchone()
         assert tuple(row[:3]) == (None, "Texto", "Material: Plástico; Número del artículo: 1001")
         assert row[3]
+        backlog = conn.execute(
+            "SELECT status,official_sku FROM category_backlog WHERE official_sku='1001'"
+        ).fetchone()
+        assert tuple(backlog) == ("CATEGORY_MISSING", "1001")
 
 
 def test_writer_appends_raw_and_normalized_source_facts(tmp_path: Path):
