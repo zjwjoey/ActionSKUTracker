@@ -127,6 +127,93 @@ def test_database_boolean_parser_does_not_treat_false_text_as_true():
     assert _to_bool("true") is True
 
 
+def test_writer_normalizes_official_text_and_rejects_equal_original_price(tmp_path: Path):
+    db = tmp_path / "action.db"
+    bundle = CommitBundle(
+        run_id="normalization-run",
+        observation_date="2026-09-09",
+        qa_state="PASS",
+        current_products=({"sku": "1001", "name_es": "Producto", "current_price": 2.5, "original_price": 2.5},),
+        localization_updates=({
+            "sku": "1001", "language": "es", "name": "Producto", "cat1": "Hogar", "cat2": "",
+            "spec": "Añadir a tus favoritos", "description": "Descripción\n<p>Texto</p>\nLeer más",
+            "details": "Material:: Plástico; Número del artículo; 1001",
+        },),
+        lifecycle_updates=({"sku": "1001", "current_status": "ACTIVE", "last_run_id": "normalization-run"},),
+        observations=({"run_id": "normalization-run", "sku": "1001", "observation_date": "2026-09-09", "presence_state": "PRESENT", "observation_complete": True, "absence_capable": True},),
+    )
+    ProductionWriter(db).commit(bundle)
+    with connect(db) as conn:
+        assert conn.execute("SELECT original_price FROM products WHERE official_sku='1001'").fetchone()[0] is None
+        row = conn.execute(
+            "SELECT spec,description,details,source_hash FROM product_localizations WHERE official_sku='1001' AND language='es'"
+        ).fetchone()
+        assert tuple(row[:3]) == (None, "Texto", "Material: Plástico; Número del artículo: 1001")
+        assert row[3]
+        backlog = conn.execute(
+            "SELECT status,official_sku FROM category_backlog WHERE official_sku='1001'"
+        ).fetchone()
+        assert tuple(backlog) == ("CATEGORY_MISSING", "1001")
+
+
+def test_writer_appends_raw_and_normalized_source_facts(tmp_path: Path):
+    db = tmp_path / "action.db"
+    bundle = _bundle("raw-facts")
+    object.__setattr__(bundle, "source_fact_versions", ({
+        "sku": "1001", "run_id": "raw-facts", "source_name": "detail",
+        "facts": {"details": {"raw": "Material:: Plástico", "normalized": "Material: Plástico"}},
+    },))
+    ProductionWriter(db).commit(bundle)
+    with connect(db) as conn:
+        row = conn.execute(
+            "SELECT raw_value,normalized_value FROM source_fact_versions WHERE official_sku='1001'"
+        ).fetchone()
+        assert tuple(row) == ("Material:: Plástico", "Material: Plástico")
+
+
+def test_writer_aggregates_product_fact_snapshot(tmp_path: Path):
+    db = tmp_path / "action.db"
+    with connect(db) as conn:
+        conn.executescript("""
+            CREATE TABLE product_fact_versions (
+                fact_id TEXT PRIMARY KEY,
+                official_sku TEXT NOT NULL,
+                run_id TEXT NOT NULL,
+                raw_fact_json TEXT NOT NULL,
+                normalized_fact_json TEXT NOT NULL,
+                raw_fact_hash TEXT NOT NULL,
+                normalized_fact_hash TEXT NOT NULL,
+                raw_fact_available INTEGER NOT NULL,
+                normalization_version TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(official_sku, run_id)
+            );
+        """)
+    bundle = _bundle("product-facts")
+    object.__setattr__(bundle, "source_fact_versions", ({
+        "sku": "1001", "run_id": "product-facts", "source_name": "detail",
+        "facts": {
+            "name": {"raw": "Producto", "normalized": "Producto"},
+            "cat1": {"raw": None, "normalized": ""},
+            "cat2": {"raw": "", "normalized": ""},
+            "details": {"raw": "Material:: Plástico", "normalized": "Material: Plástico"},
+        },
+    },))
+    ProductionWriter(db).commit(bundle)
+    with connect(db) as conn:
+        rows = conn.execute(
+            "SELECT raw_fact_json,normalized_fact_json,raw_fact_hash,normalized_fact_hash,raw_fact_available "
+            "FROM product_fact_versions WHERE official_sku='1001' AND run_id='product-facts'"
+        ).fetchall()
+        assert len(rows) == 1
+        raw_json, normalized_json, raw_hash, normalized_hash, available = rows[0]
+        assert raw_json == '{"cat1":null,"cat2":"","details":"Material:: Plástico","name":"Producto"}'
+        assert normalized_json == '{"cat1":"","cat2":"","details":"Material: Plástico","name":"Producto"}'
+        assert raw_hash == __import__("hashlib").sha256(raw_json.encode("utf-8")).hexdigest()
+        assert normalized_hash == __import__("hashlib").sha256(normalized_json.encode("utf-8")).hexdigest()
+        assert available == 1
+
+
 def test_legacy_baseline_rebuilds_incompatible_v1_database_atomically(tmp_path: Path):
     db = tmp_path / "legacy.db"
     master = tmp_path / "master.xlsx"

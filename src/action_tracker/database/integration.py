@@ -131,12 +131,30 @@ def build_daily_bundle(
 
     products = tuple(product_by_sku.values())
     localizations: list[dict[str, Any]] = []
+    source_fact_versions: list[dict[str, Any]] = []
     for record in products:
         sku = str(record.get("sku") or "")
         if not sku or record.get("_historical_minimal"):
             continue
         localizations.append(_localization(record, "es"))
         localizations.append(_localization(record, "zh"))
+        spanish_fields = {
+            "name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es",
+            "spec": "spec_es", "description": "desc_es", "details": "details_es",
+        }
+        source_fact_versions.append({
+            "sku": sku,
+            "run_id": run_id,
+            "observed_at": observation_date,
+            "source_name": "detail" if any(record.get(f"_raw_{field}_es") is not None for field in ("spec", "desc", "details")) else "listing",
+            "facts": {
+                field: {
+                    "raw": record.get(f"_raw_{field}_es", record.get(source_key)),
+                    "normalized": record.get(source_key),
+                }
+                for field, source_key in spanish_fields.items()
+            },
+        })
 
     lifecycle: list[dict[str, Any]] = []
     for sku, record in transition_known.items():
@@ -203,6 +221,7 @@ def build_daily_bundle(
         price_events=prices,
         event_events=events,
         review_rows=tuple(review_rows),
+        source_fact_versions=tuple(source_fact_versions),
         run_record=report,
         snapshot_path=str(snapshot_path) if snapshot_path else None,
         snapshot_hash=snapshot_digest(snapshot_path),

@@ -19,6 +19,8 @@ from typing import Any, Iterable, Mapping
 
 from .connection import connect
 from .schema import migrate_v2
+from ..services.hashing import localization_source_hash
+from ..services.normalization import normalize_official_text
 
 
 class ProductionDatabaseError(RuntimeError):
@@ -51,6 +53,7 @@ class CommitBundle:
     price_events: tuple[dict[str, Any], ...] = ()
     event_events: tuple[dict[str, Any], ...] = ()
     review_rows: tuple[dict[str, Any], ...] = ()
+    source_fact_versions: tuple[dict[str, Any], ...] = ()
     run_record: dict[str, Any] = field(default_factory=dict)
     snapshot_path: str | None = None
     snapshot_hash: str | None = None
@@ -71,6 +74,7 @@ class CommitBundle:
             "price_events": self.price_events,
             "event_events": self.event_events,
             "review_rows": self.review_rows,
+            "source_fact_versions": self.source_fact_versions,
             "run_record": self.run_record,
             "snapshot_path": self.snapshot_path,
             "snapshot_hash": self.snapshot_hash,
@@ -126,6 +130,8 @@ class ProductionWriter:
                 self._insert_run(db, bundle, now)
                 self._upsert_products(db, bundle.current_products, commit_id, now)
                 self._upsert_localizations(db, bundle.localization_updates, commit_id, now)
+                self._enqueue_missing_categories(db, bundle.localization_updates, bundle.current_products, now)
+                self._insert_source_fact_versions(db, bundle.source_fact_versions, now)
                 self._insert_observations(db, bundle.observations)
                 self._upsert_lifecycle(db, bundle.lifecycle_updates, now)
                 self._insert_prices(db, bundle.price_events, bundle.run_id)
@@ -235,6 +241,16 @@ class ProductionWriter:
                         (r.get("status") or "HISTORICAL", int(r.get("consecutive_missing", 0) or 0), r.get("last_checked_at", now), now, sku),
                     )
                     continue
+            current_price = r.get("current_price")
+            original_price = r.get("original_price")
+            # An original price is meaningful only for a real promotion.  A
+            # missing detail-page node must not become an equal original price
+            # and make every regular product look discounted.
+            try:
+                if current_price is not None and original_price is not None and float(original_price) <= float(current_price):
+                    original_price = None
+            except (TypeError, ValueError):
+                pass
             db.execute(
                 """INSERT INTO products(canonical_id,official_sku,name_es,name_zh,current_price,original_price,unit_price_raw,raw_badges,
                 action_new_badge,promotion_active,sustainable_badge,status,consecutive_missing,product_url,image_url,first_seen_at,
@@ -246,7 +262,7 @@ class ProductionWriter:
                 sustainable_badge=excluded.sustainable_badge,status=excluded.status,consecutive_missing=excluded.consecutive_missing,
                 product_url=excluded.product_url,image_url=excluded.image_url,first_seen_at=excluded.first_seen_at,last_seen_at=excluded.last_seen_at,
                 last_checked_at=excluded.last_checked_at,source_hash=excluded.source_hash,updated_at=excluded.updated_at""",
-                (cid, sku, r.get("name_es"), r.get("name_zh"), r.get("current_price"), r.get("original_price"), r.get("unit_price_raw", r.get("unit_price")),
+                (cid, sku, r.get("name_es"), r.get("name_zh"), current_price, original_price, r.get("unit_price_raw", r.get("unit_price")),
                  r.get("raw_badges", r.get("raw_tags")), int(_to_bool(r.get("action_new_badge", r.get("is_new_badge", False)))),
                  int(_to_bool(r.get("promotion_active", r.get("promotion", False)))), int(_to_bool(r.get("sustainable_badge", r.get("sustainable", False)))),
                  r.get("status", "ACTIVE"), int(r.get("consecutive_missing", 0) or 0), r.get("product_url"), r.get("image_url"),
@@ -259,6 +275,17 @@ class ProductionWriter:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
             language = str(r.get("language") or "zh")
             incoming = dict(r)
+            if language == "es":
+                for field, kind in (("spec", "spec"), ("description", "description"), ("details", "details")):
+                    incoming[field] = normalize_official_text(incoming.get(field), field=kind)
+                incoming["source_hash"] = localization_source_hash({
+                    "name_es": incoming.get("name"),
+                    "cat1_es": incoming.get("cat1"),
+                    "cat2_es": incoming.get("cat2"),
+                    "spec_es": incoming.get("spec"),
+                    "desc_es": incoming.get("description"),
+                    "details_es": incoming.get("details"),
+                })
             if language == "zh":
                 existing_row = db.execute(
                     "SELECT name,cat1,cat2,spec,unit_price,description,details,source,review_status,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,unit_price_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id,last_commit_id,updated_at FROM product_localizations WHERE official_sku=? AND language='zh'",
@@ -306,6 +333,124 @@ class ProductionWriter:
             )
             from .provenance import sync_localization_field_provenance
             sync_localization_field_provenance(db, incoming, commit_id=commit_id, now=now)
+
+    @staticmethod
+    def _insert_source_fact_versions(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], now: str) -> None:
+        """Append raw/normalized official facts when a daily bundle provides them."""
+        tables = {str(row[0]) for row in db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )}
+        table = "product_fact_versions" if "product_fact_versions" in tables else (
+            "source_fact_versions" if "source_fact_versions" in tables else None
+        )
+        if table is None:
+            return
+        for row in rows:
+            sku = str(row.get("official_sku") or row.get("sku") or "").strip()
+            run_id = str(row.get("run_id") or "").strip()
+            source_name = str(row.get("source_name") or "daily").strip()
+            if not sku or not run_id:
+                raise ProductionDatabaseError("DB_SOURCE_FACT_IDENTITY_MISSING")
+            facts = row.get("facts") or {}
+            if table == "product_fact_versions":
+                # PRIMARY product facts are one complete SKU/run snapshot, not
+                # field-level rows. Preserve None versus empty string in the
+                # canonical JSON so raw evidence remains faithful.
+                raw_payload: dict[str, Any] = {}
+                normalized_payload: dict[str, Any] = {}
+                raw_available = False
+                for field_name, values in facts.items():
+                    if not isinstance(values, Mapping):
+                        values = {"raw": values, "normalized": values}
+                    raw = values.get("raw")
+                    normalized = values.get("normalized")
+                    raw_payload[str(field_name)] = raw
+                    normalized_payload[str(field_name)] = normalized
+                    raw_available = raw_available or raw is not None
+                raw_json = json.dumps(raw_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                normalized_json = json.dumps(normalized_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                raw_hash = hashlib.sha256(raw_json.encode("utf-8")).hexdigest()
+                normalized_hash = hashlib.sha256(normalized_json.encode("utf-8")).hexdigest()
+                fact_id = hashlib.sha256(
+                    f"{run_id}|{sku}|{raw_hash}|{normalized_hash}".encode("utf-8")
+                ).hexdigest()
+                db.execute(
+                    """INSERT OR IGNORE INTO product_fact_versions
+                    (fact_id,official_sku,run_id,raw_fact_json,normalized_fact_json,
+                     raw_fact_hash,normalized_fact_hash,raw_fact_available,normalization_version,created_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                    (fact_id, sku, run_id, raw_json, normalized_json,
+                     raw_hash, normalized_hash, int(raw_available), source_name, now),
+                )
+            else:
+                for field_name, values in facts.items():
+                    if not isinstance(values, Mapping):
+                        values = {"raw": values, "normalized": values}
+                    raw = values.get("raw")
+                    normalized = values.get("normalized")
+                    raw_text = "" if raw is None else str(raw)
+                    normalized_text = "" if normalized is None else str(normalized)
+                    raw_hash = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
+                    normalized_hash = hashlib.sha256(normalized_text.encode("utf-8")).hexdigest()
+                    fact_id = hashlib.sha256(
+                        f"{run_id}|{sku}|{field_name}|{raw_hash}|{normalized_hash}".encode("utf-8")
+                    ).hexdigest()
+                    db.execute(
+                        """INSERT OR IGNORE INTO source_fact_versions
+                        (fact_id,run_id,official_sku,field_name,raw_value,normalized_value,
+                         raw_hash,normalized_hash,source_name,observed_at,created_at)
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                        (fact_id, run_id, sku, str(field_name), raw_text, normalized_text,
+                         raw_hash, normalized_hash, source_name, row.get("observed_at"), now),
+                    )
+
+    @staticmethod
+    def _enqueue_missing_categories(
+        db: sqlite3.Connection,
+        localizations: Iterable[dict[str, Any]],
+        products: Iterable[dict[str, Any]],
+        now: str,
+    ) -> None:
+        """Queue current official rows without cat2 for official-evidence repair."""
+        tables = {str(row[0]) for row in db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )}
+        if "category_backlog" not in tables or "category_backlog_events" not in tables:
+            return
+        urls = {
+            str(row.get("sku") or row.get("official_sku") or ""): str(row.get("product_url") or "")
+            for row in products
+            if not row.get("_historical_minimal")
+        }
+        for row in localizations:
+            if str(row.get("language") or "").strip() != "es":
+                continue
+            sku = str(row.get("sku") or row.get("official_sku") or "").strip()
+            cat2 = str(row.get("cat2") or "").strip()
+            source_hash = str(row.get("source_hash") or "").strip()
+            if not source_hash:
+                source_hash = localization_source_hash({
+                    "name_es": row.get("name"), "cat1_es": row.get("cat1"),
+                    "cat2_es": row.get("cat2"), "spec_es": row.get("spec"),
+                    "desc_es": row.get("description"), "details_es": row.get("details"),
+                })
+            if not sku or cat2 or not source_hash:
+                continue
+            queue_id = f"category-gap-{sku}-{source_hash[:16]}"
+            db.execute(
+                """INSERT OR IGNORE INTO category_backlog
+                (queue_id,official_sku,cat1_es,cat2_es,suggested_cat2_zh,evidence_url,source_hash,status,created_at)
+                VALUES(?,?,?,?,?,?,?,?,?)""",
+                (queue_id, sku, row.get("cat1"), None, "", urls.get(sku, ""), source_hash, "CATEGORY_MISSING", now),
+            )
+            event_id = hashlib.sha256(f"{queue_id}|CATEGORY_MISSING".encode("utf-8")).hexdigest()
+            db.execute(
+                """INSERT OR IGNORE INTO category_backlog_events
+                (event_id,queue_id,event_type,actor,evidence_json,created_at)
+                VALUES(?,?,?,?,?,?)""",
+                (event_id, queue_id, "CATEGORY_MISSING", "production-writer",
+                 json.dumps({"source_hash": source_hash, "reason": "CAT2_EMPTY"}, ensure_ascii=False, sort_keys=True), now),
+            )
 
     @staticmethod
     def _insert_observations(db: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> None:
