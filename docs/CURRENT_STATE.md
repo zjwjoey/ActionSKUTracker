@@ -17,6 +17,13 @@
 - 2026-09-08 中文/西语无图导出：各 5,547 条，SKU、价格、图片链接、商品链接逐条一致
 - 最新闭环代码分支：`feat/master-dictionary-export-closure-v1`；本轮修复已提交并推送，尚未合并 main
 
+2026-09-09 Final Approval & Provenance Gate Hotfix：最新 HEAD 为
+`b80729b8741cc8689334882146aaa35a84c4c276`，相对 `origin/main` ahead 45、behind 0。
+本地全量回归 `459 passed`；exact-head CI run `34297460798` 的 Ubuntu/Windows 均成功。
+候选 SQLite 只读验收为 integrity `ok`、foreign keys `0`、CURRENT `5547`、重复 SKU `0`，
+Research Release Gate PASS。Approval、source allowlist、字段 source hash、Category hash 和
+90 天例外 TTL 已收口；真实 PRIMARY 未写入，生产开关仍关闭。等待人工审查后再决定是否 fast-forward 合并。
+
 当前保留两类非阻断告警：部分官网详情/二级类目源字段本身为空（导出备注已显式标记），
 以及 51 个历史 SKU 没有可追溯的 `source_first_seen`、部分字典条目仍处于人工复核队列。
 字典审计最新结果为 30 PASS / 2 WARN / 0 FAIL；西语导出 HTML、`null/undefined` 和双冒号残留均为 0。
