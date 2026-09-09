@@ -233,7 +233,7 @@ def test_field_level_apply_preserves_unmentioned_localization_and_requires_gate(
         db.execute("INSERT INTO product_localizations(official_sku,language,name,spec,updated_at) VALUES('1001','zh','旧名','旧规格','now')")
     store = KnowledgeStore(db_path, role="PRIMARY")
     record = _record()
-    candidate = {"sku": "1001", "source_hash": source_hash(record), "fields": {"name": "新名"}, "approval_status": "HUMAN_APPROVED", "provenance": "human_approved_ai"}
+    candidate = {"sku": "1001", "source_hash": source_hash(record), "fields": {"name": "新名"}, "approval_status": "HUMAN_APPROVED", "approved_by": "human:reviewer", "approved_at": "2026-09-08T00:00:00+00:00", "approval_evidence": {"ticket": "T1"}, "provenance": "human_approved_ai"}
     assert store.preview_apply([candidate], {"1001": record})[0]["old_value"] == "旧名"
     try:
         store.apply_localizations([candidate], {"1001": record})

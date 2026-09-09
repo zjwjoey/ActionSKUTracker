@@ -60,6 +60,8 @@ def decide_category_backlog(
         raise CategoryBacklogError("CATEGORY_DECISION_INVALID")
     if not actor or not evidence_url or not evidence_url.startswith(("https://", "http://")):
         raise CategoryBacklogError("CATEGORY_OFFICIAL_EVIDENCE_REQUIRED")
+    if not str(current_source_hash or "").strip():
+        raise CategoryBacklogError("CATEGORY_CURRENT_SOURCE_HASH_REQUIRED")
     if decision == "APPROVED" and not value.strip():
         raise CategoryBacklogError("CATEGORY_APPROVAL_VALUE_MISSING")
     parsed = urlparse(evidence_url)
@@ -78,7 +80,7 @@ def decide_category_backlog(
             raise CategoryBacklogError("CATEGORY_EVIDENCE_SKU_MISMATCH")
         if not sku_match and str(page_product_number or "").strip() != str(row[1]):
             raise CategoryBacklogError("CATEGORY_EVIDENCE_SKU_REQUIRED")
-        if current_source_hash and str(current_source_hash) != str(row[2]):
+        if str(current_source_hash) != str(row[2]):
             raise CategoryBacklogError("CATEGORY_EVIDENCE_STALE")
         db.execute(
             "UPDATE category_backlog SET status=?,decision_value=?,decided_by=?,decided_at=?,evidence_url=? WHERE queue_id=?",
@@ -86,7 +88,7 @@ def decide_category_backlog(
         )
         _event(db, queue_id, decision, actor, {"evidence_url": evidence_url, "value": value,
                                                 "page_product_number": page_product_number or (sku_match.group(1) if sku_match else None),
-                                                "source_hash": current_source_hash or row[2]}, now)
+                                                "source_hash": current_source_hash}, now)
     return decision
 
 

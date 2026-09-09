@@ -529,6 +529,19 @@ def migrate_v2(path, *, role: str = "SHADOW"):
             except Exception as exc:
                 if "duplicate column" not in str(exc).lower():
                     raise
+        # Approval identity is candidate-level input to the immutable patch
+        # gate.  Missing values must remain distinguishable from a pending
+        # candidate; never infer an approval actor during migration.
+        for column, definition in (
+            ("approved_by", "TEXT"),
+            ("approved_at", "TEXT"),
+            ("approval_evidence", "TEXT"),
+        ):
+            try:
+                db.execute(f"ALTER TABLE translation_candidates ADD COLUMN {column} {definition}")
+            except Exception as exc:
+                if "duplicate column" not in str(exc).lower():
+                    raise
         # ``localization_fields`` is the canonical field-level contract.  The
         # legacy provenance table already carried these audit columns, but
         # older PRIMARY databases may have created the canonical projection

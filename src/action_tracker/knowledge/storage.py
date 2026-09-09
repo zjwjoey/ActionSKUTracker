@@ -70,14 +70,17 @@ class KnowledgeStore:
         candidate_id = str(candidate.get("candidate_id") or hashlib.sha256(json.dumps(candidate, sort_keys=True, ensure_ascii=False).encode()).hexdigest())
         with connect(self.path) as db:
             db.execute(
-                """INSERT INTO translation_candidates(candidate_id,queue_id,official_sku,language,source_hash,model_provider,model_name,prompt_version,fields_json,confidence,validation_status,approval_status,created_at)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """INSERT INTO translation_candidates(candidate_id,queue_id,official_sku,language,source_hash,model_provider,model_name,prompt_version,fields_json,confidence,validation_status,approval_status,approved_by,approved_at,approval_evidence,created_at)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(candidate_id) DO UPDATE SET fields_json=excluded.fields_json,confidence=excluded.confidence,
-                   validation_status=excluded.validation_status,approval_status=excluded.approval_status""",
+                   validation_status=excluded.validation_status,approval_status=excluded.approval_status,
+                   approved_by=excluded.approved_by,approved_at=excluded.approved_at,approval_evidence=excluded.approval_evidence""",
                 (candidate_id, candidate["queue_id"], candidate["sku"], candidate.get("language", "zh"), candidate["source_hash"],
                  candidate.get("model_provider"), candidate.get("model_name"), candidate["prompt_version"],
                  json.dumps(candidate.get("fields") or {}, ensure_ascii=False, sort_keys=True), candidate.get("confidence"),
                  candidate.get("validation_status", "PENDING"), candidate.get("approval_status", "PENDING"),
+                 candidate.get("approved_by"), candidate.get("approved_at"),
+                 json.dumps(candidate.get("approval_evidence") or {}, ensure_ascii=False, sort_keys=True),
                  candidate.get("created_at") or datetime.now(timezone.utc).isoformat()),
             )
         return candidate_id
@@ -142,9 +145,22 @@ class KnowledgeStore:
             record = records.get(sku)
             if not record or str(candidate.get("source_hash") or "") != source_hash(record):
                 raise ValueError("STALE_TRANSLATION_PREVIEW")
-            approval_status = str(candidate.get("approval_status") or "APPROVED").upper()
+            if "approval_status" not in candidate:
+                raise PermissionError("CANDIDATE_APPROVAL_STATUS_MISSING")
+            approval_status = str(candidate.get("approval_status") or "").upper()
             if approval_status not in {"APPROVED", "HUMAN_APPROVED"}:
                 raise PermissionError("CANDIDATE_NOT_APPROVED")
+            approved_by = str(candidate.get("approved_by") or "").strip()
+            approved_at = str(candidate.get("approved_at") or "").strip()
+            approval_evidence = candidate.get("approval_evidence") or {}
+            if not approved_by or not approved_at or not isinstance(approval_evidence, dict) or not approval_evidence:
+                raise PermissionError("CANDIDATE_APPROVAL_METADATA_MISSING")
+            if not (approved_by.startswith("human:") or approved_by.startswith("service:")):
+                raise PermissionError("CANDIDATE_APPROVER_INVALID")
+            try:
+                datetime.fromisoformat(approved_at.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise PermissionError("CANDIDATE_APPROVED_AT_INVALID") from exc
             provenance = str(candidate.get("provenance") or "human_approved_ai")
             fields = candidate.get("fields") or {}
             if not isinstance(fields, dict):
@@ -166,19 +182,21 @@ class KnowledgeStore:
                 create_localization_patch(
                     self.path, patch_id=patch_id, official_sku=sku, language="zh", field_name=field,
                     old_value=current[field], new_value=value, source_hash=str(candidate["source_hash"]),
-                    source_allowlist=[provenance], created_by="human:knowledge",
-                    evidence={"field_name": field, "base_commit_id": expected_base_commit_id},
+                    source_allowlist=[provenance], created_by=approved_by,
+                    evidence={"field_name": field, "base_commit_id": expected_base_commit_id,
+                              "source_name": provenance, "approval_evidence": approval_evidence},
                     reason="knowledge_candidate_apply",
                 )
                 append_patch_event(
-                    self.path, patch_id=patch_id, event_type="PATCH_APPROVED", actor="human:knowledge",
-                    evidence={"field_name": field, "base_commit_id": expected_base_commit_id, "source_name": provenance},
+                    self.path, patch_id=patch_id, event_type="PATCH_APPROVED", actor=approved_by,
+                    evidence={"field_name": field, "base_commit_id": expected_base_commit_id,
+                              "source_name": provenance, "approval_evidence": approval_evidence},
                 )
                 patch_ids.append(patch_id)
         if not patch_ids:
             return 0
         result = apply_approved_localization_patches(
             self.path, patch_ids=patch_ids, expected_base_commit_id=expected_base_commit_id,
-            actor="human:knowledge", run_id=f"knowledge_apply_{commit_id or uuid.uuid4().hex[:12]}",
+            actor="service:knowledge-apply", run_id=f"knowledge_apply_{commit_id or uuid.uuid4().hex[:12]}",
         )
         return int(result["applied_fields"])
