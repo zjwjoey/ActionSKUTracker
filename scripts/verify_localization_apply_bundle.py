@@ -11,18 +11,6 @@ from action_tracker.database.repository import ProductionRepository
 from action_tracker.localization.release_gate import audit_research_release, load_allowed_tokens
 
 
-EXCEPTIONS = (
-    "UNAPPROVED_ZH:2548558:spec_zh",
-    "UNAPPROVED_ZH:2557704:spec_zh",
-    "UNAPPROVED_ZH:2574845:spec_zh",
-    "UNAPPROVED_ZH:3005291:spec_zh",
-    "UNAPPROVED_ZH:3217313:details_zh",
-    "UNAPPROVED_ZH:3221995:details_zh",
-    "UNAPPROVED_ZH:3225631:details_zh",
-    "UNAPPROVED_ZH:3227020:details_zh",
-)
-
-
 def verify(source_candidate: Path, bundle_path: Path, output_db: Path, dictionary_root: Path) -> dict:
     if output_db.exists():
         output_db.unlink()
@@ -40,13 +28,9 @@ def verify(source_candidate: Path, bundle_path: Path, output_db: Path, dictionar
         rows,
         expected_skus={str(row.get("sku") or "") for row in rows},
         allowed_tokens=load_allowed_tokens(dictionary_root),
-        explicit_exceptions=[
-            {"issue_id": issue_id, "approved_by": "SOURCE_AUDIT_CANDIDATE",
-             "evidence": "candidate_apply_test", "expires_at": "2099-12-31"}
-            for issue_id in EXCEPTIONS
-        ],
     )
-    return {"apply": applied, "gate": gate.as_dict(), "candidate_only": True, "production_write": False}
+    return {"prepare": applied, "gate": gate.as_dict(), "candidate_only": True, "production_write": False,
+            "approval_required": bool(applied.get("patch_ids"))}
 
 
 def main() -> None:
@@ -60,7 +44,7 @@ def main() -> None:
     result = verify(args.candidate_db, args.bundle, args.output_db, args.dictionary_root)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"apply": result["apply"], "gate_status": result["gate"]["status"], "candidate_only": True}, ensure_ascii=False))
+    print(json.dumps({"prepare": result["prepare"], "gate_status": result["gate"]["status"], "candidate_only": True, "approval_required": result["approval_required"]}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

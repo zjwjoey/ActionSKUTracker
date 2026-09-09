@@ -87,10 +87,10 @@ def _hydrate(candidate: Path, reviewed: dict[str, dict[str, str]]) -> dict[str, 
     with sqlite3.connect(candidate) as db:
         for sku, row in current.items():
             values = reviewed.get(sku)
-            source_name = "APPROVED_REVIEWED_EXPORT"
+            source_name = "human:reviewed-export"
             if values is None:
                 values = MANUAL_NEW.get(sku)
-                source_name = "MANUAL_CANDIDATE"
+                source_name = "human:manual-candidate"
                 manual += 1
             else:
                 overlap += 1

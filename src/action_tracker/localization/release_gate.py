@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import csv
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -165,6 +166,29 @@ def audit_research_release(
         if not actual_hash or actual_hash != expected_hash:
             counts["SOURCE_HASH_MISMATCH"] += 1
             issues.append(f"SOURCE_HASH_MISMATCH:{sku}")
+        # Aggregate hashes remain for compatibility and fast checks, but a
+        # formal release must also bind every approved field to the current
+        # Spanish fact hash.  APPROVED_SOURCE_ABSENT is not a timeless waiver:
+        # an official field appearing tomorrow invalidates yesterday's empty
+        # approval unless its source hash still matches.
+        if field_provenance:
+            for export_field, canonical in PROVENANCE_FIELDS.items():
+                metadata = field_provenance.get(canonical) or {}
+                status = str(metadata.get("review_status") or row.get("zh_review_status") or row.get("review_status") or "").strip().upper()
+                if status not in APPROVED_REVIEW_STATUSES:
+                    continue
+                field_hash = str(metadata.get("source_hash") or "").strip()
+                if not field_hash or field_hash != expected_hash:
+                    counts["SOURCE_HASH_MISMATCH"] += 1
+                    issues.append(f"SOURCE_HASH_MISMATCH:{sku}:{canonical}")
+        elif str(row.get("zh_review_status") or row.get("review_status") or "").strip().upper() in APPROVED_REVIEW_STATUSES:
+            # Aggregate approval without six field-level provenance records is
+            # not sufficient for a formal release.  Treat each missing
+            # binding as a source-hash failure rather than silently falling
+            # back to the aggregate hash.
+            for canonical in PROVENANCE_FIELDS.values():
+                counts["SOURCE_HASH_MISMATCH"] += 1
+                issues.append(f"SOURCE_HASH_MISMATCH:{sku}:{canonical}")
         for field in REQUIRED_ZH_FIELDS:
             if _has_release_spanish_residual(str(row.get(field) or ""), allowed_tokens=allowed_tokens):
                 counts["SPANISH_RESIDUAL"] += 1
@@ -214,7 +238,14 @@ def audit_research_release(
 
     if counts["UNDECLARED_DISPLAY_MISMATCH"]:
         issues.append("UNDECLARED_DISPLAY_MISMATCH")
-    exception_ids = _validated_exception_ids(explicit_exceptions or ())
+    current_hashes = {
+        str(row.get("sku") or row.get("official_sku") or "").strip(): localization_source_hash(row)
+        for row in rows
+        if str(row.get("sku") or row.get("official_sku") or "").strip()
+    }
+    exception_ids = _validated_exception_ids(
+        explicit_exceptions or (), current_source_hashes=current_hashes,
+    )
     unique_issues = tuple(dict.fromkeys(issues))
     suppressed = tuple(issue for issue in unique_issues if issue in exception_ids)
     effective_issues = tuple(issue for issue in unique_issues if issue not in exception_ids)
@@ -267,28 +298,58 @@ def load_explicit_exceptions(path: Path) -> list[dict[str, str]]:
     for item in payload:
         if not isinstance(item, dict):
             raise ValueError("RELEASE_EXCEPTION_ENTRY_INVALID")
-        result.append({key: str(item.get(key) or "").strip() for key in ("issue_id", "approved_by", "evidence", "expires_at")})
+        result.append({key: str(item.get(key) or "").strip() for key in (
+            "issue_id", "issue_type", "official_sku", "field_name", "source_hash",
+            "approved_by", "approved_at", "created_at", "expires_at", "reason", "evidence",
+        )})
     return result
 
 
-def _validated_exception_ids(exceptions: Iterable[Mapping[str, Any]]) -> set[str]:
-    """Return only explicit, non-expired exceptions with audit evidence."""
-    from datetime import date
+def _validated_exception_ids(
+    exceptions: Iterable[Mapping[str, Any]],
+    *,
+    current_source_hashes: Mapping[str, str] | None = None,
+) -> set[str]:
+    """Return only exact, evidence-backed, source-bound short-lived exceptions."""
     accepted: set[str] = set()
     today = date.today()
-    banned = {"SOURCE_AUDIT_CANDIDATE", "MODEL", "SYSTEM", "AUTO"}
+    current_source_hashes = current_source_hashes or {}
     for item in exceptions:
         issue_id = str(item.get("issue_id") or "").strip()
+        issue_type = str(item.get("issue_type") or "").strip()
+        official_sku = str(item.get("official_sku") or "").strip()
+        field_name = str(item.get("field_name") or "").strip()
+        source_hash = str(item.get("source_hash") or "").strip()
         approved_by = str(item.get("approved_by") or "").strip()
+        approved_at = str(item.get("approved_at") or "").strip()
+        created_at = str(item.get("created_at") or "").strip()
         evidence = str(item.get("evidence") or "").strip()
+        reason = str(item.get("reason") or "").strip()
         expires_at = str(item.get("expires_at") or "").strip()
+        if not all((issue_id, issue_type, official_sku, field_name, source_hash,
+                    approved_by, approved_at, created_at, expires_at, reason, evidence)):
+            continue
+        if not (approved_by.startswith("human:") or approved_by.startswith("service:")):
+            continue
         try:
-            expiry = date.fromisoformat(expires_at)
+            approved_dt = datetime.fromisoformat(approved_at.replace("Z", "+00:00"))
+            created_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            expiry = date.fromisoformat(expires_at[:10])
+            expiry_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00")) if "T" in expires_at else datetime.combine(expiry, datetime.max.time(), tzinfo=timezone.utc)
         except ValueError:
             continue
-        approver_upper = approved_by.upper()
-        if issue_id and approved_by and approver_upper not in banned and evidence and expiry >= today:
-            accepted.add(issue_id)
+        if approved_dt.tzinfo is None or created_dt.tzinfo is None or expiry_dt.tzinfo is None:
+            continue
+        if expiry < today or expiry_dt <= created_dt or expiry_dt - created_dt > timedelta(days=90):
+            continue
+        if current_source_hashes.get(official_sku) != source_hash:
+            continue
+        # The issue id must be the exact issue key emitted by the gate for
+        # this SKU/field/type; a generic issue id cannot mask future facts.
+        expected_prefix = f"{issue_type}:{official_sku}:{field_name}"
+        if issue_id != expected_prefix and not issue_id.startswith(expected_prefix + ":"):
+            continue
+        accepted.add(issue_id)
     return accepted
 
 

@@ -28,6 +28,10 @@ def _row(**overrides):
     }
     row.update(overrides)
     row["zh_source_hash"] = row.get("zh_source_hash") or localization_source_hash(row)
+    row.setdefault("zh_field_provenance", {
+        field: {"review_status": row.get("zh_review_status", "VERIFIED"), "freshness_status": row.get("zh_freshness_status", "CURRENT"), "source_hash": row["zh_source_hash"]}
+        for field in ("name", "cat1", "cat2", "spec", "description", "details")
+    })
     return row
 
 
@@ -47,8 +51,8 @@ def test_release_blocks_missing_field_and_unapproved_status():
 def test_release_blocks_stale_and_source_hash_change():
     result = audit_research_release([_row(name_es="Caja nueva", zh_freshness_status="STALE", zh_source_hash="old")])
     assert not result.ok
-    assert result.counts["STALE_ZH"] == 1
-    assert result.counts["SOURCE_HASH_MISMATCH"] == 1
+    assert result.counts["STALE_ZH"] == 6
+    assert result.counts["SOURCE_HASH_MISMATCH"] == 7
 
 
 def test_release_blocks_spanish_residual():
@@ -157,9 +161,16 @@ def test_explicit_exception_requires_audit_fields_and_can_close_one_issue():
         [_row(cat2_zh="")],
         explicit_exceptions=[{
             "issue_id": "UNAPPROVED_ZH:1001:cat2_zh",
-            "approved_by": "reviewer",
+            "issue_type": "UNAPPROVED_ZH",
+            "official_sku": "1001",
+            "field_name": "cat2_zh",
+            "source_hash": localization_source_hash(_row(cat2_zh="")),
+            "approved_by": "human:reviewer",
+            "approved_at": "2026-09-08T00:00:00+00:00",
+            "created_at": "2026-09-08T00:00:00+00:00",
             "evidence": "official page has no category",
-            "expires_at": "2099-12-31",
+            "reason": "officially absent",
+            "expires_at": "2026-09-30",
         }],
     )
     assert result.ok
@@ -171,8 +182,12 @@ def test_release_exception_file_is_explicit_and_structured(tmp_path):
     path = tmp_path / "exceptions.json"
     path.write_text(
         '{"exceptions":[{"issue_id":"UNAPPROVED_ZH:1:spec_zh",'
-        '"approved_by":"reviewer","evidence":"source absent",'
-        '"expires_at":"2099-12-31"}]}',
+        '"issue_type":"UNAPPROVED_ZH","official_sku":"1","field_name":"spec_zh",'
+        '"source_hash":"h","approved_by":"human:reviewer",'
+        '"approved_at":"2026-09-08T00:00:00+00:00",'
+        '"created_at":"2026-09-08T00:00:00+00:00",'
+        '"reason":"source absent","evidence":"source absent",'
+        '"expires_at":"2026-09-30"}]}',
         encoding="utf-8",
     )
     assert load_explicit_exceptions(path)[0]["issue_id"] == "UNAPPROVED_ZH:1:spec_zh"
