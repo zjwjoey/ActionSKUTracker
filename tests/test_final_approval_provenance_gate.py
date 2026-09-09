@@ -42,14 +42,22 @@ def _primary(tmp_path: Path) -> tuple[Path, str]:
     return path, source
 
 
-def _patch(path: Path, source: str, *, patch_id: str = "p1", allowlist=("MANUAL",), approval_source="MANUAL") -> str:
+def _patch(
+    path: Path,
+    source: str,
+    *,
+    patch_id: str = "p1",
+    allowlist=("MANUAL",),
+    approval_source="MANUAL",
+    approval_actor="human:reviewer-a",
+) -> str:
     create_localization_patch(
         path, patch_id=patch_id, official_sku="1001", language="zh", field_name="name",
         old_value="旧名", new_value="新名", source_hash=source, source_allowlist=allowlist,
         created_by="human:creator", evidence={"field_name": "name", "base_commit_id": "C1"},
     )
     append_patch_event(
-        path, patch_id=patch_id, event_type="PATCH_APPROVED", actor="human:reviewer-a",
+        path, patch_id=patch_id, event_type="PATCH_APPROVED", actor=approval_actor,
         evidence={"field_name": "name", "base_commit_id": "C1", "source_name": approval_source},
     )
     return patch_id
@@ -113,6 +121,57 @@ def test_production_apply_allowlist_success(tmp_path: Path):
     path, source = _primary(tmp_path)
     _patch(path, source)
     assert apply_approved_localization_patches(path, patch_ids=["p1"], expected_base_commit_id="C1", actor="service:localization-apply")["applied_fields"] == 1
+
+
+@pytest.mark.parametrize(
+    "approval_actor",
+    ["SYSTEM", "AUTO", "MODEL", "AI", "LOCALIZATION", "QWEN", "DEEPSEEK", "SOURCE_AUDIT_CANDIDATE", "service:localization-apply"],
+)
+def test_production_apply_rejects_unauthorized_approval_actor(tmp_path: Path, approval_actor: str):
+    path, source = _primary(tmp_path)
+    _patch(path, source, approval_actor=approval_actor)
+    with pytest.raises(ProductionDatabaseError, match="PATCH_APPROVER_NOT_AUTHORIZED"):
+        apply_approved_localization_patches(
+            path, patch_ids=["p1"], expected_base_commit_id="C1",
+            actor="service:localization-apply",
+        )
+    with connect(path) as db:
+        assert db.execute("SELECT name FROM product_localizations WHERE official_sku='1001' AND language='zh'").fetchone()[0] == "旧名"
+        assert db.execute("SELECT COUNT(*) FROM commit_batches").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM localization_patch_events WHERE patch_id='p1' AND event_type='PATCH_APPLIED'").fetchone()[0] == 0
+
+
+def test_approval_actor_validator_is_strict_and_service_allowlist_is_exact():
+    from action_tracker.database.immutable_patches import ImmutablePatchError, validate_patch_approval_actor
+
+    assert validate_patch_approval_actor(" human:reviewer ") == "human:reviewer"
+    assert validate_patch_approval_actor("service:review-bot", authorized_service_actors={"service:review-bot"}) == "service:review-bot"
+    for actor in ("", "human", "human:", "service:other", "SYSTEM"):
+        with pytest.raises(ImmutablePatchError, match="PATCH_APPROVER_NOT_AUTHORIZED"):
+            validate_patch_approval_actor(actor)
+
+
+def test_public_validate_patch_apply_uses_approval_actor_gate(tmp_path: Path):
+    path, source = _primary(tmp_path)
+    _patch(path, source, approval_actor="SYSTEM")
+    from action_tracker.database.immutable_patches import ImmutablePatchError, validate_patch_apply
+
+    with pytest.raises(ImmutablePatchError, match="PATCH_APPROVER_NOT_AUTHORIZED"):
+        validate_patch_apply(path, patch_id="p1", current_source_hash=source, source_name="MANUAL")
+
+
+def test_human_approval_is_recorded_separately_from_apply_operator(tmp_path: Path):
+    path, source = _primary(tmp_path)
+    _patch(path, source, approval_actor="human:reviewer-a")
+    result = apply_approved_localization_patches(
+        path, patch_ids=["p1"], expected_base_commit_id="C1", actor="service:localization-apply",
+    )
+    assert result["applied_fields"] == 1
+    with connect(path) as db:
+        approved_by = db.execute("SELECT approved_by FROM localization_fields WHERE official_sku='1001' AND field_name='name'").fetchone()[0]
+        applied_actor = db.execute("SELECT actor FROM localization_patch_events WHERE patch_id='p1' AND event_type='PATCH_APPLIED'").fetchone()[0]
+    assert approved_by == "human:reviewer-a"
+    assert applied_actor == "service:localization-apply"
 
 
 def test_category_hash_is_required_and_fresh(tmp_path: Path):

@@ -30,6 +30,33 @@ class ImmutablePatchError(ValueError):
     pass
 
 
+def validate_patch_approval_actor(
+    actor: str,
+    *,
+    authorized_service_actors: Iterable[str] = (),
+) -> str:
+    """Return a normalized approval actor only when it is authorized.
+
+    Patch approval is a human authorization boundary.  Human reviewers use
+    the explicit ``human:<non-empty>`` identity format.  Service identities
+    are fail-closed by default and may only be enabled by an exact,
+    caller-provided allowlist; a ``service:*`` wildcard is never accepted.
+    The returned value is normalized so audit records preserve the identity
+    that was actually validated.
+    """
+    normalized = str(actor or "").strip()
+    if normalized.startswith("human:") and normalized[len("human:"):].strip():
+        return normalized
+    authorized = {
+        str(value).strip()
+        for value in authorized_service_actors
+        if str(value).strip()
+    }
+    if normalized.startswith("service:") and normalized in authorized:
+        return normalized
+    raise ImmutablePatchError("PATCH_APPROVER_NOT_AUTHORIZED")
+
+
 def _columns(db, table: str) -> set[str]:
     return {str(row[1]) for row in db.execute(f"PRAGMA table_info({table})").fetchall()}
 
@@ -140,6 +167,7 @@ def append_patch_event(db_path: Path, *, patch_id: str, event_type: str, actor: 
 def validate_patch_apply(
     db_path: Path, *, patch_id: str, current_source_hash: str, source_name: str,
     current_value: str | None = None, expected_base_commit_id: str | None = None,
+    authorized_service_actors: Iterable[str] = (),
 ) -> dict[str, Any]:
     """Validate an approved patch without mutating any production field."""
     with connect(Path(db_path)) as db:
@@ -148,6 +176,7 @@ def validate_patch_apply(
             db, patch_id=patch_id, current_source_hash=current_source_hash,
             source_name=source_name, current_value=current_value,
             expected_base_commit_id=expected_base_commit_id,
+            authorized_service_actors=authorized_service_actors,
         )
 
 
@@ -174,6 +203,7 @@ def _validate_patch_apply_in_connection(
     source_name: str,
     current_value: str | None = None,
     expected_base_commit_id: str | None = None,
+    authorized_service_actors: Iterable[str] = (),
 ) -> dict[str, Any]:
     """Single transaction-safe validation contract used by read/apply paths."""
     columns = _columns(db, "localization_patches")
@@ -189,6 +219,10 @@ def _validate_patch_apply_in_connection(
     approval = _approval_event_record(db, patch_id)
     if not approval or approval["event_type"] != "PATCH_APPROVED":
         raise ImmutablePatchError("PATCH_NOT_APPROVED")
+    approval_actor = validate_patch_approval_actor(
+        approval.get("actor") or "",
+        authorized_service_actors=authorized_service_actors,
+    )
     try:
         evidence = json.loads(approval["evidence"] or "{}")
     except json.JSONDecodeError as exc:
@@ -221,7 +255,7 @@ def _validate_patch_apply_in_connection(
         "language": patch["language"], "field_name": patch["field_name"],
         "old_value": patch.get("old_value"), "new_value": patch.get("new_value"),
         "source_hash": patch.get("source_hash"), "status": "APPROVED",
-        "approval_actor": str(approval.get("actor") or ""),
+        "approval_actor": approval_actor,
         "approval_at": approval.get("occurred_at"),
         "approval_evidence": evidence,
     }

@@ -39,7 +39,7 @@ def test_patch_requires_one_field_and_immutable_transition(tmp_path):
         old_value="旧名", new_value="新名", source_hash="h1", source_allowlist=["MANUAL"], created_by="human",
     )
     assert patch_status(path, "p1") == "PATCH_CREATED"
-    append_patch_event(path, patch_id="p1", event_type="PATCH_APPROVED", actor="reviewer", evidence={"ticket": "T1"})
+    append_patch_event(path, patch_id="p1", event_type="PATCH_APPROVED", actor="human:reviewer", evidence={"ticket": "T1"})
     assert validate_patch_apply(path, patch_id="p1", current_source_hash="h1", source_name="MANUAL")["status"] == "APPROVED"
     append_patch_event(path, patch_id="p1", event_type="PATCH_APPLIED", actor="system", evidence={"commit": "c1"})
     assert patch_status(path, "p1") == "PATCH_APPLIED"
@@ -53,7 +53,7 @@ def test_apply_gate_rejects_changed_source_or_unapproved_source(tmp_path):
         path, patch_id="p1", official_sku="1001", language="zh", field_name="name",
         old_value="旧名", new_value="新名", source_hash="h1", source_allowlist=["MANUAL"], created_by="human",
     )
-    append_patch_event(path, patch_id="p1", event_type="PATCH_APPROVED", actor="reviewer", evidence={"field_name": "name"})
+    append_patch_event(path, patch_id="p1", event_type="PATCH_APPROVED", actor="human:reviewer", evidence={"field_name": "name"})
     with pytest.raises(ImmutablePatchError, match="PATCH_SOURCE_HASH_MISMATCH"):
         validate_patch_apply(path, patch_id="p1", current_source_hash="h2", source_name="MANUAL")
     with pytest.raises(ImmutablePatchError, match="PATCH_SOURCE_NOT_ALLOWED"):
