@@ -28,8 +28,8 @@ evidence. It is an audit artifact, not a production approval.
 | Existing Presence/Lifecycle core remains unchanged | No edits to monitor/lifecycle decision modules; full regression | PASS |
 | Required CLI surface | `cli.py`; `--help` checks for audit/repair/master/collection commands | PASS |
 | New test module is CI-safe allowlisted | `tests/ci_safe_tests.txt`; allowlist test and exact local allowlist run | PASS |
-| Full local regression | `python -m pytest -q` → 504 passed | PASS |
-| Exact local CI-safe suite | `tests/ci_safe_tests.txt` → 504 passed | PASS |
+| Full local regression | `python -m pytest -q` → 505 passed | PASS |
+| Exact local CI-safe suite | `tests/ci_safe_tests.txt` → 505 passed | PASS |
 | Real PRIMARY read-only audit | Prior audit: 5,536 current records, release-ready, file hash/mtime unchanged, writes 0 | PASS (read-only) |
 | Ubuntu/Windows exact-head GitHub Actions | Actual branch push has not been performed; non-mutating push dry-run succeeded, but no exact-head run exists | UNVERIFIED |
 | Merge/push/production activation | Explicitly not performed by design | PENDING AUTHORIZATION |
@@ -37,7 +37,7 @@ evidence. It is an audit artifact, not a production approval.
 ## Current validation heads
 
 - Feature code/tests head: `e95fcfec609ecd56a8812176915567a9c9e01f2b`
-- Code head recorded in the acceptance report: `e016b20cd87fda0aa501020bd232be3a58dc1a86`
+- Code head recorded in the acceptance report: `fd399605af4f4e131ab73d4eb0fd18500fc6a9c6`
 - Local `main` baseline: `e8c1a16c31743ecfacec05a953c22d5c65d9fca6`
 - Cached `origin/main`: `2fe180ab6d99d1ed8982fe6fb7d03a432e5d4400`
 
