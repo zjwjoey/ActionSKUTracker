@@ -232,12 +232,33 @@ def build_daily_bundle(
 
 
 def commit_daily_bundle(cfg: Mapping[str, Any], bundle: CommitBundle, *, mode: str | None = None) -> str:
-    """Commit a bundle with the configured database role and baseline gate."""
+    """Commit a bundle with collection integrity evaluated before PRIMARY write."""
     resolved_mode = mode or storage_mode(cfg)
     role = "PRIMARY" if resolved_mode == "SQLITE_PRIMARY" else "SHADOW"
     path = database_path(cfg)
     threshold = float((cfg.get("qa") or {}).get("max_localization_coverage_drop", 0.5))
     writer = ProductionWriter(path, role=role, localization_drop_threshold=threshold)
+    if resolved_mode == "SQLITE_PRIMARY":
+        # Collection Integrity is evaluated after the writer has established
+        # the correct DB role, but before the product transaction begins.  The
+        # metric rows are evidence, not product facts; a blocked collection
+        # therefore records its reason while still preventing the commit.
+        try:
+            from ..data_quality.collection import evaluate_and_persist
+            import yaml
+            config_file = Path(cfg["project_root"]) / "config" / "data_quality.yaml"
+            raw_config = yaml.safe_load(config_file.read_text(encoding="utf-8")) if config_file.exists() else {}
+            thresholds = (raw_config or {}).get("collection_integrity") or {}
+            quality = evaluate_and_persist(path, bundle.run_id, bundle.run_record, config=thresholds)
+            report = dict(bundle.run_record)
+            report["collection_quality_state"] = quality.state
+            report["collection_metrics_hash"] = quality.metrics_hash
+            bundle = CommitBundle(**{**bundle.__dict__, "run_record": report,
+                                     "collection_quality_state": quality.state})
+        except ProductionDatabaseError:
+            raise
+        except Exception as exc:
+            raise ProductionDatabaseError("COLLECTION_QUALITY_EVALUATION_FAILED") from exc
     if bundle.base_commit_id is None:
         # The writer performs the actual optimistic check.  This branch merely
         # makes the intent explicit and keeps first-commit behavior deterministic.

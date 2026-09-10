@@ -59,6 +59,10 @@ bounded one-shot override includes actor, reason, matching run ID, matching
 metrics hash and a future expiration timestamp. Schema drift records current,
 baseline, delta and sample evidence as data-quality issues.
 
+The SQLite PRIMARY `commit_daily_bundle` path evaluates and persists these
+metrics before opening the product commit transaction. A blocked result raises
+`COLLECTION_QUALITY_BLOCKED`; the product bundle is not written.
+
 ```powershell
 python -m action_tracker collection-quality --run-id <run> --json
 python -m action_tracker collection-quality history

@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 from action_tracker.database.connection import connect
+from action_tracker.database.integration import commit_daily_bundle
+from action_tracker.database.production import CommitBundle, ProductionDatabaseError
 from action_tracker.database.schema import migrate_v2
 from action_tracker.data_quality.collection import build_collection_metrics, evaluate_collection, validate_collection_override
 from action_tracker.data_quality.collection.gates import collection_commit_allowed
@@ -164,6 +166,20 @@ def test_master_quality_is_a_research_release_prerequisite():
     result = audit_research_release([], expected_skus=set(), master_quality={"release_ready": False})
     assert not result.ok
     assert "MASTER_QUALITY_BLOCKED" in result.issues
+
+
+def test_primary_commit_evaluates_collection_integrity_before_write(tmp_path: Path):
+    db_path = tmp_path / "primary.db"
+    cfg = {"project_root": tmp_path, "storage": {"mode": "SQLITE_PRIMARY", "db_path": db_path}}
+    healthy = {"sitemap_unique": 100, "listing_unique": 100, "current_valid": 100,
+               "price_coverage": 1.0, "cat2_coverage": 1.0, "description_coverage": 1.0,
+               "category_coverage": {f"cat-{i}": True for i in range(15)}}
+    first = CommitBundle(run_id="r1", observation_date="2026-09-10", qa_state="PASS", run_record=healthy)
+    commit_daily_bundle(cfg, first, mode="SQLITE_PRIMARY")
+    degraded = {**healthy, "sitemap_unique": 70, "listing_unique": 70, "current_valid": 70}
+    second = CommitBundle(run_id="r2", observation_date="2026-09-11", qa_state="PASS", run_record=degraded)
+    with pytest.raises(ProductionDatabaseError, match="COLLECTION_QUALITY_BLOCKED"):
+        commit_daily_bundle(cfg, second, mode="SQLITE_PRIMARY")
 
 
 def test_collection_category_and_listing_drop_is_blocked():

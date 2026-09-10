@@ -73,7 +73,13 @@ def build_collection_metrics(run_id: str, payload: Mapping[str, Any]) -> list[Co
     """Convert a run report into deterministic metric records."""
     metrics: list[CollectionMetric] = []
     created = _now()
-    category_coverage = payload.get("category_coverage") or payload.get("categories") or {}
+    raw_category_coverage = payload.get("category_coverage")
+    if raw_category_coverage is None:
+        raw_category_coverage = payload.get("categories")
+    # An absent/empty category map is unavailable evidence, not a claim that
+    # zero categories succeeded.  This prevents legacy bundles that predate
+    # category metrics from being blocked by a fabricated 0/15 result.
+    category_coverage = raw_category_coverage if isinstance(raw_category_coverage, Mapping) and raw_category_coverage else None
     for name in BASE_METRICS:
         value = _source_value(payload, name)
         numerator = denominator = None
