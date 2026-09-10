@@ -36,7 +36,7 @@ evidence. It is an audit artifact, not a production approval.
 
 ## Current validation heads
 
-- Feature branch: `6dbfd98c0dc470429e8b0bee5a1e05cc84864576`
+- Feature branch final HEAD: `60bf7bbb6738ddaa64ce5df90d522d4fd2bca7ab`
 - Code head recorded in the acceptance report: `c24ed1304afcfde008f36cc3af36784503e010ad`
 - Local `main` baseline: `e8c1a16c31743ecfacec05a953c22d5c65d9fca6`
 - Cached `origin/main`: `2fe180ab6d99d1ed8982fe6fb7d03a432e5d4400`
