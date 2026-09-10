@@ -100,22 +100,22 @@ def _with_baselines(metrics: list[CollectionMetric], baselines: Mapping[str, Map
             baseline_7d=baseline_7d, baseline_30d=baseline_30d,
             delta_7d=delta_7d, delta_30d=delta_30d, gate_status=metric.gate_status,
             evidence=metric.evidence, metric_id=metric.metric_id, created_at=metric.created_at,
+            observation_date=metric.observation_date,
         ))
     return tuple(enriched)
 
 
 def evaluate_collection(run_id: str, metrics: list[CollectionMetric], *, history: list[Mapping[str, Any]] | None = None,
-                        config: Mapping[str, Any] | None = None) -> CollectionQualityResult:
+                        config: Mapping[str, Any] | None = None, observation_date: str | None = None) -> CollectionQualityResult:
     cfg = dict(DEFAULTS); cfg.update(config or {})
     values = {metric.metric_name: metric.metric_value for metric in metrics}
-    baselines = calculate_baselines(history or [])
+    baselines = calculate_baselines(history or [], as_of=observation_date)
     blockers: list[str] = []; warnings: list[str] = []
-    # A legacy bundle may not expose all collection evidence yet.  Preserve
-    # the value as UNAVAILABLE, but make the uncertainty visible instead of
-    # presenting an evidence-free run as COLLECTION_OK.
+    # Required evidence is fail-closed for a formal daily collection. Without
+    # these metrics the run cannot prove complete Presence evidence.
     for required_metric in ("listing_unique", "current_valid", "successful_category_count"):
         if _value(values, required_metric) is None:
-            warnings.append(f"{required_metric.upper()}:UNAVAILABLE")
+            blockers.append(f"{required_metric.upper()}:UNAVAILABLE")
     categories = _value(values, "successful_category_count")
     required = int(cfg["required_categories"])
     if categories is not None and categories < required:
@@ -168,9 +168,14 @@ def evaluate_and_persist(db_path: Path, run_id: str, payload: Mapping[str, Any],
     # A retry of the same run must not use its previously persisted rows as a
     # healthy baseline.  Baselines are strictly prior-run evidence.
     history = [row for row in repo.get_metrics() if str(row.get("run_id") or "") != str(run_id)]
-    result = evaluate_collection(run_id, metrics, history=history, config=config)
+    result = evaluate_collection(
+        run_id, metrics, history=history, config=config,
+        observation_date=str(payload.get("observation_date") or payload.get("run_date") or "") or None,
+    )
     state_metric = CollectionMetric(run_id=run_id, metric_name="__collection_state", metric_scope=result.state,
-                                    metric_value=None, gate_status=result.state, evidence={"blockers": list(result.blockers), "warnings": list(result.warnings), "metrics_hash": result.metrics_hash})
+                                    metric_value=None, gate_status=result.state,
+                                    evidence={"blockers": list(result.blockers), "warnings": list(result.warnings), "metrics_hash": result.metrics_hash},
+                                    observation_date=str(payload.get("observation_date") or payload.get("run_date") or "") or None)
     # Persist the result's enriched rows so the selected healthy baselines and
     # deltas are not lost between evaluation and the audit trail.
     repo.save_metrics([*result.metrics, state_metric])
@@ -180,14 +185,17 @@ def evaluate_and_persist(db_path: Path, run_id: str, payload: Mapping[str, Any],
 
 def collection_commit_allowed(state: str, *, override: bool = False,
                               override_evidence: Mapping[str, Any] | None = None,
-                              run_id: str | None = None, metrics_hash: str | None = None) -> bool:
+                              run_id: str | None = None, metrics_hash: str | None = None,
+                              requires_collection_integrity: bool = False) -> bool:
     state = str(state or "").upper()
     if state == "COLLECTION_BLOCKED":
         return False
     if state == "COLLECTION_DEGRADED":
         return bool(override and run_id and metrics_hash and validate_collection_override(
             override_evidence, run_id=run_id, metrics_hash=metrics_hash))
-    return state in {"", "COLLECTION_OK", "COLLECTION_WARN"}
+    if not state:
+        return not requires_collection_integrity
+    return state in {"COLLECTION_OK", "COLLECTION_WARN"}
 
 
 def validate_collection_override(evidence: Mapping[str, Any] | None, *, run_id: str,

@@ -1,5 +1,10 @@
 # Data Quality & Integrity V1 — Requirement Self-Audit
 
+> This is the pre-hotfix self-audit snapshot. The final closure changes and
+> current local test evidence are recorded in
+> `DATA_QUALITY_INTEGRITY_V1_FINAL_CLOSURE_HOTFIX.md`; do not interpret the
+> historical push/CI rows below as authorization for this hotfix.
+
 This checklist maps the two V1 specifications to current implementation
 evidence. It is an audit artifact, not a production approval.
 

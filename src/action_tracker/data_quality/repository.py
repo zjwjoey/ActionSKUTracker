@@ -67,21 +67,21 @@ class DataQualityRepository:
                 db.execute(
                     """INSERT INTO collection_quality_metrics
                     (metric_id,run_id,metric_name,metric_scope,metric_value,numerator,denominator,
-                     baseline_7d,baseline_30d,delta_7d,delta_30d,gate_status,evidence_json,created_at)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                     baseline_7d,baseline_30d,delta_7d,delta_30d,gate_status,evidence_json,created_at,observation_date)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(run_id,metric_name,metric_scope) DO UPDATE SET
                      metric_value=excluded.metric_value,numerator=excluded.numerator,
                      denominator=excluded.denominator,baseline_7d=excluded.baseline_7d,
                      baseline_30d=excluded.baseline_30d,delta_7d=excluded.delta_7d,
                      delta_30d=excluded.delta_30d,gate_status=excluded.gate_status,
-                     evidence_json=excluded.evidence_json""",
+                     evidence_json=excluded.evidence_json,observation_date=excluded.observation_date""",
                     # SQLite treats NULLs as distinct in UNIQUE constraints;
                     # normalize the optional scope to an empty key so reruns
                     # of the same run/metric really are idempotent.
                     (d["metric_id"], d["run_id"], d["metric_name"], d["metric_scope"] or "", d["metric_value"],
                      d["numerator"], d["denominator"], d["baseline_7d"], d["baseline_30d"],
                      d["delta_7d"], d["delta_30d"], d["gate_status"], d["evidence_json"],
-                     d["created_at"] or now_utc()),
+                     d["created_at"] or now_utc(), d.get("observation_date")),
                 )
         return len(rows)
 
@@ -116,16 +116,18 @@ class DataQualityRepository:
         with connect(self.path) as db:
             db.execute("""INSERT INTO repair_candidates
                 (candidate_id,repair_batch_id,issue_id,official_sku,field_name,old_value,proposed_value,
-                 evidence_json,source_hash,confidence,candidate_status,reviewed_by,reviewed_at)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 evidence_json,source_hash,confidence,candidate_status,reviewed_by,reviewed_at,repair_action,
+                 applied_by,applied_at,verified_by,verified_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(candidate_id) DO UPDATE SET
                  proposed_value=excluded.proposed_value,evidence_json=excluded.evidence_json,
-                 confidence=excluded.confidence""",
+                 confidence=excluded.confidence,repair_action=excluded.repair_action""",
                 (candidate["candidate_id"], candidate["repair_batch_id"], candidate["issue_id"],
                  candidate.get("official_sku"), candidate.get("field_name"), candidate.get("old_value"),
                  candidate.get("proposed_value"), candidate.get("evidence_json") or canonical_json(candidate.get("evidence") or {}),
                  candidate.get("source_hash"), candidate.get("confidence"), candidate.get("candidate_status", "PROPOSED"),
-                 candidate.get("reviewed_by"), candidate.get("reviewed_at")),
+                 candidate.get("reviewed_by"), candidate.get("reviewed_at"), candidate.get("repair_action", "NO_AUTOMATIC_REPAIR"),
+                 candidate.get("applied_by"), candidate.get("applied_at"), candidate.get("verified_by"), candidate.get("verified_at")),
             )
         return str(candidate["candidate_id"])
 

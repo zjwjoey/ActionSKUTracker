@@ -11,6 +11,8 @@ from action_tracker.database.integration import (
 from action_tracker.database.production import database_status, repair_primary_localization_regression
 from action_tracker.database.connection import connect
 from action_tracker.database.repository import ProductionRepository
+from action_tracker.database.schema import migrate_v2
+from action_tracker.data_quality.collection import evaluate_and_persist
 
 
 def _cfg(tmp_path: Path, mode: str = "SQLITE_SHADOW"):
@@ -43,13 +45,36 @@ def _bundle(cfg, run_id="2026-08-30_010000"):
         "1002": {"official_sku": "1002", "canonical_id": "ACT0001002", "last_status": "MISSING", "missing_count": "1"},
     }
     transition = {"known": known, "offline": []}
+    migrate_v2(cfg["storage"]["db_path"], role="PRIMARY" if cfg["storage"]["mode"] == "SQLITE_PRIMARY" else "SHADOW")
+    quality_payload = {
+        "run_date": "2026-08-30", "sitemap_unique": 2, "listing_unique": 1,
+        "current_valid": 1, "price_coverage": 1.0, "cat2_coverage": 1.0,
+        "description_coverage": 1.0, "detail_failure_rate": 0.0,
+        "category_coverage": {f"cat-{i}": True for i in range(15)},
+    }
+    quality = evaluate_and_persist(cfg["storage"]["db_path"], run_id, quality_payload)
     return build_daily_bundle(
         run_id=run_id, observation_date="2026-08-30", qa_state="PASS",
         today_records=records, baseline=records, statuses=statuses, known=known,
         transition=transition, today_set={"1001"}, observation_complete=True,
         price_events=[], event_events=[], review_rows=[],
-        run_record={"dry_run": False}, snapshot_path=None,
+        run_record={"dry_run": False, "collection_quality_state": quality.state,
+                    "collection_metrics_hash": quality.metrics_hash}, snapshot_path=None,
     )
+
+
+def _quality_report(cfg, run_id: str, run_date: str = "2026-08-30", **overrides):
+    migrate_v2(cfg["storage"]["db_path"], role="PRIMARY" if cfg["storage"]["mode"] == "SQLITE_PRIMARY" else "SHADOW")
+    payload = {
+        "run_date": run_date, "sitemap_unique": 2, "listing_unique": 1,
+        "current_valid": 1, "price_coverage": 1.0, "cat2_coverage": 1.0,
+        "description_coverage": 1.0, "detail_failure_rate": 0.0,
+        "category_coverage": {f"cat-{i}": True for i in range(15)},
+    }
+    payload.update(overrides)
+    quality = evaluate_and_persist(cfg["storage"]["db_path"], run_id, payload)
+    return {"dry_run": False, "collection_quality_state": quality.state,
+            "collection_metrics_hash": quality.metrics_hash}
 
 
 def test_daily_bundle_preserves_current_and_historical_identity(tmp_path: Path):
@@ -232,25 +257,27 @@ def test_primary_writer_blocks_catastrophic_localization_coverage_drop(tmp_path:
     seed = dict(next(iter(first.current_products)))
     seed.update({"cat1_es": "Hogar", "cat2_es": "Limpieza", "spec_es": "1 unidad",
                  "desc_es": "Descripción", "details_es": "Detalles"})
+    first_report = _quality_report(cfg, first.run_id, first.observation_date)
     first = build_daily_bundle(
         run_id=first.run_id, observation_date=first.observation_date, qa_state=first.qa_state,
         today_records={"1001": seed}, baseline={"1001": seed},
         statuses={"1001": _status("1001", "ACTIVE")},
         known={"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "ACTIVE"}},
         transition={"known": {"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "ACTIVE"}}, "offline": []},
-        today_set={"1001"}, observation_complete=True, price_events=[], event_events=[], review_rows=[], run_record={"dry_run": False}, snapshot_path=None,
+        today_set={"1001"}, observation_complete=True, price_events=[], event_events=[], review_rows=[], run_record=first_report, snapshot_path=None,
     )
     commit_daily_bundle(cfg, first, mode="SQLITE_PRIMARY")
     broken = dict(seed)
     for field in ("cat1_es", "cat2_es", "spec_es", "desc_es", "details_es"):
         broken[field] = ""
+    second_report = _quality_report(cfg, "2026-08-30_010000", "2026-08-30")
     second = build_daily_bundle(
         run_id="2026-08-30_010000", observation_date="2026-08-30", qa_state="PASS",
         today_records={"1001": broken}, baseline={"1001": seed},
         statuses={"1001": _status("1001", "ACTIVE")},
         known={"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "ACTIVE"}},
         transition={"known": {"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "ACTIVE"}}, "offline": []},
-        today_set={"1001"}, observation_complete=True, price_events=[], event_events=[], review_rows=[], run_record={"dry_run": False}, snapshot_path=None,
+        today_set={"1001"}, observation_complete=True, price_events=[], event_events=[], review_rows=[], run_record=second_report, snapshot_path=None,
     )
     import pytest
     with pytest.raises(Exception, match="DB_LOCALIZATION_COVERAGE_REGRESSION"):
@@ -303,7 +330,7 @@ def test_minimal_historical_rows_do_not_clear_official_facts(tmp_path: Path):
         run_id="2026-08-31_010000", observation_date="2026-08-31", qa_state="PASS",
         today_records={}, baseline={}, statuses=statuses, known=known,
         transition={"known": known, "offline": []}, today_set=set(), observation_complete=True,
-        price_events=[], event_events=[], review_rows=[], run_record={"dry_run": False}, snapshot_path=None,
+        price_events=[], event_events=[], review_rows=[], run_record=_quality_report(cfg, "2026-08-31_010000", "2026-08-31"), snapshot_path=None,
     )
     commit_daily_bundle(cfg, second, mode="SQLITE_PRIMARY")
     from action_tracker.database.connection import connect
@@ -323,7 +350,7 @@ def test_absent_observation_keeps_offline_product_projection(tmp_path: Path):
         today_records={}, baseline={}, statuses=statuses, known=known,
         transition={"known": {"1001": {**known["1001"], "current_status": "OFFLINE"}}, "offline": []},
         today_set=set(), observation_complete=True,
-        price_events=[], event_events=[], review_rows=[], run_record={"dry_run": False}, snapshot_path=None,
+        price_events=[], event_events=[], review_rows=[], run_record=_quality_report(cfg, "2026-08-31_010000", "2026-08-31"), snapshot_path=None,
     )
     commit_daily_bundle(cfg, second, mode="SQLITE_PRIMARY")
     from action_tracker.database.connection import connect
@@ -344,7 +371,7 @@ def test_primary_export_source_comes_from_sqlite_head(tmp_path: Path):
         known={"1001": {"official_sku": "1001", "canonical_id": "ACT0001001"}},
         transition={"known": {"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "ACTIVE"}}, "offline": []},
         today_set={"1001"}, observation_complete=True, price_events=[], event_events=[], review_rows=[],
-        run_record={"dry_run": False}, snapshot_path=None,
+        run_record=_quality_report(cfg, "2026-08-30_020000", "2026-08-30"), snapshot_path=None,
     )
     commit_daily_bundle(cfg, bundle, mode="SQLITE_PRIMARY")
     from action_tracker.exporting.service import _resolve_sqlite_current_source

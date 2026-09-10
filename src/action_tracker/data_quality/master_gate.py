@@ -6,18 +6,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-import re
 import sqlite3
 from typing import Any
-
-_HTML_RE = re.compile(r"<\/?[A-Za-z][^>]*>", re.I)
-_UNIT_PRICE_RE = re.compile(r"(?:€/|€\s*/|/\s*(?:kg|l|ud\.?|unidad))", re.I)
-_PROMOTION_TEXT_COLUMNS = frozenset({"promotion", "promotion_status", "promotion_label", "promotion_text", "promotion_note"})
-_PROMOTION_CONTAMINATION_TOKENS = (
-    "workflow", "本期详情", "nuevo producto", "nuevo", "sostenible", "sostenibilidad",
-    "sustainability", "descuento", "discount",
+from .rules import (
+    PROMOTION_TEXT_COLUMNS,
+    contains_html_markup,
+    contains_ui_transport_text,
+    promotion_text_is_contaminated,
 )
-_UI_TEXT = ("añadir a tus favoritos", "leer más", "descripción")
 _FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
 
 
@@ -102,36 +98,37 @@ def audit_master_quality(db_path: Path) -> MasterQualityResult:
         if "raw_badges" in product_cols:
             for row in current_rows:
                 text = str(row["raw_badges"] or "")
-                if _UNIT_PRICE_RE.search(text) or any(token in text.casefold() for token in ("workflow", "本期详情")):
+                if promotion_text_is_contaminated(text, field_name="raw_badges", include_badges=True):
                     issue("PROMOTION_FIELD_CONTAMINATION", str(row["official_sku"]))
-        for column in sorted(product_cols & _PROMOTION_TEXT_COLUMNS):
+        for column in sorted(product_cols & PROMOTION_TEXT_COLUMNS):
             for row in current_rows:
                 text = str(row[column] or "")
-                if _UNIT_PRICE_RE.search(text) or any(token in text.casefold() for token in _PROMOTION_CONTAMINATION_TOKENS):
+                if promotion_text_is_contaminated(text, field_name=column):
                     issue("PROMOTION_FIELD_CONTAMINATION", f"{row['official_sku']}:{column}")
 
         # The ES/ZH SKU sets are compared only when their formal projections
         # exist.  A missing projection is itself a provenance failure below.
+        current_sku_set = {str(row["official_sku"] or "").strip() for row in current_rows if str(row["official_sku"] or "").strip()}
         es_skus: set[str] = set(); zh_skus: set[str] = set()
         if "product_localizations" in tables:
-            es_skus = {str(row[0]) for row in db.execute("SELECT official_sku FROM product_localizations WHERE language='es'")}
-            zh_skus = {str(row[0]) for row in db.execute("SELECT official_sku FROM product_localizations WHERE language='zh'")}
+            es_skus = {str(row[0]) for row in db.execute("SELECT official_sku FROM product_localizations WHERE language='es' AND official_sku IN (SELECT official_sku FROM products WHERE status='CURRENT')")}
+            zh_skus = {str(row[0]) for row in db.execute("SELECT official_sku FROM product_localizations WHERE language='zh' AND official_sku IN (SELECT official_sku FROM products WHERE status='CURRENT')")}
             for sku in sorted(es_skus ^ zh_skus):
                 issue("ZH_ES_SKU_SET_MISMATCH", sku)
             loc_cols = _cols(db, "product_localizations")
             if {"language", "cat1", "cat2"}.issubset(loc_cols):
-                for row in db.execute("SELECT official_sku,cat1,cat2 FROM product_localizations WHERE language='zh' AND TRIM(COALESCE(cat1,''))<>'' AND TRIM(COALESCE(cat2,''))=''" ):
+                for row in db.execute("SELECT official_sku,cat1,cat2 FROM product_localizations WHERE language='zh' AND official_sku IN (SELECT official_sku FROM products WHERE status='CURRENT') AND TRIM(COALESCE(cat1,''))<>'' AND TRIM(COALESCE(cat2,''))=''" ):
                     warn("CATEGORY_MISSING", str(row[0]))
             if {"language", "description", "details"}.issubset(loc_cols):
-                for row in db.execute("SELECT official_sku,description,details FROM product_localizations WHERE language='zh' AND (TRIM(COALESCE(description,''))='' OR TRIM(COALESCE(details,''))='')"):
+                for row in db.execute("SELECT official_sku,description,details FROM product_localizations WHERE language='zh' AND official_sku IN (SELECT official_sku FROM products WHERE status='CURRENT') AND (TRIM(COALESCE(description,''))='' OR TRIM(COALESCE(details,''))='')"):
                     warn("DESCRIPTION_OR_DETAILS_MISSING", str(row[0]))
             if {"language", *(_FIELDS)}.issubset(loc_cols):
-                for row in db.execute("SELECT official_sku," + ",".join(_FIELDS) + " FROM product_localizations WHERE language='es'"):
+                for row in db.execute("SELECT official_sku," + ",".join(_FIELDS) + " FROM product_localizations WHERE language='es' AND official_sku IN (SELECT official_sku FROM products WHERE status='CURRENT')"):
                     for index, field in enumerate(_FIELDS, 1):
                         text = str(row[index] or "")
-                        if _HTML_RE.search(text):
+                        if contains_html_markup(text):
                             issue("HTML_CONTAMINATION", f"{row[0]}:{field}")
-                        if text.strip().casefold() in _UI_TEXT:
+                        if contains_ui_transport_text(text):
                             issue("UI_TEXT_CONTAMINATION", f"{row[0]}:{field}")
         else:
             issue("ZH_ES_SKU_SET_MISMATCH", "LOCALIZATION_TABLE_MISSING")
@@ -168,7 +165,7 @@ def audit_master_quality(db_path: Path) -> MasterQualityResult:
             for row in db.execute(f"SELECT h.official_sku FROM {table} h LEFT JOIN products p ON p.official_sku=h.official_sku WHERE h.official_sku IS NULL OR p.official_sku IS NULL"):
                 issue(code, str(row[0] or ""))
         if "image_assets" in tables:
-            for row in db.execute("SELECT official_sku FROM image_assets WHERE status NOT IN ('AVAILABLE','READY')"):
+            for row in db.execute("SELECT ia.official_sku FROM image_assets ia JOIN products p ON p.official_sku=ia.official_sku WHERE p.status='CURRENT' AND ia.status NOT IN ('AVAILABLE','READY')"):
                 warn("IMAGE_MISSING", str(row[0]))
 
         commit_id = None

@@ -20,7 +20,16 @@ missing categories. It uses a SQLite read-only connection and can optionally
 persist only the issue records. `repair-build` creates idempotent candidates;
 `--output report.json` or `--output report.csv` creates a human-review preview.
 No candidate changes facts. Approval, current base commit and source-hash
-validation are required before the fixture-only apply adapter can run.
+validation are required before the fixture-only apply adapter can run. Review
+and apply identities are separate (`human:<id>` reviewer plus an independent
+apply actor); fixture apply is recorded as `FIXTURE_APPLIED` with no formal
+commit ID. Formal correction preparation emits immutable localization patches
+or an official-fact correction bundle and never writes PRIMARY.
+
+Issue routing is explicit: direct field correction, official text correction,
+localization patch, category backlog, identity review, archive review, or no
+automatic repair. Category/orphan/identity findings are not manufactured into
+ordinary field candidates.
 
 ```powershell
 python -m action_tracker data-quality audit-history
@@ -33,7 +42,9 @@ python -m action_tracker data-quality repair-verify --batch-id <batch>
 
 ## Master Quality Gate
 
-`master-quality` is deterministic and read-only. Blocking rules include
+`master-quality` is deterministic and read-only. Current-projection rules are
+evaluated only for `products.status='CURRENT'`; formal price/event history
+reference integrity remains an all-history check. Blocking rules include
 duplicate/current-invalid SKU facts, invalid original prices, contaminated
 official text, promotion contamination, orphan formal history, missing field
 provenance and missing source hashes. Category, description, detail, image and
@@ -59,9 +70,17 @@ bounded one-shot override includes actor, reason, matching run ID, matching
 metrics hash and a future expiration timestamp. Schema drift records current,
 baseline, delta and sample evidence as data-quality issues.
 
-The SQLite PRIMARY `commit_daily_bundle` path evaluates and persists these
-metrics before opening the product commit transaction. A blocked result raises
-`COLLECTION_QUALITY_BLOCKED`; the product bundle is not written.
+The daily orchestrator evaluates and persists collection evidence exactly once
+before the commit decision. `commit_daily_bundle` and `ProductionWriter` consume
+that evidence and validate it, but do not recalculate collection quality. A
+blocked result raises `COLLECTION_QUALITY_BLOCKED`; the product bundle is not
+written.
+
+Baselines use the explicit observation/run date, exclude the current date,
+choose the last healthy run for each calendar day, and exclude unhealthy runs
+from the 7-day/30-day windows. Missing required metrics are fail-closed for a
+daily collection (`COLLECTION_BLOCKED`); non-collection correction bundles can
+explicitly opt out of this gate.
 
 ```powershell
 python -m action_tracker collection-quality --run-id <run> --json

@@ -1,5 +1,10 @@
 # Data Quality & Integrity V1 — Acceptance Draft
 
+> Status note: the numbers and CI references below are the pre-hotfix
+> acceptance snapshot. For the current closure blockers and local validation,
+> use `DATA_QUALITY_INTEGRITY_V1_FINAL_CLOSURE_HOTFIX.md`. This branch remains
+> unpushed and unmerged until separate human authorization.
+
 This draft is generated on the isolated feature worktree. It is not a merge or
 production approval.
 

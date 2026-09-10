@@ -105,6 +105,7 @@ class CollectionMetric:
     evidence: Mapping[str, Any] | None = None
     metric_id: str = ""
     created_at: str = ""
+    observation_date: str | None = None
 
     def __post_init__(self) -> None:
         if not self.metric_id:

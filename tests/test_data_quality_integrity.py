@@ -13,7 +13,7 @@ from action_tracker.database.schema import migrate_v2
 from action_tracker.data_quality.collection import build_collection_metrics, evaluate_collection, evaluate_and_persist, validate_collection_override
 from action_tracker.data_quality.collection.gates import collection_commit_allowed
 from action_tracker.data_quality.contracts import DataQualityIssue, issue_id
-from action_tracker.data_quality.historical import audit_history, approve_candidate, apply_repair_batch, build_repair_candidates, verify_repair_batch, write_repair_preview
+from action_tracker.data_quality.historical import audit_history, approve_candidate, apply_repair_batch, build_repair_candidates, prepare_formal_correction, verify_repair_batch, write_repair_preview
 from action_tracker.data_quality.master_gate import audit_master_quality
 from action_tracker.data_quality.repository import DataQualityRepository
 from action_tracker.data_quality.schema import ensure_data_quality_schema
@@ -75,6 +75,25 @@ def test_historical_audit_keeps_unresolved_synthetic_identity_unresolved(tmp_pat
     assert any(issue.issue_type == "UNRESOLVED_HISTORICAL_IDENTITY" for issue in result.issues)
 
 
+def test_wide_localization_html_issue_preserves_source_hash(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE product_localizations SET details='<p>Texto</p>' WHERE official_sku='1001' AND language='es'")
+    result = audit_history(path)
+    issue = next(item for item in result.issues if item.issue_type == "HTML_CONTAMINATION" and item.field_name == "details")
+    assert issue.source_hash == "es-hash"
+
+
+def test_promotion_classifier_accepts_real_promotion_semantics_and_raw_badges(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("ALTER TABLE products ADD COLUMN promotion_label TEXT")
+        for value in ("20% de descuento", "Oferta semanal", "Descuento 30%", "Discount 30%", "rebaja especial", "promotion activa"):
+            db.execute("UPDATE products SET promotion_label=?,raw_badges='Nuevo' WHERE official_sku='1001'", (value,))
+            assert not any(item.issue_type == "PROMOTION_FIELD_CONTAMINATION" for item in audit_history(path).issues)
+            assert audit_master_quality(path).counts.get("PROMOTION_FIELD_CONTAMINATION", 0) == 0
+
+
 def test_promotion_contamination_is_context_aware_and_covers_spanish_unit_prices(tmp_path: Path):
     path = _db(tmp_path)
     with connect(path) as db:
@@ -97,7 +116,7 @@ def test_repair_candidates_are_idempotent_and_require_approval(tmp_path: Path):
     candidates = DataQualityRepository(path).candidates(result["repair_batch_id"])
     assert candidates
     with pytest.raises(Exception, match="REPAIR_APPROVAL_REQUIRED"):
-        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="tester")
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:tester")
     assert all(candidate["candidate_status"] == "REVIEW_REQUIRED" for candidate in candidates)
 
 
@@ -109,9 +128,9 @@ def test_repair_without_source_evidence_is_blocked(tmp_path: Path):
     candidate = DataQualityRepository(path).candidates(result["repair_batch_id"])[0]
     with connect(path) as db:
         db.execute("UPDATE repair_candidates SET source_hash=NULL WHERE candidate_id=?", (candidate["candidate_id"],))
-    approve_candidate(path, candidate["candidate_id"], reviewer="human")
+    approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
     with pytest.raises(Exception, match="SOURCE_HASH_REQUIRED"):
-        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human")
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
 
 
 def test_approved_repair_applies_only_to_fixture_and_verifies(tmp_path: Path):
@@ -121,22 +140,54 @@ def test_approved_repair_applies_only_to_fixture_and_verifies(tmp_path: Path):
     result = build_repair_candidates(path)
     candidates = DataQualityRepository(path).candidates(result["repair_batch_id"])
     for candidate in candidates:
-        approve_candidate(path, candidate["candidate_id"], reviewer="human")
-    applied = apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human")
-    assert applied["status"] == "APPLIED"
+        approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
+    applied = apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
+    assert applied["status"] == "FIXTURE_APPLIED"
+    assert applied["result_commit_id"] is None
+    with connect(path) as db:
+        row = db.execute("SELECT issue_id,candidate_status,reviewed_by,applied_by FROM repair_candidates WHERE repair_batch_id=?", (result["repair_batch_id"],)).fetchone()
+        assert row[2] == "human:alice"
+        assert row[3] == "human:alice"
+        assert db.execute("SELECT status FROM data_quality_issues WHERE issue_id=?", (row[0],)).fetchone()[0] != "RESOLVED"
     verified = verify_repair_batch(path, result["repair_batch_id"])
     assert verified["status"] == "VERIFIED"
     with connect(path) as db:
         assert db.execute("SELECT original_price FROM products WHERE official_sku='1001'").fetchone()[0] is None
 
 
+def test_category_issue_is_routed_to_backlog_without_repair_candidate(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE product_localizations SET cat2='' WHERE official_sku='1001' AND language='es'")
+    result = build_repair_candidates(path)
+    assert result["candidate_count"] == 0
+    assert result["routed_category_count"] == 1
+    with connect(path) as db:
+        assert db.execute("SELECT COUNT(*) FROM category_backlog WHERE official_sku='1001'").fetchone()[0] == 1
+
+
+def test_formal_correction_prepare_requires_approval_and_does_not_write_fact(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE product_localizations SET details='<p>Texto</p>' WHERE official_sku='1001' AND language='es'")
+    result = build_repair_candidates(path)
+    prepared = prepare_formal_correction(path, result["repair_batch_id"])
+    assert prepared["status"] == "PREPARED"
+    assert prepared["official_fact_corrections"] == []
+    candidate = DataQualityRepository(path).candidates(result["repair_batch_id"])[0]
+    approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
+    prepared = prepare_formal_correction(path, result["repair_batch_id"])
+    assert prepared["real_primary_apply"] is False
+    assert prepared["official_fact_corrections"]
+
+
 def test_stale_base_commit_blocks_repair(tmp_path: Path):
     path = _db(tmp_path)
     result = build_repair_candidates(path, base_commit_id="old-head")
     for candidate in DataQualityRepository(path).candidates(result["repair_batch_id"]):
-        approve_candidate(path, candidate["candidate_id"], reviewer="human")
+        approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
     with pytest.raises(Exception, match="STALE_BASE_COMMIT"):
-        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human")
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
 
 
 def test_source_hash_change_blocks_repair_and_preview_is_deterministic(tmp_path: Path):
@@ -149,9 +200,9 @@ def test_source_hash_change_blocks_repair_and_preview_is_deterministic(tmp_path:
     assert Path(preview["output_path"]).exists()
     with connect(path) as db:
         db.execute("UPDATE repair_candidates SET source_hash='expected-hash' WHERE candidate_id=?", (candidate["candidate_id"],))
-    approve_candidate(path, candidate["candidate_id"], reviewer="human")
+    approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
     with pytest.raises(Exception, match="SOURCE_HASH_MISMATCH"):
-        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human")
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
 
 
 def test_repair_partial_failure_rolls_back_all_fixture_changes(tmp_path: Path):
@@ -163,14 +214,14 @@ def test_repair_partial_failure_rolls_back_all_fixture_changes(tmp_path: Path):
     candidates = DataQualityRepository(path).candidates(result["repair_batch_id"])
     assert len(candidates) == 2
     for candidate in candidates:
-        approve_candidate(path, candidate["candidate_id"], reviewer="human")
+        approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
     # Remove the later target so the first update is attempted and the second
     # fails; the transaction must restore the first product and statuses.
     missing_sku = candidates[-1]["official_sku"]
     with connect(path) as db:
         db.execute("DELETE FROM products WHERE official_sku=?", (missing_sku,))
     with pytest.raises(Exception, match="SOURCE_HASH_MISMATCH"):
-        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human")
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
     with connect(path) as db:
         assert db.execute("SELECT original_price FROM products WHERE official_sku='1001'").fetchone()[0] == 1.0
     assert all(item["candidate_status"] == "APPROVED" for item in DataQualityRepository(path).candidates(result["repair_batch_id"]))
@@ -183,9 +234,9 @@ def test_primary_repair_is_forbidden(tmp_path: Path):
         db.execute("UPDATE products SET original_price=current_price WHERE official_sku='1001'")
     result = build_repair_candidates(path)
     for candidate in DataQualityRepository(path).candidates(result["repair_batch_id"]):
-        approve_candidate(path, candidate["candidate_id"], reviewer="human")
+        approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
     with pytest.raises(Exception, match="REAL_PRIMARY_WRITE_FORBIDDEN"):
-        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human")
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
 
 
 def test_master_quality_clean_fixture_is_release_ready(tmp_path: Path):
@@ -199,6 +250,16 @@ def test_master_quality_dirty_fixture_is_blocked(tmp_path: Path):
     assert result.release_ready is False
     assert result.counts["INVALID_ORIGINAL_PRICE"] == 1
     assert result.counts["FIELD_PROVENANCE_MISSING"] == 1
+
+
+def test_master_quality_current_scope_ignores_offline_localization_text(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,name_es,name_zh,current_price,original_price,status,product_url,image_url) VALUES('ACT2002','2002','Histórico','',1.0,1.0,'OFFLINE','https://example/2002','https://example/image2')")
+        db.execute("INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,source_hash,freshness_status) VALUES('2002','es','Histórico','Hogar','','1 unidad','<p>legacy</p>','<p>legacy</p>','official','APPROVED',CURRENT_TIMESTAMP,'old-hash','STALE')")
+    result = audit_master_quality(path)
+    assert not any("2002" in item for item in result.issues)
+    assert result.records_checked == 1
 
 
 def test_master_quality_blocks_text_and_orphan_history_but_keeps_category_warning_nonblocking(tmp_path: Path):
@@ -227,11 +288,12 @@ def test_collection_healthy_run_is_ok():
     assert result.commit_allowed
 
 
-def test_collection_missing_core_metrics_is_visible_warning_not_false_ok():
+def test_collection_missing_core_metrics_is_blocked_not_false_ok():
     result = evaluate_collection("r-unavailable", build_collection_metrics("r-unavailable", {}))
-    assert result.state == "COLLECTION_WARN"
-    assert "LISTING_UNIQUE:UNAVAILABLE" in result.warnings
-    assert "SUCCESSFUL_CATEGORY_COUNT:UNAVAILABLE" in result.warnings
+    assert result.state == "COLLECTION_BLOCKED"
+    assert "LISTING_UNIQUE:UNAVAILABLE" in result.blockers
+    assert "SUCCESSFUL_CATEGORY_COUNT:UNAVAILABLE" in result.blockers
+    assert result.commit_allowed is False
 
 
 def test_collection_preserves_per_category_counts_without_fabricating_missing_values():
@@ -319,13 +381,24 @@ def test_master_quality_is_a_research_release_prerequisite():
 def test_primary_commit_evaluates_collection_integrity_before_write(tmp_path: Path):
     db_path = tmp_path / "primary.db"
     cfg = {"project_root": tmp_path, "storage": {"mode": "SQLITE_PRIMARY", "db_path": db_path}}
+    migrate_v2(db_path, role="PRIMARY")
     healthy = {"sitemap_unique": 100, "listing_unique": 100, "current_valid": 100,
                "price_coverage": 1.0, "cat2_coverage": 1.0, "description_coverage": 1.0,
                "category_coverage": {f"cat-{i}": True for i in range(15)}}
-    first = CommitBundle(run_id="r1", observation_date="2026-09-10", qa_state="PASS", run_record=healthy)
+    first_quality = evaluate_and_persist(db_path, "r1", {**healthy, "run_date": "2026-09-10"})
+    healthy_with_quality = {**healthy, "collection_quality_state": first_quality.state,
+                            "collection_metrics_hash": first_quality.metrics_hash}
+    first = CommitBundle(run_id="r1", observation_date="2026-09-10", qa_state="PASS", run_record=healthy_with_quality,
+                         collection_quality_state=first_quality.state,
+                         requires_collection_integrity=True)
     commit_daily_bundle(cfg, first, mode="SQLITE_PRIMARY")
     degraded = {**healthy, "sitemap_unique": 70, "listing_unique": 70, "current_valid": 70}
-    second = CommitBundle(run_id="r2", observation_date="2026-09-11", qa_state="PASS", run_record=degraded)
+    second_quality = evaluate_and_persist(db_path, "r2", {**degraded, "run_date": "2026-09-11"})
+    degraded_with_quality = {**degraded, "collection_quality_state": second_quality.state,
+                             "collection_metrics_hash": second_quality.metrics_hash}
+    second = CommitBundle(run_id="r2", observation_date="2026-09-11", qa_state="PASS", run_record=degraded_with_quality,
+                          collection_quality_state=second_quality.state,
+                          requires_collection_integrity=True)
     with pytest.raises(ProductionDatabaseError, match="COLLECTION_QUALITY_BLOCKED"):
         commit_daily_bundle(cfg, second, mode="SQLITE_PRIMARY")
 
@@ -358,6 +431,22 @@ def test_degraded_runs_are_excluded_from_baseline():
     ]
     from action_tracker.data_quality.collection.baseline import calculate_baselines
     assert calculate_baselines(rows)["listing_unique"]["median_30d"] == 100
+
+
+def test_calendar_baseline_excludes_current_day_and_uses_last_healthy_run_per_day():
+    from action_tracker.data_quality.collection.baseline import calculate_baselines
+    rows = [
+        {"run_id": "old", "metric_name": "listing_unique", "metric_value": 10, "gate_status": "OK", "observation_date": "2026-08-01", "created_at": "2026-08-01T01:00:00Z"},
+        {"run_id": "same-early", "metric_name": "listing_unique", "metric_value": 100, "gate_status": "OK", "observation_date": "2026-09-08", "created_at": "2026-09-08T01:00:00Z"},
+        {"run_id": "same-late", "metric_name": "listing_unique", "metric_value": 120, "gate_status": "OK", "observation_date": "2026-09-08", "created_at": "2026-09-08T02:00:00Z"},
+        {"run_id": "bad", "metric_name": "__collection_state", "metric_scope": "COLLECTION_BLOCKED", "metric_value": None, "gate_status": "COLLECTION_BLOCKED", "observation_date": "2026-09-09"},
+        {"run_id": "bad", "metric_name": "listing_unique", "metric_value": 1, "gate_status": "OK", "observation_date": "2026-09-09"},
+        {"run_id": "current", "metric_name": "listing_unique", "metric_value": 999, "gate_status": "OK", "observation_date": "2026-09-10"},
+    ]
+    result = calculate_baselines(rows, as_of="2026-09-10")
+    assert result["listing_unique"]["previous"] == 120
+    assert result["listing_unique"]["median_7d"] == 120
+    assert result["listing_unique"]["median_30d"] == 120
 
 
 def test_collection_override_is_bounded_and_auditable():

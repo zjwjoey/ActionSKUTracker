@@ -66,6 +66,9 @@ class CommitBundle:
     collection_quality_state: str | None = None
     collection_quality_override: bool = False
     collection_quality_override_evidence: Mapping[str, Any] = field(default_factory=dict)
+    # Daily collection bundles require a quality result before commit. Patch
+    # and correction bundles can explicitly opt out of this collection gate.
+    requires_collection_integrity: bool = False
 
     def resolved_hash(self) -> str:
         if self.bundle_hash:
@@ -91,6 +94,7 @@ class CommitBundle:
             payload["collection_quality_state"] = self.collection_quality_state
             payload["collection_quality_override"] = self.collection_quality_override
             payload["collection_quality_override_evidence"] = self.collection_quality_override_evidence
+        payload["requires_collection_integrity"] = self.requires_collection_integrity
         encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
 
@@ -121,6 +125,8 @@ class ProductionWriter:
         if bundle.qa_state not in {"PASS", "PASS_PRESENCE_ONLY"}:
             raise ProductionDatabaseError("DB_COMMIT_QA_NOT_PASS")
         quality_state = str(bundle.collection_quality_state or "").upper()
+        if bundle.requires_collection_integrity and not quality_state:
+            raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING")
         if quality_state == "COLLECTION_BLOCKED":
             raise ProductionDatabaseError("COLLECTION_QUALITY_BLOCKED")
         if quality_state == "COLLECTION_DEGRADED":
@@ -131,6 +137,12 @@ class ProductionWriter:
             expected_metrics_hash = str(bundle.run_record.get("collection_metrics_hash") or "")
             if not expected_metrics_hash or not validate_collection_override(evidence, run_id=bundle.run_id, metrics_hash=expected_metrics_hash):
                 raise ProductionDatabaseError("COLLECTION_QUALITY_OVERRIDE_INVALID")
+        if bundle.requires_collection_integrity:
+            # The evaluated state/hash is persisted by the pre-commit quality
+            # stage.  A missing hash is never accepted as a daily evidence
+            # substitute, even when the state string says OK.
+            if not str(bundle.run_record.get("collection_metrics_hash") or "").strip():
+                raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING")
         if not bundle.run_id or not bundle.observation_date:
             raise ProductionDatabaseError("DB_COMMIT_RUN_ID_OR_DATE_MISSING")
         now = datetime.now(timezone.utc).isoformat()
@@ -144,6 +156,19 @@ class ProductionWriter:
                 return str(existing[0])
             latest = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC LIMIT 1").fetchone()
             latest_id = str(latest[0]) if latest else None
+            if bundle.requires_collection_integrity:
+                required = ("listing_unique", "current_valid", "successful_category_count")
+                try:
+                    rows = db.execute(
+                        "SELECT metric_name,metric_value,gate_status FROM collection_quality_metrics WHERE run_id=?",
+                        (bundle.run_id,),
+                    ).fetchall()
+                except sqlite3.OperationalError as exc:
+                    raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING") from exc
+                values = {str(row[0]): row for row in rows}
+                missing = [name for name in required if name not in values or values[name][1] is None or str(values[name][2]).upper() == "UNAVAILABLE"]
+                if missing:
+                    raise ProductionDatabaseError("COLLECTION_REQUIRED_METRIC_MISSING:" + ",".join(missing))
             if bundle.base_commit_id is not None and bundle.base_commit_id != latest_id:
                 raise ProductionDatabaseError("BASELINE_CHANGED_BEFORE_COMMIT")
             try:

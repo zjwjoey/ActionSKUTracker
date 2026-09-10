@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS collection_quality_metrics (
  gate_status TEXT NOT NULL,
  evidence_json TEXT,
  created_at TEXT NOT NULL,
+ observation_date TEXT,
  UNIQUE(run_id,metric_name,metric_scope)
 );
 CREATE INDEX IF NOT EXISTS idx_collection_metrics_name_date ON collection_quality_metrics(metric_name,created_at);
@@ -79,6 +80,11 @@ CREATE TABLE IF NOT EXISTS repair_candidates (
  candidate_status TEXT NOT NULL DEFAULT 'PROPOSED',
  reviewed_by TEXT,
  reviewed_at TEXT,
+ repair_action TEXT NOT NULL DEFAULT 'NO_AUTOMATIC_REPAIR',
+ applied_by TEXT,
+ applied_at TEXT,
+ verified_by TEXT,
+ verified_at TEXT,
  FOREIGN KEY(repair_batch_id) REFERENCES repair_batches(repair_batch_id),
  FOREIGN KEY(issue_id) REFERENCES data_quality_issues(issue_id),
  UNIQUE(repair_batch_id,issue_id)
@@ -101,3 +107,18 @@ def ensure_data_quality_schema(path: Path, *, role: str = "SHADOW") -> None:
     migrate_v2(path, role=role)
     with connect(path) as db:
         db.executescript(DATA_QUALITY_DDL)
+        # Additive closure fields.  Existing V1 databases remain readable and
+        # no product facts are rewritten by this migration.
+        for table, column, definition in (
+            ("collection_quality_metrics", "observation_date", "TEXT"),
+            ("repair_candidates", "repair_action", "TEXT NOT NULL DEFAULT 'NO_AUTOMATIC_REPAIR'"),
+            ("repair_candidates", "applied_by", "TEXT"),
+            ("repair_candidates", "applied_at", "TEXT"),
+            ("repair_candidates", "verified_by", "TEXT"),
+            ("repair_candidates", "verified_at", "TEXT"),
+        ):
+            try:
+                db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+            except Exception as exc:
+                if "duplicate column" not in str(exc).lower():
+                    raise

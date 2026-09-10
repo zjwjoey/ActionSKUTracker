@@ -14,6 +14,8 @@ from action_tracker.excel import writer
 from action_tracker.monitor.sku_monitor import SkuStatus
 from action_tracker.orchestrator import daily as daily_mod
 from action_tracker.services.lifecycle import classify
+from action_tracker.data_quality.collection import evaluate_and_persist
+from action_tracker.database.schema import migrate_v2
 
 
 def _sku(sku: str = "1001", status: str = "ACTIVE", missing_count: int = 0,
@@ -425,11 +427,19 @@ def test_primary_commit_projects_compatibility_state_from_sqlite_head(tmp_path):
     _build_master(cfg["paths"]["master"])
     run_log = _run_log_row()
     run_log["QA状态"] = "PASS"
+    migrate_v2(cfg["storage"]["db_path"], role="PRIMARY")
+    quality = evaluate_and_persist(cfg["storage"]["db_path"], "R-PRIMARY", {
+        "run_date": "2026-08-14", "sitemap_unique": 1, "listing_unique": 1,
+        "current_valid": 1, "price_coverage": 1.0, "cat2_coverage": 1.0,
+        "description_coverage": 1.0, "detail_failure_rate": 0.0,
+        "category_coverage": {f"cat-{i}": True for i in range(15)},
+    })
     rc = daily_mod._commit_phase(
         cfg, statuses={"1001": _sku(status="ACTIVE")}, known=_known(),
         run_date="2026-08-14", run_id="R-PRIMARY", offline_runs=3,
         today_records={"1001": {"sku": "1001", "current_price": 9.99}},
-        price_events=[], event_events=[], run_log_row=run_log, review_rows=[])
+        price_events=[], event_events=[], run_log_row=run_log, review_rows=[],
+        run_report={"collection_quality_state": quality.state, "collection_metrics_hash": quality.metrics_hash})
     assert rc == "FULL_COMMIT"
     # The committed SQLite head is the source used to generate both
     # compatibility state and the CURRENT sheets.

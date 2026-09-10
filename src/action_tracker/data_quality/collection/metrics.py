@@ -73,6 +73,8 @@ def build_collection_metrics(run_id: str, payload: Mapping[str, Any]) -> list[Co
     """Convert a run report into deterministic metric records."""
     metrics: list[CollectionMetric] = []
     created = _now()
+    observation_date = payload.get("observation_date") or payload.get("run_date")
+    observation_date = str(observation_date).strip() if observation_date else None
     run_source_hash = payload.get("source_hash") or payload.get("collection_source_hash")
     source_hashes = payload.get("source_hashes")
 
@@ -102,6 +104,7 @@ def build_collection_metrics(run_id: str, payload: Mapping[str, Any]) -> list[Co
             run_id=run_id, metric_name=name, metric_scope=None,
             metric_value=value, numerator=numerator, denominator=denominator,
             gate_status="UNAVAILABLE" if value is None else "OK", evidence=metric_evidence(name), created_at=created,
+            observation_date=observation_date,
         ))
     if isinstance(category_coverage, Mapping):
         for category, value in sorted(category_coverage.items(), key=lambda item: str(item[0])):
@@ -110,6 +113,7 @@ def build_collection_metrics(run_id: str, payload: Mapping[str, Any]) -> list[Co
                 run_id=run_id, metric_name="category_success", metric_scope=str(category),
                 metric_value=numeric, numerator=numeric, denominator=1.0,
                 gate_status="OK" if numeric else "BLOCKED", evidence={"source": "category_coverage"}, created_at=created,
+                observation_date=observation_date,
             ))
     # Some collection adapters expose the number of listing records per
     # category separately from the boolean completion map.  Preserve those
@@ -127,6 +131,7 @@ def build_collection_metrics(run_id: str, payload: Mapping[str, Any]) -> list[Co
                 metric_value=count, numerator=count, denominator=1.0 if count is not None else None,
                 gate_status="UNAVAILABLE" if count is None else "OK",
                 evidence={"source": "category_counts"}, created_at=created,
+                observation_date=observation_date,
             ))
     # This marker lets baseline.py exclude a degraded/blocked run without a
     # second state table; it is metadata, not a product fact.

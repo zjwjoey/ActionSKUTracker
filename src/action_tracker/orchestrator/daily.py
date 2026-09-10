@@ -41,6 +41,53 @@ log = logging.getLogger(__name__)
 _LIGHT_FIELDS = ["current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "product_url"]
 
 
+def _evaluate_daily_collection_quality(cfg: Mapping[str, Any], run_id: str,
+                                       run_report: dict[str, Any], *, dry_run: bool) -> None:
+    """Evaluate collection quality once before the commit decision.
+
+    SQLite modes persist the evidence before the product transaction. Dry-run
+    and Excel-primary modes evaluate in memory only, so they remain write-free.
+    """
+    from ..data_quality.collection import build_collection_metrics, evaluate_and_persist, evaluate_collection
+    from ..database.integration import database_path, storage_mode
+    import yaml
+
+    mode = storage_mode(cfg)
+    config_file = Path(cfg.get("project_root") or ".") / "config" / "data_quality.yaml"
+    raw_config = yaml.safe_load(config_file.read_text(encoding="utf-8")) if config_file.exists() else {}
+    thresholds = (raw_config or {}).get("collection_integrity") or {}
+    try:
+        if not dry_run and mode in {"SQLITE_PRIMARY", "SQLITE_SHADOW"}:
+            quality = evaluate_and_persist(database_path(cfg), run_id, run_report, config=thresholds)
+        else:
+            history: list[Mapping[str, Any]] = []
+            if mode in {"SQLITE_PRIMARY", "SQLITE_SHADOW"} and database_path(cfg).exists():
+                from ..data_quality.repository import DataQualityRepository
+                history = DataQualityRepository(database_path(cfg), ensure_schema=False).get_metrics()
+            quality = evaluate_collection(
+                run_id, build_collection_metrics(run_id, run_report), history=history,
+                config=thresholds, observation_date=str(run_report.get("run_date") or "") or None,
+            )
+        run_report.update({
+            "collection_quality_state": quality.state,
+            "collection_metrics_hash": quality.metrics_hash,
+            "collection_quality_blockers": list(quality.blockers),
+            "collection_quality_warnings": list(quality.warnings),
+            "collection_drift_issue_count": len(quality.drift_issues),
+            "collection_quality_evaluations": 1,
+        })
+    except Exception as exc:
+        log.exception("Collection Integrity evaluation failed before commit decision")
+        run_report.update({
+            "collection_quality_state": "COLLECTION_BLOCKED",
+            "collection_metrics_hash": None,
+            "collection_quality_blockers": [f"COLLECTION_QUALITY_EVALUATION_FAILED:{type(exc).__name__}"],
+            "collection_quality_warnings": [],
+            "collection_drift_issue_count": 0,
+            "collection_quality_evaluations": 1,
+        })
+
+
 def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
                  in_nuevo: bool = False, in_promo: bool = False) -> None:
     """把 listing 轻量字段合并进今日记录。
@@ -421,6 +468,10 @@ def run_daily(
                              sitemap_only=len(set(sitemap_skus) - set(today_light)),
                              listing_only=len(set(today_light) - set(sitemap_skus)),
                              both_sources=len(set(sitemap_skus) & set(today_light)))
+    # Evaluate Collection Integrity before snapshot and commit decision. This
+    # result is passed through the report and bundle; the writer validates it
+    # but does not recalculate it.
+    _evaluate_daily_collection_quality(cfg, run_id, run_report, dry_run=dry_run)
     data = {
         "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",
         "sitemap_skus": sitemap_skus,
@@ -474,7 +525,9 @@ def run_daily(
     if not dry_run:
         if _should_commit(dry_run=dry_run, qa_passed=qa.passed, access_state=presence_access_state,
                           qa_state=qa.state, collection_quality_state=run_report.get("collection_quality_state"),
-                          collection_quality_override=bool(run_report.get("collection_quality_override", False))):
+                          collection_quality_override=bool(run_report.get("collection_quality_override", False)),
+                          collection_quality_override_evidence=run_report.get("collection_quality_override_evidence"),
+                          requires_collection_integrity=True):
             run_log_row = _run_log_row(run_id, run_date, start_time, counts, qa, dry_run,
                                        sitemap_count=len(sitemap_skus), listing_count=len(today_light))
             commit_status = _commit_phase(
@@ -485,7 +538,7 @@ def run_daily(
                 baseline=baseline, today_set=today_set, observation_complete=observation_complete,
                 snapshot_path=snap_dir, sqlite_diagnostics=sqlite_diagnostics, run_report=run_report)
         else:
-            commit_status = "QA_FAIL"
+            commit_status = "COLLECTION_BLOCKED" if str(run_report.get("collection_quality_state") or "").upper() == "COLLECTION_BLOCKED" else "QA_FAIL"
             log.error("QA 未通过（%s），禁止写 Master / known_skus / offline_skus", qa.state)
 
     run_report["commit_status"] = commit_status
@@ -669,11 +722,21 @@ def _build_lifecycle_events(statuses: dict, run_date: str, run_id: str) -> list[
 
 
 def _should_commit(dry_run: bool, qa_passed: bool, access_state: str = "NORMAL", qa_state: str = "PASS",
-                   collection_quality_state: str | None = None, collection_quality_override: bool = False) -> bool:
+                   collection_quality_state: str | None = None, collection_quality_override: bool = False,
+                   requires_collection_integrity: bool = False,
+                   collection_quality_override_evidence: Mapping[str, Any] | None = None) -> bool:
     """提交门禁：完整 QA 或受控 Sitemap Presence 回退才可正式提交。"""
     access_ok = access_state == "NORMAL" or qa_state == "PASS_PRESENCE_ONLY"
     quality = str(collection_quality_state or "").upper()
-    quality_ok = quality not in {"COLLECTION_BLOCKED"} and not (quality == "COLLECTION_DEGRADED" and not collection_quality_override)
+    from ..data_quality.collection.gates import collection_commit_allowed
+    evidence = dict(collection_quality_override_evidence or {})
+    quality_ok = collection_commit_allowed(
+        quality, override=collection_quality_override,
+        override_evidence=evidence,
+        run_id=str(evidence.get("run_id") or "") or None,
+        metrics_hash=str(evidence.get("metrics_hash") or "") or None,
+        requires_collection_integrity=requires_collection_integrity,
+    )
     return (not dry_run) and qa_passed and access_ok and quality_ok
 
 
