@@ -39,14 +39,15 @@ migrations: additive only
 real_primary_written: NO
 
 TESTS
-targeted: 84 passed (quality + writer + release related tests)
-full: 490 passed
+targeted: 86 passed (quality + writer + release related tests)
+full: 492 passed
 failed: 0
 
 CI COVERAGE
 test_modules: tests/test_data_quality_integrity.py
 allowlisted: YES
 missing: 0
+local_ci_safe: 492 passed
 
 EXACT HEAD CI
 head: not pushed in this task
