@@ -48,15 +48,13 @@ def _evaluate_daily_collection_quality(cfg: Mapping[str, Any], run_id: str,
     SQLite modes persist the evidence before the product transaction. Dry-run
     and Excel-primary modes evaluate in memory only, so they remain write-free.
     """
-    from ..data_quality.collection import build_collection_metrics, evaluate_and_persist, evaluate_collection
+    from ..data_quality.collection import CollectionConfigError, build_collection_metrics, evaluate_and_persist, evaluate_collection, load_collection_thresholds
     from ..database.integration import database_path, storage_mode
-    import yaml
 
     mode = storage_mode(cfg)
     config_file = Path(cfg.get("project_root") or ".") / "config" / "data_quality.yaml"
-    raw_config = yaml.safe_load(config_file.read_text(encoding="utf-8")) if config_file.exists() else {}
-    thresholds = (raw_config or {}).get("collection_integrity") or {}
     try:
+        thresholds = load_collection_thresholds(config_file)
         if not dry_run and mode in {"SQLITE_PRIMARY", "SQLITE_SHADOW"}:
             quality = evaluate_and_persist(database_path(cfg), run_id, run_report, config=thresholds)
         else:
@@ -74,6 +72,16 @@ def _evaluate_daily_collection_quality(cfg: Mapping[str, Any], run_id: str,
             "collection_quality_blockers": list(quality.blockers),
             "collection_quality_warnings": list(quality.warnings),
             "collection_drift_issue_count": len(quality.drift_issues),
+            "collection_quality_evaluations": 1,
+        })
+    except CollectionConfigError as exc:
+        log.error("Collection Integrity configuration rejected: %s", exc)
+        run_report.update({
+            "collection_quality_state": "COLLECTION_BLOCKED",
+            "collection_metrics_hash": None,
+            "collection_quality_blockers": [exc.code],
+            "collection_quality_warnings": [],
+            "collection_drift_issue_count": 0,
             "collection_quality_evaluations": 1,
         })
     except Exception as exc:

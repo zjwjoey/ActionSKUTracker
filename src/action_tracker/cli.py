@@ -554,9 +554,8 @@ def main(argv=None) -> int:
         return 0 if result.release_ready else 3
     if args.command == "collection-quality":
         from .database.integration import database_path
-        from .data_quality.collection import load_run_payload, evaluate_and_persist, format_collection_quality
+        from .data_quality.collection import load_run_payload, evaluate_and_persist, format_collection_quality, load_collection_thresholds
         from .data_quality.repository import DataQualityRepository
-        import yaml
         path = database_path(cfg)
         try:
             if args.cq_action == "history":
@@ -565,8 +564,7 @@ def main(argv=None) -> int:
             if not args.run_id:
                 raise ValueError("COLLECTION_RUN_ID_REQUIRED")
             dq_path = Path(cfg["project_root"]) / "config" / "data_quality.yaml"
-            raw_cfg = yaml.safe_load(dq_path.read_text(encoding="utf-8")) if dq_path.exists() else {}
-            thresholds = (raw_cfg or {}).get("collection_integrity") or {}
+            thresholds = load_collection_thresholds(dq_path)
             result = evaluate_and_persist(path, args.run_id, load_run_payload(path, args.run_id), config=thresholds)
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}:{exc}"}, ensure_ascii=False), file=sys.stderr); return 2

@@ -5,12 +5,13 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 from action_tracker.database.connection import connect
 from action_tracker.database.integration import commit_daily_bundle
 from action_tracker.database.production import CommitBundle, ProductionDatabaseError
 from action_tracker.database.schema import migrate_v2
-from action_tracker.data_quality.collection import build_collection_metrics, collection_metrics_hash, evaluate_collection, evaluate_and_persist, validate_collection_override
+from action_tracker.data_quality.collection import CollectionConfigError, build_collection_metrics, collection_metrics_hash, evaluate_collection, evaluate_and_persist, load_collection_thresholds, validate_collection_override
 from action_tracker.data_quality.collection.gates import collection_commit_allowed
 from action_tracker.data_quality.contracts import DataQualityIssue, issue_id
 from action_tracker.data_quality.historical import audit_history, approve_candidate, apply_repair_batch, build_repair_candidates, prepare_formal_correction, verify_repair_batch, write_repair_preview
@@ -18,6 +19,41 @@ from action_tracker.data_quality.master_gate import audit_master_quality
 from action_tracker.data_quality.repository import DataQualityRepository
 from action_tracker.data_quality.schema import ensure_data_quality_schema
 from action_tracker.localization.release_gate import audit_research_release
+
+
+def _healthy_collection_report() -> dict:
+    return {
+        "run_date": "2026-09-10", "sitemap_unique": 100, "listing_unique": 100,
+        "current_valid": 100, "price_coverage": 1.0, "cat2_coverage": 1.0,
+        "description_coverage": 1.0, "detail_failure_rate": 0.0,
+        "category_coverage": {f"cat-{i}": True for i in range(15)}, "qa_state": "PASS",
+    }
+
+
+def test_collection_config_missing_fails_closed(tmp_path: Path):
+    with pytest.raises(CollectionConfigError, match="COLLECTION_CONFIG_MISSING"):
+        load_collection_thresholds(tmp_path / "config" / "data_quality.yaml")
+
+
+def test_collection_config_wrong_type_fails_closed(tmp_path: Path):
+    path = tmp_path / "data_quality.yaml"
+    raw = yaml.safe_load((Path(__file__).parents[1] / "config" / "data_quality.yaml").read_text(encoding="utf-8"))
+    raw["collection_integrity"]["required_categories"] = "15"
+    path.write_text(yaml.safe_dump(raw), encoding="utf-8")
+    with pytest.raises(CollectionConfigError, match="COLLECTION_CONFIG_INVALID_TYPE"):
+        load_collection_thresholds(path)
+
+
+def test_daily_collection_missing_config_blocks_sqlite_formal_evaluation(tmp_path: Path):
+    from action_tracker.orchestrator.daily import _evaluate_daily_collection_quality
+
+    report = _healthy_collection_report()
+    cfg = {"project_root": tmp_path, "storage": {"mode": "SQLITE_PRIMARY", "db_path": tmp_path / "runtime.db"}}
+    _evaluate_daily_collection_quality(cfg, "missing-config", report, dry_run=False)
+    assert report["collection_quality_state"] == "COLLECTION_BLOCKED"
+    assert report["collection_quality_blockers"] == ["COLLECTION_CONFIG_MISSING"]
+    from action_tracker.data_quality.collection.gates import collection_commit_allowed
+    assert collection_commit_allowed(report["collection_quality_state"], requires_collection_integrity=True) is False
 
 
 def _db(tmp_path: Path, *, clean: bool = True) -> Path:
