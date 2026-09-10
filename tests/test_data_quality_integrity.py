@@ -15,6 +15,7 @@ from action_tracker.data_quality.historical import audit_history, approve_candid
 from action_tracker.data_quality.master_gate import audit_master_quality
 from action_tracker.data_quality.repository import DataQualityRepository
 from action_tracker.data_quality.schema import ensure_data_quality_schema
+from action_tracker.localization.release_gate import audit_research_release
 
 
 def _db(tmp_path: Path, *, clean: bool = True) -> Path:
@@ -157,6 +158,12 @@ def test_collection_metric_persistence_is_idempotent(tmp_path: Path):
     repo.save_metrics(metrics)
     repo.save_metrics(metrics)
     assert len(repo.get_metrics("r1")) == len(metrics)
+
+
+def test_master_quality_is_a_research_release_prerequisite():
+    result = audit_research_release([], expected_skus=set(), master_quality={"release_ready": False})
+    assert not result.ok
+    assert "MASTER_QUALITY_BLOCKED" in result.issues
 
 
 def test_collection_category_and_listing_drop_is_blocked():
