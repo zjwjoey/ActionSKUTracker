@@ -117,12 +117,15 @@ def evaluate_and_persist(db_path: Path, run_id: str, payload: Mapping[str, Any],
     return result
 
 
-def collection_commit_allowed(state: str, *, override: bool = False) -> bool:
+def collection_commit_allowed(state: str, *, override: bool = False,
+                              override_evidence: Mapping[str, Any] | None = None,
+                              run_id: str | None = None, metrics_hash: str | None = None) -> bool:
     state = str(state or "").upper()
     if state == "COLLECTION_BLOCKED":
         return False
     if state == "COLLECTION_DEGRADED":
-        return bool(override)
+        return bool(override and run_id and metrics_hash and validate_collection_override(
+            override_evidence, run_id=run_id, metrics_hash=metrics_hash))
     return state in {"", "COLLECTION_OK", "COLLECTION_WARN"}
 
 

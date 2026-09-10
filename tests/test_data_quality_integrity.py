@@ -9,6 +9,7 @@ import pytest
 from action_tracker.database.connection import connect
 from action_tracker.database.schema import migrate_v2
 from action_tracker.data_quality.collection import build_collection_metrics, evaluate_collection, validate_collection_override
+from action_tracker.data_quality.collection.gates import collection_commit_allowed
 from action_tracker.data_quality.contracts import DataQualityIssue, issue_id
 from action_tracker.data_quality.historical import audit_history, approve_candidate, apply_repair_batch, build_repair_candidates, verify_repair_batch, write_repair_preview
 from action_tracker.data_quality.master_gate import audit_master_quality
@@ -24,6 +25,7 @@ def _db(tmp_path: Path, *, clean: bool = True) -> Path:
         db.execute("""INSERT INTO products(canonical_id,official_sku,name_es,name_zh,current_price,original_price,
             raw_badges,status,product_url,image_url,created_at,updated_at)
             VALUES('ACT1001','1001','Producto','商品',1.0,2.0,'','CURRENT','https://example/1001','https://example/image',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""")
+        db.execute("UPDATE products SET source_hash='product-source-hash' WHERE official_sku='1001'")
         db.execute("""INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,unit_price,description,details,source,review_status,updated_at,source_hash,freshness_status)
             VALUES('1001','es','Producto','Hogar','Limpieza','1 unidad','1','Texto','Material: Plástico','official','APPROVED',CURRENT_TIMESTAMP,'es-hash','CURRENT')""")
         db.execute("""INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,unit_price,description,details,source,review_status,updated_at,source_hash,freshness_status)
@@ -174,3 +176,5 @@ def test_collection_override_is_bounded_and_auditable():
     assert validate_collection_override(evidence, run_id="r1", metrics_hash="h1")
     assert not validate_collection_override({**evidence, "one_shot": False}, run_id="r1", metrics_hash="h1")
     assert not validate_collection_override({**evidence, "metrics_hash": "other"}, run_id="r1", metrics_hash="h1")
+    assert not collection_commit_allowed("COLLECTION_DEGRADED", override=True)
+    assert collection_commit_allowed("COLLECTION_DEGRADED", override=True, override_evidence=evidence, run_id="r1", metrics_hash="h1")

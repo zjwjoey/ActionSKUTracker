@@ -192,10 +192,19 @@ def apply_repair_batch(db_path: Path, batch_id: str, *, commit: bool = False,
                 sku = candidate.get("official_sku")
                 field = candidate.get("field_name")
                 proposed = candidate.get("proposed_value")
+                issue_type_row = db.execute("SELECT issue_type FROM data_quality_issues WHERE issue_id=?", (candidate["issue_id"],)).fetchone()
+                issue_type = str(issue_type_row[0]) if issue_type_row else ""
                 expected_hash = str(candidate.get("source_hash") or "")
+                if not expected_hash:
+                    raise RepairError("SOURCE_HASH_REQUIRED")
                 if expected_hash:
                     current_hash = None
-                    if "localization_fields" in tables and sku and field:
+                    if issue_type == "INVALID_ORIGINAL_PRICE" and "products" in tables and sku:
+                        columns = {str(item[1]) for item in db.execute("PRAGMA table_info(products)").fetchall()}
+                        if "source_hash" in columns:
+                            row = db.execute("SELECT source_hash FROM products WHERE official_sku=?", (sku,)).fetchone()
+                            current_hash = row[0] if row else None
+                    if current_hash is None and "localization_fields" in tables and sku and field:
                         row = db.execute("SELECT source_hash FROM localization_fields WHERE official_sku=? AND language='es' AND field_name=? ORDER BY updated_at DESC LIMIT 1", (sku, field)).fetchone()
                         current_hash = row[0] if row else None
                     if current_hash is None and "product_localizations" in tables and sku:
@@ -205,8 +214,6 @@ def apply_repair_batch(db_path: Path, batch_id: str, *, commit: bool = False,
                             current_hash = row[0] if row else None
                     if str(current_hash or "") != expected_hash:
                         raise RepairError("SOURCE_HASH_MISMATCH")
-                issue_type = db.execute("SELECT issue_type FROM data_quality_issues WHERE issue_id=?", (candidate["issue_id"],)).fetchone()
-                issue_type = str(issue_type[0]) if issue_type else ""
                 changed = False
                 if issue_type == "INVALID_ORIGINAL_PRICE" and "products" in tables and sku:
                     changed = db.execute("UPDATE products SET original_price=?,updated_at=? WHERE official_sku=?", (proposed or None, now_utc(), sku)).rowcount > 0

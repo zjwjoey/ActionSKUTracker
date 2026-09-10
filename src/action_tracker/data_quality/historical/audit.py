@@ -105,10 +105,14 @@ def audit_history(db_path: Path, *, persist: bool = False, issue_types: Iterable
         # an issue; only an observed non-null value that is not strictly above
         # current price is flagged.
         if {"current_price", "original_price", "official_sku"}.issubset(product_columns):
-            for row in db.execute("SELECT official_sku,canonical_id,current_price,original_price FROM products WHERE current_price IS NOT NULL AND original_price IS NOT NULL AND original_price <= current_price"):
+            source_select = ",source_hash" if "source_hash" in product_columns else ""
+            for row in db.execute(f"SELECT official_sku,canonical_id,current_price,original_price{source_select} FROM products WHERE current_price IS NOT NULL AND original_price IS NOT NULL AND original_price <= current_price"):
+                source_hash = None
+                if "source_hash" in product_columns:
+                    source_hash = str(row[4] or "") or None
                 add(issue_type="INVALID_ORIGINAL_PRICE", severity="HIGH", sku=str(row[0]), canonical_id=row[1],
                     field="original_price", current=row[3], rule="original_price > current_price",
-                    evidence={"current_price": row[2], "original_price": row[3]})
+                    evidence={"current_price": row[2], "original_price": row[3]}, source_hash=source_hash)
 
         # H02: unit price or workflow text leaking into the badge/promotion
         # channel.  Official raw badge strings are evidence, but not promo
