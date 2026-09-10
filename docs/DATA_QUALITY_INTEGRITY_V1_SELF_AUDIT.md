@@ -31,13 +31,13 @@ evidence. It is an audit artifact, not a production approval.
 | Full local regression | `python -m pytest -q` → 505 passed | PASS |
 | Exact local CI-safe suite | `tests/ci_safe_tests.txt` → 505 passed | PASS |
 | Real PRIMARY read-only audit | Prior audit: 5,536 current records, release-ready, file hash/mtime unchanged, writes 0 | PASS (read-only) |
-| Ubuntu/Windows exact-head GitHub Actions | Run `34430477401` on exact head `55f4440`; Ubuntu PASS, Windows PASS | PASS |
+| Ubuntu/Windows exact-head GitHub Actions | Run `34430477401` on code/test head `55f4440`; Ubuntu PASS, Windows PASS. Documentation head `31925cf` also passed in run `34430661088` on both OSes | PASS |
 | Merge/push/production activation | Feature branch pushed; merge and production activation remain intentionally unperformed | PUSH PASS; MERGE/PRODUCTION PENDING |
 
 ## Current validation heads
 
-- Feature code/tests head: `fd399605af4f4e131ab73d4eb0fd18500fc6a9c6`
-- Code head recorded in the acceptance report: `fd399605af4f4e131ab73d4eb0fd18500fc6a9c6`
+- Feature code/tests head: `55f4440cf0b4c0a3a1863a3a5c74c230db6f0295`
+- Code head recorded in the acceptance report: `55f4440cf0b4c0a3a1863a3a5c74c230db6f0295`
 - Local `main` baseline: `e8c1a16c31743ecfacec05a953c22d5c65d9fca6`
 - Cached `origin/main`: `2fe180ab6d99d1ed8982fe6fb7d03a432e5d4400`
 
