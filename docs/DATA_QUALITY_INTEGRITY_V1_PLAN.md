@@ -40,4 +40,3 @@ tests; a PRIMARY database is rejected unconditionally.
 Acceptance is based on synthetic fixtures and read-only inspection. The final
 report records the branch, base SHA, head SHA, test totals, CI results and the
 fact that `real_primary_written = NO`.
-

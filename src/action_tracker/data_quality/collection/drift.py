@@ -60,4 +60,3 @@ def detect_schema_drift(current: Mapping[str, Any], baselines: Mapping[str, Mapp
                 evidence={"current": value, "sample_skus": samples.get(field, [])},
             ))
     return drift
-
