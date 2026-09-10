@@ -8,7 +8,7 @@ DATA QUALITY & INTEGRITY V1
 
 branch: feat/data-quality-integrity-v1
 base_main: e8c1a16 (local main at worktree creation)
-head: 225d831bd46ee4bda20ba6662e89e002688901a7
+head: 3fa3bf95f0308753722012e355bfb7c6dbe74b3d
 
 MODULE A — Historical Master Repair
 issues_supported: 8 initial issue types
@@ -39,15 +39,15 @@ migrations: additive only
 real_primary_written: NO
 
 TESTS
-targeted: 98 passed (quality + database + lifecycle + release related tests)
-full: 495 passed
+targeted: 100 passed (quality + database + lifecycle + release related tests)
+full: 497 passed
 failed: 0
 
 CI COVERAGE
 test_modules: tests/test_data_quality_integrity.py
 allowlisted: YES
 missing: 0
-local_ci_safe: 495 passed
+local_ci_safe: 497 passed
 
 EXACT HEAD CI
 head: not pushed in this task
