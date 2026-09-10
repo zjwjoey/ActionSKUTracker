@@ -246,8 +246,9 @@ def commit_daily_bundle(cfg: Mapping[str, Any], bundle: CommitBundle, *, mode: s
         try:
             from ..data_quality.collection import evaluate_and_persist
             import yaml
-            config_file = Path(cfg["project_root"]) / "config" / "data_quality.yaml"
-            raw_config = yaml.safe_load(config_file.read_text(encoding="utf-8")) if config_file.exists() else {}
+            project_root = cfg.get("project_root")
+            config_file = (Path(project_root) / "config" / "data_quality.yaml") if project_root else None
+            raw_config = yaml.safe_load(config_file.read_text(encoding="utf-8")) if config_file and config_file.exists() else {}
             thresholds = (raw_config or {}).get("collection_integrity") or {}
             quality = evaluate_and_persist(path, bundle.run_id, bundle.run_record, config=thresholds)
             report = dict(bundle.run_record)
@@ -258,6 +259,8 @@ def commit_daily_bundle(cfg: Mapping[str, Any], bundle: CommitBundle, *, mode: s
         except ProductionDatabaseError:
             raise
         except Exception as exc:
+            # Keep the public error code stable; the chained exception remains
+            # available to diagnostics without changing callers' contracts.
             raise ProductionDatabaseError("COLLECTION_QUALITY_EVALUATION_FAILED") from exc
     if bundle.base_commit_id is None:
         # The writer performs the actual optimistic check.  This branch merely
