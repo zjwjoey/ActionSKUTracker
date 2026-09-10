@@ -22,6 +22,22 @@ from ..repository import DataQualityRepository
 _HTML_RE = re.compile(r"<\/?[A-Za-z][^>]*>", re.I)
 _UI_TEXT = {"añadir a tus favoritos", "leer más", "descripción"}
 _UNIT_PRICE_RE = re.compile(r"(?:€/|€\s*/|/\s*(?:kg|l|ud\.?|unidad))", re.I)
+_PROMOTION_TEXT_COLUMNS = frozenset({"promotion", "promotion_status", "promotion_label", "promotion_text", "promotion_note"})
+_PROMOTION_CONTAMINATION_TOKENS = (
+    "workflow", "本期详情", "nuevo producto", "nuevo", "sostenible", "sostenibilidad",
+    "sustainability", "descuento", "discount",
+)
+
+
+def _promotion_text_is_contaminated(value: Any, *, include_badges: bool = False) -> bool:
+    text = str(value or "").strip()
+    if not text or _UNIT_PRICE_RE.search(text):
+        return bool(text and _UNIT_PRICE_RE.search(text))
+    if include_badges:
+        # ``Nuevo`` and sustainability labels are valid badge facts when they
+        # live in raw_badges; only unit-price/workflow leakage is invalid there.
+        return any(token in text.casefold() for token in ("workflow", "本期详情"))
+    return any(token in text.casefold() for token in _PROMOTION_CONTAMINATION_TOKENS)
 
 
 @dataclass(frozen=True)
@@ -120,10 +136,22 @@ def audit_history(db_path: Path, *, persist: bool = False, issue_types: Iterable
         if "raw_badges" in product_columns:
             for row in db.execute("SELECT official_sku,canonical_id,raw_badges FROM products WHERE raw_badges IS NOT NULL AND TRIM(raw_badges)<>''"):
                 value = str(row[2])
-                if _UNIT_PRICE_RE.search(value) or any(token in value.casefold() for token in ("workflow", "本期详情", "新商品", "sustainability")):
+                if _promotion_text_is_contaminated(value, include_badges=True):
                     add(issue_type="PROMOTION_FIELD_CONTAMINATION", severity="HIGH", sku=str(row[0]), canonical_id=row[1],
                         field="raw_badges", current=value, rule="promotion/badges contain only official badge facts",
                         evidence={"value": value})
+
+        # Legacy snapshots may have stored promotion semantics in a text
+        # column instead of the typed promotion_active flag.  Inspect only
+        # explicitly named promotion fields; do not reinterpret status or a
+        # legitimate raw badge as contamination.
+        for column in sorted(product_columns & _PROMOTION_TEXT_COLUMNS):
+            for row in db.execute(f"SELECT official_sku,canonical_id,{column} FROM products WHERE {column} IS NOT NULL AND TRIM(CAST({column} AS TEXT))<>''"):
+                value = str(row[2])
+                if _promotion_text_is_contaminated(value):
+                    add(issue_type="PROMOTION_FIELD_CONTAMINATION", severity="HIGH", sku=str(row[0]), canonical_id=row[1],
+                        field=column, current=value, rule="promotion state must not contain badge/unit/workflow text",
+                        evidence={"value": value, "column": column})
 
         # H03/H04 operate on normalized official localization fields. Raw
         # source_fact evidence is explicitly allowed to contain HTML.

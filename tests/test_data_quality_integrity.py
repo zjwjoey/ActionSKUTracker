@@ -75,6 +75,18 @@ def test_historical_audit_keeps_unresolved_synthetic_identity_unresolved(tmp_pat
     assert any(issue.issue_type == "UNRESOLVED_HISTORICAL_IDENTITY" for issue in result.issues)
 
 
+def test_promotion_contamination_is_context_aware_and_covers_spanish_unit_prices(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("ALTER TABLE products ADD COLUMN promotion_label TEXT")
+        db.execute("UPDATE products SET raw_badges='Nuevo',promotion_label='0,59 €/unidad' WHERE official_sku='1001'")
+    historical = audit_history(path)
+    assert sum(issue.issue_type == "PROMOTION_FIELD_CONTAMINATION" for issue in historical.issues) == 1
+    assert historical.issues[0].field_name == "promotion_label"
+    master = audit_master_quality(path)
+    assert master.counts["PROMOTION_FIELD_CONTAMINATION"] == 1
+
+
 def test_repair_candidates_are_idempotent_and_require_approval(tmp_path: Path):
     path = _db(tmp_path)
     with connect(path) as db:

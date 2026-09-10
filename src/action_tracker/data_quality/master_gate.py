@@ -11,6 +11,12 @@ import sqlite3
 from typing import Any
 
 _HTML_RE = re.compile(r"<\/?[A-Za-z][^>]*>", re.I)
+_UNIT_PRICE_RE = re.compile(r"(?:€/|€\s*/|/\s*(?:kg|l|ud\.?|unidad))", re.I)
+_PROMOTION_TEXT_COLUMNS = frozenset({"promotion", "promotion_status", "promotion_label", "promotion_text", "promotion_note"})
+_PROMOTION_CONTAMINATION_TOKENS = (
+    "workflow", "本期详情", "nuevo producto", "nuevo", "sostenible", "sostenibilidad",
+    "sustainability", "descuento", "discount",
+)
 _UI_TEXT = ("añadir a tus favoritos", "leer más", "descripción")
 _FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
 
@@ -96,8 +102,13 @@ def audit_master_quality(db_path: Path) -> MasterQualityResult:
         if "raw_badges" in product_cols:
             for row in current_rows:
                 text = str(row["raw_badges"] or "")
-                if any(token in text.casefold() for token in ("€/kg", "€/ud", "workflow", "本期详情")):
+                if _UNIT_PRICE_RE.search(text) or any(token in text.casefold() for token in ("workflow", "本期详情")):
                     issue("PROMOTION_FIELD_CONTAMINATION", str(row["official_sku"]))
+        for column in sorted(product_cols & _PROMOTION_TEXT_COLUMNS):
+            for row in current_rows:
+                text = str(row[column] or "")
+                if _UNIT_PRICE_RE.search(text) or any(token in text.casefold() for token in _PROMOTION_CONTAMINATION_TOKENS):
+                    issue("PROMOTION_FIELD_CONTAMINATION", f"{row['official_sku']}:{column}")
 
         # The ES/ZH SKU sets are compared only when their formal projections
         # exist.  A missing projection is itself a provenance failure below.
