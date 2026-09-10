@@ -225,6 +225,9 @@ def build_daily_bundle(
         run_record=report,
         snapshot_path=str(snapshot_path) if snapshot_path else None,
         snapshot_hash=snapshot_digest(snapshot_path),
+        collection_quality_state=report.get("collection_quality_state"),
+        collection_quality_override=bool(report.get("collection_quality_override", False)),
+        collection_quality_override_evidence=dict(report.get("collection_quality_override_evidence") or {}),
     )
 
 

@@ -71,6 +71,7 @@ def audit_research_release(
     allowed_tokens: set[str] | None = None,
     display_mismatches: Iterable[str] | None = None,
     explicit_exceptions: Iterable[Mapping[str, Any]] | None = None,
+    master_quality: Mapping[str, Any] | None = None,
 ) -> ResearchReleaseResult:
     """Audit records against the non-negotiable research release contract.
 
@@ -98,8 +99,16 @@ def audit_research_release(
         "DUPLICATE_SKU": duplicate_skus,
         "MISSING_REQUIRED_ZH": 0,
         "LOCALIZATION_PROJECTION_MISMATCH": 0,
+        "MASTER_QUALITY_BLOCKED": 0,
     }
     issues: list[str] = []
+
+    # Data Quality V1 is an additional prerequisite.  Keeping this optional
+    # preserves the pure projection contract for older fixture callers while
+    # allowing PRIMARY/export callers to make the prerequisite explicit.
+    if master_quality is not None and not bool(master_quality.get("release_ready", master_quality.get("ok", False))):
+        counts["MASTER_QUALITY_BLOCKED"] = 1
+        issues.append("MASTER_QUALITY_BLOCKED")
 
     if expected and expected != sku_set:
         counts["SKU_SET_MISMATCH"] = len(expected ^ sku_set)

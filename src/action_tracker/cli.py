@@ -137,6 +137,25 @@ def build_parser() -> argparse.ArgumentParser:
     la.add_argument("--run-id", required=True)
     la.add_argument("--dry-run", action="store_true")
     la.add_argument("--commit", action="store_true")
+    dq = sub.add_parser("data-quality", help="Data Quality & Integrity V1")
+    dq_sub = dq.add_subparsers(dest="data_quality_command", required=True)
+    dq_sub.add_parser("audit-history", help="只读审计历史正式事实")
+    rb = dq_sub.add_parser("repair-build", help="生成可审核的历史修复候选")
+    rb.add_argument("--batch-id"); rb.add_argument("--created-by", default="data-quality-audit")
+    rb.add_argument("--base-commit-id"); rb.add_argument("--issue-id", action="append")
+    rb.add_argument("--output", help="写出 CSV/JSON 人工审核预览")
+    rs = dq_sub.add_parser("repair-status", help="查看修复批次")
+    rs.add_argument("--batch-id", required=True)
+    rv = dq_sub.add_parser("repair-verify", help="验证已应用修复")
+    rv.add_argument("--batch-id", required=True)
+    ra = dq_sub.add_parser("repair-apply", help="fixture-only 显式应用已批准候选")
+    ra.add_argument("--batch-id", required=True); ra.add_argument("--commit", action="store_true"); ra.add_argument("--actor", default="")
+    mq = sub.add_parser("master-quality", help="只读审计当前 SQLite 正式数据")
+    mq.add_argument("--json", action="store_true")
+    cq = sub.add_parser("collection-quality", help="审计采集指标与 Schema Drift")
+    cq.add_argument("cq_action", nargs="?", choices=("run", "history"), default="run")
+    cq.add_argument("--run-id")
+    cq.add_argument("--json", action="store_true")
     rq = sub.add_parser("review-queue", help="构建或处理统一人工审核队列")
     rq_sub = rq.add_subparsers(dest="review_queue_command", required=True)
     rq_build = rq_sub.add_parser("build", help="只读汇集 Master 与字典侧当前问题")
@@ -496,6 +515,59 @@ def main(argv=None) -> int:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False)); return 0
+    if args.command == "data-quality":
+        from .database.integration import database_path
+        from .data_quality.repository import DataQualityRepository
+        from .data_quality.historical import audit_history, build_repair_candidates, approve_candidate, apply_repair_batch, verify_repair_batch, write_repair_preview
+        db_path = database_path(cfg)
+        try:
+            if args.data_quality_command == "audit-history":
+                result = audit_history(db_path, persist=True).as_dict()
+            elif args.data_quality_command == "repair-build":
+                result = build_repair_candidates(db_path, batch_id=args.batch_id, created_by=args.created_by,
+                                                 base_commit_id=args.base_commit_id, issue_ids=args.issue_id)
+                if args.output:
+                    result["preview"] = write_repair_preview(db_path, result["repair_batch_id"], Path(args.output))
+            elif args.data_quality_command == "repair-status":
+                repo = DataQualityRepository(db_path)
+                result = {"batch": repo.batch(args.batch_id), "candidates": repo.candidates(args.batch_id)}
+            elif args.data_quality_command == "repair-verify":
+                result = verify_repair_batch(db_path, args.batch_id)
+            else:
+                result = apply_repair_batch(db_path, args.batch_id, commit=bool(args.commit), actor=args.actor)
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}:{exc}"}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False, default=str)); return 0
+    if args.command == "master-quality":
+        from .database.integration import database_path
+        from .data_quality.master_gate import audit_master_quality, format_master_quality
+        try:
+            result = audit_master_quality(database_path(cfg))
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}:{exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+        print(json.dumps(result.as_dict(), ensure_ascii=False) if args.json else format_master_quality(result))
+        return 0 if result.release_ready else 3
+    if args.command == "collection-quality":
+        from .database.integration import database_path
+        from .data_quality.collection import load_run_payload, evaluate_and_persist
+        from .data_quality.repository import DataQualityRepository
+        import yaml
+        path = database_path(cfg)
+        try:
+            if args.cq_action == "history":
+                result = {"metrics": DataQualityRepository(path).get_metrics()}
+                print(json.dumps(result, ensure_ascii=False, default=str)); return 0
+            if not args.run_id:
+                raise ValueError("COLLECTION_RUN_ID_REQUIRED")
+            dq_path = Path(cfg["project_root"]) / "config" / "data_quality.yaml"
+            raw_cfg = yaml.safe_load(dq_path.read_text(encoding="utf-8")) if dq_path.exists() else {}
+            thresholds = (raw_cfg or {}).get("collection_integrity") or {}
+            result = evaluate_and_persist(path, args.run_id, load_run_payload(path, args.run_id), config=thresholds)
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}:{exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+        print(json.dumps(result.as_dict(), ensure_ascii=False, default=str) if args.json else json.dumps({"run_id": result.run_id, "state": result.state, "blockers": result.blockers, "warnings": result.warnings}, ensure_ascii=False))
+        return 0 if result.state in {"COLLECTION_OK", "COLLECTION_WARN"} else 3
     if args.command == "review-queue":
         from .review_queue import ReviewQueueError, build_review_queue, decide_review
         try:

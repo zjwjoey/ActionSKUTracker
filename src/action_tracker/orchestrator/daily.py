@@ -466,7 +466,8 @@ def run_daily(
     }
     if not dry_run:
         if _should_commit(dry_run=dry_run, qa_passed=qa.passed, access_state=presence_access_state,
-                          qa_state=qa.state):
+                          qa_state=qa.state, collection_quality_state=run_report.get("collection_quality_state"),
+                          collection_quality_override=bool(run_report.get("collection_quality_override", False))):
             run_log_row = _run_log_row(run_id, run_date, start_time, counts, qa, dry_run,
                                        sitemap_count=len(sitemap_skus), listing_count=len(today_light))
             commit_status = _commit_phase(
@@ -658,10 +659,13 @@ def _build_lifecycle_events(statuses: dict, run_date: str, run_id: str) -> list[
     return events
 
 
-def _should_commit(dry_run: bool, qa_passed: bool, access_state: str = "NORMAL", qa_state: str = "PASS") -> bool:
+def _should_commit(dry_run: bool, qa_passed: bool, access_state: str = "NORMAL", qa_state: str = "PASS",
+                   collection_quality_state: str | None = None, collection_quality_override: bool = False) -> bool:
     """提交门禁：完整 QA 或受控 Sitemap Presence 回退才可正式提交。"""
     access_ok = access_state == "NORMAL" or qa_state == "PASS_PRESENCE_ONLY"
-    return (not dry_run) and qa_passed and access_ok
+    quality = str(collection_quality_state or "").upper()
+    quality_ok = quality not in {"COLLECTION_BLOCKED"} and not (quality == "COLLECTION_DEGRADED" and not collection_quality_override)
+    return (not dry_run) and qa_passed and access_ok and quality_ok
 
 
 def _commit_phase(

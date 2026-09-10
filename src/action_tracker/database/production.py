@@ -59,6 +59,13 @@ class CommitBundle:
     snapshot_hash: str | None = None
     base_commit_id: str | None = None
     bundle_hash: str | None = None
+    # Data Quality & Integrity V1 is an independent pre-commit signal.  It is
+    # optional for legacy fixtures; when present, the production writer is
+    # forbidden to commit BLOCKED/DEGRADED collections without an explicit
+    # one-shot operator override recorded in the run evidence.
+    collection_quality_state: str | None = None
+    collection_quality_override: bool = False
+    collection_quality_override_evidence: Mapping[str, Any] = field(default_factory=dict)
 
     def resolved_hash(self) -> str:
         if self.bundle_hash:
@@ -80,6 +87,10 @@ class CommitBundle:
             "snapshot_hash": self.snapshot_hash,
             "base_commit_id": self.base_commit_id,
         }
+        if self.collection_quality_state:
+            payload["collection_quality_state"] = self.collection_quality_state
+            payload["collection_quality_override"] = self.collection_quality_override
+            payload["collection_quality_override_evidence"] = self.collection_quality_override_evidence
         encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
 
@@ -109,6 +120,17 @@ class ProductionWriter:
     def commit(self, bundle: CommitBundle) -> str:
         if bundle.qa_state not in {"PASS", "PASS_PRESENCE_ONLY"}:
             raise ProductionDatabaseError("DB_COMMIT_QA_NOT_PASS")
+        quality_state = str(bundle.collection_quality_state or "").upper()
+        if quality_state == "COLLECTION_BLOCKED":
+            raise ProductionDatabaseError("COLLECTION_QUALITY_BLOCKED")
+        if quality_state == "COLLECTION_DEGRADED":
+            if not bundle.collection_quality_override:
+                raise ProductionDatabaseError("COLLECTION_QUALITY_DEGRADED_REQUIRES_OVERRIDE")
+            from ..data_quality.collection.gates import validate_collection_override
+            evidence = dict(bundle.collection_quality_override_evidence or {})
+            expected_metrics_hash = str(bundle.run_record.get("collection_metrics_hash") or "")
+            if not expected_metrics_hash or not validate_collection_override(evidence, run_id=bundle.run_id, metrics_hash=expected_metrics_hash):
+                raise ProductionDatabaseError("COLLECTION_QUALITY_OVERRIDE_INVALID")
         if not bundle.run_id or not bundle.observation_date:
             raise ProductionDatabaseError("DB_COMMIT_RUN_ID_OR_DATE_MISSING")
         now = datetime.now(timezone.utc).isoformat()

@@ -123,12 +123,23 @@ def export_catalog(
     validate_output_rows(rows)
     if research_release:
         from ..localization.release_gate import audit_research_release, load_allowed_tokens, load_explicit_exceptions
+        master_quality = None
+        # SQLite_CURRENT is the formal source path, so every research release
+        # must pass the read-only Master Quality Gate.  Projection fixtures
+        # that do not use SQLite retain the existing pure export contract.
+        if source.kind == "SQLITE_CURRENT":
+            try:
+                from ..data_quality.master_gate import audit_master_quality
+                master_quality = audit_master_quality(_database_path(cfg)).as_dict()
+            except Exception as exc:
+                raise ExportValidationError(f"MASTER_QUALITY_GATE_ERROR:{type(exc).__name__}") from exc
         release = audit_research_release(
             source.records,
             expected_skus={str(r.get("sku") or "") for r in source.records},
             exported_rows=rows,
             allowed_tokens=load_allowed_tokens(Path(cfg["project_root"]) / "data" / "dictionary"),
             explicit_exceptions=load_explicit_exceptions(Path(cfg["project_root"]) / "config" / "research_release_exceptions.json"),
+            master_quality=master_quality,
         )
         if not release.ok:
             first = ",".join(release.issues[:8])
