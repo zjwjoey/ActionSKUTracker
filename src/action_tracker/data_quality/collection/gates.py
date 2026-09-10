@@ -53,6 +53,24 @@ class CollectionQualityResult:
         }
 
 
+def format_collection_quality(result: CollectionQualityResult) -> str:
+    values = {item.metric_name: item.metric_value for item in result.metrics}
+    listing_base = (result.baselines.get("listing_unique") or {}).get("median_7d")
+    return "\n".join((
+        "COLLECTION INTEGRITY", "", f"run: {result.run_id}", f"state: {result.state}", "",
+        f"Listing Unique: {values.get('listing_unique') if values.get('listing_unique') is not None else 'UNAVAILABLE'}",
+        f"7d Median: {listing_base if listing_base is not None else 'UNAVAILABLE'}",
+        f"Categories: {values.get('successful_category_count') if values.get('successful_category_count') is not None else 'UNAVAILABLE'}",
+        f"Price Coverage: {values.get('price_coverage') if values.get('price_coverage') is not None else 'UNAVAILABLE'}",
+        f"Cat2 Coverage: {values.get('cat2_coverage') if values.get('cat2_coverage') is not None else 'UNAVAILABLE'}",
+        f"Description Coverage: {values.get('description_coverage') if values.get('description_coverage') is not None else 'UNAVAILABLE'}",
+        f"Detail Failure Rate: {values.get('detail_failure_rate') if values.get('detail_failure_rate') is not None else 'UNAVAILABLE'}", "",
+        f"Blockers: {', '.join(result.blockers) if result.blockers else '0'}",
+        f"Warnings: {', '.join(result.warnings) if result.warnings else '0'}",
+        f"Drift Issues: {len(result.drift_issues)}", f"COLLECTION_STATE: {result.state}",
+    ))
+
+
 def _value(metrics: Mapping[str, float | None], name: str) -> float | None:
     value = metrics.get(name)
     try:
