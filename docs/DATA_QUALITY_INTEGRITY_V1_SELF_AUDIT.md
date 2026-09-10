@@ -18,6 +18,7 @@ evidence. It is an audit artifact, not a production approval.
 | Historical audit is read-only unless explicit persistence is requested | SQLite `mode=ro` path in `historical/audit.py` | PASS |
 | Idempotent issue and candidate persistence | Repository upserts and idempotency tests | PASS |
 | Review, approval, base-commit, source-hash, rollback and verification gates | `historical/repair.py`; repair workflow tests | PASS |
+| Repair apply actor is independently validated as `human:<id>` and cannot equal any candidate reviewer; failed batches mutate zero rows | `historical/repair.py`; same-actor and zero-mutation regression test | PASS |
 | PRIMARY repair apply is forbidden during V1 development | `_assert_not_primary()` and fixture-only adapter test | PASS |
 | Deterministic read-only Master Quality Gate | `data_quality/master_gate.py`; clean/dirty fixture tests | PASS |
 | Required Master blockers and visible warning categories | `MasterQualityResult`, `format_master_quality()` | PASS |
@@ -25,6 +26,8 @@ evidence. It is an audit artifact, not a production approval.
 | Per-run collection metrics with explicit UNAVAILABLE values | `collection/metrics.py`; metric persistence tests | PASS |
 | Per-category counts and category completion evidence | `category_1_count` scoped metrics; daily run report integration | PASS |
 | Healthy previous/7-day/30-day baselines; unhealthy runs excluded | `collection/baseline.py`; baseline tests | PASS |
+| QA FAIL and explicit `baseline_eligible=false` collection runs are excluded while legacy evidence remains compatible | `collection/gates.py`, `collection/baseline.py`; QA-fail baseline test | PASS |
+| Collection metrics hash is deterministic across SQLite numeric round-trips and retry timestamps | `collection/metrics.py`; retry/persisted-hash regression test | PASS |
 | Persisted baseline and delta fields | `collection/gates.py`; persistence test | PASS |
 | COLLECTION_OK/WARN/DEGRADED/BLOCKED states | `collection/gates.py`; collection tests | PASS |
 | BLOCKED/degraded commit policy and bounded override | `ProductionWriter`, `validate_collection_override()` and gate tests | PASS |
@@ -33,8 +36,9 @@ evidence. It is an audit artifact, not a production approval.
 | Existing Presence/Lifecycle core remains unchanged | No edits to monitor/lifecycle decision modules; full regression | PASS |
 | Required CLI surface | `cli.py`; `--help` checks for audit/repair/master/collection commands | PASS |
 | New test module is CI-safe allowlisted | `tests/ci_safe_tests.txt`; allowlist test and exact local allowlist run | PASS |
-| Full local regression | `python -m pytest -q` → 505 passed | PASS |
-| Exact local CI-safe suite | `tests/ci_safe_tests.txt` → 505 passed | PASS |
+| Full local regression | `python -m pytest -q` → 517 passed | PASS |
+| Exact local CI-safe suite | `tests/ci_safe_tests.txt` → 517 passed | PASS |
+| Production writer verifies required metrics, one state marker, state equality, marker hash and recomputed persisted hash in one transaction | `database/production.py`; metric/state/missing-marker tamper tests | PASS |
 | Real PRIMARY read-only audit | Prior audit: 5,536 current records, release-ready, file hash/mtime unchanged, writes 0 | PASS (read-only) |
 | Ubuntu/Windows exact-head GitHub Actions | Run `34430477401` on code/test head `55f4440`; Ubuntu PASS, Windows PASS. Documentation head `31925cf` also passed in run `34430661088` on both OSes | PASS |
 | Merge/push/production activation | Feature branch pushed; merge and production activation remain intentionally unperformed | PUSH PASS; MERGE/PRODUCTION PENDING |
@@ -51,5 +55,6 @@ production data or runtime state is part of this worktree.
 
 ## Decision
 
-Implementation, local self-audit, branch push, and exact-head CI are complete.
-Merge and production activation remain outside this V1 development task.
+Implementation and local self-audit are complete for the current hotfix. The
+current hotfix changes are not yet pushed or covered by exact-head GitHub CI;
+merge and production activation remain outside this development task.

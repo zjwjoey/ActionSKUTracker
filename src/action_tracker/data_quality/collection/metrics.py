@@ -11,9 +11,10 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import sqlite3
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
-from ..contracts import CollectionMetric
+from ..contracts import CollectionMetric, canonical_json
+import hashlib
 
 BASE_METRICS = (
     "sitemap_unique", "listing_unique", "current_valid", "nuevo_count", "promotion_count",
@@ -22,6 +23,67 @@ BASE_METRICS = (
     "detail_failure_rate", "original_price_equals_current_ratio", "ui_contamination_rate",
     "html_contamination_rate", "listing_page_count", "successful_category_count",
 )
+
+
+def _metric_hash_payload(metric: CollectionMetric | Mapping[str, Any]) -> dict[str, Any]:
+    """Return only semantic fields used to identify collection evidence.
+
+    ``created_at`` and ``metric_id`` are persistence/audit metadata.  Including
+    either would make an identical retry look like different evidence.
+    Persisted rows store ``evidence`` as JSON text, so both object and row
+    inputs are normalized through the same path.
+    """
+    if isinstance(metric, CollectionMetric):
+        row = metric.as_dict()
+    else:
+        row = dict(metric)
+    evidence: Any = row.get("evidence")
+    if evidence is None:
+        evidence = row.get("evidence_json")
+    if isinstance(evidence, str):
+        try:
+            evidence = json.loads(evidence)
+        except (TypeError, ValueError):
+            evidence = {"_invalid_evidence_json": evidence}
+    if not isinstance(evidence, Mapping):
+        evidence = {}
+    def numeric(value: Any) -> Any:
+        # SQLite returns REAL columns as floats even when the source payload
+        # used an integer.  Normalize both representations before hashing so
+        # a retry and its persisted round-trip have identical evidence.
+        if value is None or isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return float(value)
+        try:
+            return float(str(value))
+        except (TypeError, ValueError):
+            return value
+
+    return {
+        "run_id": str(row.get("run_id") or ""),
+        "metric_name": str(row.get("metric_name") or ""),
+        "metric_scope": str(row.get("metric_scope") or ""),
+        "metric_value": numeric(row.get("metric_value")),
+        "numerator": numeric(row.get("numerator")),
+        "denominator": numeric(row.get("denominator")),
+        "baseline_7d": numeric(row.get("baseline_7d")),
+        "baseline_30d": numeric(row.get("baseline_30d")),
+        "delta_7d": numeric(row.get("delta_7d")),
+        "delta_30d": numeric(row.get("delta_30d")),
+        "gate_status": str(row.get("gate_status") or ""),
+        "evidence": dict(evidence),
+        "observation_date": str(row.get("observation_date") or ""),
+    }
+
+
+def collection_metrics_hash(metrics: Iterable[CollectionMetric | Mapping[str, Any]]) -> str:
+    """Hash semantic collection metrics deterministically across retries."""
+    payload = sorted(
+        (_metric_hash_payload(metric) for metric in metrics),
+        key=lambda row: (row["run_id"], row["metric_name"], row["metric_scope"]),
+    )
+    return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 
 
 def _now() -> str:

@@ -149,30 +149,20 @@ class ProductionWriter:
         commit_id = f"{bundle.observation_date}_{bundle.run_id}_{bundle.resolved_hash()[:12]}"
         with connect(self.path) as db:
             self._check_identity(db)
-            existing = db.execute("SELECT commit_id FROM commit_batches WHERE run_id=?", (bundle.run_id,)).fetchone()
-            if existing:
-                if existing[0] != commit_id:
-                    raise ProductionDatabaseError("DB_COMMIT_RUN_ALREADY_EXISTS_WITH_DIFFERENT_BUNDLE")
-                return str(existing[0])
-            latest = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC LIMIT 1").fetchone()
-            latest_id = str(latest[0]) if latest else None
-            if bundle.requires_collection_integrity:
-                required = ("listing_unique", "current_valid", "successful_category_count")
-                try:
-                    rows = db.execute(
-                        "SELECT metric_name,metric_value,gate_status FROM collection_quality_metrics WHERE run_id=?",
-                        (bundle.run_id,),
-                    ).fetchall()
-                except sqlite3.OperationalError as exc:
-                    raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING") from exc
-                values = {str(row[0]): row for row in rows}
-                missing = [name for name in required if name not in values or values[name][1] is None or str(values[name][2]).upper() == "UNAVAILABLE"]
-                if missing:
-                    raise ProductionDatabaseError("COLLECTION_REQUIRED_METRIC_MISSING:" + ",".join(missing))
-            if bundle.base_commit_id is not None and bundle.base_commit_id != latest_id:
-                raise ProductionDatabaseError("BASELINE_CHANGED_BEFORE_COMMIT")
             try:
                 db.execute("BEGIN IMMEDIATE")
+                existing = db.execute("SELECT commit_id FROM commit_batches WHERE run_id=?", (bundle.run_id,)).fetchone()
+                if existing:
+                    if existing[0] != commit_id:
+                        raise ProductionDatabaseError("DB_COMMIT_RUN_ALREADY_EXISTS_WITH_DIFFERENT_BUNDLE")
+                    db.commit()
+                    return str(existing[0])
+                latest = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC LIMIT 1").fetchone()
+                latest_id = str(latest[0]) if latest else None
+                if bundle.requires_collection_integrity:
+                    self._validate_collection_quality_evidence(db, bundle)
+                if bundle.base_commit_id is not None and bundle.base_commit_id != latest_id:
+                    raise ProductionDatabaseError("BASELINE_CHANGED_BEFORE_COMMIT")
                 self._validate_localization_coverage(db, bundle)
                 self._insert_run(db, bundle, now)
                 self._upsert_products(db, bundle.current_products, commit_id, now)
@@ -205,6 +195,66 @@ class ProductionWriter:
                 db.rollback()
                 raise
         return commit_id
+
+    def _validate_collection_quality_evidence(self, db: sqlite3.Connection, bundle: CommitBundle) -> None:
+        """Bind the commit to the exact persisted collection-quality evidence.
+
+        The evaluator owns calculation and persistence.  The writer only
+        verifies, inside its transaction, that the required rows, state marker
+        and deterministic semantic hash still agree with the commit bundle.
+        """
+        from ..data_quality.collection.metrics import collection_metrics_hash
+
+        try:
+            rows = [dict(row) for row in db.execute(
+                "SELECT * FROM collection_quality_metrics WHERE run_id=? ORDER BY metric_name,metric_scope",
+                (bundle.run_id,),
+            ).fetchall()]
+        except sqlite3.OperationalError as exc:
+            raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING") from exc
+
+        required = ("listing_unique", "current_valid", "successful_category_count")
+        values = {str(row.get("metric_name") or ""): row for row in rows}
+        missing = [
+            name for name in required
+            if name not in values
+            or values[name].get("metric_value") is None
+            or str(values[name].get("gate_status") or "").upper() == "UNAVAILABLE"
+        ]
+        if missing:
+            raise ProductionDatabaseError("COLLECTION_REQUIRED_METRIC_MISSING:" + ",".join(missing))
+
+        state_rows = [row for row in rows if str(row.get("metric_name") or "") == "__collection_state"]
+        if not state_rows:
+            raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING")
+        if len(state_rows) != 1:
+            raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MULTIPLE_STATE_MARKERS")
+        state_row = state_rows[0]
+        expected_state = str(bundle.collection_quality_state or "").upper()
+        persisted_states = [
+            str(state_row.get("metric_scope") or "").upper(),
+            str(state_row.get("metric_value") or "").upper(),
+            str(state_row.get("gate_status") or "").upper(),
+        ]
+        if not expected_state or any(value and value != expected_state for value in persisted_states):
+            raise ProductionDatabaseError("COLLECTION_QUALITY_STATE_MISMATCH")
+
+        raw_evidence = state_row.get("evidence_json")
+        try:
+            marker_evidence = json.loads(raw_evidence or "{}") if isinstance(raw_evidence, str) else raw_evidence
+        except (TypeError, ValueError) as exc:
+            raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING") from exc
+        if not isinstance(marker_evidence, Mapping):
+            raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING")
+        expected_hash = str(bundle.run_record.get("collection_metrics_hash") or "").strip()
+        marker_hash = str(marker_evidence.get("metrics_hash") or "").strip()
+        if not expected_hash or not marker_hash:
+            raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING")
+        if marker_hash != expected_hash:
+            raise ProductionDatabaseError("COLLECTION_QUALITY_HASH_MISMATCH")
+        persisted_hash = collection_metrics_hash(row for row in rows if str(row.get("metric_name") or "") != "__collection_state")
+        if persisted_hash != expected_hash:
+            raise ProductionDatabaseError("COLLECTION_QUALITY_HASH_MISMATCH")
 
     def _validate_localization_coverage(self, db: sqlite3.Connection, bundle: CommitBundle) -> None:
         """Reject catastrophic localization coverage loss before any write.

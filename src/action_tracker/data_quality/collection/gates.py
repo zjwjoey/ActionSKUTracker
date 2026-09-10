@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import hashlib
 from pathlib import Path
 from typing import Any, Mapping
 
-from ..contracts import COLLECTION_STATES, CollectionMetric, DataQualityIssue, IssueScope, canonical_json
+from ..contracts import COLLECTION_STATES, CollectionMetric, DataQualityIssue, IssueScope
 from ..repository import DataQualityRepository
 from .baseline import calculate_baselines
 from .drift import detect_schema_drift
-from .metrics import build_collection_metrics
+from .metrics import build_collection_metrics, collection_metrics_hash
 
 DEFAULTS: dict[str, Any] = {
     "required_categories": 15, "listing_warn_drop_pct": 8.0, "listing_block_drop_pct": 15.0,
@@ -40,8 +39,7 @@ class CollectionQualityResult:
 
     @property
     def metrics_hash(self) -> str:
-        payload = [metric.as_dict() for metric in sorted(self.metrics, key=lambda item: (item.metric_name, item.metric_scope or ""))]
-        return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
+        return collection_metrics_hash(self.metrics)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -172,9 +170,16 @@ def evaluate_and_persist(db_path: Path, run_id: str, payload: Mapping[str, Any],
         run_id, metrics, history=history, config=config,
         observation_date=str(payload.get("observation_date") or payload.get("run_date") or "") or None,
     )
+    qa_state = str(payload.get("qa_state") or "").upper()
+    baseline_eligible = (
+        qa_state in {"PASS", "PASS_PRESENCE_ONLY"}
+        and result.state in {"COLLECTION_OK", "COLLECTION_WARN"}
+    )
     state_metric = CollectionMetric(run_id=run_id, metric_name="__collection_state", metric_scope=result.state,
                                     metric_value=None, gate_status=result.state,
-                                    evidence={"blockers": list(result.blockers), "warnings": list(result.warnings), "metrics_hash": result.metrics_hash},
+                                    evidence={"blockers": list(result.blockers), "warnings": list(result.warnings),
+                                              "metrics_hash": result.metrics_hash, "qa_state": qa_state,
+                                              "baseline_eligible": baseline_eligible},
                                     observation_date=str(payload.get("observation_date") or payload.get("run_date") or "") or None)
     # Persist the result's enriched rows so the selected healthy baselines and
     # deltas are not lost between evaluation and the audit trail.

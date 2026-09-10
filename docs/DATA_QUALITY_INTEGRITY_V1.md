@@ -24,7 +24,9 @@ validation are required before the fixture-only apply adapter can run. Review
 and apply identities are separate (`human:<id>` reviewer plus an independent
 apply actor); fixture apply is recorded as `FIXTURE_APPLIED` with no formal
 commit ID. Formal correction preparation emits immutable localization patches
-or an official-fact correction bundle and never writes PRIMARY.
+or an official-fact correction bundle and never writes PRIMARY. The apply actor
+is independently validated as `human:<id>`, and a batch is rejected before any
+mutation when it is missing a reviewer or shares the reviewer's identity.
 
 Issue routing is explicit: direct field correction, official text correction,
 localization patch, category backlog, identity review, archive review, or no
@@ -80,7 +82,13 @@ Baselines use the explicit observation/run date, exclude the current date,
 choose the last healthy run for each calendar day, and exclude unhealthy runs
 from the 7-day/30-day windows. Missing required metrics are fail-closed for a
 daily collection (`COLLECTION_BLOCKED`); non-collection correction bundles can
-explicitly opt out of this gate.
+explicitly opt out of this gate. The persisted `__collection_state` marker
+records uppercase `qa_state` and `baseline_eligible`; QA FAIL is therefore
+excluded even when the collection state itself is otherwise healthy.
+Collection evidence hashes use only stable semantic fields (with numeric
+SQLite round-trip normalization), and the production writer verifies the
+required metrics, current state marker, marker hash and recomputed persisted
+hash inside one `BEGIN IMMEDIATE` transaction.
 
 ```powershell
 python -m action_tracker collection-quality --run-id <run> --json

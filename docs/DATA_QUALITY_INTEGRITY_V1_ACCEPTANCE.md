@@ -8,6 +8,24 @@
 This draft is generated on the isolated feature worktree. It is not a merge or
 production approval.
 
+## Current final merge-blocker hotfix verification
+
+The current working tree contains the final three blocker fixes: an explicit
+human-only repair applier with reviewer/applier separation, QA-aware baseline
+eligibility, and deterministic persisted collection-evidence state/hash
+binding inside the writer transaction. Local validation is complete:
+
+```text
+full regression: 517 passed
+CI-safe allowlist: 517 passed
+compileall: PASS
+git diff --check: PASS
+exact-head GitHub CI for this unpushed hotfix: NOT RUN
+```
+
+The feature branch remains unmerged. A push and exact-head GitHub CI run are
+separate release actions requiring explicit authorization.
+
 ```text
 DATA QUALITY & INTEGRITY V1
 

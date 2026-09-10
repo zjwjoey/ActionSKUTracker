@@ -40,6 +40,32 @@ def _date_value(row: Mapping[str, Any]) -> date | None:
             return None
 
 
+def _evidence_object(row: Mapping[str, Any]) -> Mapping[str, Any]:
+    evidence = row.get("evidence_json") or row.get("evidence")
+    if isinstance(evidence, str):
+        try:
+            evidence = json.loads(evidence)
+        except (TypeError, ValueError):
+            return {}
+    return evidence if isinstance(evidence, Mapping) else {}
+
+
+def _run_is_baseline_ineligible(row: Mapping[str, Any]) -> bool:
+    """Apply V1 eligibility while preserving legacy rows without evidence."""
+    if str(row.get("metric_name") or "") != "__collection_state":
+        return False
+    state = str(row.get("metric_scope") or row.get("metric_value") or row.get("gate_status") or "").upper()
+    if state in {"COLLECTION_DEGRADED", "COLLECTION_BLOCKED"}:
+        return True
+    evidence = _evidence_object(row)
+    if "baseline_eligible" in evidence and evidence.get("baseline_eligible") is not True:
+        return True
+    qa_state = str(evidence.get("qa_state") or "").upper()
+    if qa_state and qa_state not in {"PASS", "PASS_PRESENCE_ONLY"}:
+        return True
+    return False
+
+
 def calculate_baselines(
     rows: Iterable[Mapping[str, Any]],
     *,
@@ -54,12 +80,7 @@ def calculate_baselines(
     """
     values = [dict(row) for row in rows]
     values.sort(key=lambda row: (str(_date_value(row) or ""), str(row.get("created_at") or ""), str(row.get("run_id") or "")))
-    unhealthy = {
-        str(row.get("run_id")) for row in values
-        if str(row.get("metric_name")) == "__collection_state"
-        and str(row.get("metric_scope") or row.get("metric_value") or "").upper()
-        in {"COLLECTION_DEGRADED", "COLLECTION_BLOCKED"}
-    }
+    unhealthy = {str(row.get("run_id")) for row in values if _run_is_baseline_ineligible(row)}
     row_dates = [_date_value(row) for row in values]
     formal_dates = any(row.get("observation_date") or row.get("run_date") for row in values)
     if as_of is not None:

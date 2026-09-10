@@ -31,6 +31,19 @@ class RepairError(RuntimeError):
     pass
 
 
+def validate_repair_apply_actor(actor: str) -> str:
+    """Validate the human actor that applies an already reviewed fixture batch.
+
+    Approval and application are separate authority boundaries.  V1 only
+    permits a named human actor here; service/system/model identities must not
+    be able to apply a historical repair batch.
+    """
+    normalized = str(actor or "").strip()
+    if normalized.startswith("human:") and normalized[len("human:"):].strip():
+        return normalized
+    raise RepairError("REPAIR_APPLIER_NOT_AUTHORIZED")
+
+
 ROUTE_DIRECT = "DIRECT_FIELD_CORRECTION"
 ROUTE_TEXT = "OFFICIAL_TEXT_CORRECTION"
 ROUTE_PATCH = "LOCALIZATION_PATCH"
@@ -242,10 +255,7 @@ def apply_repair_batch(db_path: Path, batch_id: str, *, commit: bool = False,
     """
     if not commit:
         return {"repair_batch_id": batch_id, "status": "DRY_RUN"}
-    try:
-        apply_actor = validate_patch_approval_actor(actor)
-    except ImmutablePatchError as exc:
-        raise RepairError(str(exc)) from exc
+    apply_actor = validate_repair_apply_actor(actor)
     path = Path(db_path); repo = DataQualityRepository(path)
     with connect(path) as db:
         _assert_not_primary(db)
@@ -258,6 +268,14 @@ def apply_repair_batch(db_path: Path, batch_id: str, *, commit: bool = False,
         candidates = [dict(row) for row in db.execute("SELECT * FROM repair_candidates WHERE repair_batch_id=?", (batch_id,)).fetchall()]
         if not candidates: raise RepairError("REPAIR_CANDIDATES_MISSING")
         if any(str(row.get("candidate_status")) != "APPROVED" for row in candidates): raise RepairError("REPAIR_APPROVAL_REQUIRED")
+        # Check every reviewer before opening the mutation section.  A failed
+        # separation check must leave the whole batch untouched.
+        for candidate in candidates:
+            reviewer = str(candidate.get("reviewed_by") or "").strip()
+            if not reviewer:
+                raise RepairError("REPAIR_REVIEWER_MISSING")
+            if reviewer == apply_actor:
+                raise RepairError("REPAIR_REVIEWER_APPLIER_NOT_SEPARATE")
         applied = 0; now = now_utc()
         try:
             tables = {str(row[0]) for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}

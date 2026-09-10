@@ -10,7 +10,7 @@ from action_tracker.database.connection import connect
 from action_tracker.database.integration import commit_daily_bundle
 from action_tracker.database.production import CommitBundle, ProductionDatabaseError
 from action_tracker.database.schema import migrate_v2
-from action_tracker.data_quality.collection import build_collection_metrics, evaluate_collection, evaluate_and_persist, validate_collection_override
+from action_tracker.data_quality.collection import build_collection_metrics, collection_metrics_hash, evaluate_collection, evaluate_and_persist, validate_collection_override
 from action_tracker.data_quality.collection.gates import collection_commit_allowed
 from action_tracker.data_quality.contracts import DataQualityIssue, issue_id
 from action_tracker.data_quality.historical import audit_history, approve_candidate, apply_repair_batch, build_repair_candidates, prepare_formal_correction, verify_repair_batch, write_repair_preview
@@ -130,7 +130,7 @@ def test_repair_without_source_evidence_is_blocked(tmp_path: Path):
         db.execute("UPDATE repair_candidates SET source_hash=NULL WHERE candidate_id=?", (candidate["candidate_id"],))
     approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
     with pytest.raises(Exception, match="SOURCE_HASH_REQUIRED"):
-        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:bob")
 
 
 def test_approved_repair_applies_only_to_fixture_and_verifies(tmp_path: Path):
@@ -141,18 +141,39 @@ def test_approved_repair_applies_only_to_fixture_and_verifies(tmp_path: Path):
     candidates = DataQualityRepository(path).candidates(result["repair_batch_id"])
     for candidate in candidates:
         approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
-    applied = apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
+    applied = apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:bob")
     assert applied["status"] == "FIXTURE_APPLIED"
     assert applied["result_commit_id"] is None
     with connect(path) as db:
         row = db.execute("SELECT issue_id,candidate_status,reviewed_by,applied_by FROM repair_candidates WHERE repair_batch_id=?", (result["repair_batch_id"],)).fetchone()
         assert row[2] == "human:alice"
-        assert row[3] == "human:alice"
+        assert row[3] == "human:bob"
+        assert row[2] != row[3]
         assert db.execute("SELECT status FROM data_quality_issues WHERE issue_id=?", (row[0],)).fetchone()[0] != "RESOLVED"
     verified = verify_repair_batch(path, result["repair_batch_id"])
     assert verified["status"] == "VERIFIED"
     with connect(path) as db:
         assert db.execute("SELECT original_price FROM products WHERE official_sku='1001'").fetchone()[0] is None
+
+
+def test_repair_rejects_reviewer_and_applier_with_same_identity(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE products SET original_price=current_price WHERE official_sku='1001'")
+    result = build_repair_candidates(path)
+    candidate = DataQualityRepository(path).candidates(result["repair_batch_id"])[0]
+    approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
+    with pytest.raises(Exception, match="REPAIR_REVIEWER_APPLIER_NOT_SEPARATE"):
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
+    with connect(path) as db:
+        product = db.execute("SELECT original_price FROM products WHERE official_sku='1001'").fetchone()
+        row = db.execute("SELECT candidate_status,reviewed_by,applied_by,applied_at FROM repair_candidates WHERE candidate_id=?", (candidate["candidate_id"],)).fetchone()
+        batch = db.execute("SELECT status FROM repair_batches WHERE repair_batch_id=?", (result["repair_batch_id"],)).fetchone()
+        assert product[0] == 1.0
+        assert row[0] == "APPROVED"
+        assert row[1] == "human:alice"
+        assert row[2] is None and row[3] is None
+        assert batch[0] != "APPLIED"
 
 
 def test_category_issue_is_routed_to_backlog_without_repair_candidate(tmp_path: Path):
@@ -202,7 +223,7 @@ def test_source_hash_change_blocks_repair_and_preview_is_deterministic(tmp_path:
         db.execute("UPDATE repair_candidates SET source_hash='expected-hash' WHERE candidate_id=?", (candidate["candidate_id"],))
     approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
     with pytest.raises(Exception, match="SOURCE_HASH_MISMATCH"):
-        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:bob")
 
 
 def test_repair_partial_failure_rolls_back_all_fixture_changes(tmp_path: Path):
@@ -221,7 +242,7 @@ def test_repair_partial_failure_rolls_back_all_fixture_changes(tmp_path: Path):
     with connect(path) as db:
         db.execute("DELETE FROM products WHERE official_sku=?", (missing_sku,))
     with pytest.raises(Exception, match="SOURCE_HASH_MISMATCH"):
-        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:bob")
     with connect(path) as db:
         assert db.execute("SELECT original_price FROM products WHERE official_sku='1001'").fetchone()[0] == 1.0
     assert all(item["candidate_status"] == "APPROVED" for item in DataQualityRepository(path).candidates(result["repair_batch_id"]))
@@ -236,7 +257,7 @@ def test_primary_repair_is_forbidden(tmp_path: Path):
     for candidate in DataQualityRepository(path).candidates(result["repair_batch_id"]):
         approve_candidate(path, candidate["candidate_id"], reviewer="human:alice")
     with pytest.raises(Exception, match="REAL_PRIMARY_WRITE_FORBIDDEN"):
-        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:alice")
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human:bob")
 
 
 def test_master_quality_clean_fixture_is_release_ready(tmp_path: Path):
@@ -385,7 +406,7 @@ def test_primary_commit_evaluates_collection_integrity_before_write(tmp_path: Pa
     healthy = {"sitemap_unique": 100, "listing_unique": 100, "current_valid": 100,
                "price_coverage": 1.0, "cat2_coverage": 1.0, "description_coverage": 1.0,
                "category_coverage": {f"cat-{i}": True for i in range(15)}}
-    first_quality = evaluate_and_persist(db_path, "r1", {**healthy, "run_date": "2026-09-10"})
+    first_quality = evaluate_and_persist(db_path, "r1", {**healthy, "run_date": "2026-09-10", "qa_state": "PASS"})
     healthy_with_quality = {**healthy, "collection_quality_state": first_quality.state,
                             "collection_metrics_hash": first_quality.metrics_hash}
     first = CommitBundle(run_id="r1", observation_date="2026-09-10", qa_state="PASS", run_record=healthy_with_quality,
@@ -393,7 +414,7 @@ def test_primary_commit_evaluates_collection_integrity_before_write(tmp_path: Pa
                          requires_collection_integrity=True)
     commit_daily_bundle(cfg, first, mode="SQLITE_PRIMARY")
     degraded = {**healthy, "sitemap_unique": 70, "listing_unique": 70, "current_valid": 70}
-    second_quality = evaluate_and_persist(db_path, "r2", {**degraded, "run_date": "2026-09-11"})
+    second_quality = evaluate_and_persist(db_path, "r2", {**degraded, "run_date": "2026-09-11", "qa_state": "PASS"})
     degraded_with_quality = {**degraded, "collection_quality_state": second_quality.state,
                              "collection_metrics_hash": second_quality.metrics_hash}
     second = CommitBundle(run_id="r2", observation_date="2026-09-11", qa_state="PASS", run_record=degraded_with_quality,
@@ -447,6 +468,70 @@ def test_calendar_baseline_excludes_current_day_and_uses_last_healthy_run_per_da
     assert result["listing_unique"]["previous"] == 120
     assert result["listing_unique"]["median_7d"] == 120
     assert result["listing_unique"]["median_30d"] == 120
+
+
+def test_qa_fail_runs_are_excluded_from_baseline_even_when_collection_is_ok():
+    from action_tracker.data_quality.collection.baseline import calculate_baselines
+    rows = [
+        {"run_id": "good", "metric_name": "__collection_state", "metric_scope": "COLLECTION_OK", "gate_status": "COLLECTION_OK",
+         "evidence_json": json.dumps({"qa_state": "PASS", "baseline_eligible": True}), "observation_date": "2026-09-08"},
+        {"run_id": "good", "metric_name": "listing_unique", "metric_value": 100, "gate_status": "OK", "observation_date": "2026-09-08"},
+        {"run_id": "qa-fail", "metric_name": "__collection_state", "metric_scope": "COLLECTION_OK", "gate_status": "COLLECTION_OK",
+         "evidence_json": json.dumps({"qa_state": "FAIL", "baseline_eligible": False}), "observation_date": "2026-09-09"},
+        {"run_id": "qa-fail", "metric_name": "listing_unique", "metric_value": 1, "gate_status": "OK", "observation_date": "2026-09-09"},
+        {"run_id": "current", "metric_name": "listing_unique", "metric_value": 999, "gate_status": "OK", "observation_date": "2026-09-10"},
+    ]
+    result = calculate_baselines(rows, as_of="2026-09-10")
+    assert result["listing_unique"]["previous"] == 100
+    assert result["listing_unique"]["median_7d"] == 100
+    assert result["listing_unique"]["median_30d"] == 100
+
+
+def test_collection_metrics_hash_is_retry_stable_and_matches_persisted_rows(tmp_path: Path):
+    path = _db(tmp_path)
+    payload = {"listing_unique": 80, "current_valid": 80, "category_coverage": {f"cat-{i}": True for i in range(15)},
+               "observation_date": "2026-09-10", "qa_state": "PASS"}
+    first = evaluate_and_persist(path, "retry-hash", payload)
+    second = evaluate_and_persist(path, "retry-hash", payload)
+    assert first.metrics_hash == second.metrics_hash
+    persisted = DataQualityRepository(path).get_metrics("retry-hash")
+    assert collection_metrics_hash(row for row in persisted if row["metric_name"] != "__collection_state") == first.metrics_hash
+
+    altered = [metric.as_dict() for metric in first.metrics]
+    altered[0]["created_at"] = "2099-01-01T00:00:00+00:00"
+    assert collection_metrics_hash(altered) == first.metrics_hash
+
+
+@pytest.mark.parametrize(
+    ("tamper", "expected"),
+    (("metric", "COLLECTION_QUALITY_HASH_MISMATCH"),
+     ("state", "COLLECTION_QUALITY_STATE_MISMATCH"),
+     ("marker", "COLLECTION_QUALITY_EVIDENCE_MISSING")),
+)
+def test_primary_writer_binds_persisted_collection_evidence(tmp_path: Path, tamper: str, expected: str):
+    db_path = tmp_path / f"{tamper}.db"
+    cfg = {"project_root": tmp_path, "storage": {"mode": "SQLITE_PRIMARY", "db_path": db_path}}
+    migrate_v2(db_path, role="PRIMARY")
+    payload = {"listing_unique": 100, "current_valid": 100,
+               "category_coverage": {f"cat-{i}": True for i in range(15)},
+               "observation_date": "2026-09-10", "qa_state": "PASS"}
+    quality = evaluate_and_persist(db_path, "bind", payload)
+    bundle = CommitBundle(
+        run_id="bind", observation_date="2026-09-10", qa_state="PASS",
+        run_record={"collection_metrics_hash": quality.metrics_hash},
+        collection_quality_state=quality.state, requires_collection_integrity=True,
+    )
+    with connect(db_path) as db:
+        if tamper == "metric":
+            db.execute("UPDATE collection_quality_metrics SET metric_value=999 WHERE run_id='bind' AND metric_name='listing_unique'")
+        elif tamper == "state":
+            db.execute("UPDATE collection_quality_metrics SET metric_scope='COLLECTION_BLOCKED' WHERE run_id='bind' AND metric_name='__collection_state'")
+        else:
+            db.execute("DELETE FROM collection_quality_metrics WHERE run_id='bind' AND metric_name='__collection_state'")
+    with pytest.raises(ProductionDatabaseError, match=expected):
+        commit_daily_bundle(cfg, bundle, mode="SQLITE_PRIMARY")
+    with connect(db_path) as db:
+        assert db.execute("SELECT COUNT(*) FROM commit_batches WHERE run_id='bind'").fetchone()[0] == 0
 
 
 def test_collection_override_is_bounded_and_auditable():

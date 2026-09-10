@@ -17,7 +17,10 @@ permission to merge, push, run extraction, or write the production PRIMARY.
   category backlog; identity/orphan findings remain review/archive queues; only
   explicitly executable corrections become candidates.
 - Reviewer approval requires `human:<id>`. Apply and verify actors are stored
-  separately from reviewer identity (`applied_by/at`, `verified_by/at`).
+  separately from reviewer identity (`applied_by/at`, `verified_by/at`). The
+  fixture applier is independently validated as `human:<id>` and every
+  approved candidate must have a non-empty reviewer different from the apply
+  actor; the complete batch fails closed before mutation otherwise.
 - Fixture apply is `FIXTURE_APPLIED`, keeps `result_commit_id` null, and cannot
   write a PRIMARY database. Formal preparation emits immutable localization
   patches or an official-fact correction bundle only after approval.
@@ -29,7 +32,14 @@ permission to merge, push, run extraction, or write the production PRIMARY.
   correction bundles can explicitly opt out.
 - Baselines use calendar observation/run dates, exclude the current day, pick
   the last healthy run per day, and exclude unhealthy runs from 7/30-day
-  windows.
+  windows. Persisted `__collection_state` evidence records uppercase
+  `qa_state` and `baseline_eligible`; QA FAIL and ineligible runs cannot enter
+  a baseline while legacy rows without these fields remain compatible.
+- Collection metric hashes are deterministic semantic snapshots: numeric
+  values are normalized across SQLite round-trips and persistence metadata is
+  excluded. The production writer verifies required metrics, exactly one
+  current state marker, marker hash, and a recomputed persisted hash inside
+  `BEGIN IMMEDIATE`; it never recalculates collection quality.
 - The daily orchestrator evaluates collection quality once before commit; the
   bundle writer validates persisted evidence and does not recalculate it.
 
@@ -39,12 +49,16 @@ The following checks are required at this head:
 
 ```text
 python -m compileall -q src       PASS
-python -m pytest -q               511 passed
-CI-safe allowlist                 511 passed
+python -m pytest -q               517 passed
+CI-safe allowlist                 517 passed
 git diff --check                  PASS
 ```
 
-Local implementation commit:
+The local full regression is `517 passed`; the CI-safe allowlist is rerun as a
+separate exact command before release. Exact-head GitHub CI for this unpushed
+working tree is intentionally not claimed here.
+
+Local implementation commit (pre-hotfix history):
 
 ```text
 80da3981f2b7635f2ea4cd09265a45d558a78e75
@@ -52,9 +66,10 @@ Local implementation commit:
 
 The test suite includes regression coverage for the historical `source_hash`
 ordering bug, shared promotion semantics, routing counts/backlog behavior,
-reviewer/applier separation, fixture/formal repair separation, CURRENT scope,
-calendar baselines, required-metric fail-closed behavior, and pre-commit
-collection orchestration.
+reviewer/applier separation (including same-actor rejection and zero
+mutation), fixture/formal repair separation, CURRENT scope, QA-aware calendar
+baselines, retry-stable metric hashes, persisted state/hash tamper rejection,
+required-metric fail-closed behavior, and pre-commit collection orchestration.
 
 ## Explicit non-goals
 
