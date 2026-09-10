@@ -31,7 +31,7 @@ evidence. It is an audit artifact, not a production approval.
 | Full local regression | `python -m pytest -q` → 500 passed | PASS |
 | Exact local CI-safe suite | `tests/ci_safe_tests.txt` → 500 passed | PASS |
 | Real PRIMARY read-only audit | Prior audit: 5,536 current records, release-ready, file hash/mtime unchanged, writes 0 | PASS (read-only) |
-| Ubuntu/Windows exact-head GitHub Actions | Branch has not been pushed; no exact-head run exists | UNVERIFIED |
+| Ubuntu/Windows exact-head GitHub Actions | Actual branch push has not been performed; non-mutating push dry-run succeeded, but no exact-head run exists | UNVERIFIED |
 | Merge/push/production activation | Explicitly not performed by design | PENDING AUTHORIZATION |
 
 ## Current validation heads
