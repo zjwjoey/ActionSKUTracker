@@ -31,8 +31,8 @@ evidence. It is an audit artifact, not a production approval.
 | Full local regression | `python -m pytest -q` → 505 passed | PASS |
 | Exact local CI-safe suite | `tests/ci_safe_tests.txt` → 505 passed | PASS |
 | Real PRIMARY read-only audit | Prior audit: 5,536 current records, release-ready, file hash/mtime unchanged, writes 0 | PASS (read-only) |
-| Ubuntu/Windows exact-head GitHub Actions | Actual branch push has not been performed; non-mutating push dry-run succeeded, but no exact-head run exists | UNVERIFIED |
-| Merge/push/production activation | Explicitly not performed by design | PENDING AUTHORIZATION |
+| Ubuntu/Windows exact-head GitHub Actions | Run `34430477401` on exact head `55f4440`; Ubuntu PASS, Windows PASS | PASS |
+| Merge/push/production activation | Feature branch pushed; merge and production activation remain intentionally unperformed | PUSH PASS; MERGE/PRODUCTION PENDING |
 
 ## Current validation heads
 
@@ -46,6 +46,5 @@ production data or runtime state is part of this worktree.
 
 ## Decision
 
-Implementation and local self-audit are complete. Final release acceptance is
-not yet claimable until the feature branch is explicitly pushed and the
-Ubuntu/Windows exact-head CI results are available.
+Implementation, local self-audit, branch push, and exact-head CI are complete.
+Merge and production activation remain outside this V1 development task.
