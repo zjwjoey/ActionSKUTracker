@@ -287,6 +287,17 @@ def test_collection_metrics_persist_healthy_baselines_and_deltas(tmp_path: Path)
     assert row["delta_30d"] == -20.0
 
 
+def test_collection_retry_does_not_use_same_run_as_its_own_baseline(tmp_path: Path):
+    path = _db(tmp_path)
+    repo = DataQualityRepository(path)
+    repo.save_metrics(build_collection_metrics("old", {"listing_unique": 100}))
+    first = evaluate_and_persist(path, "retry", {"listing_unique": 80})
+    second = evaluate_and_persist(path, "retry", {"listing_unique": 80})
+    assert first.baselines["listing_unique"] == second.baselines["listing_unique"]
+    row = next(item for item in repo.get_metrics("retry") if item["metric_name"] == "listing_unique")
+    assert row["baseline_7d"] == 100.0
+
+
 def test_master_quality_is_a_research_release_prerequisite():
     result = audit_research_release([], expected_skus=set(), master_quality={"release_ready": False})
     assert not result.ok

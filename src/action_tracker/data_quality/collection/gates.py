@@ -165,7 +165,9 @@ def evaluate_collection(run_id: str, metrics: list[CollectionMetric], *, history
 def evaluate_and_persist(db_path: Path, run_id: str, payload: Mapping[str, Any], *, config: Mapping[str, Any] | None = None) -> CollectionQualityResult:
     repo = DataQualityRepository(Path(db_path))
     metrics = build_collection_metrics(run_id, payload)
-    history = repo.get_metrics()
+    # A retry of the same run must not use its previously persisted rows as a
+    # healthy baseline.  Baselines are strictly prior-run evidence.
+    history = [row for row in repo.get_metrics() if str(row.get("run_id") or "") != str(run_id)]
     result = evaluate_collection(run_id, metrics, history=history, config=config)
     state_metric = CollectionMetric(run_id=run_id, metric_name="__collection_state", metric_scope=result.state,
                                     metric_value=None, gate_status=result.state, evidence={"blockers": list(result.blockers), "warnings": list(result.warnings), "metrics_hash": result.metrics_hash})
