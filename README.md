@@ -59,6 +59,7 @@ Master / State
 - [Data Quality & Integrity V1](docs/DATA_QUALITY_INTEGRITY_V1.md)
 - [Data Quality & Integrity V1 Plan](docs/DATA_QUALITY_INTEGRITY_V1_PLAN.md)
 - [Data Quality & Integrity V1 Acceptance Draft](docs/DATA_QUALITY_INTEGRITY_V1_ACCEPTANCE.md)
+- [Data Quality & Integrity V1 Self-Audit](docs/DATA_QUALITY_INTEGRITY_V1_SELF_AUDIT.md)
 
 ## 快速使用
 
