@@ -8,7 +8,7 @@ DATA QUALITY & INTEGRITY V1
 
 branch: feat/data-quality-integrity-v1
 base_main: e8c1a16 (local main at worktree creation)
-head: 3fa3bf95f0308753722012e355bfb7c6dbe74b3d
+head: 8539545d56ec3c3af5279871c15faa0bdd4cad8c
 
 MODULE A — Historical Master Repair
 issues_supported: 8 initial issue types
