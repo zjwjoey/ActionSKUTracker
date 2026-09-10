@@ -39,9 +39,15 @@ The following checks are required at this head:
 
 ```text
 python -m compileall -q src       PASS
-python -m pytest -q               PASS
-CI-safe allowlist                 PASS
+python -m pytest -q               511 passed
+CI-safe allowlist                 511 passed
 git diff --check                  PASS
+```
+
+Local implementation commit:
+
+```text
+80da3981f2b7635f2ea4cd09265a45d558a78e75
 ```
 
 The test suite includes regression coverage for the historical `source_hash`
