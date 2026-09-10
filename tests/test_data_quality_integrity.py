@@ -77,6 +77,19 @@ def test_repair_candidates_are_idempotent_and_require_approval(tmp_path: Path):
     assert all(candidate["candidate_status"] == "REVIEW_REQUIRED" for candidate in candidates)
 
 
+def test_repair_without_source_evidence_is_blocked(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE products SET original_price=current_price WHERE official_sku='1001'")
+    result = build_repair_candidates(path)
+    candidate = DataQualityRepository(path).candidates(result["repair_batch_id"])[0]
+    with connect(path) as db:
+        db.execute("UPDATE repair_candidates SET source_hash=NULL WHERE candidate_id=?", (candidate["candidate_id"],))
+    approve_candidate(path, candidate["candidate_id"], reviewer="human")
+    with pytest.raises(Exception, match="SOURCE_HASH_REQUIRED"):
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human")
+
+
 def test_approved_repair_applies_only_to_fixture_and_verifies(tmp_path: Path):
     path = _db(tmp_path)
     with connect(path) as db:
@@ -115,6 +128,28 @@ def test_source_hash_change_blocks_repair_and_preview_is_deterministic(tmp_path:
     approve_candidate(path, candidate["candidate_id"], reviewer="human")
     with pytest.raises(Exception, match="SOURCE_HASH_MISMATCH"):
         apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human")
+
+
+def test_repair_partial_failure_rolls_back_all_fixture_changes(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE products SET original_price=current_price WHERE official_sku='1001'")
+        db.execute("INSERT INTO products(canonical_id,official_sku,name_es,name_zh,current_price,original_price,source_hash,status,product_url,image_url) VALUES('ACT1002','1002','Producto2','商品2',2.0,2.0,'product-source-2','CURRENT','https://example/1002','https://example/image2')")
+    result = build_repair_candidates(path)
+    candidates = DataQualityRepository(path).candidates(result["repair_batch_id"])
+    assert len(candidates) == 2
+    for candidate in candidates:
+        approve_candidate(path, candidate["candidate_id"], reviewer="human")
+    # Remove the later target so the first update is attempted and the second
+    # fails; the transaction must restore the first product and statuses.
+    missing_sku = candidates[-1]["official_sku"]
+    with connect(path) as db:
+        db.execute("DELETE FROM products WHERE official_sku=?", (missing_sku,))
+    with pytest.raises(Exception, match="SOURCE_HASH_MISMATCH"):
+        apply_repair_batch(path, result["repair_batch_id"], commit=True, actor="human")
+    with connect(path) as db:
+        assert db.execute("SELECT original_price FROM products WHERE official_sku='1001'").fetchone()[0] == 1.0
+    assert all(item["candidate_status"] == "APPROVED" for item in DataQualityRepository(path).candidates(result["repair_batch_id"]))
 
 
 def test_primary_repair_is_forbidden(tmp_path: Path):
