@@ -75,7 +75,10 @@ class DataQualityRepository:
                      baseline_30d=excluded.baseline_30d,delta_7d=excluded.delta_7d,
                      delta_30d=excluded.delta_30d,gate_status=excluded.gate_status,
                      evidence_json=excluded.evidence_json""",
-                    (d["metric_id"], d["run_id"], d["metric_name"], d["metric_scope"], d["metric_value"],
+                    # SQLite treats NULLs as distinct in UNIQUE constraints;
+                    # normalize the optional scope to an empty key so reruns
+                    # of the same run/metric really are idempotent.
+                    (d["metric_id"], d["run_id"], d["metric_name"], d["metric_scope"] or "", d["metric_value"],
                      d["numerator"], d["denominator"], d["baseline_7d"], d["baseline_30d"],
                      d["delta_7d"], d["delta_30d"], d["gate_status"], d["evidence_json"],
                      d["created_at"] or now_utc()),

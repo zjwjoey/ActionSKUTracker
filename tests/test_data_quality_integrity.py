@@ -150,6 +150,15 @@ def test_collection_healthy_run_is_ok():
     assert result.commit_allowed
 
 
+def test_collection_metric_persistence_is_idempotent(tmp_path: Path):
+    path = _db(tmp_path)
+    repo = DataQualityRepository(path)
+    metrics = build_collection_metrics("r1", {"listing_unique": 10})
+    repo.save_metrics(metrics)
+    repo.save_metrics(metrics)
+    assert len(repo.get_metrics("r1")) == len(metrics)
+
+
 def test_collection_category_and_listing_drop_is_blocked():
     baseline = build_collection_metrics("old", {"listing_unique": 100, "current_valid": 100, "cat2_coverage": 1.0, "description_coverage": 1.0, "category_coverage": {f"cat-{i}": True for i in range(15)}})
     current = build_collection_metrics("new", {"listing_unique": 79, "current_valid": 79, "cat2_coverage": 0.80, "description_coverage": 0.70, "category_coverage": {f"cat-{i}": i < 14 for i in range(15)}})
