@@ -23,8 +23,9 @@ git diff --check: PASS
 exact-head GitHub CI for this unpushed hotfix: NOT RUN
 ```
 
-The feature branch remains unmerged. A push and exact-head GitHub CI run are
-separate release actions requiring explicit authorization.
+The feature branch remains unmerged. Current hotfix commit:
+`896e1eb1e2d0d74cbe0d609fd36c8e8a803ffcf8`. A push and exact-head GitHub CI
+run are separate release actions requiring explicit authorization.
 
 ```text
 DATA QUALITY & INTEGRITY V1
