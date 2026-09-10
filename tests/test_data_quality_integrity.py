@@ -63,6 +63,18 @@ def test_historical_audit_detects_fixture_issues_and_is_idempotent(tmp_path: Pat
     assert len(DataQualityRepository(path).list_issues()) == len(first.issues)
 
 
+def test_historical_audit_keeps_unresolved_synthetic_identity_unresolved(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run) VALUES('archive-run','2026-01-01','SUCCESS','PASS',1)")
+        db.execute(
+            "INSERT INTO source_records(source_record_id,run_id,source_name,official_sku,payload_json) VALUES(?,?,?,?,?)",
+            ("archive-1", "archive-run", "legacy", None, json.dumps({"canonical_id": "ACT-SYNTH-1", "name": "legacy"})),
+        )
+    result = audit_history(path)
+    assert any(issue.issue_type == "UNRESOLVED_HISTORICAL_IDENTITY" for issue in result.issues)
+
+
 def test_repair_candidates_are_idempotent_and_require_approval(tmp_path: Path):
     path = _db(tmp_path)
     with connect(path) as db:
@@ -177,6 +189,21 @@ def test_master_quality_dirty_fixture_is_blocked(tmp_path: Path):
     assert result.counts["FIELD_PROVENANCE_MISSING"] == 1
 
 
+def test_master_quality_blocks_text_and_orphan_history_but_keeps_category_warning_nonblocking(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE product_localizations SET details='<p>bad</p>' WHERE official_sku='1001' AND language='es'")
+        db.execute("INSERT INTO price_history(canonical_id,official_sku,observed_at,new_price,change_type) VALUES('X','ORPHAN','2026-01-01',1,'DOWN')")
+        db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('X','ORPHAN','2026-01-01','FIRST_SEEN')")
+        db.execute("UPDATE product_localizations SET cat2='' WHERE official_sku='1001' AND language='zh'")
+    result = audit_master_quality(path)
+    assert result.release_ready is False
+    assert result.counts["HTML_CONTAMINATION"] == 1
+    assert result.counts["ORPHAN_FORMAL_PRICE_HISTORY"] == 1
+    assert result.counts["ORPHAN_FORMAL_EVENT_HISTORY"] == 1
+    assert result.counts["CATEGORY_MISSING"] == 1
+
+
 def test_collection_healthy_run_is_ok():
     payload = {
         "sitemap_unique": 100, "listing_unique": 100, "current_valid": 100,
@@ -287,6 +314,17 @@ def test_collection_category_and_listing_drop_is_blocked():
     assert result.state == "COLLECTION_BLOCKED"
     assert any("CATEGORY_SUCCESS" in item for item in result.blockers)
     assert result.drift_issues
+
+
+def test_collection_semantic_drift_types_are_emitted():
+    from action_tracker.data_quality.collection.drift import detect_schema_drift
+    issues = detect_schema_drift(
+        {"original_price_equals_current_ratio": 0.95, "ui_contamination_rate": 0.02, "html_contamination_rate": 0.03},
+        {}, run_id="r-semantic",
+    )
+    assert {issue.issue_type for issue in issues} == {
+        "PRICE_SCHEMA_DRIFT", "UI_CONTAMINATION_DRIFT", "HTML_CONTAMINATION_DRIFT",
+    }
 
 
 def test_degraded_runs_are_excluded_from_baseline():
