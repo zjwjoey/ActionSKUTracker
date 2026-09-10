@@ -110,6 +110,12 @@ def evaluate_collection(run_id: str, metrics: list[CollectionMetric], *, history
     values = {metric.metric_name: metric.metric_value for metric in metrics}
     baselines = calculate_baselines(history or [])
     blockers: list[str] = []; warnings: list[str] = []
+    # A legacy bundle may not expose all collection evidence yet.  Preserve
+    # the value as UNAVAILABLE, but make the uncertainty visible instead of
+    # presenting an evidence-free run as COLLECTION_OK.
+    for required_metric in ("listing_unique", "current_valid", "successful_category_count"):
+        if _value(values, required_metric) is None:
+            warnings.append(f"{required_metric.upper()}:UNAVAILABLE")
     categories = _value(values, "successful_category_count")
     required = int(cfg["required_categories"])
     if categories is not None and categories < required:

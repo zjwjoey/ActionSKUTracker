@@ -188,6 +188,13 @@ def test_collection_healthy_run_is_ok():
     assert result.commit_allowed
 
 
+def test_collection_missing_core_metrics_is_visible_warning_not_false_ok():
+    result = evaluate_collection("r-unavailable", build_collection_metrics("r-unavailable", {}))
+    assert result.state == "COLLECTION_WARN"
+    assert "LISTING_UNIQUE:UNAVAILABLE" in result.warnings
+    assert "SUCCESSFUL_CATEGORY_COUNT:UNAVAILABLE" in result.warnings
+
+
 def test_collection_preserves_per_category_counts_without_fabricating_missing_values():
     metrics = build_collection_metrics(
         "r-counts",
