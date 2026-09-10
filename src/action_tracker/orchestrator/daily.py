@@ -14,7 +14,7 @@ import hashlib
 from dataclasses import asdict
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from .. import state as st
 from ..excel import reader as excel_reader
@@ -229,6 +229,11 @@ def run_daily(
         category: valid for category, valid in category_coverage.items()
         if category not in {listing_mod.CATEGORY_LABELS["nuevo"], listing_mod.CATEGORY_LABELS["promocion-semanal"]}
     }
+    category_1_count = {
+        listing_mod.CATEGORY_LABELS.get(category, category): len(items)
+        for category, items in listing_map.items()
+        if category not in {"nuevo", "promocion-semanal"}
+    }
     # Freeze the authoritative Presence gate before Detail starts.  Detail is
     # enrichment and must never retroactively invalidate a complete listing.
     presence_access_state = access.state.value
@@ -411,6 +416,7 @@ def run_daily(
                              access_state=access.state.value, access_report=access.report(),
                              presence_access_state=presence_access_state,
                              presence_mode=presence_mode,
+                             category_1_count=category_1_count,
                              sitemap_count=len(sitemap_skus), listing_count=len(today_light),
                              sitemap_only=len(set(sitemap_skus) - set(today_light)),
                              listing_only=len(set(today_light) - set(sitemap_skus)),
@@ -427,6 +433,7 @@ def run_daily(
                                  "nuevo_present": s.nuevo_present, "promotion_present": s.promotion_present,
                                  "observation_valid": s.observation_valid} for s in statuses.values()],
         "coverage": primary_coverage,
+        "category_1_count": category_1_count,
         "site_structure": {**site_structure, "run_id": run_id, "observation_date": run_date,
                            "access_state": str(access.state), "access_events": access.events, **access.report()},
         "run_manifest": {
@@ -476,7 +483,7 @@ def run_daily(
                 today_records=today_records, price_events=price_events, event_events=event_events,
                 run_log_row=run_log_row, review_rows=review_rows,
                 baseline=baseline, today_set=today_set, observation_complete=observation_complete,
-                snapshot_path=snap_dir, sqlite_diagnostics=sqlite_diagnostics)
+                snapshot_path=snap_dir, sqlite_diagnostics=sqlite_diagnostics, run_report=run_report)
         else:
             commit_status = "QA_FAIL"
             log.error("QA 未通过（%s），禁止写 Master / known_skus / offline_skus", qa.state)
@@ -581,6 +588,7 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
                 detail_evidence: list[dict] | None = None, access_state: str = "NORMAL",
                 access_report: dict | None = None, presence_access_state: str = "NORMAL",
                 presence_mode: str = "FULL",
+                category_1_count: dict[str, int] | None = None,
                 sitemap_count: int = 0, listing_count: int = 0,
                 sitemap_only: int = 0, listing_only: int = 0, both_sources: int = 0) -> dict:
     from .. import __version__
@@ -616,6 +624,7 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "observation_complete": observation_complete,
         "presence_mode": presence_mode,
         "category_coverage": category_coverage,
+        "category_1_count": dict(category_1_count or {}),
         "detail_planned": detail_planned,
         "detail_completed": detail_completed,
         "detail_incomplete": max(0, detail_planned - detail_completed),
@@ -681,6 +690,7 @@ def _commit_phase(
     event_events: list[dict],
     run_log_row: dict,
     review_rows: list[dict],
+    run_report: Mapping[str, Any] | None = None,
     baseline: dict[str, dict] | None = None,
     today_set: set[str] | None = None,
     observation_complete: bool = True,
@@ -721,7 +731,8 @@ def _commit_phase(
                 today_records=today_records, baseline=baseline, statuses=statuses, known=known,
                 transition=transition, today_set=today_set, observation_complete=observation_complete,
                 price_events=price_events, event_events=event_events, review_rows=review_rows,
-                run_record={"dry_run": False, "started_at": run_log_row.get("开始时间"),
+                run_record={**dict(run_report or {}), "dry_run": False,
+                            "started_at": run_log_row.get("开始时间"),
                             "finished_at": run_log_row.get("结束时间"), "run_log": run_log_row},
                 snapshot_path=snapshot_path,
             )
