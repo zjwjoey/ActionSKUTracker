@@ -137,6 +137,13 @@ def evaluate_collection(run_id: str, metrics: list[CollectionMetric], *, history
         elif failure > float(cfg["detail_failure_warn_above"]): warnings.append(f"DETAIL_FAILURE_RATE:{failure:.4f}")
     current_plain = {name: value for name, value in values.items()}
     drift_cfg = dict(cfg.get("drift") or {})
+    source_hashes = dict(drift_cfg.get("source_hashes") or {})
+    for metric in metrics:
+        evidence = dict(metric.evidence or {})
+        if evidence.get("source_hash"):
+            source_hashes.setdefault(metric.metric_name, str(evidence["source_hash"]))
+    if source_hashes:
+        drift_cfg["source_hashes"] = source_hashes
     drift_cfg.setdefault("coverage_drop_points", cfg["coverage_block_drop_points"])
     drift = detect_schema_drift(current_plain, baselines, run_id=run_id, config=drift_cfg)
     if drift:

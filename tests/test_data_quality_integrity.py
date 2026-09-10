@@ -216,6 +216,22 @@ def test_schema_drift_evidence_contains_full_baseline_context():
     assert evidence["sample_skus"] == ["1001"]
 
 
+def test_schema_drift_carries_metric_source_hash_when_available():
+    metrics = build_collection_metrics(
+        "r-hash",
+        {"cat2_coverage": 0.70, "source_hashes": {"cat2_coverage": "run-hash"}},
+    )
+    result = evaluate_collection(
+        "r-hash", metrics,
+        history=[
+            {"run_id": "old", "metric_name": "cat2_coverage", "metric_scope": "", "metric_value": 0.95, "gate_status": "OK"},
+        ],
+    )
+    assert result.drift_issues
+    assert result.drift_issues[0].source_hash == "run-hash"
+    assert result.drift_issues[0].evidence["source_hash"] == "run-hash"
+
+
 def test_collection_metric_persistence_is_idempotent(tmp_path: Path):
     path = _db(tmp_path)
     repo = DataQualityRepository(path)

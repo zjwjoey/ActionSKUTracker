@@ -73,6 +73,17 @@ def build_collection_metrics(run_id: str, payload: Mapping[str, Any]) -> list[Co
     """Convert a run report into deterministic metric records."""
     metrics: list[CollectionMetric] = []
     created = _now()
+    run_source_hash = payload.get("source_hash") or payload.get("collection_source_hash")
+    source_hashes = payload.get("source_hashes")
+
+    def metric_evidence(name: str) -> dict[str, Any]:
+        evidence: dict[str, Any] = {"source": "run_evidence"}
+        if run_source_hash:
+            evidence["source_hash"] = str(run_source_hash)
+        if isinstance(source_hashes, Mapping) and source_hashes.get(name):
+            evidence["source_hash"] = str(source_hashes[name])
+        return evidence
+
     raw_category_coverage = payload.get("category_coverage")
     if raw_category_coverage is None:
         raw_category_coverage = payload.get("categories")
@@ -90,7 +101,7 @@ def build_collection_metrics(run_id: str, payload: Mapping[str, Any]) -> list[Co
         metrics.append(CollectionMetric(
             run_id=run_id, metric_name=name, metric_scope=None,
             metric_value=value, numerator=numerator, denominator=denominator,
-            gate_status="UNAVAILABLE" if value is None else "OK", evidence={"source": "run_evidence"}, created_at=created,
+            gate_status="UNAVAILABLE" if value is None else "OK", evidence=metric_evidence(name), created_at=created,
         ))
     if isinstance(category_coverage, Mapping):
         for category, value in sorted(category_coverage.items(), key=lambda item: str(item[0])):
