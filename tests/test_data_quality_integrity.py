@@ -188,6 +188,34 @@ def test_collection_healthy_run_is_ok():
     assert result.commit_allowed
 
 
+def test_collection_preserves_per_category_counts_without_fabricating_missing_values():
+    metrics = build_collection_metrics(
+        "r-counts",
+        {"category_coverage": {"cat-a": True}, "category_1_count": {"cat-a": 12, "cat-b": None}},
+    )
+    counts = {(item.metric_name, item.metric_scope): item for item in metrics if item.metric_name == "category_1_count"}
+    assert counts[("category_1_count", "cat-a")].metric_value == 12
+    assert counts[("category_1_count", "cat-a")].gate_status == "OK"
+    assert counts[("category_1_count", "cat-b")].metric_value is None
+    assert counts[("category_1_count", "cat-b")].gate_status == "UNAVAILABLE"
+
+
+def test_schema_drift_evidence_contains_full_baseline_context():
+    from action_tracker.data_quality.collection.drift import detect_schema_drift
+    result = detect_schema_drift(
+        {"cat2_coverage": 0.70},
+        {"cat2_coverage": {"previous": 0.95, "median_7d": 0.94, "median_30d": 0.93}},
+        run_id="r-drift",
+        sample_skus={"cat2_coverage": ["1001"]},
+    )
+    assert result
+    evidence = result[0].evidence
+    assert evidence["previous_valid"] == 0.95
+    assert evidence["baseline_7d"] == 0.94
+    assert evidence["baseline_30d"] == 0.93
+    assert evidence["sample_skus"] == ["1001"]
+
+
 def test_collection_metric_persistence_is_idempotent(tmp_path: Path):
     path = _db(tmp_path)
     repo = DataQualityRepository(path)

@@ -100,6 +100,23 @@ def build_collection_metrics(run_id: str, payload: Mapping[str, Any]) -> list[Co
                 metric_value=numeric, numerator=numeric, denominator=1.0,
                 gate_status="OK" if numeric else "BLOCKED", evidence={"source": "category_coverage"}, created_at=created,
             ))
+    # Some collection adapters expose the number of listing records per
+    # category separately from the boolean completion map.  Preserve those
+    # fifteen (or whatever the configured site exposes) counts as scoped
+    # metrics when present; an absent map remains unavailable rather than
+    # being replaced by fabricated zeros.
+    raw_category_counts = payload.get("category_1_count")
+    if raw_category_counts is None:
+        raw_category_counts = payload.get("category_counts")
+    if isinstance(raw_category_counts, Mapping):
+        for category, raw_count in sorted(raw_category_counts.items(), key=lambda item: str(item[0])):
+            count = _number(raw_count)
+            metrics.append(CollectionMetric(
+                run_id=run_id, metric_name="category_1_count", metric_scope=str(category),
+                metric_value=count, numerator=count, denominator=1.0 if count is not None else None,
+                gate_status="UNAVAILABLE" if count is None else "OK",
+                evidence={"source": "category_counts"}, created_at=created,
+            ))
     # This marker lets baseline.py exclude a degraded/blocked run without a
     # second state table; it is metadata, not a product fact.
     return metrics
