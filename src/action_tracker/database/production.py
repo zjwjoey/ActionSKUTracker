@@ -155,6 +155,8 @@ class ProductionWriter:
                 if existing:
                     if existing[0] != commit_id:
                         raise ProductionDatabaseError("DB_COMMIT_RUN_ALREADY_EXISTS_WITH_DIFFERENT_BUNDLE")
+                    if bundle.requires_collection_integrity:
+                        self._validate_collection_quality_evidence(db, bundle)
                     db.commit()
                     return str(existing[0])
                 latest = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC LIMIT 1").fetchone()
