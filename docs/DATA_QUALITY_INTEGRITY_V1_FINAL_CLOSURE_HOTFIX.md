@@ -70,6 +70,12 @@ Current final merge-blocker hotfix commit:
 896e1eb1e2d0d74cbe0d609fd36c8e8a803ffcf8
 ```
 
+Follow-up retry-binding fix:
+
+```text
+610c637
+```
+
 The test suite includes regression coverage for the historical `source_hash`
 ordering bug, shared promotion semantics, routing counts/backlog behavior,
 reviewer/applier separation (including same-actor rejection and zero
