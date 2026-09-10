@@ -8,7 +8,7 @@ DATA QUALITY & INTEGRITY V1
 
 branch: feat/data-quality-integrity-v1
 base_main: e8c1a16 (local main at worktree creation)
-head: pending local commit
+head: 5326e2fb082cbc28e0339ad751adb3839505ab01
 
 MODULE A — Historical Master Repair
 issues_supported: 8 initial issue types
@@ -54,8 +54,12 @@ Ubuntu: NOT RUN
 Windows: NOT RUN
 
 REAL PRIMARY READ-ONLY AUDIT
-integrity: not run against production; only synthetic fixtures used
-issue_count: not applicable
+database: F:\\ActionSKUTracker\\runtime\\db\\action_tracker.db
+master_quality: PASS / RELEASE_READY
+current_records_checked: 5536
+master_warnings: CATEGORY_MISSING=25, DESCRIPTION_OR_DETAILS_MISSING=3
+historical_audit: 26 CATEGORY_MISSING (warnings only)
+file_hash_and_mtime_unchanged: YES
 writes: 0
 
 FINAL
@@ -66,4 +70,3 @@ READY_FOR_REVIEW
 Before merge, run the CI workflow against this exact feature HEAD and attach
 the Ubuntu and Windows results to this document. Do not merge, push, apply a
 repair, or run a real daily extraction as part of this acceptance draft.
-
