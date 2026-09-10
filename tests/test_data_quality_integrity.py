@@ -10,7 +10,7 @@ from action_tracker.database.connection import connect
 from action_tracker.database.integration import commit_daily_bundle
 from action_tracker.database.production import CommitBundle, ProductionDatabaseError
 from action_tracker.database.schema import migrate_v2
-from action_tracker.data_quality.collection import build_collection_metrics, evaluate_collection, validate_collection_override
+from action_tracker.data_quality.collection import build_collection_metrics, evaluate_collection, evaluate_and_persist, validate_collection_override
 from action_tracker.data_quality.collection.gates import collection_commit_allowed
 from action_tracker.data_quality.contracts import DataQualityIssue, issue_id
 from action_tracker.data_quality.historical import audit_history, approve_candidate, apply_repair_batch, build_repair_candidates, verify_repair_batch, write_repair_preview
@@ -223,6 +223,18 @@ def test_collection_metric_persistence_is_idempotent(tmp_path: Path):
     repo.save_metrics(metrics)
     repo.save_metrics(metrics)
     assert len(repo.get_metrics("r1")) == len(metrics)
+
+
+def test_collection_metrics_persist_healthy_baselines_and_deltas(tmp_path: Path):
+    path = _db(tmp_path)
+    repo = DataQualityRepository(path)
+    repo.save_metrics(build_collection_metrics("old", {"listing_unique": 100}))
+    evaluate_and_persist(path, "new", {"listing_unique": 80})
+    row = next(item for item in repo.get_metrics("new") if item["metric_name"] == "listing_unique")
+    assert row["baseline_7d"] == 100.0
+    assert row["baseline_30d"] == 100.0
+    assert row["delta_7d"] == -20.0
+    assert row["delta_30d"] == -20.0
 
 
 def test_master_quality_is_a_research_release_prerequisite():

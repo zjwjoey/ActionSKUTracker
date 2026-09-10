@@ -79,6 +79,31 @@ def _value(metrics: Mapping[str, float | None], name: str) -> float | None:
         return None
 
 
+def _with_baselines(metrics: list[CollectionMetric], baselines: Mapping[str, Mapping[str, Any]]) -> tuple[CollectionMetric, ...]:
+    """Bind the selected healthy baselines to the persisted metric rows."""
+    enriched: list[CollectionMetric] = []
+    for metric in metrics:
+        entry = baselines.get(metric.metric_name) or {}
+        try:
+            baseline_7d = float(entry["median_7d"]) if entry.get("median_7d") is not None else None
+        except (TypeError, ValueError):
+            baseline_7d = None
+        try:
+            baseline_30d = float(entry["median_30d"]) if entry.get("median_30d") is not None else None
+        except (TypeError, ValueError):
+            baseline_30d = None
+        delta_7d = metric.metric_value - baseline_7d if metric.metric_value is not None and baseline_7d is not None else None
+        delta_30d = metric.metric_value - baseline_30d if metric.metric_value is not None and baseline_30d is not None else None
+        enriched.append(CollectionMetric(
+            run_id=metric.run_id, metric_name=metric.metric_name, metric_scope=metric.metric_scope,
+            metric_value=metric.metric_value, numerator=metric.numerator, denominator=metric.denominator,
+            baseline_7d=baseline_7d, baseline_30d=baseline_30d,
+            delta_7d=delta_7d, delta_30d=delta_30d, gate_status=metric.gate_status,
+            evidence=metric.evidence, metric_id=metric.metric_id, created_at=metric.created_at,
+        ))
+    return tuple(enriched)
+
+
 def evaluate_collection(run_id: str, metrics: list[CollectionMetric], *, history: list[Mapping[str, Any]] | None = None,
                         config: Mapping[str, Any] | None = None) -> CollectionQualityResult:
     cfg = dict(DEFAULTS); cfg.update(config or {})
@@ -120,7 +145,8 @@ def evaluate_collection(run_id: str, metrics: list[CollectionMetric], *, history
     elif drift or any("DROP" in item for item in warnings): state = "COLLECTION_DEGRADED"
     elif warnings: state = "COLLECTION_WARN"
     else: state = "COLLECTION_OK"
-    return CollectionQualityResult(run_id, state, tuple(metrics), baselines, tuple(blockers), tuple(warnings), tuple(drift))
+    return CollectionQualityResult(run_id, state, _with_baselines(metrics, baselines), baselines,
+                                   tuple(blockers), tuple(warnings), tuple(drift))
 
 
 def evaluate_and_persist(db_path: Path, run_id: str, payload: Mapping[str, Any], *, config: Mapping[str, Any] | None = None) -> CollectionQualityResult:
@@ -130,7 +156,9 @@ def evaluate_and_persist(db_path: Path, run_id: str, payload: Mapping[str, Any],
     result = evaluate_collection(run_id, metrics, history=history, config=config)
     state_metric = CollectionMetric(run_id=run_id, metric_name="__collection_state", metric_scope=result.state,
                                     metric_value=None, gate_status=result.state, evidence={"blockers": list(result.blockers), "warnings": list(result.warnings), "metrics_hash": result.metrics_hash})
-    repo.save_metrics([*metrics, state_metric])
+    # Persist the result's enriched rows so the selected healthy baselines and
+    # deltas are not lost between evaluation and the audit trail.
+    repo.save_metrics([*result.metrics, state_metric])
     repo.save_issues(result.drift_issues)
     return result
 
