@@ -240,6 +240,7 @@ def verify_repair_batch(db_path: Path, batch_id: str) -> dict[str, Any]:
     candidates = repo.candidates(batch_id)
     failures: list[str] = []
     with connect(path) as db:
+        tables = {str(row[0]) for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         for candidate in candidates:
             if candidate.get("candidate_status") != "APPLIED":
                 failures.append(f"NOT_APPLIED:{candidate['candidate_id']}")
@@ -247,6 +248,29 @@ def verify_repair_batch(db_path: Path, batch_id: str) -> dict[str, Any]:
             issue = db.execute("SELECT status FROM data_quality_issues WHERE issue_id=?", (candidate["issue_id"],)).fetchone()
             if not issue or str(issue[0]) != "RESOLVED":
                 failures.append(f"ISSUE_NOT_RESOLVED:{candidate['issue_id']}")
+                continue
+            issue_type_row = db.execute("SELECT issue_type FROM data_quality_issues WHERE issue_id=?", (candidate["issue_id"],)).fetchone()
+            issue_type = str(issue_type_row[0]) if issue_type_row else ""
+            sku = str(candidate.get("official_sku") or "")
+            proposed = candidate.get("proposed_value")
+            if issue_type == "INVALID_ORIGINAL_PRICE" and "products" in tables:
+                row = db.execute("SELECT original_price FROM products WHERE official_sku=?", (sku,)).fetchone()
+                actual = row[0] if row else None
+                if actual != (None if proposed in (None, "") else float(proposed)):
+                    failures.append(f"VALUE_MISMATCH:{candidate['candidate_id']}")
+            elif candidate.get("field_name"):
+                field = str(candidate["field_name"])
+                actual = None
+                if "product_localizations" in tables:
+                    columns = {str(item[1]) for item in db.execute("PRAGMA table_info(product_localizations)").fetchall()}
+                    if field in columns:
+                        row = db.execute(f"SELECT {field} FROM product_localizations WHERE official_sku=? AND language='es'", (sku,)).fetchone()
+                        actual = row[0] if row else None
+                if actual is None and "localization_fields" in tables:
+                    row = db.execute("SELECT value FROM localization_fields WHERE official_sku=? AND language='es' AND field_name=?", (sku, field)).fetchone()
+                    actual = row[0] if row else None
+                if str(actual or "") != str(proposed or ""):
+                    failures.append(f"VALUE_MISMATCH:{candidate['candidate_id']}")
     status = "VERIFIED" if not failures and candidates else "FAILED"
     repo.update_batch(batch_id, verification_status=status, status=status)
     return {"repair_batch_id": batch_id, "status": status, "candidate_count": len(candidates), "failures": failures}

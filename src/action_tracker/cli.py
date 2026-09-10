@@ -146,6 +146,8 @@ def build_parser() -> argparse.ArgumentParser:
     rb.add_argument("--output", help="写出 CSV/JSON 人工审核预览")
     rs = dq_sub.add_parser("repair-status", help="查看修复批次")
     rs.add_argument("--batch-id", required=True)
+    rap = dq_sub.add_parser("repair-approve", help="人工批准或拒绝修复候选")
+    rap.add_argument("--candidate-id", required=True); rap.add_argument("--reviewer", required=True); rap.add_argument("--reject", action="store_true")
     rv = dq_sub.add_parser("repair-verify", help="验证已应用修复")
     rv.add_argument("--batch-id", required=True)
     ra = dq_sub.add_parser("repair-apply", help="fixture-only 显式应用已批准候选")
@@ -531,6 +533,8 @@ def main(argv=None) -> int:
             elif args.data_quality_command == "repair-status":
                 repo = DataQualityRepository(db_path)
                 result = {"batch": repo.batch(args.batch_id), "candidates": repo.candidates(args.batch_id)}
+            elif args.data_quality_command == "repair-approve":
+                result = approve_candidate(db_path, args.candidate_id, reviewer=args.reviewer, approved=not args.reject)
             elif args.data_quality_command == "repair-verify":
                 result = verify_repair_batch(db_path, args.batch_id)
             else:

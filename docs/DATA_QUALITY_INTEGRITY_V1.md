@@ -26,6 +26,8 @@ validation are required before the fixture-only apply adapter can run.
 python -m action_tracker data-quality audit-history
 python -m action_tracker data-quality repair-build --output repair-preview.json
 python -m action_tracker data-quality repair-status --batch-id <batch>
+python -m action_tracker data-quality repair-approve --candidate-id <candidate> --reviewer <actor>
+python -m action_tracker data-quality repair-apply --batch-id <batch> --commit --actor <actor>
 python -m action_tracker data-quality repair-verify --batch-id <batch>
 ```
 
@@ -68,4 +70,3 @@ This V1 feature branch does not run production extraction, does not write the
 real SQLite PRIMARY, does not apply historical repair to production, and does
 not enable AI, Qwen, localization Apply or auto approval. Merge and push are
 deliberate release actions after human review and exact-head CI.
-
