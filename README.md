@@ -21,6 +21,8 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 - Workspace 支持关键词、状态、价格、图片和促销筛选；Saved View 提供显式更新/删除 API。
 - Windows 计划任务注册脚本：`scripts/register_action_tracker_task.ps1`（需管理员 PowerShell）。
 - Saved View CLI：`saved-view create/list/update/delete`；Selection 成员创建后保持固定。
+- Data Quality & Integrity V1：历史问题审计/修复候选、只读 Master Quality Gate、采集指标/健康基线、
+  Collection 状态与 Schema Drift；详见 [`DATA_QUALITY_INTEGRITY_V1`](docs/DATA_QUALITY_INTEGRITY_V1.md)。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
@@ -54,6 +56,9 @@ Master / State
 - [Boundary Contracts V2](docs/BOUNDARY_CONTRACTS_V2.md)
 - [Extraction Contract V1](docs/EXTRACTION_CONTRACT_V1.md)
 - [Data Workspace V1](docs/DATA_WORKSPACE_V1.md)
+- [Data Quality & Integrity V1](docs/DATA_QUALITY_INTEGRITY_V1.md)
+- [Data Quality & Integrity V1 Plan](docs/DATA_QUALITY_INTEGRITY_V1_PLAN.md)
+- [Data Quality & Integrity V1 Acceptance Draft](docs/DATA_QUALITY_INTEGRITY_V1_ACCEPTANCE.md)
 
 ## 快速使用
 

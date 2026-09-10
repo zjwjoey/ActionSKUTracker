@@ -1,5 +1,18 @@
 # Action SKU Tracker 当前状态
 
+## Data Quality & Integrity V1（当前 feature 分支）
+
+本分支新增 Historical Master Repair、只读 Master Quality Gate 与
+Collection Integrity/Schema Drift。四张新增质量表只在测试、Shadow 或复制库
+中使用；真实 PRIMARY 未写入。Repair 默认 dry-run，正式候选需要人工批准、
+base commit、source hash 和 actor；Production PRIMARY 永久拒绝该 fixture
+apply 路径。Collection `COLLECTION_BLOCKED` 禁止 commit，`DEGRADED` 只接受
+带过期时间和 metrics hash 的一次性 override。
+
+CLI：`data-quality audit-history|repair-build|repair-status|repair-verify`、
+`master-quality`、`collection-quality run|history`。实现和计划见
+`docs/DATA_QUALITY_INTEGRITY_V1.md` 与 `docs/DATA_QUALITY_INTEGRITY_V1_PLAN.md`。
+
 更新日期：2026-09-01
 项目目录：`F:\\ActionSKUTracker_main_merge`（验证 worktree；生产数据仍在 `F:\\ActionSKUTracker\\runtime`）
 当前开发分支：`feat/chinese-localization-intelligence-v1`

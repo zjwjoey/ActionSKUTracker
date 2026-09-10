@@ -2,6 +2,14 @@
 
 更新日期：2026-08-30
 
+## Data Quality & Integrity V1（feature 分支）
+
+当前开发分支正在收口三条可靠性主线：Historical Master Repair、Master
+Quality Gate、Collection Integrity + Schema Drift。该阶段只允许使用合成
+fixture、Shadow 或 SQLite Backup 副本验收；不修改真实 PRIMARY、不运行真实
+daily-run、不启用 AI/自动批准。完成条件与 CLI 见
+[`DATA_QUALITY_INTEGRITY_V1.md`](DATA_QUALITY_INTEGRITY_V1.md)。
+
 统一开发计划见 [`docs/MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md)。该计划把
 Export Foundation V1 正式发布和 SQLite Production Source of Truth 接管纳入同一总目标，
 但仍按阶段门禁推进。
