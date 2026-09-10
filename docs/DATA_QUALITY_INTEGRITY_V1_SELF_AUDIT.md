@@ -36,13 +36,13 @@ evidence. It is an audit artifact, not a production approval.
 
 ## Current validation heads
 
-- Feature branch final HEAD: `60bf7bbb6738ddaa64ce5df90d522d4fd2bca7ab`
+- Feature code/tests head: `e95fcfec609ecd56a8812176915567a9c9e01f2b`
 - Code head recorded in the acceptance report: `e95fcfec609ecd56a8812176915567a9c9e01f2b`
 - Local `main` baseline: `e8c1a16c31743ecfacec05a953c22d5c65d9fca6`
 - Cached `origin/main`: `2fe180ab6d99d1ed8982fe6fb7d03a432e5d4400`
 
-The final branch commit after the recorded code head only updates acceptance
-metadata. No production data or runtime state is part of this worktree.
+Commits after the recorded code head only update acceptance metadata. No
+production data or runtime state is part of this worktree.
 
 ## Decision
 
