@@ -82,6 +82,16 @@ Presence 已完整冻结后，Detail 中断记为 DETAIL_ACCESS_INTERRUPTED/ACCE
 
 detail-retry 结果只有在父 observation 正式有效、SKU 一致、详情 QA 通过时才能通过 detail-apply/backfill 写回。
 
+### QA-FACT-001：字段内容合法性
+
+字段非空不等于字段有效。对本轮 Listing 权威事实，以及状态为 `COMPLETE` 的 Detail
+事实，QA 必须拒绝已知网页/UI 控件文本、HTML 残留、`null`/`undefined` 等占位符、将
+`Nuevo`/`Promoción semanal` 写入正式类目、以及产品详情的 `::`、`: ;`、`;;`、Tab/换行
+等结构污染。该规则只识别明确污染，不根据商品语义改写官网西语事实。
+
+官网未提供独立规格或描述时允许为空，仍由字段完整性/来源状态单独表达；延迟或访问
+中断的 Detail 不因历史补充字段而否定已冻结的 Presence。
+
 ## 6. Master 与价格规则
 
 ### QA-MASTER-001：CURRENT 语义

@@ -3,7 +3,6 @@
 2530812,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
 2539018,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
 2546793,spec_es_raw,SOURCE_POLLUTED,网页 UI 文案错位进入规格字段；已清空该西语字段，禁止当作商品事实
-2548454,spec_es_raw,SOURCE_POLLUTED,网页 UI 文案错位进入规格字段；已清空该西语字段，禁止当作商品事实
 2548558,spec_es_raw,SOURCE_POLLUTED,网页 UI 文案错位进入规格字段；已清空该西语字段，禁止当作商品事实
 2552207,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
 2552715,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
@@ -12,13 +11,9 @@
 2557704,spec_es_raw,SOURCE_POLLUTED,网页 UI 文案错位进入规格字段；已清空该西语字段，禁止当作商品事实
 2558856,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
 2574198,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
-2574845,spec_es_raw,SOURCE_POLLUTED,网页 UI 文案错位进入规格字段；已清空该西语字段，禁止当作商品事实
 2576783,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
-2577222,spec_es_raw,SOURCE_POLLUTED,网页 UI 文案错位进入规格字段；已清空该西语字段，禁止当作商品事实
 2581703,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
-299750,spec_es_raw,SOURCE_POLLUTED,网页 UI 文案错位进入规格字段；已清空该西语字段，禁止当作商品事实
 3000090,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
-3005291,spec_es_raw,SOURCE_POLLUTED,网页 UI 文案错位进入规格字段；已清空该西语字段，禁止当作商品事实
 3008201,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
 3008363,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
 3008498,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
@@ -129,3 +124,4 @@
 3223775,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
 3225476,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
 4000083,"cat1_es,spec_es_raw",SOURCE_DAMAGED,未找到可信西语原始证据；禁止将中文反向翻译成西语
+3016272,"spec_es_raw,details_es",SOURCE_DAMAGED,官网西语规格为4 piezas而结构化详情数量为3 piezas；源字段冲突，禁止作为训练事实

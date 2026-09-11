@@ -1,0 +1,21 @@
+{
+  "schema_version": "LOCALIZATION_KNOWLEDGE_V1",
+  "files": {
+    "product_type_dictionary.csv": {
+      "sha256": "ef457a3a38c2f994e187b3b35cabbde685503da4d0c1c16a85f619618fe47ce7",
+      "schema_version": "1.0"
+    },
+    "detail_key_dictionary.csv": {
+      "sha256": "7e8095beb2049ebe15e40bd874802f9a7adf255af43df2a1b0eb92b08c82525a",
+      "schema_version": "1.0"
+    },
+    "tech_token_dictionary.csv": {
+      "sha256": "45553c5565ab088f0dd2b814739a324a1de812b7dc177eb2d7da01e9ddb63ba3",
+      "schema_version": "1.0"
+    },
+    "phrase_dictionary.csv": {
+      "sha256": "26c70b983f13a935b2b890004024f3d9d9a82baca92ce8c6e33cfaa0aa800017",
+      "schema_version": "1.0"
+    }
+  }
+}

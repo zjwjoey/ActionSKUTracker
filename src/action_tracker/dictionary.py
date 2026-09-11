@@ -366,9 +366,11 @@ def build_product_dictionary(
 def category_rows_from_products(
     products: Iterable[Mapping[str, object]], mapping: Mapping[str, Mapping[str, object]] | None = None,
     *, existing: Iterable[Mapping[str, object]] | None = None,
+    cat2_mapping: Mapping[str, str] | None = None,
 ) -> list[dict[str, str]]:
     """合并新旧分类关系，重建时不清空人工二级分类、审核状态或备注。"""
     mapping = mapping or {}
+    cat2_mapping = cat2_mapping or {}
     old_index = {(_text(row.get("cat1_es")), _text(row.get("cat2_es"))): dict(row) for row in (existing or [])}
     pairs = set(old_index)
     pairs.update((_text(row.get("cat1_es")), _text(row.get("cat2_es"))) for row in products if _text(row.get("cat1_es")) or _text(row.get("cat2_es")))
@@ -376,6 +378,9 @@ def category_rows_from_products(
     for cat1, cat2 in sorted(pairs):
         row = {header: _text(old_index.get((cat1, cat2), {}).get(header)) for header in CATEGORY_DICTIONARY_HEADERS}
         row.update({"cat1_es": cat1, "cat2_es": cat2})
+        mapped_cat2 = _text(cat2_mapping.get(normalize_category_key(cat2)))
+        if mapped_cat2 and not re.search(r"[\u3400-\u9fff]", row["cat2_zh"]):
+            row["cat2_zh"] = mapped_cat2
         mapped = mapping.get(normalize_category_key(cat1), {})
         if mapped:
             row["cat1_code"], row["cat1_zh"] = _text(mapped.get("cat1_code")), _text(mapped.get("cat1_zh"))

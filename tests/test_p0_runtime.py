@@ -103,3 +103,33 @@ def test_run_report_separates_presence_counts_and_interrupted_detail(tmp_path):
     assert report["union_present_sku_count"] == 5541
     assert report["presence_access_state"] == "NORMAL"
     assert report["detail_access_state"] == "COOLDOWN"
+
+
+def test_detail_batch_selection_defers_excess_candidates_without_dropping_them():
+    plans = [
+        {"sku": "3000", "reason": "DETAIL_REFRESH", "need_detail": True},
+        {"sku": "2000", "reason": "NEW", "need_detail": True},
+        {"sku": "1000", "reason": "MISSING_FIELD", "need_detail": True},
+        {"sku": "4000", "reason": "PRICE_CHANGE_CANDIDATE", "need_detail": False},
+    ]
+
+    selected, deferred = daily._select_detail_plans(plans, max_per_run=2)
+
+    assert [plan["sku"] for plan in selected] == ["1000", "2000"]
+    assert [plan["sku"] for plan in deferred] == ["3000"]
+
+
+def test_run_report_marks_deferred_detail_candidates_pending(tmp_path):
+    cfg = {"paths": {"master": tmp_path / "master.xlsx"}}
+    qa = QAReport(passed=True, state="PASS")
+
+    report = daily._run_report(
+        cfg, "run-1", "2026-08-12", True, 5541, 5541, {}, [], [], [], [], qa,
+        tmp_path / "snapshot", True, {"Hogar": True}, detail_candidates=33,
+        detail_planned=20, detail_deferred=13, detail_completed=20,
+    )
+
+    assert report["detail_status"] == "PENDING"
+    assert report["detail_candidates"] == 33
+    assert report["detail_deferred"] == 13
+    assert report["detail_incomplete"] == 13

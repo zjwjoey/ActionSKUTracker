@@ -182,7 +182,8 @@ presence[sku, date] = 0  否则
 
 - 结构变化必须提升 schema/profile version；
 - 字段重命名要有显式迁移，不能静默复用旧列；
-- SQLite 不是当前数据模型的生产存储；
+- SQLite PRIMARY 是当前数据模型的生产存储；Master/State/Excel/CSV 是可回溯的兼容投影，
+  只能由当前 committed head 重新生成并通过 `export_sync` 确认；
 - 任何迁移必须保留原文件、来源 hash、行数对账和可回滚证据。
 
 ## 11. CI 中的数据使用边界

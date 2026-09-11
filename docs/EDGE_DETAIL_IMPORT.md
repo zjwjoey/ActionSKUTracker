@@ -65,9 +65,11 @@ python -m action_tracker detail-edge-import --run-id 2026-09-03_072729 --input .
 
 ## 正式 run 延迟详情入库
 
-对于父 run 已经 QA PASS、正式提交且访问状态为 `NORMAL`，但因
-`max_detail_per_run` 限制被记录为 `MISSING_FIELD + detail_selected=false` 的
-延迟项，使用专用的窄入口。它只接受该父 run 的延迟 SKU，并且只更新西语
+对于父 run 已经 QA PASS、正式提交的延迟详情，使用专用的窄入口。新版本以父
+Snapshot 下的 `detail_backlog.csv`（`queue_status=DEFERRED`）作为权威队列，
+覆盖 `NEW`、`REAPPEARED`、`CATEGORY_MISSING` 等因本轮详情上限而延期的 SKU；
+旧 run 没有该文件时，兼容回退到 `product_updates.csv` 中
+`MISSING_FIELD + detail_selected=false` 的记录。入口只更新西语
 `description` 与 `details` 两个详情字段：
 
 ```powershell
@@ -78,5 +80,26 @@ python -m action_tracker detail-deferred-import `
 ```
 
 预览通过后追加 `--commit` 才会写入 SQLite PRIMARY 并重建兼容 Master。该入口
-拒绝 dry-run、未提交父 run、非 `MISSING_FIELD` 延迟 SKU、挑战页和不完整详情，
-不会改动价格、生命周期、名称、类目、规格、链接、图片或中文字段。
+拒绝 dry-run、未提交父 run、不在权威延迟队列中的 SKU、已经存在任一详情字段的
+SKU、挑战页和不完整详情，不会改动价格、生命周期、名称、类目、规格、链接、
+图片或中文字段。已完整详情的 SKU 必须从证据批次中剔除，另走独立修正流程。
+
+## 正式 run 延期类目回填
+
+当延期证据中的官网面包屑可以补齐 Master 的空二级类目时，使用独立的类目入口，
+不要把类目混入详情写入。该入口同样只接受 QA PASS、非 dry-run、FULL_COMMIT 的父
+run，并以 `detail_backlog.csv` 的完整 `DEFERRED` 集合作为输入覆盖校验：
+
+```powershell
+$env:PYTHONPATH='F:\ActionSKUTracker\src'
+python -m action_tracker category-deferred-reconcile `
+  --run-id 2026-09-10_030315 `
+  --input .\detail_edge_import_20260910_50.json
+```
+
+预览会列出可回填行和类目冲突。默认只有空类目或与证据完全一致的行可以进入提交计划；
+已有非空一级/二级类目但与官网证据不一致的 SKU 会被隔离，带冲突的批次不能
+`--commit`。若已通过浏览器逐条核验官网面包屑，可用重复的
+`--approve-conflict-sku <SKU>` 逐 SKU 放行，未列出的冲突仍会阻断提交。该入口只回填西语官网面包屑、重新计算来源哈希和审计记录，不改变
+价格、Presence、生命周期、详情或中文字段。类目冲突处理完成后，再执行
+`detail-deferred-import` 写入真正缺失的描述和产品详情。

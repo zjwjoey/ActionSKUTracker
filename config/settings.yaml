@@ -36,7 +36,8 @@ browser:
   timeout_ms: 45000
   challenge_reloads: 3
   challenge_sleep_ms: 800
-  cooldown_seconds: 60
+  # CF/访问限制后的冷却时间；详情补抓按用户要求至少等待 2 分钟。
+  cooldown_seconds: 120
   degraded_recovery_successes: 3
   # 温和并行节奏（复刻旧脚本经验，避免被限流）
   sleep_ms: 2500
@@ -114,6 +115,9 @@ run:
   lock_stale_minutes: 180
   # 详情抓取后多久需要强制刷新（天）
   detail_refresh_days: 7
+  # 单轮详情页最大请求数。候选超过上限时记录为 PENDING，下一轮会自动重新规划，
+  # 避免季节性大批上新一次触发数百个详情请求。
+  max_detail_per_run: 20
   # 翻译：阶段一不做（中文列用西语 fallback 占位）。
   # 后续启用时走 AI API（见下方 ai 段），不用外部翻译服务。
   translation_enabled: false

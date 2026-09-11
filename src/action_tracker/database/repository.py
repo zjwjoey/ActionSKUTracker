@@ -143,7 +143,7 @@ class ProductionRepository:
                    p.status,p.product_url,p.image_url,p.first_seen_at,p.last_seen_at,
                    es.name,es.cat1,es.cat2,es.spec,es.description,es.details,
                    zh.name,zh.cat1,zh.cat2,zh.spec,zh.description,zh.details,
-                   p.source_hash
+                   p.source_hash,es.review_status,es.resolution_status,zh.review_status,zh.resolution_status
                    FROM products p
                    LEFT JOIN product_localizations es ON es.official_sku=p.official_sku AND es.language='es'
                    LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'
@@ -180,6 +180,8 @@ class ProductionRepository:
                 "cat1_es": row[17], "cat2_es": row[18], "spec_es": row[19], "desc_es": row[20], "details_es": row[21],
                 "cat1_zh": row[23], "cat2_zh": row[24], "spec_zh": row[25], "desc_zh": row[26], "details_zh": row[27],
                 "source_hash": row[28],
+                "translation_status": row[31] or row[32] or "NOT_CONFIGURED",
+                "match_status": "OFFICIAL_IDENTITY",
                 "_localization_provenance": zh_provenance,
                 "_es_localization_provenance": es_provenance,
             })

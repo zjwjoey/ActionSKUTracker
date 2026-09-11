@@ -136,6 +136,22 @@ def test_detail_cooldown_waits_and_probes_same_sku_once(tmp_path: Path, monkeypa
     assert ctl.state == AccessState.NORMAL
 
 
+def test_detail_category_is_carried_into_updated_product(tmp_path: Path, monkeypatch):
+    ctl = AccessController(cooldown_seconds=0)
+
+    def fake_fetch(_browser, _url, _sku, max_retries=5):
+        return {"sku": "1001", "name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "Limpieza"}
+
+    monkeypatch.setattr("action_tracker.products.parser.fetch_product_detail", fake_fetch)
+    _changes, updated = updater.fetch_and_merge(
+        _SleepOnlyBrowser(),
+        [{"sku": "1001", "canonical_id": "ACT0001001", "reason": "NEW", "need_detail": True,
+          "light": {"product_url": "https://x/p/1001/"}}],
+        {}, tmp_path, access_controller=ctl,
+    )
+    assert updated["1001"]["cat2_es"] == "Limpieza"
+
+
 def test_successful_probe_allows_one_probe_in_a_later_cooldown_cycle():
     ctl = AccessController(cooldown_seconds=0)
     ctl.record(status=403)

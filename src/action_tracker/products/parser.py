@@ -9,7 +9,7 @@ import logging
 import re
 import time
 
-from ..services.normalization import parse_discount_percent, parse_price
+from ..services.normalization import normalize_official_text, parse_discount_percent, parse_price
 
 log = logging.getLogger(__name__)
 
@@ -62,7 +62,9 @@ _EXTRACT_JS = r"""
     const salePrice = (whole || frac) ? `${whole},${frac} €` : '';
     const origEl = priceBox.querySelector('[data-testid="product-card-price-original-amount"]');
     const orig = origEl ? origEl.textContent.replace(/\s+/g, ' ').trim() : '';
-    const origPrice = orig ? `${orig} €` : salePrice;
+    // No original-price element means there is no promotion.  Falling back to
+    // the sale price fabricated a false original price for every regular item.
+    const origPrice = orig ? `${orig} €` : '';
     const discEl = priceBox.querySelector('[data-testid="product-card-price-discount-percentage"]');
     const discount = discEl ? discEl.textContent.replace(/\s+/g, ' ').trim() : '';
     const priceDescEl = priceBox.querySelector('[data-testid="product-card-price-description"]');
@@ -180,13 +182,13 @@ def _normalize_detail(raw: dict, url: str) -> dict:
         "name_es": raw.get("name_es") or "",
         "cat1_es": raw.get("cat1_es") or "",
         "cat2_es": raw.get("cat2_es") or "",
-        "spec_es": raw.get("spec_es") or "",
+        "spec_es": normalize_official_text(raw.get("spec_es"), field="spec") or "",
         "current_price": cur,
         "original_price": orig,
         "unit_price": raw.get("unit_price") or "",
         "discount": parse_discount_percent(raw.get("discount") or ""),
-        "desc_es": raw.get("desc_es") or "",
-        "details_es": raw.get("details_es") or "",
+        "desc_es": normalize_official_text(raw.get("desc_es"), field="description") or "",
+        "details_es": normalize_official_text(raw.get("details_es"), field="details") or "",
         "product_url": url,
         "image_url": raw.get("image_url") or "",
         "raw_tags": raw.get("raw_tags") or "",

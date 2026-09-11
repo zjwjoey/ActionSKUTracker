@@ -103,6 +103,19 @@ def test_category_mapping_uses_fixed_fifteen_category_name():
     assert rows[0]["review_status"] == "CAT1_CONFIRMED"
 
 
+def test_category_mapping_replaces_legacy_spanish_second_level_value():
+    rows = category_rows_from_products(
+        [{"cat1_es": "Hogar", "cat2_es": "Decoración"}],
+        cat2_mapping={normalize_category_key("Decoración"): "家居装饰"},
+        existing=[{
+            "cat1_es": "Hogar", "cat2_es": "Decoración", "cat1_code": "C08",
+            "cat1_zh": "家务清洁", "cat2_zh": "Decoración",
+            "review_status": "HUMAN_REVIEWED", "notes": "历史值",
+        }],
+    )
+    assert rows[0]["cat2_zh"] == "家居装饰"
+
+
 def test_legacy_chinese_category_alias_is_normalized_to_fixed_fifteen_categories():
     mapping = {normalize_category_key("家居维修"): {"cat1_code": "C01", "cat1_zh": "DIY五金"}}
     row = build_product_dictionary({"1001": {"cat1_es": "", "cat1_zh": "家居维修"}},

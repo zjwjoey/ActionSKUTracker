@@ -13,13 +13,16 @@ import logging
 import os
 import shutil
 import uuid
+from copy import copy
 from pathlib import Path
 from typing import Any
 
 import openpyxl
+from openpyxl.styles import Alignment
 from openpyxl.utils import get_column_letter
 
 from ..services.review import REVIEW_HEADERS
+from ..services.normalization import normalize_official_text
 from .reader import ES_MAP, ZH_MAP
 
 log = logging.getLogger(__name__)
@@ -120,6 +123,20 @@ def _append_rows(wb, title: str, rows: list[dict], headers: list[str]) -> None:
     _resize_tables(ws)
 
 
+def _replace_rows(wb, title: str, rows: list[dict], headers: list[str]) -> None:
+    """Replace a derived compatibility sheet from an authoritative source."""
+    _ensure_sheet(wb, title, headers)
+    ws = wb[title]
+    current_headers = [cell.value for cell in ws[1]]
+    if current_headers != headers:
+        raise RuntimeError(f"{title} header mismatch")
+    if ws.max_row > 1:
+        ws.delete_rows(2, ws.max_row - 1)
+    for row in rows:
+        ws.append([_cell(row.get(header)) for header in headers])
+    _resize_tables(ws)
+
+
 def _replace_run_log_rows(wb, revisions: dict[str, dict] | None) -> int:
     """Apply field-level corrections to existing immutable run-log rows.
 
@@ -157,6 +174,41 @@ def _resize_tables(ws, header_row: int = 1) -> None:
         table.ref = ref
 
 
+def _format_current_sheet(ws) -> None:
+    """Keep the two current compatibility sheets usable after incremental writes.
+
+    The original workbooks did not consistently retain filters, frozen headers
+    or wrapping when rows were appended.  This applies only to populated
+    CURRENT ranges and preserves each cell's existing style attributes.
+    """
+    if ws.max_row < 1 or ws.max_column < 1:
+        return
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = f"A1:{get_column_letter(ws.max_column)}{ws.max_row}"
+    header_index = {str(cell.value or ""): cell.column for cell in ws[1]}
+    for label in ("中文描述", "中文产品详情", "描述（西语）", "产品详情（西语）"):
+        column = header_index.get(label)
+        if not column:
+            continue
+        for row_no in range(2, ws.max_row + 1):
+            cell = ws.cell(row=row_no, column=column)
+            alignment = copy(cell.alignment) if cell.alignment else Alignment()
+            cell.alignment = Alignment(
+                horizontal=alignment.horizontal,
+                vertical="top",
+                text_rotation=alignment.text_rotation,
+                wrap_text=True,
+                shrink_to_fit=alignment.shrink_to_fit,
+                indent=alignment.indent,
+                relativeIndent=alignment.relativeIndent,
+                justifyLastLine=alignment.justifyLastLine,
+                readingOrder=alignment.readingOrder,
+            )
+            if cell.value and ("\n" in str(cell.value) or len(str(cell.value)) > 80):
+                current_height = ws.row_dimensions[row_no].height or 15
+                ws.row_dimensions[row_no].height = max(current_height, 52.8)
+
+
 def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict[str, dict], internal_keys: set[str]) -> int:
     """按 header 映射更新既有行，新 SKU 追加。返回更新的行数。"""
     if sheet not in wb.sheetnames:
@@ -168,6 +220,10 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
         k = colmap.get(h)
         if k:
             idx[k] = i
+    sku_column = header.index("SKU") + 1 if "SKU" in header else None
+    canonical_column = header.index("Canonical_ID") + 1 if "Canonical_ID" in header else None
+    if not sku_column:
+        raise RuntimeError(f"{sheet} missing SKU column")
     # CURRENT is not a history table. Rows absent from the authoritative
     # Presence dataset are removed; lifecycle evidence remains in state CSVs.
     wanted_skus = {str(key) for key in key_to_records}
@@ -176,15 +232,15 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
         if rec.get("canonical_id")
     }
     for row_no in range(ws.max_row, 1, -1):
-        sku = str(ws.cell(row=row_no, column=2).value or "")
-        cid = str(ws.cell(row=row_no, column=1).value or "")
+        sku = str(ws.cell(row=row_no, column=sku_column).value or "")
+        cid = str(ws.cell(row=row_no, column=canonical_column).value or "") if canonical_column else ""
         if sku not in wanted_skus and cid not in wanted_cids:
             ws.delete_rows(row_no, 1)
     # 更新既有行
     updated = 0
     for row in ws.iter_rows(min_row=2):
-        sku = row[1].value
-        cid = row[0].value
+        sku = row[sku_column - 1].value
+        cid = row[canonical_column - 1].value if canonical_column else None
         rec = key_to_records.get(str(sku)) or key_to_records.get(str(cid))
         if not rec:
             continue
@@ -193,7 +249,11 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
                 row[col].value = _cell(rec.get(k))
         updated += 1
     # 追加新 SKU
-    existing = {str(row[1]) for row in ws.iter_rows(min_row=2, values_only=True) if row[1]}
+    existing = {
+        str(row[sku_column - 1])
+        for row in ws.iter_rows(min_row=2, values_only=True)
+        if row[sku_column - 1]
+    }
     for sku, rec in key_to_records.items():
         if sku in existing:
             continue
@@ -201,6 +261,7 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
         ws.append(new_row)
         updated += 1
     _resize_tables(ws)
+    _format_current_sheet(ws)
     return updated
 
 
@@ -244,6 +305,20 @@ def _refresh_long_term_catalog(wb) -> None:
         catalog.cell(row_no, idx["当前状态"]).value = "CURRENT" if sku in current_skus else "HISTORICAL"
         if sku not in current_skus:
             catalog.cell(row_no, idx["当前售价 (€)"]).value = None
+        # Long-term rows predate SQLite PRIMARY and can contain a known page
+        # control accidentally saved as a Spanish fact (for example
+        # ``Añadir a tus favoritos`` in the spec column). Keep this cleanup
+        # mechanical and field-scoped; no translation or semantic rewrite is
+        # performed and the official row identity/history is untouched.
+        for column, field in (
+            ("西班牙语品名", "name"),
+            ("一级类目（西语）", "category"),
+            ("规格（西语）", "spec"),
+        ):
+            old_value = catalog.cell(row_no, idx[column]).value
+            normalized = normalize_official_text(old_value, field=field)
+            if normalized != old_value:
+                catalog.cell(row_no, idx[column]).value = _cell(normalized)
 
     for sku in sorted(current_skus):
         zr, er = zh.get(sku, {}), es.get(sku, {})
@@ -334,6 +409,9 @@ def stage_master(
     review_rows: list[dict] | None = None,
     return_backup: bool = False,
     compatibility_projection: bool = False,
+    replace_history: bool = False,
+    price_history_rows: list[dict] | None = None,
+    event_history_rows: list[dict] | None = None,
 ) -> Path | tuple[Path, Path]:
     """暂存新的 Master 到 temp：备份 → 复制 → 更新 → 保存 → 完整验证。
 
@@ -366,9 +444,15 @@ def stage_master(
             log.info("01 更新 %d 行, 02 更新 %d 行", n_zh, n_es)
             _refresh_long_term_catalog(wb)
 
-            # 03 / 04 追加（表头用常量，行 dict 的 key 与之对应）
-            _append_rows(wb, "03_PRICE_HISTORY", price_events, PRICE_HISTORY_HEADERS)
-            _append_rows(wb, "04_EVENT_HISTORY", event_events, EVENT_HISTORY_HEADERS)
+            # SQLite PRIMARY compatibility projections are rebuilt, not
+            # appended to an old workbook.  This prevents legacy orphan rows
+            # and polluted promo fields from surviving forever.
+            if replace_history:
+                _replace_rows(wb, "03_PRICE_HISTORY", price_history_rows or [], PRICE_HISTORY_HEADERS)
+                _replace_rows(wb, "04_EVENT_HISTORY", event_history_rows or [], EVENT_HISTORY_HEADERS)
+            else:
+                _append_rows(wb, "03_PRICE_HISTORY", price_events, PRICE_HISTORY_HEADERS)
+                _append_rows(wb, "04_EVENT_HISTORY", event_events, EVENT_HISTORY_HEADERS)
 
             # 05_RUN_LOG / 06_REVIEW_QUEUE（规范 §十；不存在则创建，无行也要有表）
             _ensure_sheet(wb, "05_RUN_LOG", RUN_LOG_HEADERS)

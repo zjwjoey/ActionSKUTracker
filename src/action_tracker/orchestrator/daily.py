@@ -559,6 +559,8 @@ def _build_current_records(
         rec["status"] = "CURRENT"
         rec["last_seen"] = run_date
         rec["missing_count"] = 0
+        if not rec.get("first_seen"):
+            rec["first_seen"] = getattr(stat, "first_seen", None) or run_date
     return current
 
 

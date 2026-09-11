@@ -132,3 +132,14 @@ def test_reader_uses_only_official_skus_from_long_term_sheet(tmp_path):
     assert set(records) == {"1001"}
     assert records["1001"]["first_seen"] == "2026-01-09"
     assert records["1001"]["last_seen"] == "2026-08-13"
+
+
+def test_refresh_long_term_catalog_removes_known_ui_fact_pollution(tmp_path):
+    path = tmp_path / "master.xlsx"
+    wb = _base_workbook(path)
+    _add_long_term_sheets(wb)
+    catalog = wb["08_LONG_TERM_MASTER"]
+    catalog.cell(8, 13).value = "Añadir a tus favoritos"  # 规格（西语）
+    writer._refresh_long_term_catalog(wb)
+    assert catalog.cell(8, 13).value is None
+    wb.close()

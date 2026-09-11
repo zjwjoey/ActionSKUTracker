@@ -157,3 +157,16 @@ def test_stage_master_revises_existing_run_log_without_duplicate(tmp_path):
     assert len(rows) == 2
     assert rows[1][writer.RUN_LOG_HEADERS.index("CONTENT_CHANGE")] == 4
     assert rows[1][writer.RUN_LOG_HEADERS.index("PROMO_START")] == 1
+
+
+def test_replace_rows_rebuilds_history_sheet_without_legacy_rows():
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "03_PRICE_HISTORY"
+    ws.append(writer.PRICE_HISTORY_HEADERS)
+    ws.append(["ACT1", "", "2026-04-05", None, 1.0, None, "LEGACY", None, None, "错误促销字段", "old", "old"])
+    writer._replace_rows(wb, "03_PRICE_HISTORY", [{"Canonical_ID": "ACT2", "SKU": "2", "日期": "2026-09-09", "新售价 (€)": 2.0}], writer.PRICE_HISTORY_HEADERS)
+    rows = list(wb["03_PRICE_HISTORY"].iter_rows(min_row=2, values_only=True))
+    assert len(rows) == 1
+    assert rows[0][1] == "2"
+    assert rows[0][9] is None

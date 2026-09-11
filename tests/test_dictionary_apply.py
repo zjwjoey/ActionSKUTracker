@@ -176,6 +176,26 @@ def test_apply_master_reader_rejects_duplicate_sku(tmp_path):
         _load_apply_master_records(cfg["paths"]["master"])
 
 
+def test_apply_master_reader_allows_independent_es_and_zh_sort_orders(tmp_path):
+    """CURRENT worksheets join by SKU, so their presentation sort need not match."""
+    cfg = _cfg(tmp_path)
+    _write_master(cfg["paths"]["master"], [], [_record("1001"), _record("1002")])
+    import openpyxl
+    wb = openpyxl.load_workbook(cfg["paths"]["master"])
+    ws = wb["02_SKU_ES_CURRENT"]
+    first = [cell.value for cell in ws[2]]
+    second = [cell.value for cell in ws[3]]
+    for column, value in enumerate(second, start=1):
+        ws.cell(row=2, column=column).value = value
+    for column, value in enumerate(first, start=1):
+        ws.cell(row=3, column=column).value = value
+    wb.save(cfg["paths"]["master"])
+    wb.close()
+
+    records = _load_apply_master_records(cfg["paths"]["master"])
+    assert set(records) == {"1001", "1002"}
+
+
 def test_apply_master_reader_rejects_nonempty_row_with_empty_sku(tmp_path):
     cfg = _cfg(tmp_path)
     record = _record("1001")

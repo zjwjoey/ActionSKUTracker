@@ -104,6 +104,11 @@ def build_daily_bundle(
         source.setdefault("sku", sku)
         source.setdefault("canonical_id", getattr(status, "canonical_id", f"ACT{sku.zfill(7)}"))
         source["status"] = _product_status(getattr(status, "status", None), source.get("status"))
+        # Keep the product-table lifecycle projection aligned with the
+        # authoritative transition result while preserving all other facts.
+        source["consecutive_missing"] = int(
+            getattr(status, "missing_count", source.get("missing_count", 0)) or 0
+        )
         source["_historical_minimal"] = True
         product_by_sku[sku] = source
     # A known identity can be absent from the current status map in older
@@ -118,6 +123,15 @@ def build_daily_bundle(
             source["_historical_minimal"] = True
             product_by_sku[sku] = source
 
+    # Presence/lifecycle owns FIRST_SEEN. Carry it into the product
+    # projection so a new CURRENT row cannot lose its first-observation date
+    # merely because Listing had no baseline row.
+    for sku, status in statuses.items():
+        record = product_by_sku.get(str(sku))
+        if record is None or record.get("_historical_minimal"):
+            continue
+        if not record.get("first_seen"):
+            record["first_seen"] = getattr(status, "first_seen", None) or observation_date
     products = tuple(product_by_sku.values())
     localizations: list[dict[str, Any]] = []
     for record in products:
@@ -225,6 +239,41 @@ def acknowledge_compatibility_exports(cfg: Mapping[str, Any], commit_id: str) ->
     )
 
 
+def _load_compatibility_history(db_path: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Project the SQLite history tables into the frozen Excel schemas."""
+    prices: list[dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
+    with connect(db_path) as db:
+        price_rows = db.execute(
+            """SELECT canonical_id,official_sku,observed_at,old_price,new_price,change_type
+               FROM price_history WHERE trim(official_sku) <> ''
+               ORDER BY observed_at, id"""
+        ).fetchall()
+        for row in price_rows:
+            old_price, new_price = row[3], row[4]
+            amount = (float(new_price) - float(old_price)) if old_price is not None and new_price is not None else None
+            percent = (amount / float(old_price) * 100.0) if amount is not None and float(old_price) != 0 else None
+            prices.append({
+                "Canonical_ID": row[0], "SKU": row[1], "日期": row[2],
+                "旧售价 (€)": old_price, "新售价 (€)": new_price, "原价 (€)": None,
+                "变化类型": row[5], "变化金额 (€)": amount, "变化幅度 (%)": percent,
+                "促销状态": None, "来源文件": "SQLite PRIMARY", "来源Sheet": "price_history",
+            })
+        event_rows = db.execute(
+            """SELECT canonical_id,official_sku,occurred_at,event_type,old_value,new_value,run_id,evidence
+               FROM event_history WHERE trim(official_sku) <> ''
+               ORDER BY occurred_at, id"""
+        ).fetchall()
+        for row in event_rows:
+            events.append({
+                "Canonical_ID": row[0], "SKU": row[1], "日期": row[2],
+                "事件类型": row[3], "旧值": row[4], "新值": row[5],
+                "来源文件": "SQLite PRIMARY",
+                "备注": row[7] or row[6],
+            })
+    return prices, events
+
+
 def regenerate_compatibility_exports(cfg: Mapping[str, Any], commit_id: str) -> dict[str, Any]:
     """Rebuild Master/State projections from the current SQLite PRIMARY head.
 
@@ -250,10 +299,13 @@ def regenerate_compatibility_exports(cfg: Mapping[str, Any], commit_id: str) -> 
     known_path = state_dir / "known_skus.csv"
     offline_path = state_dir / "offline_skus.csv"
     run_log_revisions = _run_log_revisions(db_path, commit_id)
+    price_history_rows, event_history_rows = _load_compatibility_history(db_path)
     master_tmp, master_backup = stage_master(
         dict(cfg), updated_records={str(r["sku"]): r for r in records},
         price_events=[], event_events=[], return_backup=True,
         compatibility_projection=True, run_log_revisions=run_log_revisions,
+        replace_history=True, price_history_rows=price_history_rows,
+        event_history_rows=event_history_rows,
     )
     known_tmp, _ = st.stage_known_skus(state_dir, known)
     offline_tmp, _ = st.stage_offline_skus(state_dir, offline)
@@ -275,7 +327,8 @@ def regenerate_compatibility_exports(cfg: Mapping[str, Any], commit_id: str) -> 
         raise
     result = mark_export_sync(db_path, commit_id, master=master, known=known_path, offline=offline_path)
     result["rebuild"] = {"current": len(records), "known": len(known), "offline": len(offline),
-                         "run_log_revisions": len(run_log_revisions)}
+                         "run_log_revisions": len(run_log_revisions),
+                         "price_history": len(price_history_rows), "event_history": len(event_history_rows)}
     return result
 
 

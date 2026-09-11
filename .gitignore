@@ -14,6 +14,8 @@ images/
 !src/action_tracker/images/**
 src/action_tracker/images/__pycache__/
 src/action_tracker/images/**/*.pyc
+# Local product-image library; generated/downloaded assets stay on the host.
+assets/
 temp/
 backups/
 

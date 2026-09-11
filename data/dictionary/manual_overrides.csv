@@ -6,7 +6,29 @@ product,2543429,spec_zh_standard,8.5升 | 39x29x11厘米,review_id=3d56e80ef5bbb
 product,2554927,name_zh_standard,家居袜,review_id=5f9b6a46990303f15d047484,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:34+08:00
 product,2554927,spec_zh_standard,均码 | 2双 | 多种类型,review_id=f5adf66c728daa213945b338,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:51+08:00
 product,2557704,locked,1,第二阶段人工审查结果锁定，防止后续模型覆盖,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,3202944,name_zh_standard,励志水瓶,官网西语详情明确为带励志文字的冷饮水瓶,FINAL_CONSOLIDATION_2026-09-08,1,2026-09-08
+product,3203622,name_zh_standard,发光足球,官网西语详情明确为带灯光效果的足球,FINAL_CONSOLIDATION_2026-09-08,1,2026-09-08
+product,3222743,name_zh_standard,Nuvanta牌捕蝇器,官网西语品名含品牌Nuvanta且详情明确用于捕捉飞虫,FINAL_CONSOLIDATION_2026-09-08,1,2026-09-08
 product,2557704,name_zh_standard,Troppie果味饮料,第二阶段人工审查：类目、规格或详情足以确认商品本体,STAGE2_HUMAN_REVIEW_2026-08-25,1,2026-08-25
+product,2548558,name_zh_standard,万圣节小灯笼,官网品名可确认；规格字段被页面按钮文案污染，按字段级规则仅修复品名,MODEL_ASSISTED_SOURCE_REVIEW_2026-08-30,0,2026-08-30
+product,2548558,spec_zh_standard,2节AAA电池｜多色,官网详情页确认：需要2节AAA电池，颜色多款；原规格字段为按钮文案,https://www.action.com/es-es/p/2548558/farolillo-de-halloween/,0,2026-08-30
+product,2574845,name_zh_standard,Walfort牌防盗锁线,官网品名可确认；规格字段被页面导航文案污染，按字段级规则仅修复品名,MODEL_ASSISTED_SOURCE_REVIEW_2026-08-30,0,2026-08-30
+product,2574845,spec_zh_standard,12mm｜多色,官网详情页确认：宽度12mm，颜色多款；原规格字段为品牌导航文案,https://www.action.com/es-es/p/2574845/cable-antirrobo-walfort/,0,2026-08-30
+product,3005291,name_zh_standard,中性笔,官网品名可确认；规格字段被页面按钮文案污染，按字段级规则仅修复品名,MODEL_ASSISTED_SOURCE_REVIEW_2026-08-30,0,2026-08-30
+product,3005291,spec_zh_standard,多色,官网详情页确认：笔身及墨水颜色为多款；原规格字段为按钮文案,https://www.action.com/es-es/p/3005291/boligrafo-de-gel/,0,2026-08-30
+product,299750,name_zh_standard,Dumil牌垃圾袋,官网详情页确认：Bolsas de basura Dumil；按品牌牌规则生成,https://www.action.com/es-es/p/299750/bolsas-de-basura-dumil/,0,2026-08-30
+product,299750,spec_zh_standard,60L｜15件,官网详情页确认：60 litros，15 unidades；原规格字段为按钮文案,https://www.action.com/es-es/p/299750/bolsas-de-basura-dumil/,0,2026-08-30
+product,2548454,name_zh_standard,Tesa牌瞬间胶,官网详情页确认：Pegamento instantáneo Tesa；按品牌牌规则生成,https://www.action.com/es-es/p/2548454/pegamento-instantaneo-tesa/,0,2026-08-30
+product,2548454,spec_zh_standard,2×3g,官网详情页确认：2x 3 gramos；原规格字段为按钮文案,https://www.action.com/es-es/p/2548454/pegamento-instantaneo-tesa/,0,2026-08-30
+product,2577222,name_zh_standard,C&C牌防冻冷却液,官网详情页确认：Líquido refrigerante C&C D/G12；按品牌牌规则生成,https://www.action.com/es-es/p/2577222/c-c/,0,2026-08-30
+product,2577222,spec_zh_standard,1L｜G12｜-26°C,官网详情页确认：1 litro、G12、-26 °C；原规格字段为品牌导航文案,https://www.action.com/es-es/p/2577222/c-c/,0,2026-08-30
+product,299750,cat2_zh,清洁用品,官网分类页确认；保留已确认中文二级类目，规格源仍单独标记污染,https://www.action.com/es-es/p/299750/bolsas-de-basura-dumil/,0,2026-08-30
+product,2548454,cat2_zh,手工制作,官网分类页确认；保留已确认中文二级类目，规格源仍单独标记污染,https://www.action.com/es-es/p/2548454/pegamento-instantaneo-tesa/,0,2026-08-30
+product,2548558,cat2_zh,家居装饰,官网分类页确认；保留已确认中文二级类目，规格源仍单独标记污染,https://www.action.com/es-es/p/2548558/farolillo-de-halloween/,0,2026-08-30
+product,2557704,cat2_zh,饮料,官网分类页确认；保留已确认中文二级类目，规格源仍单独标记污染,https://www.action.com/es-es/p/2557704/troppie/,0,2026-08-30
+product,2574845,cat2_zh,自行车,官网分类页确认；保留已确认中文二级类目，规格源仍单独标记污染,https://www.action.com/es-es/p/2574845/cable-antirrobo-walfort/,0,2026-08-30
+product,2577222,cat2_zh,汽车用品,官网分类页确认；保留已确认中文二级类目，规格源仍单独标记污染,https://www.action.com/es-es/p/2577222/c-c/,0,2026-08-30
+product,3005291,cat2_zh,文具,官网分类页确认；保留已确认中文二级类目，规格源仍单独标记污染,https://www.action.com/es-es/p/3005291/boligrafo-de-gel/,0,2026-08-30
 product,2563019,name_zh_standard,浴袍,review_id=d070368a1545cac4f3023687,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:46+08:00
 product,2563019,spec_zh_standard,S-XL码 | 不同款式,review_id=04ae2d9162b9ab17161dcf3f,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:24+08:00
 product,2568889,name_zh_standard,开襟羊毛衫,review_id=99ef6b96e65bd2ce48ebd7d7,UNIFIED_REVIEW_QUEUE,0,2026-08-27T09:41:40+08:00
@@ -236,3 +258,15 @@ product,3225616,name_zh_standard,TAL Tallboy牌保温瓶,model_review_20260828,M
 product,3225616,spec_zh_standard,532毫升,model_review_20260828,MODEL_ASSISTED,0,2026-08-28T00:00:00+08:00
 product,3226013,name_zh_standard,拖鞋,model_review_20260828,MODEL_ASSISTED,0,2026-08-28T00:00:00+08:00
 product,3226013,spec_zh_standard,30-34码｜多种款式,model_review_20260828,MODEL_ASSISTED,0,2026-08-28T00:00:00+08:00
+product,2520460,name_zh_standard,Pro-max牌延长插座线,官网标题确认：Alargador de enchufes Pro-Max；按品牌牌规则及用户指定“延长插座线”修正,https://www.action.com/es-es/p/2520460/alargador-de-enchufes-pro-max/,0,2026-08-30
+product,2557112,name_zh_standard,Dumil牌可重复使用密封袋,8条拒绝复核人工裁决：保留品牌并删除臆加用途,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09
+product,2557112,spec_zh_standard,1升｜20件,8条拒绝复核人工裁决：单位规范,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09
+product,2530213,name_zh_standard,Lodik牌香茅多用途清洁剂,8条拒绝复核人工裁决：保留品牌,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09
+product,2530213,spec_zh_standard,1升,8条拒绝复核人工裁决：单位规范,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09
+product,3200589,name_zh_standard,Lab31牌防摔手机壳,8条拒绝复核人工裁决：品牌牌规则,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09
+product,2551264,name_zh_standard,Jack Parker牌T恤,8条拒绝复核人工裁决：品牌牌规则,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09
+product,2551264,spec_zh_standard,M码,8条拒绝复核人工裁决：尺码规范,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09
+product,2546447,name_zh_standard,Adidas Victory League牌三合一沐浴露,8条拒绝复核人工裁决：保留完整品牌,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09
+product,2568457,name_zh_standard,Kaytan牌壶铃,8条拒绝复核人工裁决：品牌牌规则,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09
+product,2536651,name_zh_standard,Chupa Chups牌精选棒棒糖,8条拒绝复核人工裁决：品名中文化并保留品牌,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09
+product,2536651,spec_zh_standard,10支｜120g,8条拒绝复核人工裁决：单位与数量规范,QWEN_REJECTED_8_HUMAN_AUDIT,0,2026-09-09

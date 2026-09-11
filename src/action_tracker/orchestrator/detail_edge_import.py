@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import csv
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ from ..database.repository import ProductionRepository
 from ..exporting.excel_writer import write_catalog_xlsx
 from ..excel.reader import ES_MAP, load_current
 from ..products.badges import parse_badges
+from ..services.normalization import normalize_official_text
 
 
 class EdgeDetailImportError(ValueError):
@@ -137,7 +139,7 @@ def _normalize_description(value: Any) -> str | None:
     text = _clean_text(value, field="desc_es", sku="staging")
     if not text:
         return None
-    return re.sub(r"^\s*descripci[oó]n\s*\n", "", text, count=1, flags=re.IGNORECASE).strip()
+    return normalize_official_text(text, field="description")
 
 
 def _validate_url(url: Any, sku: str) -> str:
@@ -163,7 +165,8 @@ def _blocked_parent(parent: Path) -> bool:
     return any(json.loads(path.read_text(encoding="utf-8")).get("final_access_state") == "BLOCKED" for path in reports)
 
 
-def _validate_parent(cfg: dict[str, Any], run_id: str, *, for_staging: bool = False) -> tuple[Path, set[str]]:
+def _validate_parent(cfg: dict[str, Any], run_id: str, *, for_staging: bool = False,
+                     require_product_updates: bool = True) -> tuple[Path, set[str]]:
     matches = list(Path(cfg["paths"]["snapshots"]).glob(f"*/{run_id}"))
     if len(matches) != 1:
         raise EdgeDetailImportError(f"EDGE_IMPORT_PARENT_NOT_FOUND:{run_id}")
@@ -186,6 +189,8 @@ def _validate_parent(cfg: dict[str, Any], run_id: str, *, for_staging: bool = Fa
     if not for_staging and not _blocked_parent(parent):
         raise EdgeDetailImportError("EDGE_IMPORT_PARENT_NOT_BLOCKED")
     updates_path = parent / "product_updates.csv"
+    if not updates_path.exists() and not require_product_updates:
+        return parent, set()
     import csv
     with updates_path.open("r", encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.DictReader(handle))
@@ -194,9 +199,55 @@ def _validate_parent(cfg: dict[str, Any], run_id: str, *, for_staging: bool = Fa
         for row in rows
         if str(row.get("need_detail") or "").strip().lower() in {"1", "true", "yes"}
     }
-    if not candidates:
+    if not candidates and require_product_updates:
         raise EdgeDetailImportError("EDGE_IMPORT_PARENT_DETAIL_QUEUE_EMPTY")
     return parent, candidates
+
+
+def _load_deferred_detail_queue(parent: Path) -> tuple[set[str], str]:
+    """Return the authoritative deferred-detail SKU queue for a parent run.
+
+    New runs persist the capped queue in ``detail_backlog.csv``.  For older
+    runs, retain the original ``product_updates.csv``/``MISSING_FIELD``
+    fallback so the controlled import route remains backwards compatible.
+    """
+    backlog_path = parent / "detail_backlog.csv"
+    if backlog_path.exists():
+        with backlog_path.open("r", encoding="utf-8-sig", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+        deferred = {
+            str(row.get("sku") or "").strip()
+            for row in rows
+            if str(row.get("queue_status") or "").strip().upper() == "DEFERRED"
+            and str(row.get("sku") or "").strip()
+        }
+        return deferred, "detail_backlog"
+
+    updates_path = parent / "product_updates.csv"
+    with updates_path.open("r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    deferred = {
+        str(row.get("sku") or "").strip()
+        for row in rows
+        if str(row.get("reason") or "").strip() == "MISSING_FIELD"
+        and str(row.get("detail_selected") or "").strip().lower() in {"", "0", "false", "no"}
+    }
+    return deferred, "product_updates:MISSING_FIELD"
+
+
+def _already_enriched_skus(supplied: set[str], current: dict[str, dict[str, Any]]) -> list[str]:
+    """Identify rows that already contain either detail field in PRIMARY.
+
+    A deferred evidence batch must not overwrite or merely reformat an
+    existing description/details value.  Rejecting partial rows as well as
+    complete rows prevents a second source from silently filling a record
+    whose provenance still requires review.
+    """
+    return sorted(
+        sku for sku in supplied
+        if bool(current.get(sku, {}).get("description_es") or current.get(sku, {}).get("desc_es"))
+        or bool(current.get(sku, {}).get("details_es"))
+    )
 
 
 def _validate_records(payload: dict[str, Any], records: list[dict[str, Any]], candidates: set[str],
@@ -366,19 +417,25 @@ def export_edge_detail_table(cfg: dict[str, Any], *, run_id: str, input_path: Pa
 
 def run_deferred_detail_import(cfg: dict[str, Any], *, run_id: str, input_path: Path,
                                commit: bool = False) -> dict[str, Any]:
-    """Import explicitly deferred MISSING_FIELD details from a QA-passing run."""
+    """Import explicitly deferred detail backlog rows from a QA-passing run.
+
+    A formal run can defer detail work for more than one reason.  Older runs
+    recorded only ``MISSING_FIELD`` rows in ``product_updates.csv``; newer
+    runs persist the authoritative capped queue in ``detail_backlog.csv``.
+    Both queues are accepted here, but the input must belong to exactly one
+    deferred queue and every current row must still have both detail fields
+    empty.  This keeps the route narrow while allowing a normal (non-BLOCKED)
+    QA-passing run to drain an explicitly deferred backlog.
+    """
     parent, _ = _validate_parent(cfg, run_id, for_staging=True)
     report = json.loads((parent / "run_report.json").read_text(encoding="utf-8"))
     if report.get("dry_run") or report.get("commit_status") != "FULL_COMMIT":
         raise EdgeDetailImportError("DEFERRED_IMPORT_PARENT_NOT_COMMITTED")
-    import csv
-    with (parent / "product_updates.csv").open("r", encoding="utf-8-sig", newline="") as handle:
-        updates = list(csv.DictReader(handle))
-    deferred = {
-        str(row.get("sku") or "").strip() for row in updates
-        if str(row.get("reason") or "").strip() == "MISSING_FIELD"
-        and str(row.get("detail_selected") or "").strip().lower() in {"", "0", "false", "no"}
-    }
+    # ``detail_backlog.csv`` is the source of truth for the capped queue.  It
+    # retains NEW/REAPPEARED/CATEGORY_MISSING rows that are not represented as
+    # MISSING_FIELD in product_updates.csv.  Keep the legacy fallback so old
+    # committed runs remain importable.
+    deferred, queue_source = _load_deferred_detail_queue(parent)
     if not deferred:
         raise EdgeDetailImportError("DEFERRED_IMPORT_QUEUE_EMPTY")
     payload, records = _read_payload(Path(input_path))
@@ -389,12 +446,19 @@ def run_deferred_detail_import(cfg: dict[str, Any], *, run_id: str, input_path: 
         raise EdgeDetailImportError(f"DEFERRED_IMPORT_SKU_NOT_DEFERRED:{sorted(supplied - deferred)[:5]}")
     repo = ProductionRepository(database_path(cfg))
     current = {str(row["sku"]): row for row in repo.load_current_export_records()}
+    already_enriched = _already_enriched_skus(supplied, current)
+    if already_enriched:
+        # Do not silently reformat or overwrite an existing detail record.  A
+        # caller must remove these rows from the evidence batch or review them
+        # through a separate correction path.
+        raise EdgeDetailImportError(f"DEFERRED_IMPORT_SKU_ALREADY_ENRICHED:{already_enriched[:10]}")
     valid = _validate_records(payload, records, deferred, current)
     if not valid:
         raise EdgeDetailImportError("DEFERRED_IMPORT_NO_VERIFIED_RECORDS")
     result: dict[str, Any] = {"status": "PREVIEW", "parent_run_id": run_id,
                               "input_rows": len(records), "valid_rows": len(valid),
-                              "deferred_count": len(deferred), "commit": bool(commit)}
+                              "deferred_count": len(deferred), "queue_source": queue_source,
+                              "commit": bool(commit)}
     if not commit:
         return result
     import_id = f"deferred-detail-import_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{len(valid)}"
@@ -404,7 +468,8 @@ def run_deferred_detail_import(cfg: dict[str, Any], *, run_id: str, input_path: 
     (evidence_dir / "records.json").write_text(json.dumps(valid, ensure_ascii=False, indent=2), encoding="utf-8")
     apply_result = apply_detail_only_updates(database_path(cfg), valid, import_id=import_id,
                                              evidence={"parent_run_id": run_id, "source": "EDGE_PLUGIN",
-                                                       "kind": "DEFERRED_MISSING_FIELD"})
+                                                       "kind": "DEFERRED_DETAIL_BACKLOG",
+                                                       "queue_source": queue_source})
     head = repo.current_head()
     sync = regenerate_compatibility_exports(cfg, head) if head else None
     final = {**result, **apply_result, "status": "APPLIED", "import_id": import_id,
@@ -431,10 +496,18 @@ def _normalize_detail_delimiters(value: Any) -> str | None:
             if not segment:
                 continue
             if "\t" in segment:
-                pairs.extend(part.strip() for part in segment.split("\t") if part.strip())
+                parts = [part.strip() for part in segment.split("\t") if part.strip()]
+                # Browser exports commonly flatten a two-column detail row
+                # into ``Key<TAB>Value``.  Restore the canonical separator
+                # instead of persisting ``Key; Value`` (which loses the
+                # field/value boundary and breaks downstream audits).
+                if len(parts) == 2:
+                    pairs.append(f"{parts[0]}: {parts[1]}")
+                else:
+                    pairs.extend(parts)
             else:
                 pairs.append(segment)
-    return "; ".join(part for part in pairs if part)
+    return normalize_official_text("; ".join(part for part in pairs if part), field="details")
 
 
 def run_edge_detail_import(cfg: dict[str, Any], *, run_id: str, input_path: Path, commit: bool = False) -> dict[str, Any]:

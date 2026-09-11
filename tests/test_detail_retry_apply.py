@@ -63,6 +63,44 @@ def test_apply_detail_retry_updates_only_detail_fields(tmp_path, monkeypatch):
     assert captured["price_events"] == [] and captured["event_events"] == []
 
 
+def test_retry_plans_filter_listing_only_new_rows_when_presence_evidence_exists(tmp_path):
+    cfg = _cfg(tmp_path)
+    parent = _parent(cfg)
+    (parent / "product_updates.csv").write_text(
+        "sku,canonical_id,reason,need_detail\n"
+        "1001,ACT0001001,NEW,true\n"
+        "1002,ACT0001002,NEW,true\n",
+        encoding="utf-8",
+    )
+    (parent / "presence_evidence.csv").write_text(
+        "sku,source_flag\n1001,BOTH\n1002,LISTING_ONLY\n",
+        encoding="utf-8",
+    )
+
+    plans = detail_retry._plans(parent)
+
+    assert [plan["sku"] for plan in plans] == ["1001"]
+
+
+def test_retry_plans_do_not_expand_deferred_daily_backlog_rows(tmp_path):
+    cfg = _cfg(tmp_path)
+    parent = _parent(cfg)
+    (parent / "product_updates.csv").write_text(
+        "sku,canonical_id,reason,need_detail,detail_selected\n"
+        "1001,ACT0001001,MISSING_FIELD,true,true\n"
+        "1002,ACT0001002,MISSING_FIELD,true,false\n",
+        encoding="utf-8",
+    )
+    (parent / "products_normalized.csv").write_text(
+        "sku,product_url\n1001,https://example/1001\n1002,https://example/1002\n",
+        encoding="utf-8",
+    )
+
+    plans = detail_retry._plans(parent)
+
+    assert [plan["sku"] for plan in plans] == ["1001"]
+
+
 def test_apply_detail_retry_requires_committed_qa_observation(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     _parent(cfg, qa="FAIL")

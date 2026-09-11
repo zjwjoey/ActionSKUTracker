@@ -14,11 +14,15 @@ from action_tracker.orchestrator.detail_edge_import import (
     EDGE_STAGING_HEADERS,
     EdgeDetailImportError,
     _excel_date,
+    _already_enriched_skus,
+    _load_deferred_detail_queue,
     _normalize_detail_delimiters,
     _normalize_description,
     _validate_master_es_schema,
     _validate_records,
 )
+from action_tracker.orchestrator.edge_listing_reconcile import _build_deferred_category_plan
+from action_tracker.services.normalization import normalize_official_text
 
 
 def _primary_db(path: Path) -> None:
@@ -59,6 +63,18 @@ def test_detail_only_writer_never_changes_listing_facts_price_or_lifecycle(tmp_p
     assert tuple(loc[:4]) == ("Viejo", "Vivienda", None, "20 metros")
     assert loc[4] == "Para interior y exterior" and loc[5] == "Número de pilas necesarias: 2"
     assert loc[6] == "EDGE_PLUGIN"
+    with connect(db) as conn:
+        field_rows = conn.execute(
+            "SELECT field_name,value FROM localization_fields WHERE official_sku='2571395' AND language='es'"
+        ).fetchall()
+        canonical_rows = conn.execute(
+            "SELECT field_name,value FROM localization_field_provenance WHERE official_sku='2571395' AND language='es'"
+        ).fetchall()
+        assert dict(field_rows)["description"] == "Para interior y exterior"
+        assert dict(field_rows)["details"] == "Número de pilas necesarias: 2"
+        assert dict(canonical_rows)["details"] == "Número de pilas necesarias: 2"
+        assert conn.execute("SELECT COUNT(*) FROM product_fact_versions WHERE official_sku='2571395'").fetchone()[0] >= 2
+        assert conn.execute("SELECT COUNT(*) FROM localization_patch_events").fetchone()[0] >= 4
 
 
 def test_detail_writer_canonicalizes_only_existing_legacy_action_host(tmp_path: Path):
@@ -159,7 +175,24 @@ def test_edge_import_rejects_explicit_spanish_security_interstitial():
 
 def test_staging_normalizers_remove_heading_and_all_detail_separators():
     assert _normalize_description("Descripción\nLínea uno\nLínea dos") == "Línea uno\nLínea dos"
-    assert _normalize_detail_delimiters("Color\tRojo | Cantidad\t5 piezas") == "Color; Rojo; Cantidad; 5 piezas"
+    assert _normalize_detail_delimiters("Color\tRojo | Cantidad\t5 piezas") == "Color: Rojo; Cantidad: 5 piezas"
+
+
+def test_official_text_normalizer_removes_transport_pollution_only():
+    assert normalize_official_text("Añadir a tus favoritos", field="spec") is None
+    assert normalize_official_text("Descripción\n<a href='x'>Texto</a>\nLeer más", field="description") == "Texto"
+    assert normalize_official_text("Material:: Plástico;  Número: 2", field="details") == "Material: Plástico; Número: 2"
+
+
+def test_detail_normalizer_repairs_split_official_labels_without_deduplicating():
+    value = normalize_official_text(
+        "Longitud del cable:; 20 m; Longitud del cable:; 20; Método de fijación; Colgado; Número del artículo; 2536376",
+        field="details",
+    )
+    assert value == (
+        "Longitud del cable: 20 m; Longitud del cable: 20; "
+        "Método de fijación: Colgado; Número del artículo: 2536376"
+    )
 
 
 def test_edge_import_requires_source_url_sku_match():
@@ -203,7 +236,7 @@ def test_staging_validation_keeps_incomplete_page_for_followup():
 
 
 def test_master_aligned_details_normalize_tabs_and_newlines():
-    assert _normalize_detail_delimiters("Color\tBlanco\nPotencia\t3.6") == "Color; Blanco; Potencia; 3.6"
+    assert _normalize_detail_delimiters("Color\tBlanco\nPotencia\t3.6") == "Color: Blanco; Potencia: 3.6"
 
 
 def test_staging_schema_is_exact_master_es_schema():
@@ -226,3 +259,94 @@ def test_staging_rejects_master_header_drift(tmp_path: Path):
     workbook.close()
     with pytest.raises(EdgeDetailImportError, match="SCHEMA_MISMATCH"):
         _validate_master_es_schema(path)
+
+
+def test_deferred_queue_prefers_authoritative_detail_backlog(tmp_path: Path):
+    (tmp_path / "detail_backlog.csv").write_text(
+        "sku,queue_status,reason\n"
+        "3220001,DEFERRED,NEW\n"
+        "3220002,deferred,REAPPEARED\n"
+        "3220003,READY,NEW\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "product_updates.csv").write_text(
+        "sku,reason,detail_selected\n2570001,MISSING_FIELD,0\n",
+        encoding="utf-8",
+    )
+    queue, source = _load_deferred_detail_queue(tmp_path)
+    assert queue == {"3220001", "3220002"}
+    assert source == "detail_backlog"
+
+
+def test_deferred_queue_uses_legacy_missing_field_fallback(tmp_path: Path):
+    (tmp_path / "product_updates.csv").write_text(
+        "sku,reason,detail_selected\n"
+        "2570001,MISSING_FIELD,0\n"
+        "2570002,MISSING_FIELD,false\n"
+        "2570003,MISSING_FIELD,1\n"
+        "2570004,NEW,0\n",
+        encoding="utf-8",
+    )
+    queue, source = _load_deferred_detail_queue(tmp_path)
+    assert queue == {"2570001", "2570002"}
+    assert source == "product_updates:MISSING_FIELD"
+
+
+def test_deferred_import_rejects_partial_or_complete_existing_details():
+    current = {
+        "3220001": {"description_es": "Descripción", "details_es": None},
+        "3220002": {"description_es": None, "details_es": "Detalles"},
+        "3220003": {"description_es": "Descripción", "details_es": "Detalles"},
+        "3220004": {"description_es": None, "details_es": None},
+    }
+    assert _already_enriched_skus(set(current), current) == ["3220001", "3220002", "3220003"]
+
+
+def test_deferred_category_plan_fills_blank_categories_without_overwriting_facts():
+    current = {
+        "3220001": {"sku": "3220001", "cat1_es": "Hogar", "cat2_es": None,
+                    "raw_tags": "", "first_seen": "2026-09-01"},
+    }
+    lifecycle = {"3220001": {"first_seen_date": "2026-09-01"}}
+    details = [{"sku": "3220001", "product_url": "https://www.action.com/es-es/p/3220001/x/",
+                "cat1_es": "Hogar", "cat2_es": "Almacenaje"}]
+    plan, conflicts = _build_deferred_category_plan(
+        current=current, lifecycle=lifecycle, detail_records=details,
+    )
+    assert conflicts == []
+    assert plan[0]["cat1_es"] == "Hogar"
+    assert plan[0]["cat2_es"] == "Almacenaje"
+
+
+def test_deferred_category_plan_isolates_non_blank_category_conflicts():
+    current = {
+        "3220001": {"sku": "3220001", "cat1_es": "Cocina", "cat2_es": None,
+                    "raw_tags": "", "first_seen": "2026-09-01"},
+    }
+    lifecycle = {"3220001": {"first_seen_date": "2026-09-01"}}
+    details = [{"sku": "3220001", "product_url": "https://www.action.com/es-es/p/3220001/x/",
+                "cat1_es": "Vivienda", "cat2_es": "Muebles"}]
+    plan, conflicts = _build_deferred_category_plan(
+        current=current, lifecycle=lifecycle, detail_records=details,
+    )
+    assert plan == []
+    assert conflicts[0]["sku"] == "3220001"
+    assert conflicts[0]["fields"] == ["cat1_es"]
+
+
+def test_deferred_category_plan_accepts_only_explicitly_approved_official_conflict():
+    current = {
+        "3220001": {"sku": "3220001", "cat1_es": "Cocina", "cat2_es": None,
+                    "raw_tags": "", "first_seen": "2026-09-01"},
+    }
+    lifecycle = {"3220001": {"first_seen_date": "2026-09-01"}}
+    details = [{"sku": "3220001", "product_url": "https://www.action.com/es-es/p/3220001/x/",
+                "cat1_es": "Vivienda", "cat2_es": "Muebles"}]
+    plan, conflicts = _build_deferred_category_plan(
+        current=current, lifecycle=lifecycle, detail_records=details,
+        approved_conflict_skus={"3220001"},
+    )
+    assert conflicts == []
+    assert plan[0]["cat1_es"] == "Vivienda"
+    assert plan[0]["cat2_es"] == "Muebles"
+    assert plan[0]["official_conflict_approved"] is True

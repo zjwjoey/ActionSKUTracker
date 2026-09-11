@@ -19,7 +19,10 @@ from typing import Any, Iterable, Mapping
 
 from .connection import connect
 from .schema import migrate_v2
+from .patches import append_patch_event, create_patch
+from .provenance import sync_localization_field_provenance
 from ..services.hashing import content_hash, localization_source_hash, normalize_hash
+from ..services.normalization import normalize_official_text
 
 
 class ProductionDatabaseError(RuntimeError):
@@ -223,6 +226,22 @@ class ProductionWriter:
                     )
                     continue
             source_hash = normalize_hash(r.get("source_hash"))
+            current_price = r.get("current_price")
+            original_price = r.get("original_price")
+            # A detail parser may omit the original-price node for a regular
+            # item.  Never persist a fabricated/equal original price.
+            try:
+                if current_price is not None and original_price is not None and float(original_price) <= float(current_price):
+                    original_price = None
+            except (TypeError, ValueError):
+                pass
+            if not r.get("_historical_minimal"):
+                source_hash = localization_source_hash({
+                    "name_es": r.get("name_es"), "cat1_es": r.get("cat1_es"),
+                    "cat2_es": r.get("cat2_es"), "spec_es": normalize_official_text(r.get("spec_es"), field="spec"),
+                    "desc_es": normalize_official_text(r.get("desc_es"), field="description"),
+                    "details_es": normalize_official_text(r.get("details_es"), field="details"),
+                })
             # The product row is the durable identity projection.  Collection
             # records do not always carry a precomputed hash, so fill it at
             # this boundary from the same six Spanish fact fields used by
@@ -242,7 +261,7 @@ class ProductionWriter:
                 sustainable_badge=excluded.sustainable_badge,status=excluded.status,consecutive_missing=excluded.consecutive_missing,
                 product_url=excluded.product_url,image_url=excluded.image_url,first_seen_at=excluded.first_seen_at,last_seen_at=excluded.last_seen_at,
                 last_checked_at=excluded.last_checked_at,source_hash=excluded.source_hash,updated_at=excluded.updated_at""",
-                (cid, sku, r.get("name_es"), r.get("name_zh"), r.get("current_price"), r.get("original_price"), r.get("unit_price_raw", r.get("unit_price")),
+                (cid, sku, r.get("name_es"), r.get("name_zh"), current_price, original_price, r.get("unit_price_raw", r.get("unit_price")),
                  r.get("raw_badges", r.get("raw_tags")), int(_to_bool(r.get("action_new_badge", r.get("is_new_badge", False)))),
                  int(_to_bool(r.get("promotion_active", r.get("promotion", False)))), int(_to_bool(r.get("sustainable_badge", r.get("sustainable", False)))),
                  r.get("status", "ACTIVE"), int(r.get("consecutive_missing", 0) or 0), r.get("product_url"), r.get("image_url"),
@@ -254,12 +273,22 @@ class ProductionWriter:
         for r in rows:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
             language = str(r.get("language") or "zh")
+            name = r.get("name")
+            cat1 = r.get("cat1")
+            cat2 = r.get("cat2")
+            spec = r.get("spec")
+            description = r.get("description")
+            details = r.get("details")
+            if language == "es":
+                spec = normalize_official_text(spec, field="spec")
+                description = normalize_official_text(description, field="description")
+                details = normalize_official_text(details, field="details")
             localization_hash = normalize_hash(r.get("source_hash"))
-            if localization_hash is None and language == "es":
+            if language == "es":
                 localization_hash = localization_source_hash({
-                    "name_es": r.get("name"), "cat1_es": r.get("cat1"),
-                    "cat2_es": r.get("cat2"), "spec_es": r.get("spec"),
-                    "desc_es": r.get("description"), "details_es": r.get("details"),
+                    "name_es": name, "cat1_es": cat1,
+                    "cat2_es": cat2, "spec_es": spec,
+                    "desc_es": description, "details_es": details,
                 })
             db.execute(
                 """INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,source,review_status,updated_at,last_commit_id,
@@ -272,7 +301,7 @@ class ProductionWriter:
                  cat2_source=excluded.cat2_source,spec_source=excluded.spec_source,description_source=excluded.description_source,
                  details_source=excluded.details_source,freshness_status=excluded.freshness_status,approved_by=excluded.approved_by,
                  approved_at=excluded.approved_at,applied_commit_id=excluded.applied_commit_id""",
-                (sku, language, r.get("name"), r.get("cat1"), r.get("cat2"), r.get("spec"), r.get("description"), r.get("details"),
+                (sku, language, name, cat1, cat2, spec, description, details,
                  r.get("source"), r.get("review_status"), now, commit_id, localization_hash,
                  r.get("resolution_status"), r.get("name_source"), r.get("cat1_source"), r.get("cat2_source"),
                  r.get("spec_source"), r.get("description_source"), r.get("details_source"), r.get("freshness_status"),
@@ -295,14 +324,21 @@ class ProductionWriter:
             if not sku or language not in {"es", "zh"}:
                 continue
             row_hash = normalize_hash(row.get("source_hash"))
-            if row_hash is None and language == "es":
+            if language == "es":
                 row_hash = localization_source_hash({
                     "name_es": row.get("name"), "cat1_es": row.get("cat1"),
-                    "cat2_es": row.get("cat2"), "spec_es": row.get("spec"),
-                    "desc_es": row.get("description"), "details_es": row.get("details"),
+                    "cat2_es": row.get("cat2"),
+                    "spec_es": normalize_official_text(row.get("spec"), field="spec"),
+                    "desc_es": normalize_official_text(row.get("description"), field="description"),
+                    "details_es": normalize_official_text(row.get("details"), field="details"),
                 })
             for field_name in fields:
                 value = row.get(field_name)
+                if language == "es" and field_name in {"spec", "description", "details"}:
+                    value = normalize_official_text(
+                        value,
+                        field={"spec": "spec", "description": "description", "details": "details"}[field_name],
+                    )
                 source = row.get(f"{field_name}_source") or row.get("source")
                 review_status = row.get(f"{field_name}_review_status") or row.get("review_status")
                 field_hash = normalize_hash(row.get(f"{field_name}_source_hash")) or row_hash
@@ -318,6 +354,12 @@ class ProductionWriter:
                     """,
                     (sku, language, field_name, value, source, review_status, field_hash, now, row.get("applied_commit_id") or commit_id),
                 )
+            # Keep the canonical projection in lockstep with the compatibility
+            # table.  This is intentionally called once per complete input
+            # row so field-level overrides remain independent.
+            sync_localization_field_provenance(
+                db, row, commit_id=commit_id, now=now,
+            )
 
     @staticmethod
     def _record_fact_versions(
@@ -456,6 +498,121 @@ def _to_bool(value: Any) -> bool:
     return str(value or "").strip().casefold() in {"1", "true", "yes", "y", "on", "是", "有"}
 
 
+def _ensure_import_run(db: sqlite3.Connection, import_id: str, evidence: Mapping[str, Any] | None) -> str:
+    """Return a durable run id for an evidence import fact version."""
+    parent = str((evidence or {}).get("parent_run_id") or "").strip()
+    if parent and db.execute("SELECT 1 FROM runs WHERE run_id=?", (parent,)).fetchone():
+        return parent
+    if db.execute("SELECT 1 FROM runs WHERE run_id=?", (import_id,)).fetchone():
+        return import_id
+    now = datetime.now(timezone.utc).isoformat()
+    db.execute(
+        """INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version)
+           VALUES(?,?,?,?,?,?,?,?)""",
+        (import_id, now[:10], "COMMITTED", "PASS_PRESENCE_ONLY", 0, now, now, "2.0.0"),
+    )
+    return import_id
+
+
+def _record_import_fact_version(
+    db: sqlite3.Connection,
+    *,
+    sku: str,
+    run_id: str,
+    merged: Mapping[str, Any],
+    product: sqlite3.Row | tuple[Any, ...],
+    evidence: Mapping[str, Any] | None,
+    now: str,
+) -> None:
+    """Append a normalized detail fact without pretending raw HTML was saved."""
+    normalized = {
+        "name_es": merged.get("name"), "cat1_es": merged.get("cat1"),
+        "cat2_es": merged.get("cat2"), "spec_es": merged.get("spec"),
+        "desc_es": merged.get("description"), "details_es": merged.get("details"),
+        "product_url": product[3], "image_url": product[4],
+        "evidence": dict(evidence or {}),
+    }
+    raw = {}
+    raw_payload = json.dumps(raw, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    normalized_payload = json.dumps(normalized, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
+    raw_hash = hashlib.sha256(raw_payload.encode("utf-8")).hexdigest()
+    normalized_hash = hashlib.sha256(normalized_payload.encode("utf-8")).hexdigest()
+    fact_id = hashlib.sha256(f"{run_id}\x1f{sku}\x1f{raw_hash}\x1f{normalized_hash}".encode("utf-8")).hexdigest()
+    db.execute(
+        """INSERT INTO product_fact_versions(
+        fact_id,official_sku,run_id,raw_fact_json,normalized_fact_json,raw_fact_hash,
+        normalized_fact_hash,raw_fact_available,normalization_version,created_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(official_sku,run_id) DO UPDATE SET
+          fact_id=excluded.fact_id,raw_fact_json=excluded.raw_fact_json,
+          normalized_fact_json=excluded.normalized_fact_json,raw_fact_hash=excluded.raw_fact_hash,
+          normalized_fact_hash=excluded.normalized_fact_hash,raw_fact_available=excluded.raw_fact_available,
+          normalization_version=excluded.normalization_version,created_at=excluded.created_at""",
+        (fact_id, sku, run_id, raw_payload, normalized_payload, raw_hash, normalized_hash, 0, "edge-normalized-v1", now),
+    )
+
+
+def _enqueue_import_followups(
+    db: sqlite3.Connection,
+    *,
+    sku: str,
+    merged: Mapping[str, Any],
+    source_hash: str,
+    product_url: str,
+    now: str,
+    import_id: str,
+) -> dict[str, Any]:
+    """Queue missing category/translation work instead of claiming completion."""
+    category_queued = False
+    translation_queued = False
+    if not str(merged.get("cat2") or "").strip() and db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='category_backlog'"
+    ).fetchone():
+        queue_id = f"category-gap-{sku}-{source_hash[:16]}"
+        db.execute(
+            """INSERT OR IGNORE INTO category_backlog
+            (queue_id,official_sku,cat1_es,cat2_es,suggested_cat2_zh,evidence_url,source_hash,status,created_at)
+            VALUES(?,?,?,?,?,?,?,?,?)""",
+            (queue_id, sku, merged.get("cat1"), None, "", product_url, source_hash, "CATEGORY_MISSING", now),
+        )
+        event_id = hashlib.sha256(f"{queue_id}|CATEGORY_MISSING".encode()).hexdigest()
+        db.execute(
+            """INSERT OR IGNORE INTO category_backlog_events
+            (event_id,queue_id,event_type,actor,evidence_json,created_at) VALUES(?,?,?,?,?,?)""",
+            (event_id, queue_id, "CATEGORY_MISSING", "detail-import",
+             json.dumps({"import_id": import_id, "source_hash": source_hash}, ensure_ascii=False, sort_keys=True), now),
+        )
+        category_queued = True
+
+    zh = db.execute(
+        "SELECT name,cat1,cat2,spec,description,details,review_status FROM product_localizations "
+        "WHERE official_sku=? AND language='zh'", (sku,)
+    ).fetchone()
+    requested: list[str] = []
+    if zh:
+        for idx, field in enumerate(("name", "cat1", "cat2", "spec", "description", "details")):
+            value = zh[idx]
+            if value in (None, "") or str(zh[6] or "") in {"FALLBACK_ES", "NEEDS_REVIEW", "PENDING_REVIEW"}:
+                requested.append(field)
+    if requested and db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='translation_queue'"
+    ).fetchone():
+        fields_json = json.dumps(sorted(set(requested)), ensure_ascii=False, separators=(",", ":"))
+        queue_id = hashlib.sha256(f"{sku}|zh|{source_hash}|{fields_json}".encode()).hexdigest()
+        db.execute(
+            """INSERT INTO translation_queue
+            (queue_id,official_sku,language,source_hash,requested_fields,reason,priority,status,retry_count,run_id,created_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(official_sku,language,source_hash,requested_fields) DO UPDATE SET
+              reason=excluded.reason,priority=excluded.priority,run_id=excluded.run_id""",
+            (queue_id, sku, "zh", source_hash, fields_json, "DETAIL_SOURCE_CHANGED_OR_ZH_FALLBACK",
+             "HIGH", "PENDING", 0, import_id, now),
+        )
+        translation_queued = True
+    return {"category_queued": category_queued, "translation_queued": translation_queued,
+            "requested_translation_fields": requested}
+
+
 def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
                               import_id: str, evidence: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Atomically apply verified Spanish detail fields to a PRIMARY database.
@@ -504,8 +661,13 @@ def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
                 # accepted as mutations: their authority remains the listing
                 # observation frozen before detail enrichment.
                 incoming = {
-                    "description": row.get("desc_es", row.get("description_es", row.get("description"))),
-                    "details": row.get("details_es", row.get("details")),
+                    "description": normalize_official_text(
+                        row.get("desc_es", row.get("description_es", row.get("description"))),
+                        field="description",
+                    ),
+                    "details": normalize_official_text(
+                        row.get("details_es", row.get("details")), field="details"
+                    ),
                 }
                 old = dict(zip(("name", "cat1", "cat2", "spec", "description", "details"), loc))
                 merged = dict(old)
@@ -534,17 +696,67 @@ def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
                     product_args.insert(0, product_url)
                 product_args.append(sku)
                 db.execute(f"UPDATE products SET {', '.join(product_fields)} WHERE official_sku=?", product_args)
+                partial = not bool(str(merged.get("cat2") or "").strip())
+                resolution_status = "DETAIL_IMPORTED_PARTIAL" if partial else "DETAIL_IMPORTED"
+                review_status = "PENDING_REVIEW" if partial else "VERIFIED"
                 db.execute(
                     "UPDATE product_localizations SET description=?,details=?,source=?,"
                     "review_status=?,source_hash=?,resolution_status=?,freshness_status=?,updated_at=?,last_commit_id=? "
                     "WHERE official_sku=? AND language='es'",
                     (merged["description"], merged["details"],
-                     "EDGE_PLUGIN", "VERIFIED", source_hash, "DETAIL_IMPORTED", "CURRENT", now, import_id, sku),
+                     "EDGE_PLUGIN", review_status, source_hash, resolution_status, "CURRENT", now, import_id, sku),
                 )
                 db.execute(
                     "UPDATE product_localizations SET source_hash=?, updated_at=? WHERE official_sku=? AND language='zh'",
                     (source_hash, now, sku),
                 )
+                # Keep both field-level projections synchronized.  The old
+                # implementation updated only product_localizations, making
+                # values stale while hashes still appeared equal.
+                sync_localization_field_provenance(
+                    db,
+                    {"sku": sku, "language": "es", **merged,
+                     "source": "EDGE_PLUGIN", "review_status": review_status,
+                     "source_hash": source_hash, "applied_commit_id": import_id,
+                     "description_source": "edge_detail", "details_source": "edge_detail",
+                     "freshness_status": "CURRENT"},
+                    commit_id=import_id, now=now,
+                )
+                zh_row = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details,source,review_status,"
+                    "name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status "
+                    "FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)
+                ).fetchone()
+                if zh_row:
+                    zh_fields = dict(zip(("name", "cat1", "cat2", "spec", "description", "details",
+                                          "source", "review_status", "name_source", "cat1_source", "cat2_source",
+                                          "spec_source", "description_source", "details_source", "freshness_status"), zh_row))
+                    zh_fields.update({"sku": sku, "language": "zh", "source_hash": source_hash,
+                                      "applied_commit_id": import_id})
+                    sync_localization_field_provenance(db, zh_fields, commit_id=import_id, now=now)
+                fact_run_id = _ensure_import_run(db, import_id, evidence)
+                _record_import_fact_version(
+                    db, sku=sku, run_id=fact_run_id, merged=merged, product=product,
+                    evidence=evidence, now=now,
+                )
+                followups = _enqueue_import_followups(
+                    db, sku=sku, merged=merged, source_hash=source_hash,
+                    product_url=product_url, now=now, import_id=import_id,
+                )
+                # Every changed field gets an immutable patch revision and an
+                # explicit approval/application event.  No UPDATE is ever
+                # issued against a patch row itself.
+                for field_name in ("description", "details"):
+                    if old[field_name] == merged[field_name]:
+                        continue
+                    patch_id = create_patch(
+                        db, official_sku=sku, language="es", field_name=field_name,
+                        old_value=old[field_name], new_value=merged[field_name],
+                        source_hash=source_hash, reason="verified_edge_detail_import",
+                        created_by="edge-import",
+                    )
+                    append_patch_event(db, patch_id, "PATCH_APPROVED", actor="edge-import", reason="official page evidence")
+                    append_patch_event(db, patch_id, "PATCH_APPLIED", actor="edge-import", reason="PRIMARY detail recovery")
                 changed = sum(
                     old[field] != merged[field]
                     for field in ("description", "details")
@@ -555,7 +767,8 @@ def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
                 db.execute(
                     "INSERT INTO migration_source_issues(source_name,issue_type,entity_id,details) VALUES(?,?,?,?)",
                     ("edge_detail_import", "DETAIL_FIELDS_APPLIED", sku,
-                     json.dumps({"import_id": import_id, **(dict(evidence or {}))}, ensure_ascii=False, sort_keys=True)),
+                     json.dumps({"import_id": import_id, "resolution_status": resolution_status,
+                                 "followups": followups, **(dict(evidence or {}))}, ensure_ascii=False, sort_keys=True)),
                 )
             db.commit()
         except Exception:
@@ -676,6 +889,42 @@ def apply_verified_listing_reconciliation(path: Path, rows: Iterable[Mapping[str
                     "UPDATE product_localizations SET source_hash=?,updated_at=? "
                     "WHERE official_sku=? AND language='zh'", (source_hash, now, sku),
                 )
+                reconciled = {
+                    "sku": sku, "language": "es", "name": old["name"], "cat1": cat1,
+                    "cat2": cat2, "spec": old["spec"], "description": old["description"],
+                    "details": old["details"], "source": "OFFICIAL_FACT", "review_status": "VERIFIED",
+                    "source_hash": source_hash, "cat1_source": "official_breadcrumb",
+                    "cat2_source": "official_breadcrumb", "freshness_status": "CURRENT",
+                    "applied_commit_id": import_id,
+                }
+                sync_localization_field_provenance(db, reconciled, commit_id=import_id, now=now)
+                zh_row = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details,source,review_status,"
+                    "name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status "
+                    "FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)
+                ).fetchone()
+                if zh_row:
+                    zh_fields = dict(zip(("name", "cat1", "cat2", "spec", "description", "details",
+                                          "source", "review_status", "name_source", "cat1_source", "cat2_source",
+                                          "spec_source", "description_source", "details_source", "freshness_status"), zh_row))
+                    zh_fields.update({"sku": sku, "language": "zh", "source_hash": source_hash,
+                                      "applied_commit_id": import_id})
+                    sync_localization_field_provenance(db, zh_fields, commit_id=import_id, now=now)
+                fact_run_id = _ensure_import_run(db, import_id, evidence)
+                fact_merged = {"name": old["name"], "cat1": cat1, "cat2": cat2,
+                               "spec": old["spec"], "description": old["description"], "details": old["details"]}
+                _record_import_fact_version(db, sku=sku, run_id=fact_run_id, merged=fact_merged,
+                                            product=product, evidence=evidence, now=now)
+                for field_name, old_value, new_value in (("cat1", old["cat1"], cat1), ("cat2", old["cat2"], cat2)):
+                    if old_value == new_value:
+                        continue
+                    patch_id = create_patch(
+                        db, official_sku=sku, language="es", field_name=field_name,
+                        old_value=old_value, new_value=new_value, source_hash=source_hash,
+                        reason="verified_listing_breadcrumb_reconciliation", created_by="listing-reconcile",
+                    )
+                    append_patch_event(db, patch_id, "PATCH_APPROVED", actor="listing-reconcile", reason="official breadcrumb")
+                    append_patch_event(db, patch_id, "PATCH_APPLIED", actor="listing-reconcile", reason="PRIMARY category reconciliation")
                 category_changed = int(old["cat1"] != cat1) + int(old["cat2"] != cat2)
                 badge_changed = int(bool(product[5]) != expected_badge)
                 first_seen_changed = int(not existing_first_seen)
@@ -917,6 +1166,24 @@ def repair_primary_localization_regression(
                     "UPDATE product_localizations SET source_hash=? WHERE official_sku=? AND language IN ('es','zh')",
                     (localization_source_hash(fact), row[0]),
                 )
+                source_hash = localization_source_hash(fact)
+                for language in ("es", "zh"):
+                    loc_row = db.execute(
+                        "SELECT name,cat1,cat2,spec,description,details,source,review_status,"
+                        "name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status "
+                        "FROM product_localizations WHERE official_sku=? AND language=?",
+                        (row[0], language),
+                    ).fetchone()
+                    if not loc_row:
+                        continue
+                    projection = dict(zip(("name", "cat1", "cat2", "spec", "description", "details",
+                                           "source", "review_status", "name_source", "cat1_source", "cat2_source",
+                                           "spec_source", "description_source", "details_source", "freshness_status"), loc_row))
+                    projection.update({"sku": row[0], "language": language, "source_hash": source_hash,
+                                       "applied_commit_id": run_id})
+                    sync_localization_field_provenance(
+                        db, projection, commit_id=run_id, now=datetime.now(timezone.utc).isoformat()
+                    )
 
             # Rebuild only the derived content events for the affected run;
             # price and badge events were computed from independent Listing

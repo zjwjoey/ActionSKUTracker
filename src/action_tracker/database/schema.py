@@ -52,6 +52,25 @@ CREATE TABLE IF NOT EXISTS localization_fields (
  PRIMARY KEY (official_sku, language, field_name),
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
+-- Canonical field-level provenance projection.  Keep the older
+-- localization_fields table for compatibility, but every production writer
+-- must synchronize both projections when the table exists.
+CREATE TABLE IF NOT EXISTS localization_field_provenance (
+ official_sku TEXT NOT NULL,
+ language TEXT NOT NULL,
+ field_name TEXT NOT NULL CHECK (field_name IN ('name','cat1','cat2','spec','description','details')),
+ value TEXT,
+ source TEXT,
+ review_status TEXT,
+ source_hash TEXT,
+ updated_at TEXT NOT NULL,
+ applied_commit_id TEXT,
+ approved_by TEXT,
+ approved_at TEXT,
+ freshness_status TEXT,
+ PRIMARY KEY (official_sku, language, field_name),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
 CREATE TABLE IF NOT EXISTS product_fact_versions (
  fact_id TEXT PRIMARY KEY,
  official_sku TEXT NOT NULL,
@@ -256,6 +275,30 @@ CREATE TABLE IF NOT EXISTS translation_queue (
  UNIQUE(official_sku, language, source_hash, requested_fields),
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
+CREATE TABLE IF NOT EXISTS category_backlog (
+ queue_id TEXT PRIMARY KEY,
+ official_sku TEXT NOT NULL,
+ cat1_es TEXT,
+ cat2_es TEXT,
+ suggested_cat2_zh TEXT,
+ evidence_url TEXT,
+ source_hash TEXT NOT NULL,
+ status TEXT NOT NULL,
+ decision_value TEXT,
+ decided_by TEXT,
+ decided_at TEXT,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS category_backlog_events (
+ event_id TEXT PRIMARY KEY,
+ queue_id TEXT NOT NULL,
+ event_type TEXT NOT NULL,
+ actor TEXT NOT NULL,
+ evidence_json TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY (queue_id) REFERENCES category_backlog(queue_id)
+);
 CREATE TABLE IF NOT EXISTS translation_candidates (
  candidate_id TEXT PRIMARY KEY,
  queue_id TEXT NOT NULL,
@@ -365,6 +408,17 @@ def migrate_v2(path, *, role: str = "SHADOW"):
             db.execute(
                 f"""
                 INSERT OR IGNORE INTO localization_fields(
+                    official_sku,language,field_name,value,source,review_status,source_hash,updated_at,applied_commit_id
+                )
+                SELECT official_sku,language,?,{value_column},{source_column},{status_column},source_hash,
+                       COALESCE(updated_at,CURRENT_TIMESTAMP),applied_commit_id
+                FROM product_localizations
+                """,
+                (field_name,),
+            )
+            db.execute(
+                f"""
+                INSERT OR IGNORE INTO localization_field_provenance(
                     official_sku,language,field_name,value,source,review_status,source_hash,updated_at,applied_commit_id
                 )
                 SELECT official_sku,language,?,{value_column},{source_column},{status_column},source_hash,

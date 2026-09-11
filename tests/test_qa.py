@@ -129,3 +129,59 @@ def test_missing_fields_on_listing_observation_fail_qa():
                 products=products)
     assert qa.passed is False
     assert qa.checks["listing_field_completeness"][0] is False
+
+
+def test_completed_detail_without_cat2_fails_but_deferred_detail_is_pending():
+    products = _products(1)
+    products[0]["cat2_es"] = ""
+    products[0]["detail_status"] = "COMPLETE"
+    qa = run_qa(_cfg(), yesterday_total=1, today_total=1, sitemap_count=1, listing_count=1,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=products)
+    assert qa.passed is False
+    assert qa.checks["detail_category_completeness"][0] is False
+
+    products[0]["detail_status"] = "PENDING"
+    qa = run_qa(_cfg(), yesterday_total=1, today_total=1, sitemap_count=1, listing_count=1,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=products)
+    assert qa.passed is True
+    assert qa.checks["detail_category_completeness"][0] is True
+
+
+@pytest.mark.parametrize("polluted_spec", ["Añadir a tus favoritos", "Todo de C&C", "undefined"])
+def test_nonempty_listing_ui_or_placeholder_field_fails_content_legality(polluted_spec):
+    products = _products(1)
+    products[0]["listing_fields_source"] = "LISTING_CURRENT_RUN"
+    products[0]["spec_es"] = polluted_spec
+    qa = run_qa(_cfg(), yesterday_total=1, today_total=1, sitemap_count=1, listing_count=1,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=products)
+    assert qa.passed is False
+    assert qa.checks["field_content_legality"][0] is False
+    assert qa.counts["illegal_field_content"] == 1
+
+
+def test_completed_detail_html_or_broken_separator_fails_content_legality():
+    products = _products(1)
+    products[0].update({
+        "detail_status": "COMPLETE",
+        "details_es": "Material:: Plástico; Color: Azul",
+        "desc_es": "Descripción\nProducto resistente",
+    })
+    qa = run_qa(_cfg(), yesterday_total=1, today_total=1, sitemap_count=1, listing_count=1,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=products)
+    assert qa.passed is False
+    assert qa.checks["field_content_legality"][0] is False
+    assert qa.counts["illegal_field_content"] == 2
+
+
+def test_pending_detail_content_is_reported_later_not_a_presence_gate():
+    products = _products(1)
+    products[0].update({"detail_status": "ACCESS_INTERRUPTED", "details_es": "Material:: Plástico"})
+    qa = run_qa(_cfg(), yesterday_total=1, today_total=1, sitemap_count=1, listing_count=1,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=products)
+    assert qa.passed is True
+    assert qa.checks["field_content_legality"][0] is True

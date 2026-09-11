@@ -25,12 +25,12 @@ def _cfg(tmp_path: Path, mode: str = "SQLITE_SHADOW"):
     }
 
 
-def _status(sku: str, status: str, *, present=True, valid=True):
+def _status(sku: str, status: str, *, present=True, valid=True, missing_count=0):
     return SimpleNamespace(
         sku=sku, canonical_id=f"ACT{sku.zfill(7)}", status=status,
         source_flag="BOTH" if present else "NONE", sitemap_present=present,
         listing_present=present, nuevo_present=False, promotion_present=False,
-        observation_valid=valid, first_seen="2026-08-29", missing_count=0,
+        observation_valid=valid, first_seen="2026-08-29", missing_count=missing_count,
     )
 
 
@@ -149,6 +149,8 @@ def test_primary_repository_projection_is_read_only_and_current_only(tmp_path: P
     rows = repo.load_current_export_records()
     assert [row["sku"] for row in rows] == ["1001"]
     assert rows[0]["name_es"] == "Producto"
+    assert rows[0]["translation_status"] == "PENDING"
+    assert rows[0]["match_status"] == "OFFICIAL_IDENTITY"
 
 
 def test_primary_localization_recovery_restores_only_empty_fields_and_rebuilds_content_events(tmp_path: Path):
@@ -258,7 +260,7 @@ def test_minimal_historical_rows_do_not_clear_official_facts(tmp_path: Path):
     cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
     first = _bundle(cfg, run_id="2026-08-30_010000")
     commit_daily_bundle(cfg, first, mode="SQLITE_PRIMARY")
-    statuses = {"1001": _status("1001", "MISSING_FIRST", present=False)}
+    statuses = {"1001": _status("1001", "MISSING_FIRST", present=False, missing_count=1)}
     known = {"1001": {"official_sku": "1001", "canonical_id": "ACT0001001", "last_status": "MISSING"}}
     second = build_daily_bundle(
         run_id="2026-08-31_010000", observation_date="2026-08-31", qa_state="PASS",
@@ -270,6 +272,12 @@ def test_minimal_historical_rows_do_not_clear_official_facts(tmp_path: Path):
     from action_tracker.database.connection import connect
     with connect(cfg["storage"]["db_path"]) as db:
         assert db.execute("SELECT name_es FROM products WHERE official_sku='1001'").fetchone()[0] == "Producto"
+        # Historical-minimal rows preserve facts but still advance the
+        # lifecycle projection; otherwise a missing SKU leaks into CURRENT.
+        row = db.execute(
+            "SELECT status, consecutive_missing FROM products WHERE official_sku='1001'"
+        ).fetchone()
+        assert tuple(row) == ("MISSING", 1)
 
 
 def test_primary_export_source_comes_from_sqlite_head(tmp_path: Path):

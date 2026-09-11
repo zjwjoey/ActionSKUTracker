@@ -36,10 +36,17 @@ def build_parser() -> argparse.ArgumentParser:
     ei.add_argument("--input", required=True, help="Edge 插件导出的 UTF-8 JSON 文件")
     ei.add_argument("--commit", action="store_true", help="校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
 
-    di = sub.add_parser("detail-deferred-import", help="将正式 run 延迟的 MISSING_FIELD 详情受控写入 PRIMARY/Master")
+    di = sub.add_parser("detail-deferred-import", help="将正式 run 延迟详情队列受控写入 PRIMARY/Master")
     di.add_argument("--run-id", required=True, help="QA PASS 且已正式提交的父 observation run_id")
     di.add_argument("--input", required=True, help="Edge 插件导出的 UTF-8 JSON 文件")
     di.add_argument("--commit", action="store_true", help="校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
+
+    dcr = sub.add_parser("category-deferred-reconcile", help="将正式 run 延期的官网类目证据受控回填 PRIMARY/Master")
+    dcr.add_argument("--run-id", required=True, help="QA PASS 且已正式提交的父 observation run_id")
+    dcr.add_argument("--input", required=True, help="Edge 插件导出的包含官网面包屑的 UTF-8 JSON 文件")
+    dcr.add_argument("--approve-conflict-sku", action="append", default=[],
+                     help="逐 SKU 批准已由官方官网核验的类目冲突；可重复传入，默认不覆盖任何冲突")
+    dcr.add_argument("--commit", action="store_true", help="无类目冲突且校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
 
     elr = sub.add_parser("edge-listing-reconcile", help="将已核验的 Edge 类目、新品和首次发现日期按字段权限回填 PRIMARY")
     elr.add_argument("--run-id", required=True, help="已正式提交且详情阶段 BLOCKED 的父 observation run_id")
@@ -170,6 +177,21 @@ def main(argv=None) -> int:
         try:
             res = run_deferred_detail_import(cfg, run_id=args.run_id, input_path=Path(args.input), commit=bool(args.commit))
         except (EdgeDetailImportError, ProductionDatabaseError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if args.command == "category-deferred-reconcile":
+        from .orchestrator.edge_listing_reconcile import (
+            EdgeListingReconcileError, preview_or_apply_deferred_category_reconciliation,
+        )
+        from .database.production import ProductionDatabaseError
+        try:
+            res = preview_or_apply_deferred_category_reconciliation(
+                cfg, run_id=args.run_id, input_path=Path(args.input), commit=bool(args.commit),
+                approved_conflict_skus=set(args.approve_conflict_sku or []),
+            )
+        except (EdgeListingReconcileError, ProductionDatabaseError, OSError, ValueError) as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(res, ensure_ascii=False))

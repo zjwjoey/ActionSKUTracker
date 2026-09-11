@@ -76,16 +76,20 @@ def _residual_latin(value: str, brands: list[str]) -> list[str]:
     return LATIN_WORD.findall(cleaned)
 
 
-def _candidates(products: list[dict[str, str]], brands: list[str]) -> list[dict[str, str]]:
+def _candidates(products: list[dict[str, str]], brands: list[str], *, include_needs_review: bool = False) -> list[dict[str, str]]:
     result: list[dict[str, str]] = []
     for row in products:
         name, spec = row["name_zh_standard"], row["spec_zh_standard"]
+        needs_review = include_needs_review and (
+            row["translation_status"] == "NEEDS_REVIEW" or row["review_status"] == "NEEDS_REVIEW"
+        )
         name_bad = (
             row["translation_status"] == "UNTRANSLATED"
             or bool(SPANISH_MARKERS.search(name))
             or bool(_residual_latin(name, brands))
+            or needs_review
         )
-        spec_bad = bool(SPANISH_MARKERS.search(spec)) or bool(_residual_latin(spec, brands))
+        spec_bad = bool(SPANISH_MARKERS.search(spec)) or bool(_residual_latin(spec, brands)) or needs_review
         if name_bad or spec_bad:
             result.append({
                 "sku": row["sku"], "source_hash": row["source_hash"], "name_es": row["name_es_raw"],
@@ -111,6 +115,17 @@ def _reviewed_non_translation_keys(out_dir: Path) -> set[tuple[str, str]]:
             for row in csv.DictReader(fh)
             if _text(row.get("decision")) in REVIEWED_NON_TRANSLATION_DECISIONS
             and _text(row.get("sku")) and _text(row.get("source_hash"))
+        }
+
+
+def _source_blocked_skus(out_dir: Path) -> set[str]:
+    path = out_dir / "source_damage_report.csv"
+    if not path.exists():
+        return set()
+    with path.open("r", encoding="utf-8-sig", newline="") as fh:
+        return {
+            _text(row.get("sku")) for row in csv.DictReader(fh)
+            if _text(row.get("status")) in {"SOURCE_DAMAGED", "SOURCE_POLLUTED"}
         }
 
 
@@ -159,6 +174,7 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="重新审校现有同源模型结果")
     parser.add_argument("--show", action="store_true", help="输出候选 SKU 与待审校字段，便于人工复核")
     parser.add_argument("--valid-spanish-source", action="store_true", help="仅处理西语品名和规格均未被中文覆盖的 SKU")
+    parser.add_argument("--needs-review", action="store_true", help="将已有中文但状态为 NEEDS_REVIEW 的同源字段也送模型复核")
     args = parser.parse_args()
     cfg = load_settings()
     out_dir: Path = cfg["paths"]["dictionary"]
@@ -176,7 +192,7 @@ def main() -> int:
         key_fields=("brand_id",),
     )
     brands = sorted({_text(row["canonical_name"]) for row in brand_rows if _text(row["canonical_name"])}, key=len, reverse=True)
-    candidates = _candidates(products, brands)
+    candidates = _candidates(products, brands, include_needs_review=args.needs_review)
     if args.current_only:
         current_date = max((row["source_last_seen"] for row in products if row["source_last_seen"]), default="")
         candidates = [item for item in candidates if item["source_last_seen"] == current_date]
@@ -185,6 +201,9 @@ def main() -> int:
             item for item in candidates
             if not CJK.search(item["name_es"] + item["spec_es"])
         ]
+    source_blocked = _source_blocked_skus(out_dir)
+    before_source_blocked = len(candidates)
+    candidates = [item for item in candidates if item["sku"] not in source_blocked]
     reviewed_exclusions = _reviewed_non_translation_keys(out_dir)
     before_review_exclusion = len(candidates)
     candidates = [
@@ -196,6 +215,7 @@ def main() -> int:
     print(json.dumps({
         "candidates": len(candidates), "brands": len(brands), "dry_run": args.dry_run,
         "reviewed_non_translation_excluded": before_review_exclusion - len(candidates),
+        "source_blocked_excluded": before_source_blocked - len(candidates),
     }, ensure_ascii=False))
     if args.show:
         for item in candidates:

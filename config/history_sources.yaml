@@ -1,7 +1,7 @@
 # 历史 Presence 的唯一事实来源。每增加一期，只增加一项；禁止由 first_seen/
 # last_seen 或商品字典反推某一期的在售状态。F:\按日期整理 仅只读。
 seed:
-  path: "D:/Users/Administrator/Desktop/Action商品上下架明细 26.08.24.xlsx"
+  path: "D:/Users/Administrator/Documents/xwechat_files/wxid_x79qaks9caxr22_1d94/msg/file/2026-08/Action商品上下架明细 26.08.24.xlsx"
   sheet: "ACTION商品上下架明细"
   sku_header: "编号"
   presence_capability: true

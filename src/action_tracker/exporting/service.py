@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import html
 import hashlib
 import json
 import math
@@ -616,6 +617,12 @@ def _es_remarks(record: dict[str, Any]) -> str:
     raw_tags = _text_or_none(record.get("raw_tags"))
     if raw_tags:
         values.append(f"Etiquetas oficiales: {raw_tags}")
+    if not _text_or_none(record.get("desc_es")):
+        values.append("Descripción pendiente")
+    if not _text_or_none(record.get("details_es")):
+        values.append("Detalles pendientes")
+    if not _text_or_none(record.get("cat2_es")):
+        values.append("Categoría 2 pendiente")
     return "；".join(values)
 
 
@@ -742,9 +749,35 @@ def _canonical_value(value: Any) -> str | float | int | bool | None:
 
 
 def _text(value: Any) -> str:
-    return "" if value is None else str(value).strip()
+    return _clean_display_text(value) or ""
 
 
 def _text_or_none(value: Any) -> str | None:
-    text = _text(value)
-    return text or None
+    return _clean_display_text(value) or None
+
+
+def _clean_display_text(value: Any) -> str:
+    """Clean legacy sentinels/HTML in the export projection only."""
+    if value is None:
+        return ""
+    text = str(value).strip()
+    lowered = text.casefold()
+    for sentinel in ("null", "undefined"):
+        if lowered == sentinel:
+            return ""
+        prefix = sentinel + "."
+        if lowered.startswith(prefix):
+            text = text[len(prefix):].lstrip()
+            break
+    if re.search(r"</?\w|>\s*>", text):
+        text = html.unescape(text)
+
+        def _tag_replacement(match: re.Match[str]) -> str:
+            tag = match.group(0).casefold()
+            return "\n" if tag.startswith(("<p", "</p", "<div", "</div", "<br")) else ""
+
+        text = re.sub(r"<[^>]*>", _tag_replacement, text)
+        text = text.replace(">", "").replace("<", "")
+        text = re.sub(r"[ \t]+\n", "\n", text)
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    return text

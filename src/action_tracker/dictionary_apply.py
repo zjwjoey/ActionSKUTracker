@@ -386,7 +386,12 @@ def _recover_interrupted_apply(cfg: dict[str, Any], run_id: str) -> None:
 
 
 def _load_apply_master_records(path: Path) -> dict[str, dict[str, Any]]:
-    """Read CURRENT only after schema, SKU uniqueness and ES/ZH set checks pass."""
+    """Read CURRENT only after schema, SKU uniqueness and ES/ZH set checks pass.
+
+    The two localized views are keyed by SKU, not by worksheet row number.  Their
+    sort orders may legitimately differ after separate historical exports, so a
+    same-order requirement would reject an otherwise intact Master.
+    """
     if not path.exists():
         raise DictionaryApplyError(f"MASTER_MISSING: {path}")
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
@@ -416,8 +421,6 @@ def _load_apply_master_records(path: Path) -> dict[str, dict[str, Any]]:
             records_by_sheet[sheet] = order
         if set(records_by_sheet["01_SKU_ZH_CURRENT"]) != set(records_by_sheet["02_SKU_ES_CURRENT"]):
             raise DictionaryApplyError("MASTER_ES_ZH_SKU_SET_MISMATCH")
-        if records_by_sheet["01_SKU_ZH_CURRENT"] != records_by_sheet["02_SKU_ES_CURRENT"]:
-            raise DictionaryApplyError("MASTER_ES_ZH_SKU_ORDER_MISMATCH")
     finally:
         wb.close()
     return load_current(path)

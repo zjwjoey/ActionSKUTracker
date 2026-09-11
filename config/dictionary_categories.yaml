@@ -136,3 +136,50 @@ cat1_mappings:
   体育用品:
     cat1_code: C15
     cat1_zh: 运动用品
+
+# 二级类目统一中文映射。键按重音不敏感方式匹配；用于修复历史中文字段中
+# 被错误保留的西语类目值。仅影响中文派生字段，不改写官网西语事实。
+cat2_mappings:
+  accesorios de cama: 床上用品
+  accesorios de oficina: 办公配件
+  accesorios para el cabello: 发饰
+  articulos de bano y ducha: 沐浴和淋浴用品
+  articulos de fiesta: 派对用品
+  articulos de limpieza: 清洁用品
+  articulos de papel: 纸品
+  baterias externas y cargadores: 移动电源和充电器
+  colorear y dibujar: 涂色和绘画
+  decoracion: 家居装饰
+  detergentes y lavavajillas: 洗涤剂和洗碗用品
+  frutos secos y aperitivos: 坚果和零食
+  iluminacion: 照明
+  juegos simbolicos y de construccion: 角色扮演和建构游戏
+  juguetes para mascotas: 宠物玩具
+  mantas de viaje y mantas: 旅行毯和毯子
+  menaje de cocina: 厨房用具
+  organizadores de despensa: 储物收纳
+  papeleria: 文具
+  peluches y munecas: 毛绒玩具和娃娃
+  productos de limpieza: 清洁产品
+  punto y ganchillo: 针织和钩编
+  textil de bano: 浴室纺织
+  textil de la cocina: 厨房纺织
+  unas: 美甲
+  accesorios: 配饰
+  almacenaje: 收纳存储
+  caramelos: 糖果
+  chocolate: 巧克力
+  coche: 汽车用品
+  cojines: 靠垫
+  cubiertos: 刀叉餐具
+  cuidado corporal: 身体护理
+  herramientas: 工具
+  juegos: 游戏
+  manualidades: 手工制作
+  material escolar: 学习用品
+  perfume: 香水
+  ropa: 服装
+  sartenes: 煎锅
+  textil parte inferior: 下装纺织
+  vajillas: 餐具
+  zapatos: 鞋靴

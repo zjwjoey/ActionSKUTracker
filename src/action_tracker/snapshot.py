@@ -73,6 +73,8 @@ def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> 
         _write_text_atomic(snap_dir / "run_manifest.json", _json(data["run_manifest"]))
     if data.get("detail_evidence"):
         _write_csv(snap_dir / "detail_evidence.csv", data["detail_evidence"])
+    if data.get("detail_backlog"):
+        _write_csv(snap_dir / "detail_backlog.csv", data["detail_backlog"])
     if data.get("product_updates"):
         _write_csv(snap_dir / "product_updates.csv", data["product_updates"])
     if data.get("translation_updates"):

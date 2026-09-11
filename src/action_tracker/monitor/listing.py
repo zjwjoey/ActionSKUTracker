@@ -15,7 +15,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 
-from ..services.normalization import parse_discount_percent, parse_price
+from ..services.normalization import normalize_official_text, parse_discount_percent, parse_price
 
 log = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ def _to_light(raw: dict) -> LightProduct:
         sku=str(raw.get("sku")),
         product_url=raw.get("product_url") or "",
         name_es=raw.get("name_es") or "",
-        spec_es=raw.get("spec_es") or "",
+        spec_es=normalize_official_text(raw.get("spec_es"), field="spec") or "",
         unit_price=raw.get("unit_price") or "",
         current_price=cur,
         original_price=orig,

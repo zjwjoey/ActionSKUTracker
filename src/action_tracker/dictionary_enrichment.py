@@ -137,6 +137,16 @@ def _load_category_mapping(cfg: dict[str, Any]) -> dict[str, dict[str, str]]:
     }
 
 
+def _load_category2_mapping(cfg: dict[str, Any]) -> dict[str, str]:
+    path = Path(cfg["project_root"]) / "config" / "dictionary_categories.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+    return {
+        normalize_category_key(key): _text(value)
+        for key, value in (raw.get("cat2_mappings") or {}).items()
+        if _text(value)
+    }
+
+
 def _load_rows(directory: Path, filename: str, headers: list[str], key_fields: tuple[str, ...]) -> list[dict[str, str]]:
     return load_dictionary_rows(directory / filename, headers=headers, key_fields=key_fields)
 
@@ -223,6 +233,7 @@ def enrich_dictionary(cfg: dict[str, Any], *, run_id: str) -> dict[str, Any]:
     candidate_records = {sku: records[sku] for sku in sorted(processable_skus)}
     candidate_existing = {sku: by_sku[sku] for sku in processable_skus if sku in by_sku}
     category_mapping = _load_category_mapping(cfg)
+    category2_mapping = _load_category2_mapping(cfg)
     updated_candidates = build_product_dictionary(
         candidate_records, candidate_existing, category_mapping=category_mapping,
         product_overrides=overrides, model_translations=models,
@@ -236,7 +247,9 @@ def enrich_dictionary(cfg: dict[str, Any], *, run_id: str) -> dict[str, Any]:
     merged_products.sort(key=lambda row: row["sku"])
 
     existing_categories = _load_rows(dictionary, "category_dictionary.csv", CATEGORY_DICTIONARY_HEADERS, ("cat1_es", "cat2_es"))
-    merged_categories = category_rows_from_products(updated_candidates, category_mapping, existing=existing_categories)
+    merged_categories = category_rows_from_products(
+        updated_candidates, category_mapping, cat2_mapping=category2_mapping, existing=existing_categories,
+    )
     existing_brands = _load_rows(dictionary, "brand_dictionary.csv", BRAND_DICTIONARY_HEADERS, ("brand_id",))
     merged_brands = reconcile_brand_rows(merged_products, {row["brand_id"]: row for row in existing_brands})
 

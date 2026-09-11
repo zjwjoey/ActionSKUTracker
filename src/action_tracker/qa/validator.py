@@ -8,6 +8,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from .content_integrity import (
+    DETAIL_FACT_FIELDS,
+    LISTING_FACT_FIELDS,
+    FieldContentIssue,
+    find_illegal_official_field_content,
+    summarize_issues,
+)
+
 
 @dataclass
 class QAReport:
@@ -168,6 +176,56 @@ def run_qa(
         passed = False
         reasons.append("Listing 已观测商品存在关键字段缺失")
 
+    # A completed Detail observation must contain the product-page breadcrumb
+    # category.  Deferred/access-interrupted Detail records remain explicitly
+    # pending and do not invalidate Presence or lifecycle submission.
+    completed_missing_cat2 = sum(
+        1 for p in products
+        if str(p.get("detail_status") or "").upper() == "COMPLETE"
+        and not str(p.get("cat2_es") or "").strip()
+    )
+    checks["detail_category_completeness"] = (
+        completed_missing_cat2 == 0,
+        f"已完成详情但缺少二级类目={completed_missing_cat2}; 延迟/受限详情不计入失败",
+    )
+    if completed_missing_cat2:
+        passed = False
+        reasons.append(f"{completed_missing_cat2} 条已完成详情缺少二级类目")
+
+    # Non-empty does not mean valid.  A page-control label such as "Añadir a
+    # tus favoritos", HTML fragments or broken Detail separators must never
+    # pass merely because a cell has text.  Listing facts are authoritative
+    # only when observed in this run; Detail fields are gated only for a
+    # completed Detail observation, preserving the non-authoritative Detail
+    # boundary for deferred/access-interrupted enrichment.
+    content_issues: list[FieldContentIssue] = []
+    content_issues.extend(find_illegal_official_field_content(
+        listing_products, fields=LISTING_FACT_FIELDS,
+    ))
+    completed_detail_products = [
+        p for p in products if str(p.get("detail_status") or "").upper() == "COMPLETE"
+    ]
+    content_issues.extend(find_illegal_official_field_content(
+        completed_detail_products, fields=DETAIL_FACT_FIELDS,
+    ))
+    deduped_issues: list[FieldContentIssue] = []
+    seen_content_issues: set[tuple[str, str, str]] = set()
+    for issue in content_issues:
+        key = (issue.sku, issue.field, issue.code)
+        if key not in seen_content_issues:
+            seen_content_issues.add(key)
+            deduped_issues.append(issue)
+    content_issues = deduped_issues
+    content_ok = not content_issues
+    checks["field_content_legality"] = (
+        content_ok,
+        "字段非空但内容非法=0" if content_ok else
+        f"字段非空但内容非法={len(content_issues)} ({summarize_issues(content_issues)})",
+    )
+    if not content_ok:
+        passed = False
+        reasons.append(f"{len(content_issues)} 条官网字段含网页/UI/结构污染")
+
     # 10. 价格合法范围
     bad_price = sum(1 for p in products if p.get("current_price") is not None and not (q["price_min"] <= p["current_price"] <= q["price_max"]))
     checks["price_range"] = (bad_price == 0, f"超范围价格{bad_price}")
@@ -189,6 +247,7 @@ def run_qa(
         "sitemap_count": sitemap_count, "listing_count": listing_count,
         "new": new_count, "missing": missing_count, "price_up": price_up, "price_down": price_down,
         "anomaly_count": anomaly_count,
+        "illegal_field_content": len(content_issues),
     }
     state = "PASS_PRESENCE_ONLY" if passed and sitemap_fallback else ("PASS" if passed else "FAIL")
     if sitemap_fallback:
