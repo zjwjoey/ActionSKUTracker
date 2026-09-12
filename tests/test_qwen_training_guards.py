@@ -427,6 +427,17 @@ def test_model_guard_accepts_equivalent_spanish_and_chinese_units():
     assert result.accepted
 
 
+def test_model_guard_does_not_treat_chinese_words_or_spanish_suffixes_as_units():
+    from action_tracker.translation.model_guard import validate_model_output
+
+    result = validate_model_output(
+        {"description": "Chocolate; incluye materiales de montaje; con mango(s)"},
+        {"description": "巧克力；含安装材料；带手柄"},
+        expected_fields=["description"],
+    )
+    assert result.accepted
+
+
 def test_model_guard_rejects_dropped_and_hallucinated_technical_tokens():
     from action_tracker.translation.model_guard import validate_model_output
 

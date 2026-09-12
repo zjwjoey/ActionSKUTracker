@@ -54,6 +54,18 @@ def _selection_reasons(metadata: Mapping[str, Any]) -> list[str]:
     raise ValueError("SELECTION_REASON_MISSING")
 
 
+def recorded_candidate_hash(source_manifest: Mapping[str, Any]) -> str:
+    """Read either supported historical manifest shape without guessing."""
+
+    artifacts = source_manifest.get("artifacts") or {}
+    if not isinstance(artifacts, Mapping):
+        raise ValueError("SOURCE_MANIFEST_ARTIFACTS_INVALID")
+    candidate = artifacts.get("candidate_jsonl")
+    if isinstance(candidate, Mapping):
+        return str(candidate.get("sha256") or "").strip().lower()
+    return str(artifacts.get("candidate_jsonl_sha256") or "").strip().lower()
+
+
 def load_excluded_skus(paths: Iterable[Path]) -> set[str]:
     output: set[str] = set()
     for path in paths:
@@ -140,7 +152,7 @@ def main() -> int:
     source_manifest_path = args.source_manifest if args.source_manifest.is_absolute() else ROOT / args.source_manifest
     output = args.output if args.output.is_absolute() else ROOT / args.output
     source_manifest = json.loads(source_manifest_path.read_text(encoding="utf-8"))
-    recorded_hash = str(((source_manifest.get("artifacts") or {}).get("candidate_jsonl") or {}).get("sha256") or "")
+    recorded_hash = recorded_candidate_hash(source_manifest)
     if recorded_hash and recorded_hash != sha256_file(source):
         raise SystemExit("SOURCE_MANIFEST_HASH_MISMATCH")
     source_rows = [json.loads(line) for line in source.read_text(encoding="utf-8").splitlines() if line.strip()]

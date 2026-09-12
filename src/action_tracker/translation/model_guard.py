@@ -21,31 +21,35 @@ FIXED_CAT1 = frozenset({
     "家务清洁", "旅行用品", "食品饮料", "数码影音", "玩具", "兴趣手作", "园艺户外", "运动用品",
 })
 
-# Canonical units are deliberately conservative.  Values are compared as a
-# multiset so duplicated measurements remain facts.  Equivalent Spanish,
-# symbol and Chinese renderings share one canonical value; conversions (for
-# example 1 L -> 1000 ml) are not attempted by this reject-only guard.
+# Canonical units are deliberately conservative and measurement-bound.  Short
+# symbols and Chinese unit characters are counted only when attached to a
+# number; otherwise ordinary words such as ``mango(s)``, ``巧克力`` and ``安装``
+# would be false units.  Conversions (1 L -> 1000 ml) are intentionally not
+# attempted by this reject-only guard.
+_MEASURE_NUMBER = r"[-+]?\d+(?:[.,]\d+)?"
 _UNIT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("percent", re.compile(r"%|\bpor\s+ciento\b|百分之", re.IGNORECASE)),
-    ("kg", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])kg(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\bkilogramos?\b|千克|公斤", re.IGNORECASE)),
-    ("g", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])g(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\bgramos?\b|(?<!千)克", re.IGNORECASE)),
-    ("ml", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])ml(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\bmililitros?\b|毫升", re.IGNORECASE)),
-    ("cl", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])cl(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\bcentilitros?\b|厘升", re.IGNORECASE)),
-    ("l", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])l(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\blitros?\b|(?<!毫)(?<!厘)升", re.IGNORECASE)),
-    ("km", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])km(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\bkil[oó]metros?\b|千米|公里", re.IGNORECASE)),
-    ("mm", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])mm(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\bmil[ií]metros?\b|毫米", re.IGNORECASE)),
-    ("cm", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])cm(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\bcent[ií]metros?\b|厘米", re.IGNORECASE)),
-    ("m", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])m(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\bmetros?\b|(?<!毫)(?<!厘)(?<!千)米", re.IGNORECASE)),
-    ("v", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])v(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\bvoltios?\b|伏特|伏", re.IGNORECASE)),
-    ("w", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])w(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\bvatios?\b|瓦特|瓦", re.IGNORECASE)),
-    ("a", re.compile(r"(?<=\d)\s*A\b|\b[Aa]mperios?\b|安培|安")),
-    ("mah", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])ma?h(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|毫安时", re.IGNORECASE)),
-    ("lm", re.compile(r"(?<![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])lm(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])|\b(?:l[uú]menes?|lumen)\b|流明", re.IGNORECASE)),
-    ("celsius", re.compile(r"°\s*c\b|\bgrados?\s+celsius\b|摄氏度", re.IGNORECASE)),
-    ("hour", re.compile(r"\b(?:h|horas?)\b|小时", re.IGNORECASE)),
-    ("minute", re.compile(r"\b(?:min|minutos?)\b|分钟", re.IGNORECASE)),
-    ("second", re.compile(r"\b(?:s|segundos?)\b|秒", re.IGNORECASE)),
-    ("serving", re.compile(r"\braciones?\b|份", re.IGNORECASE)),
+    ("percent", re.compile(rf"{_MEASURE_NUMBER}\s*(?:%|por\s+ciento|百分之)", re.IGNORECASE)),
+    ("kg", re.compile(rf"{_MEASURE_NUMBER}\s*(?:kg|kilogramos?|千克|公斤)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("g", re.compile(rf"{_MEASURE_NUMBER}\s*(?:g|gramos?|克)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("ml", re.compile(rf"{_MEASURE_NUMBER}\s*(?:ml|mililitros?|毫升)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("cl", re.compile(rf"{_MEASURE_NUMBER}\s*(?:cl|centilitros?|厘升)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("l", re.compile(rf"{_MEASURE_NUMBER}\s*(?:l|litros?|升)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("km", re.compile(rf"{_MEASURE_NUMBER}\s*(?:km|kil[oó]metros?|千米|公里)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("mm", re.compile(rf"{_MEASURE_NUMBER}\s*(?:mm|mil[ií]metros?|毫米)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("cm", re.compile(rf"{_MEASURE_NUMBER}\s*(?:cm|cent[ií]metros?|厘米)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("m", re.compile(rf"{_MEASURE_NUMBER}\s*(?:m(?:[²2])?|metros?|平方米|米)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("v", re.compile(rf"{_MEASURE_NUMBER}\s*(?:v|voltios?|伏特|伏)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("w", re.compile(rf"{_MEASURE_NUMBER}\s*(?:w|vatios?|瓦特|瓦)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("a", re.compile(rf"{_MEASURE_NUMBER}\s*(?:A|[Aa]mperios?|安培|安)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])")),
+    ("mah", re.compile(rf"{_MEASURE_NUMBER}\s*(?:ma?h|毫安时)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("lm", re.compile(rf"{_MEASURE_NUMBER}\s*(?:lm|l[uú]menes?|lumen|流明)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("celsius", re.compile(rf"{_MEASURE_NUMBER}\s*(?:°\s*c|grados?\s+celsius|摄氏度)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("kcal", re.compile(rf"{_MEASURE_NUMBER}\s*(?:kcal|kilocalor[ií]as?|千卡)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("kj", re.compile(rf"{_MEASURE_NUMBER}\s*(?:kj|kilojulios?|千焦)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("hour", re.compile(rf"{_MEASURE_NUMBER}\s*(?:h|horas?|小时)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("minute", re.compile(rf"{_MEASURE_NUMBER}\s*(?:min|minutos?|分钟)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("second", re.compile(rf"{_MEASURE_NUMBER}\s*(?:s|segundos?|秒)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("serving", re.compile(rf"{_MEASURE_NUMBER}\s*(?:raciones?|份)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
 )
 
 # Product codes and standards are immutable facts, not translation style.

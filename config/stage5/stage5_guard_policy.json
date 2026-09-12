@@ -1,7 +1,8 @@
 {
-  "policy_id": "stage5-hard-fact-guard-v1",
+  "policy_id": "stage5-hard-fact-guard-v2",
   "mode": "REJECT_ONLY",
   "auto_correct": false,
+  "unit_detection": "NUMBER_BOUND_MEASUREMENTS_ONLY",
   "hard_reasons": [
     "JSON_PARSE",
     "SCHEMA",

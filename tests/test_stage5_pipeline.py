@@ -276,3 +276,9 @@ def test_batch_builder_strips_assistant_and_marks_review_scope():
     assert [message["role"] for message in built[0]["messages"]] == ["user"]
     assert built[0]["metadata"]["selection_reasons"] == ["NEEDS_REVIEW"]
     assert built[0]["metadata"]["canonical_id"] == "1001"
+    assert module.recorded_candidate_hash({
+        "artifacts": {"candidate_jsonl": "source.jsonl", "candidate_jsonl_sha256": "abc"}
+    }) == "abc"
+    assert module.recorded_candidate_hash({
+        "artifacts": {"candidate_jsonl": {"path": "source.jsonl", "sha256": "def"}}
+    }) == "def"

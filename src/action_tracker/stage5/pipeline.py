@@ -498,7 +498,7 @@ def build_batch(
                 "field": plan.field, "source": plan.source_value,
                 "resolver": canonical_json(resolver_payload), "model_prediction": candidate_value or "",
                 "final_candidate": final_candidate or "", "failure_type": failure_type,
-                "severity": "P0" if any(reason in hard_reasons for reason in reasons) else "P1",
+                "severity": "P1" if any(reason in hard_reasons for reason in reasons) else "P2",
                 "root_cause": "source" if plan.reason == "SOURCE_AMBIGUOUS" else (
                     "resolver" if plan.resolution_path == "RESOLVER" else (
                         "parser" if status == "MODEL_FAILURE" else "validator_guard"
