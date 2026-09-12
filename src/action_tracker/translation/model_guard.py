@@ -260,7 +260,7 @@ def validate_model_output(
             reasons.append("TECH_TOKEN_DROPPED")
         if list((actual_technical - expected_technical).elements()):
             reasons.append("TECH_TOKEN_HALLUCINATED")
-        if field == "cat1" and predicted_value not in FIXED_CAT1:
+        if field == "cat1" and predicted_value and predicted_value not in FIXED_CAT1:
             reasons.append("INVALID_CATEGORY")
         if field == "cat2" and predicted_value and not _CJK.search(predicted_value):
             reasons.append("INVALID_CATEGORY")
