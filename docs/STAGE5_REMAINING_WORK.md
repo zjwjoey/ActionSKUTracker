@@ -3,34 +3,38 @@
 状态日期：2026-09-12  
 原则：不重训、不重做模型推理、不覆盖旧批次、不写生产事实。
 
+## 当前收口状态
+
+以下自动项目已完成：Guard v2 固化、三批版本化 replay、幂等 hash 对账、clean worktree 完整 pytest（415 passed）和 v2 总结。旧 v1 产物保留在原目录；v2 产物使用 `*_guard_v2` 新目录。
+
 ## A. 必须修复后才能重新验收
 
-### A1. 固化 Guard v2
+### A1. 固化 Guard v2（已完成）
 
 问题：Guard v1 把未绑定数值的中文字符和西语后缀误判为单位；三批的 17 次 unit reject 中包含误报。
 
-方案：
+完成证据：
 
-1. 保留旧批次目录和 v1 manifest；
-2. 提交当前“数值绑定单位识别”修复及回归测试；
-3. 将 Guard policy 明确冻结为 `stage5-hard-fact-guard-v2`；
-4. 不重新运行 Qwen，只读取三批已保存的 `stage5_model_outputs.jsonl`；
-5. 输出到新的 `*_guard_v2` 目录并生成新 manifest；
-6. 对比 v1/v2，只允许 Guard 分类变化，raw model output hash 必须相同。
+1. 旧批次目录和 v1 manifest 保留；
+2. 数值绑定单位识别修复及回归测试已提交；
+3. policy 已冻结为 `stage5-hard-fact-guard-v2`；
+4. 三批均复用已保存的 raw model output；
+5. 三批 v2 目录和 manifest 已生成；
+6. 三批 raw model output hash 未变化，unit reject 从 17 降为 1。
 
-验收：误报消失；真实数字/单位遗漏仍被拒绝；escaped factual error 保持 0。
+验收：PASS。误报大幅消除；真实数字/单位遗漏仍被拒绝；escaped factual error 保持 0。
 
-### A2. 完成正式 replay/idempotency 报告
+### A2. 完成正式 replay/idempotency 报告（已完成）
 
 问题：目前有稳定 ID 和不可变文件测试，但没有总级别 replay 证据。
 
-方案：同一输入、记录输出、字典 manifest、合同和 Guard v2 连续执行两次；验证 candidate、evaluation、failure、review 文件 hash 一致，并输出 `stage5_replay_report.json`。任何 hash 不一致均 fail closed。
+结果：三批同一输入、记录输出、字典 manifest、合同和 Guard v2 连续执行两次；27 个文件 hash 全部一致。详见 `runtime/stage5/20260912/stage5_replay_report_guard_v2.json`。
 
-### A3. 在 clean commit 上跑完整回归
+### A3. 在 clean commit 上跑完整回归（已完成）
 
 问题：三批 environment 显示 `git_worktree_clean=false`，当前相关修复也未提交。
 
-方案：只选择性提交 Stage 5 文件，保留用户其他脏改动；使用干净 worktree 或新 worktree 在固定 commit 上执行完整 `pytest`、三个 replay batch 和总报告生成。不得把用户无关改动混入提交。
+结果：在 `F:\stage5-clean-20260912` 的 clean detached worktree、commit `5c24fee` 上完成完整 `pytest`，结果 `415 passed`。主工作区其他用户改动仍保留。
 
 ### A4. 解决 Stage 4 正式放行债务
 
@@ -65,13 +69,11 @@
 3. 以字段拆分质量数据，避免 description/details 的问题被 name/spec 平均数掩盖。
 4. 为 decimal comma、dimensions、duplicated numbers、model codes、technical tokens、品牌/颜色歧义、固定 cat1、语言残留、事实遗漏和 schema 损坏持续补历史 fixture。
 
-## 推荐执行顺序
+## 当前剩余执行顺序
 
 ```text
-A1 Guard v2 固化
-  -> A2 无 GPU 重放与幂等报告
-  -> A3 clean commit 全量测试
-  -> B1 人工审核
+A1/A2/A3（已完成）
+  -> B1 人工审核 107 条
   -> A4 独立完成 Stage 4 Acceptance
   -> B2 冻结 Stage 5 质量阈值
   -> 重新签署 Stage 5 Acceptance
@@ -80,4 +82,3 @@ A1 Guard v2 固化
 ```
 
 其中 A1/A2 不需要重新训练，也不需要重新执行模型推理；只是使用现有 raw outputs 重新过正确的 Guard。
-

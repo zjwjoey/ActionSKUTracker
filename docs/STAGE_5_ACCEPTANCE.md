@@ -175,5 +175,36 @@ Formal committed source
 
 `NOT_READY_FOR_STAGE6`
 
-阻断项：Stage 4 未正式放行、Stage 5 未通过、108 条人工审核未闭环、v2 replay 未完成、工作区不干净、Stage 6 合同尚未由项目所有者冻结。
+阻断项（初始审计记录）：Stage 4 未正式放行、Stage 5 未通过、108 条人工审核未闭环、v2 replay 未完成、工作区不干净、Stage 6 合同尚未由项目所有者冻结。最新状态以本页 V2 CLOSURE ADDENDUM 为准。
 
+## 2026-09-12 V2 CLOSURE ADDENDUM
+
+本节为本报告的最新状态，若与上文的初始 shadow 记录冲突，以本节为准。旧 v1 批次目录、manifest 和报告均保留，没有被覆盖。
+
+### 已自动完成
+
+- Guard v2 已冻结并提交：`46f4b3d`；空可选 `cat1` 校验修复提交：`723bd4b`。
+- 依赖的 Qwen/Stage4 工具已纳入 Git，clean worktree 可完整运行测试：`5c24fee`。
+- 三批均使用原有 `stage5_model_outputs.jsonl` 做 v2 replay；没有重新推理。
+- 三批 v2 结果：Batch 01 `22 pass / 1 reject / 23 pending`；Batch 02 `39 pass / 1 reject / 42 pending`；Batch 03 `40 pass / 0 reject / 42 pending`。
+- v2 合计：180 字段、73 resolver coverage、103 model invocation、101 Guard pass、2 Guard reject、1 numeric reject、1 unit reject、107 human pending、6 failure、0 duplicate、0 pipeline error、0 factual escape。
+- 幂等 replay：27 个 v2 产物文件第二次执行后 `changed_files=0`。
+- clean worktree 完整 pytest：`415 passed`。
+
+### V2 gates
+
+| Gate | V2 结果 |
+| --- | --- |
+| Guard v2 与批次一致 | PASS |
+| 版本化 replay | PASS（使用记录输出的后推理 replay） |
+| idempotency | PASS |
+| clean worktree full pytest | PASS（415 passed） |
+| production write boundary | PASS |
+| human review closure | BLOCKED（107 pending） |
+| Stage 4 full release | FAIL（仍为 false） |
+
+### V2 verdict
+
+`RETURN_TO_STAGE4_REQUIRED`
+
+Stage 5 的工程性问题已经自动收口；当前唯一上游硬阻断仍是 Stage 4 `FULL_STAGE4_RELEASE=false`。同时 107 条候选必须由真实人工完成 disposition 后，才可能讨论 Stage 5 的业务质量接受。

@@ -84,10 +84,9 @@ NOT_FROZEN
 | Stage 4 正式放行 | FAIL |
 | Stage 5 Acceptance | FAIL |
 | Guard v2 replay | BLOCKED |
-| 人工审核闭环 | BLOCKED（108 pending） |
+| 人工审核闭环 | BLOCKED（107 pending） |
 | clean commit evidence | FAIL |
 | 合同由项目所有者冻结 | BLOCKED |
 | 生产写入保持关闭 | PASS |
 
 当前结论：`NOT_READY_FOR_STAGE6`。
-
