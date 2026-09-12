@@ -1,0 +1,121 @@
+{
+  "contract_id": "stage5-field-ownership-v1",
+  "principles": {
+    "official_spanish_is_fact": true,
+    "model_may_not_change_facts": true,
+    "dictionary_resolver_first": true,
+    "production_write_allowed": false
+  },
+  "fields": {
+    "name": {
+      "authoritative_source": "official Spanish name",
+      "resolver_owner": ["manual_override", "hash-matched product_dictionary", "confirmed brand_dictionary", "term_dictionary"],
+      "model_allowed": true,
+      "model_role": "translate/normalize only unresolved wording",
+      "guard_rule": ["numeric", "unit", "technical_token", "language", "schema", "nonempty"],
+      "fallback": "review queue",
+      "review_requirement": "all model candidates pending human review until quality threshold is frozen",
+      "write_permission": "isolated candidate only"
+    },
+    "cat1": {
+      "authoritative_source": "official Spanish category plus frozen 15-category mapping",
+      "resolver_owner": ["manual_override", "category_dictionary", "hash-matched product_dictionary"],
+      "model_allowed": false,
+      "model_role": "none",
+      "guard_rule": ["fixed_15_category", "schema", "nonempty"],
+      "fallback": "CATEGORY_REVIEW",
+      "review_requirement": "required when deterministic mapping is unavailable or conflicting",
+      "write_permission": "isolated candidate only"
+    },
+    "cat2": {
+      "authoritative_source": "official Spanish category plus confirmed category mapping",
+      "resolver_owner": ["manual_override", "category_dictionary", "hash-matched product_dictionary"],
+      "model_allowed": false,
+      "model_role": "none",
+      "guard_rule": ["Chinese category", "language", "schema", "nonempty"],
+      "fallback": "CATEGORY_REVIEW",
+      "review_requirement": "required when deterministic mapping is unavailable or conflicting",
+      "write_permission": "isolated candidate only"
+    },
+    "spec": {
+      "authoritative_source": "official Spanish specification",
+      "resolver_owner": ["manual_override", "hash-matched product_dictionary", "term_dictionary"],
+      "model_allowed": true,
+      "model_role": "translate unresolved wording without changing measurements",
+      "guard_rule": ["numeric", "unit", "technical_token", "language", "schema", "nonempty"],
+      "fallback": "review queue",
+      "review_requirement": "all model candidates pending human review until quality threshold is frozen",
+      "write_permission": "isolated candidate only"
+    },
+    "description": {
+      "authoritative_source": "official Spanish description",
+      "resolver_owner": ["manual_override", "hash-matched product_dictionary/model_cache", "term_dictionary"],
+      "model_allowed": true,
+      "model_role": "faithful same-field translation",
+      "guard_rule": ["numeric", "unit", "technical_token", "language", "schema", "nonempty"],
+      "fallback": "review queue",
+      "review_requirement": "human source-fidelity review required",
+      "write_permission": "isolated candidate only"
+    },
+    "details": {
+      "authoritative_source": "official Spanish product details",
+      "resolver_owner": ["manual_override", "hash-matched product_dictionary/model_cache", "term_dictionary"],
+      "model_allowed": true,
+      "model_role": "faithful same-field translation",
+      "guard_rule": ["numeric", "unit", "technical_token", "language", "schema", "nonempty"],
+      "fallback": "review queue",
+      "review_requirement": "human source-fidelity review required",
+      "write_permission": "isolated candidate only"
+    },
+    "unit_price": {
+      "authoritative_source": "official unit-price text",
+      "resolver_owner": ["term_dictionary", "unit normalizer"],
+      "model_allowed": false,
+      "model_role": "none",
+      "guard_rule": ["numeric", "unit", "schema"],
+      "fallback": "TERM_REVIEW",
+      "review_requirement": "required for unknown unit",
+      "write_permission": "none in Stage 5"
+    },
+    "unit": {
+      "authoritative_source": "unit token from the same official field",
+      "resolver_owner": ["unit normalizer", "term_dictionary"],
+      "model_allowed": false,
+      "model_role": "none",
+      "guard_rule": ["exact canonical unit multiset"],
+      "fallback": "UNIT_GUARD_REJECT",
+      "review_requirement": "required on mismatch",
+      "write_permission": "none in Stage 5"
+    },
+    "brand": {
+      "authoritative_source": "confirmed brand dictionary and official evidence",
+      "resolver_owner": ["brand_dictionary"],
+      "model_allowed": false,
+      "model_role": "none",
+      "guard_rule": ["confirmed brand allow-list", "no inferred brand"],
+      "fallback": "BRAND_CANDIDATE",
+      "review_requirement": "human confirmation required for unknown/provisional brand",
+      "write_permission": "proposed dictionary candidate only"
+    },
+    "numeric_facts": {
+      "authoritative_source": "same official Spanish field",
+      "resolver_owner": ["hard fact guard"],
+      "model_allowed": false,
+      "model_role": "must copy exactly; may not infer or convert",
+      "guard_rule": ["same-field exact normalized multiset including duplicates"],
+      "fallback": "GUARD_REJECT",
+      "review_requirement": "required on any difference",
+      "write_permission": "none"
+    },
+    "technical_tokens": {
+      "authoritative_source": "same official Spanish field",
+      "resolver_owner": ["technical token guard"],
+      "model_allowed": false,
+      "model_role": "must preserve exactly",
+      "guard_rule": ["same-field exact normalized multiset"],
+      "fallback": "GUARD_REJECT",
+      "review_requirement": "required on any difference",
+      "write_permission": "none"
+    }
+  }
+}

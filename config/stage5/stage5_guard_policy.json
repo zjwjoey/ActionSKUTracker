@@ -1,0 +1,37 @@
+{
+  "policy_id": "stage5-hard-fact-guard-v1",
+  "mode": "REJECT_ONLY",
+  "auto_correct": false,
+  "hard_reasons": [
+    "JSON_PARSE",
+    "SCHEMA",
+    "EMPTY_REQUIRED_FIELD",
+    "NUMERIC_DROPPED",
+    "NUMERIC_HALLUCINATED",
+    "UNIT_DROPPED",
+    "UNIT_HALLUCINATED",
+    "TECH_TOKEN_DROPPED",
+    "TECH_TOKEN_HALLUCINATED",
+    "INVALID_CATEGORY",
+    "SPANISH_RESIDUAL",
+    "ENGLISH_RESIDUAL"
+  ],
+  "failure_classes": {
+    "JSON_PARSE": "MODEL_FAILURE",
+    "SCHEMA": "MODEL_FAILURE",
+    "EMPTY_REQUIRED_FIELD": "SOURCE_FACT_LOSS",
+    "NUMERIC_DROPPED": "NUMERIC_FACT_CORRUPTION",
+    "NUMERIC_HALLUCINATED": "FACT_HALLUCINATION",
+    "UNIT_DROPPED": "UNIT_FACT_CORRUPTION",
+    "UNIT_HALLUCINATED": "UNIT_FACT_CORRUPTION",
+    "TECH_TOKEN_DROPPED": "TECH_TOKEN_CORRUPTION",
+    "TECH_TOKEN_HALLUCINATED": "TECH_TOKEN_CORRUPTION",
+    "INVALID_CATEGORY": "INVALID_CATEGORY",
+    "SPANISH_RESIDUAL": "LANGUAGE_RESIDUAL",
+    "ENGLISH_RESIDUAL": "LANGUAGE_RESIDUAL"
+  },
+  "escaped_hard_error_action": "RETURN_TO_STAGE4_REQUIRED",
+  "guard_reject_action": "ISOLATE_AND_QUEUE_REVIEW",
+  "human_review_status_default": "PENDING",
+  "production_write_permission": false
+}

@@ -1,0 +1,34 @@
+{
+  "contract_id": "stage5-input-v1",
+  "mode": "OFFLINE_CANDIDATE_ONLY",
+  "allowed_selection_reasons": [
+    "NEW",
+    "SOURCE_HASH_CHANGED",
+    "NEEDS_REVIEW",
+    "RESOLVER_GAP"
+  ],
+  "required_metadata": [
+    "batch_id",
+    "run_id",
+    "observation_date",
+    "sku",
+    "canonical_id",
+    "source_hash",
+    "selection_reasons"
+  ],
+  "source_fields": [
+    "name",
+    "cat1",
+    "cat2",
+    "spec",
+    "description",
+    "details"
+  ],
+  "source_hash_algorithm": "localization_source_hash_v1",
+  "source_message_roles": ["user"],
+  "assistant_reference_messages": "FORBIDDEN",
+  "duplicate_key": ["sku", "source_hash"],
+  "stable_order": ["sku", "source_hash"],
+  "empty_source_field": "DO_NOT_INFER_ROUTE_SOURCE_AMBIGUOUS",
+  "unknown_selection_reason": "CONTRACT_ERROR"
+}

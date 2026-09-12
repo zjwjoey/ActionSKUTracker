@@ -1,0 +1,71 @@
+{
+  "contract_id": "stage5-rule-first-offline-v1",
+  "stage4_reference": {
+    "recovery_state_required_for_shadow": "READY_FOR_STAGE5_OFFLINE_SHADOW",
+    "full_release_required_for_acceptance": true,
+    "base_model_path": "runtime/models/Qwen3-8B",
+    "base_model_config_sha256": "f7c4eadfbbf522470667b797a3c89be2524832d2d599797248dc304fff447c30",
+    "tokenizer_sha256": "20b2e9e42943ba42526158348b44d22714d2629321fc4feaaa3f1277516d2aa9",
+    "adapter_path": "runtime/training/qwen3_8b/20260911/combined_gold_incremental/formal_qlora_200_earlystop/adapter",
+    "adapter_tree_sha256": "dabc9294fa553d60eddb3a1a0c8939117b2bfefd8527d2f1742bdd6ccfbb1d0c",
+    "stage4_inference_contract_path": "runtime/training/qwen3_8b/20260911/stage4_inference_contract.json",
+    "stage4_inference_contract_sha256": "a8d1328be1855e86e0461430911da6beedcdb3081a5dfc1e46b8b8793920720c"
+  },
+  "resolver": {
+    "version": "dictionary-resolver-stage5-v1",
+    "priority": "DETERMINISTIC_FIRST",
+    "model_for_ready_field": false,
+    "model_allowed_fields": ["name", "spec", "description", "details"],
+    "model_forbidden_fields": ["cat1", "cat2", "unit_price", "unit", "brand", "numeric_facts", "technical_tokens"]
+  },
+  "inference": {
+    "task_id": "stage5-single-field-localization-v1",
+    "system_prompt": "只翻译指定的一个字段为简体中文，不要查看或推断其他字段。输出必须是 JSON，且只能有指定字段。不得输出英文或西班牙语句子；普通西语必须翻译。忠实翻译输入文字，严格保留该字段原文的每一个数字、百分比、尺寸、数量和单位，不能新增、删除或从其他字段补入事实。输出前先核对该字段的数字清单，源中每个数字都必须在同一字段出现。已确认品牌可以保留原文，但普通颜色词必须翻译。",
+    "chat_template": {
+      "add_generation_prompt": true,
+      "enable_thinking": false
+    },
+    "generation": {
+      "do_sample": false,
+      "max_new_tokens": 256
+    },
+    "tokenization": {
+      "max_input_length": 1024,
+      "truncation": true,
+      "padding_side": "left"
+    },
+    "parser": "STRICT_SINGLE_FIELD_JSON_OBJECT"
+  },
+  "pipeline": [
+    "FORMAL_COMMITTED_SOURCE",
+    "CHANGE_SELECTOR",
+    "FIELD_OWNERSHIP_RESOLVER",
+    "DICTIONARY_RESOLVER",
+    "RESOLVER_GAP",
+    "FROZEN_QWEN_ADAPTER",
+    "OUTPUT_PARSER",
+    "HARD_FACT_GUARD",
+    "NUMERIC_GUARD",
+    "UNIT_GUARD",
+    "TECHNICAL_TOKEN_GUARD",
+    "CATEGORY_GUARD",
+    "LANGUAGE_RESIDUAL_GUARD",
+    "SCHEMA_GUARD",
+    "PROVENANCE_BUILDER",
+    "CANDIDATE_STORE",
+    "REVIEW_QUEUE"
+  ],
+  "writes": {
+    "isolated_candidate_store": true,
+    "runtime_artifacts": true,
+    "review_queue": true,
+    "proposed_dictionary_candidates": true,
+    "sqlite_primary": false,
+    "master": false,
+    "production_dictionary": false,
+    "production_localization": false,
+    "lifecycle": false,
+    "price_facts": false,
+    "availability": false
+  }
+}
