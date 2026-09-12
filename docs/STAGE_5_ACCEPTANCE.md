@@ -3,7 +3,8 @@
 审计日期：2026-09-12  
 仓库：`F:\ActionSKUTracker`  
 分支：`feat/export-foundation-v1`  
-审计 HEAD：`79b3942144f3da5ec731cf91e7b9059c1e5c584d`  
+审计初始 HEAD：`79b3942144f3da5ec731cf91e7b9059c1e5c584d`  
+最新封板文档 HEAD：`33e4b33`（replay 实际执行 commit：`5c24fee`）  
 远端分支 HEAD：`1dc2fc0338c2b6ace73b4869b11a0ebfd1179c35`  
 报告性质：Stage 5 离线 shadow 总验收；不授权生产写入、训练或 Stage 6
 
