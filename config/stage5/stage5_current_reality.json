@@ -1,0 +1,45 @@
+{
+  "audit_version": "stage5-current-reality-v1",
+  "audit_date": "2026-09-12",
+  "repository": "F:\\ActionSKUTracker",
+  "branch": "feat/export-foundation-v1",
+  "head": "1dc2fc0338c2b6ace73b4869b11a0ebfd1179c35",
+  "origin_head": "1dc2fc0338c2b6ace73b4869b11a0ebfd1179c35",
+  "worktree_clean": false,
+  "stage4": {
+    "acceptance": "MISSING",
+    "recovery_state": "READY_FOR_STAGE5_OFFLINE_SHADOW",
+    "full_release": false,
+    "training_authorized": false,
+    "production_writes_authorized": false
+  },
+  "frozen_identity": {
+    "base_model_config_sha256": "f7c4eadfbbf522470667b797a3c89be2524832d2d599797248dc304fff447c30",
+    "tokenizer_sha256": "20b2e9e42943ba42526158348b44d22714d2629321fc4feaaa3f1277516d2aa9",
+    "adapter_tree_sha256": "dabc9294fa553d60eddb3a1a0c8939117b2bfefd8527d2f1742bdd6ccfbb1d0c",
+    "stage4_inference_contract_sha256": "a8d1328be1855e86e0461430911da6beedcdb3081a5dfc1e46b8b8793920720c",
+    "stage5_entrypoint_sha256": "945be0bb22d36531a0aa5e114a6b048bc9afe8638124cb952f9d4f1bc7a05a3e",
+    "current_guard_sha256": "2993e7b82e7a0a35e6cdc5ded1d96e46fd0b159b1fff0058c9fceb940ab1fc6b",
+    "snapshot_evaluator_sha256": "abc26f834041aebb1c6097988060a5872b66c3941fc99f1e285486fe3ccefbf2",
+    "current_evaluator_sha256": "fe86a9bef7ae61af6e39d52498d4f036ee1cf90602aab577d652841c3dbd5ba4"
+  },
+  "capabilities": {
+    "dictionary_first": "IMPLEMENTED",
+    "model_only_for_gaps": "IMPLEMENTED",
+    "change_selector": "PARTIAL",
+    "frozen_inference_binding": "WRONG_CONTRACT",
+    "numeric_guard": "IMPLEMENTED",
+    "unit_guard": "MISSING",
+    "technical_token_guard": "MISSING",
+    "category_guard": "PARTIAL",
+    "language_guard": "IMPLEMENTED",
+    "candidate_provenance": "PARTIAL",
+    "review_queue": "MISSING",
+    "failure_closure": "MISSING",
+    "replay_idempotency": "MISSING",
+    "three_independent_batches": "MISSING",
+    "production_write_path": "SAFE_NOT_CONNECTED"
+  },
+  "stage6_definition_status": "NOT_FROZEN",
+  "verdict": "OFFLINE_SHADOW_ONLY"
+}
