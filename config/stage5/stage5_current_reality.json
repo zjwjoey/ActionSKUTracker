@@ -22,7 +22,7 @@
     "tokenizer_sha256": "20b2e9e42943ba42526158348b44d22714d2629321fc4feaaa3f1277516d2aa9",
     "adapter_tree_sha256": "dabc9294fa553d60eddb3a1a0c8939117b2bfefd8527d2f1742bdd6ccfbb1d0c",
     "stage4_inference_contract_sha256": "a8d1328be1855e86e0461430911da6beedcdb3081a5dfc1e46b8b8793920720c",
-    "stage5_entrypoint_sha256": "945be0bb22d36531a0aa5e114a6b048bc9afe8638124cb952f9d4f1bc7a05a3e",
+    "stage5_entrypoint_sha256": "5a45d5bd7b04ba7e5c578909bded92876083872e52068ad0bd6d62ab90879c29",
     "current_guard_sha256": "2993e7b82e7a0a35e6cdc5ded1d96e46fd0b159b1fff0058c9fceb940ab1fc6b",
     "snapshot_evaluator_sha256": "abc26f834041aebb1c6097988060a5872b66c3941fc99f1e285486fe3ccefbf2",
     "current_evaluator_sha256": "fe86a9bef7ae61af6e39d52498d4f036ee1cf90602aab577d652841c3dbd5ba4"

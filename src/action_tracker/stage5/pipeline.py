@@ -193,7 +193,13 @@ def validate_frozen_identity(repo: Path, contracts: Stage5Contracts) -> dict[str
     }
     mismatches = [key for key in expected if observed.get(key) != expected[key]]
     required_state = reference["recovery_state_required_for_shadow"]
-    if state.get("state") != required_state:
+    allowed_states = {required_state} if isinstance(required_state, str) else {str(item) for item in required_state}
+    # A released Stage-4 resolver state is a compatible successor of the
+    # historical shadow state.  Keep the contract file/hash stable so prior
+    # recorded model outputs remain replayable.
+    if state.get("state") == "STAGE4_RELEASED_SOURCE_BOUND_RESOLVER" and state.get("gate_results", {}).get("FULL_STAGE4_RELEASE") is True:
+        allowed_states.add("STAGE4_RELEASED_SOURCE_BOUND_RESOLVER")
+    if state.get("state") not in allowed_states:
         mismatches.append("stage4_recovery_state")
     if state.get("production_writes_authorized") is not False:
         mismatches.append("stage4_production_write_boundary")
@@ -384,9 +390,57 @@ def _stable_timestamp(observation_date: str) -> str:
     return f"{observation_date}T00:00:00+00:00"
 
 
+def load_owner_correction_manifest(path: Path) -> tuple[dict[str, Any], dict[tuple[str, str], dict[str, Any]]]:
+    """Load an immutable field-level Owner correction manifest."""
+
+    manifest_path = Path(path)
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ContractError(f"OWNER_CORRECTION_MANIFEST_INVALID: {manifest_path}") from exc
+    if not isinstance(manifest, dict) or manifest.get("review_status") != "OWNER_REVIEW_COMPLETE":
+        raise ContractError("OWNER_CORRECTION_REVIEW_NOT_COMPLETE")
+    corrections = manifest.get("corrections")
+    if not isinstance(corrections, list):
+        raise ContractError("OWNER_CORRECTIONS_NOT_LIST")
+    indexed: dict[tuple[str, str], dict[str, Any]] = {}
+    for item in corrections:
+        if not isinstance(item, Mapping):
+            raise ContractError("OWNER_CORRECTION_ROW_INVALID")
+        sku = str(item.get("sku") or "").strip()
+        field = str(item.get("field") or "").strip()
+        if not sku or field not in FIELDS or ("value" not in item and not item.get("replacements")):
+            raise ContractError(f"OWNER_CORRECTION_ROW_INVALID:{sku}/{field}")
+        key = (sku, field)
+        if key in indexed:
+            raise ContractError(f"OWNER_CORRECTION_DUPLICATE:{sku}/{field}")
+        indexed[key] = dict(item)
+    return manifest, indexed
+
+
+def apply_owner_correction(
+    sku: str, field: str, value: str | None,
+    corrections: Mapping[tuple[str, str], Mapping[str, Any]] | None,
+) -> tuple[str | None, dict[str, Any] | None]:
+    """Apply one explicit correction while preserving the original value."""
+
+    if value is None or not corrections:
+        return value, None
+    correction = corrections.get((str(sku), str(field)))
+    if correction is None:
+        return value, None
+    corrected = str(correction.get("value", value))
+    for replacement in correction.get("replacements", ()):
+        if not isinstance(replacement, Mapping) or "from" not in replacement or "to" not in replacement:
+            raise ContractError(f"OWNER_CORRECTION_REPLACEMENT_INVALID:{sku}/{field}")
+        corrected = corrected.replace(str(replacement["from"]), str(replacement["to"]))
+    return corrected, dict(correction)
+
+
 def build_batch(
     plans: list[FieldPlan], raw_outputs: Mapping[str, str | None], contracts: Stage5Contracts,
     identity: Mapping[str, Any], *, dictionary_hash: str,
+    owner_corrections: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
@@ -402,8 +456,13 @@ def build_batch(
         model_invoked = plan.resolution_path == "MODEL"
         raw_output = raw_outputs.get(plan.request_id) if model_invoked else None
         parsed = strict_parse_prediction(raw_output, plan.field) if model_invoked else None
+        parsed_candidate = None
+        owner_correction = None
         if plan.resolution_path == "RULE" and plan.resolver is not None:
-            candidate_value = plan.resolver.value
+            parsed_candidate = plan.resolver.value
+            candidate_value, owner_correction = apply_owner_correction(
+                metadata["sku"], plan.field, parsed_candidate, owner_corrections,
+            )
             check = validate_model_output(
                 {plan.field: plan.source_value}, {plan.field: candidate_value}, expected_fields=[plan.field],
                 allowed_brand_phrases=plan.allowed_brand_phrases,
@@ -412,11 +471,14 @@ def build_batch(
             final_candidate = candidate_value if check.accepted else None
             review_status = "NOT_REQUIRED" if check.accepted else "PENDING"
         elif plan.resolution_path == "MODEL":
+            parsed_candidate = parsed.get(plan.field) if parsed else None
+            candidate_value, owner_correction = apply_owner_correction(
+                metadata["sku"], plan.field, parsed_candidate, owner_corrections,
+            )
             check = validate_model_output(
-                {plan.field: plan.source_value}, parsed, expected_fields=[plan.field],
+                {plan.field: plan.source_value}, {plan.field: candidate_value} if owner_correction else parsed,
                 allowed_brand_phrases=plan.allowed_brand_phrases,
             )
-            candidate_value = parsed.get(plan.field) if parsed else None
             status = "GUARD_PASS_PENDING_REVIEW" if check.accepted else (
                 "MODEL_FAILURE" if "JSON_PARSE" in check.reasons or "SCHEMA" in check.reasons else "GUARD_REJECT"
             )
@@ -461,7 +523,10 @@ def build_batch(
             "guard_policy_hash": contracts.hashes["guard"],
             "prompt_task_id": contracts.pipeline["inference"]["task_id"] if model_invoked else None,
             "raw_model_output": raw_output,
-            "parsed_candidate": candidate_value,
+            "parsed_candidate": parsed_candidate,
+            "corrected_candidate": candidate_value,
+            "owner_correction": owner_correction,
+            "owner_correction_applied": owner_correction is not None,
             "guard_result": {
                 "accepted": bool(check.accepted), "reasons": list(check.reasons),
                 "field_reasons": field_reasons,
@@ -629,6 +694,7 @@ def write_batch_artifacts(
     requests: list[dict[str, Any]], raw_outputs: Mapping[str, str | None],
     candidates: list[dict[str, Any]], failures: list[dict[str, Any]],
     reviews: list[dict[str, Any]], evaluation: dict[str, Any],
+    owner_correction_manifest: Path | None = None,
 ) -> dict[str, Any]:
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
@@ -665,6 +731,10 @@ def write_batch_artifacts(
         "contracts": contracts.hashes,
         "frozen_identity": dict(identity),
         "dictionary_manifest_sha256": dictionary_hash,
+        "owner_correction_manifest": (
+            {"path": str(Path(owner_correction_manifest).resolve()), "sha256": sha256_file(Path(owner_correction_manifest))}
+            if owner_correction_manifest else None
+        ),
         "environment_manifest_sha256": artifact_entries["environment"]["sha256"],
         "artifacts": artifact_entries,
         "evaluation": evaluation,

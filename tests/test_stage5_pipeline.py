@@ -13,8 +13,10 @@ from action_tracker.stage5.pipeline import (
     ContractError,
     ImmutableArtifactError,
     Stage5Contracts,
+    apply_owner_correction,
     build_batch,
     environment_manifest,
+    load_owner_correction_manifest,
     load_contracts,
     model_requests,
     plan_batch,
@@ -259,6 +261,38 @@ def test_frozen_identity_refuses_adapter_or_tokenizer_drift(tmp_path):
         validate_frozen_identity(tmp_path, contracts)
 
 
+def test_frozen_identity_accepts_released_source_bound_resolver_state(tmp_path):
+    model = tmp_path / "model"
+    adapter = tmp_path / "adapter"
+    state_path = tmp_path / "runtime/training/qwen3_8b/20260911"
+    model.mkdir(parents=True)
+    adapter.mkdir(parents=True)
+    state_path.mkdir(parents=True)
+    (model / "config.json").write_text("{}", encoding="utf-8")
+    (model / "tokenizer.json").write_text("token", encoding="utf-8")
+    (adapter / "adapter.bin").write_bytes(b"adapter")
+    contract_path = tmp_path / "stage4.json"
+    contract_path.write_text("{}", encoding="utf-8")
+    (state_path / "stage4_recovery_state.json").write_text(json.dumps({
+        "state": "STAGE4_RELEASED_SOURCE_BOUND_RESOLVER",
+        "gate_results": {"FULL_STAGE4_RELEASE": True},
+        "production_writes_authorized": False,
+    }), encoding="utf-8")
+    pipeline = {
+        "stage4_reference": {
+            "recovery_state_required_for_shadow": "READY_FOR_STAGE5_OFFLINE_SHADOW",
+            "base_model_path": "model", "base_model_config_sha256": sha256_file(model / "config.json"),
+            "tokenizer_sha256": tokenizer_sha256(model), "adapter_path": "adapter",
+            "adapter_tree_sha256": sha256_tree(adapter), "stage4_inference_contract_path": "stage4.json",
+            "stage4_inference_contract_sha256": sha256_file(contract_path),
+        }
+    }
+    contracts = Stage5Contracts({}, {}, pipeline, {}, {})
+    observed = validate_frozen_identity(tmp_path, contracts)
+    assert observed["stage4_recovery_state"] == "STAGE4_RELEASED_SOURCE_BOUND_RESOLVER"
+    assert observed["stage4_full_release"] is True
+
+
 def test_batch_builder_strips_assistant_and_marks_review_scope():
     path = ROOT / "scripts/build_stage5_batch.py"
     spec = importlib.util.spec_from_file_location("build_stage5_batch", path)
@@ -282,3 +316,48 @@ def test_batch_builder_strips_assistant_and_marks_review_scope():
     assert module.recorded_candidate_hash({
         "artifacts": {"candidate_jsonl": {"path": "source.jsonl", "sha256": "def"}}
     }) == "def"
+
+
+def test_owner_correction_manifest_is_field_level_and_immutable(tmp_path):
+    path = tmp_path / "owner_corrections.json"
+    path.write_text(json.dumps({
+        "review_status": "OWNER_REVIEW_COMPLETE",
+        "corrections": [
+            {"sku": "1001", "field": "name", "value": "标准名称"},
+            {"sku": "1001", "field": "description", "replacements": [
+                {"from": "防水", "to": "防泼水"},
+            ]},
+        ],
+    }, ensure_ascii=False), encoding="utf-8")
+    manifest, indexed = load_owner_correction_manifest(path)
+    assert manifest["review_status"] == "OWNER_REVIEW_COMPLETE"
+    assert set(indexed) == {("1001", "name"), ("1001", "description")}
+    corrected, record = apply_owner_correction("1001", "name", "模型名称", indexed)
+    assert corrected == "标准名称"
+    assert record["field"] == "name"
+    corrected, record = apply_owner_correction("1001", "description", "防水面料", indexed)
+    assert corrected == "防泼水面料"
+    assert record["replacements"][0]["to"] == "防泼水"
+    unchanged, record = apply_owner_correction("9999", "name", "原值", indexed)
+    assert unchanged == "原值"
+    assert record is None
+
+
+def test_owner_correction_manifest_rejects_duplicate_or_incomplete_rows(tmp_path):
+    duplicate = tmp_path / "duplicate.json"
+    duplicate.write_text(json.dumps({
+        "review_status": "OWNER_REVIEW_COMPLETE",
+        "corrections": [
+            {"sku": "1001", "field": "name", "value": "A"},
+            {"sku": "1001", "field": "name", "value": "B"},
+        ],
+    }), encoding="utf-8")
+    with pytest.raises(ContractError, match="OWNER_CORRECTION_DUPLICATE"):
+        load_owner_correction_manifest(duplicate)
+    incomplete = tmp_path / "incomplete.json"
+    incomplete.write_text(json.dumps({
+        "review_status": "OWNER_REVIEW_COMPLETE",
+        "corrections": [{"sku": "1001", "field": "name"}],
+    }), encoding="utf-8")
+    with pytest.raises(ContractError, match="OWNER_CORRECTION_ROW_INVALID"):
+        load_owner_correction_manifest(incomplete)
