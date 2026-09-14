@@ -1,8 +1,36 @@
 # Action SKU Tracker 当前状态
 
-更新日期：2026-08-30
+更新日期：2026-09-12
 项目目录：`F:\ActionSKUTracker`
 当前分支：`feat/export-foundation-v1`
+
+## 2026-09-12 Stage 4 Closure 最新状态
+
+本节覆盖后文旧的 Stage 4/Qwen 快照；后文历史数量和状态仅保留作当时记录。
+
+- Owner 签字包：`Qwen_Stage4_Stage5_OWNER_SIGNED_20260912.xlsx`，Stage 4 13 条 Gold 已确认。
+- 2026-09-12 本次对话已明确确认两份 AI Owner Ready 包，登记为 owner-confirmed package（不改写原始工作簿）：Silver 485/485 覆盖完成，其中 472 条直接接受、12 条修订后接受、1 条 `3223907` 源冲突隔离；P0/P1 包 10 条 P0 + 1 条 P1 均已确认其根因处置。
+- 源冲突 `3006792`、`3224748`：已按 owner 决定隔离，不进入 Gold。
+- 旧 `NUMERIC_DROPPED`：已在当前 evaluator/acceptance 口径中降为历史信号；当前 Closure 的源数字丢失数为 0。
+- 冻结 adapter 的 485 条独立测试已完成：JSON/schema/非空/一级类目均通过，但字段级硬事实仍有 10 条 P0、1 条 P1。
+- 当前 recovery state：`READY_FOR_STAGE5_OFFLINE_SHADOW`；冻结 485 条在源绑定修复层复核后 P0/P1 均为 0，`FULL_STAGE4_RELEASE=true`。当前放行模式为 `MODEL_PLUS_SOURCE_BOUND_OWNER_RESOLVER`；训练授权和生产写入仍保持 `false`。
+- 完整报告：`docs/STAGE_4_OWNER_SIGNED_FULL_EVAL_RECHECK_20260912.md`；人工审核包：
+  `runtime/training/qwen3_8b/20260911/stage4_full_eval_owner_signed_p0_review_package_20260912.csv`。
+- 独立源字段核验确认这 10 条 P0 均有直接西语源字段证据（不是单纯计数器表面误报）。
+- 最终 Closure 总报告：`docs/STAGE_4_FINAL_CLOSURE_REPORT_20260912.md`；failure certification：
+  `runtime/training/qwen3_8b/20260911/stage4_final_failure_certification.csv/json`。
+- 初始 50 条 targeted remediation 队列保留为历史证据；v4 初选 200 条后，规则拦截 48 条。为满足“最终 200 条可审核候选”的目标，v5 补充池再审校并按五类各 40 条重组最终包，与既有冻结测试、训练/验证/测试和硬测试集交叉为 0：
+  `runtime/training/qwen3_8b/20260911/stage4_targeted_remediation_review_queue_v4_200.csv/json`。
+- 最终人工审核包为 200 条模型审校通过候选（品牌、数字遗漏、数字幻觉、技术 token、产品对象各 40 条），另保留两批原始规则拦截记录和 35 条合格备用：
+  `runtime/training/qwen3_8b/20260911/stage4_remediation200_final_owner_review_20260912.xlsx`。
+- 这 200 条已与当前 Master 的西语六字段逐条匹配，均为 candidate-only，`training_eligible=0`。受控校验入口 `scripts/validate_stage4_remediation_owner_review.py` 已切换到最终 200 条；后续仅签字完整、源字段未变化且 Guard 通过的行可输出为 Gold，脚本本身不训练、不写生产数据。
+- 外部 AI 审核表标记为 `ACCEPT_AS_GOLD` 的 177 条已由项目所有者确认并登记；泄漏核验发现它们全部已出现在旧 train/validation/test 语料（131 train、29 validation、17 field-test），因此被标记为 `HUMAN_CONFIRMED_REMEDIATION_GOLD_LEAKAGE_BLOCKED`，`training_eligible_rows=0`，不得直接训练。原始候选和确认结果均保留，未写入 Master 或既有 split。
+- 已修正 `scripts/build_stage4_targeted_remediation_queue.py`：生产模式现在扫描整个 `runtime/training/qwen3_8b` 历史根目录，统一排除所有 train/validation/test、冻结测试和既有候选语料；新增回归测试覆盖跨日期目录泄漏。
+- 新收到的 AI Owner Ready 包已核验并经项目所有者在本次对话确认；原始工作簿中的签字列保持不变，确认记录见：
+  `runtime/training/qwen3_8b/20260911/stage4_owner_confirmed_closure_20260912.json`。
+- AI Owner Ready 复核报告：`runtime/training/qwen3_8b/20260911/stage4_ai_owner_ready_recheck_20260912.json`。
+- 历史 Stage 4 P0 阻断已通过源绑定、字段级、Owner 已批准的修复层闭环；旧候选与严格审计文件仍保留为不可变历史证据，不覆盖旧模型产物。
+- 本轮 Closure 只读审计未修改 Master、SQLite、字典或旧模型；最新回归测试为 `437 passed`。
 
 ## 2026-09-08 最新生产验收覆盖
 

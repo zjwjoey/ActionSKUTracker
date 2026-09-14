@@ -1,17 +1,21 @@
 {
-  "audit_version": "stage5-current-reality-v1",
-  "audit_date": "2026-09-12",
+  "audit_version": "stage4-source-bound-release-v1",
+  "audit_date": "2026-09-14",
   "repository": "F:\\ActionSKUTracker",
   "branch": "feat/export-foundation-v1",
-  "head": "1dc2fc0338c2b6ace73b4869b11a0ebfd1179c35",
+  "head": "61ddbbb6eef45da4bc6a400e2af2842cbaecae2f",
   "origin_head": "1dc2fc0338c2b6ace73b4869b11a0ebfd1179c35",
   "worktree_clean": false,
   "stage4": {
-    "acceptance": "MISSING",
-    "recovery_state": "READY_FOR_STAGE5_OFFLINE_SHADOW",
-    "full_release": false,
+    "acceptance": "F:\\ActionSKUTracker\\runtime\\training\\qwen3_8b\\20260914\\stage4_source_bound_closure\\stage4_source_bound_closure_report_20260914.json",
+    "recovery_state": "STAGE4_RELEASED_SOURCE_BOUND_RESOLVER",
+    "full_release": true,
+    "release_mode": "MODEL_PLUS_SOURCE_BOUND_OWNER_RESOLVER",
     "training_authorized": false,
-    "production_writes_authorized": false
+    "production_writes_authorized": false,
+    "closure_sha256": "91c96cdb4e1f7beb2c3ff4359f1acabf48623ef658b8c922f0977b03a5e5fdb4",
+    "p0_count": 0,
+    "p1_count": 0
   },
   "frozen_identity": {
     "base_model_config_sha256": "f7c4eadfbbf522470667b797a3c89be2524832d2d599797248dc304fff447c30",
@@ -41,5 +45,12 @@
     "production_write_path": "SAFE_NOT_CONNECTED"
   },
   "stage6_definition_status": "NOT_FROZEN",
-  "verdict": "OFFLINE_SHADOW_ONLY"
+  "verdict": "STAGE4_RELEASED_SOURCE_BOUND_RESOLVER_ONLY",
+  "safety": {
+    "master_changed": false,
+    "sqlite_changed": false,
+    "dictionary_changed": false,
+    "training_authorized": false,
+    "production_writes_authorized": false
+  }
 }
