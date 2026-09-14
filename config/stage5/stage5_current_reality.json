@@ -1,9 +1,9 @@
 {
-  "audit_version": "stage4-source-bound-release-v1",
+  "audit_version": "stage5-shadow-current-reality-v1",
   "audit_date": "2026-09-14",
   "repository": "F:\\ActionSKUTracker",
   "branch": "feat/export-foundation-v1",
-  "head": "6eae8733badd565581f72f2852a1881d5e7551dd",
+  "head": "49d2fc38530e1fba7460baf33e38fc12ae988e1d",
   "origin_head": "1dc2fc0338c2b6ace73b4869b11a0ebfd1179c35",
   "worktree_clean": false,
   "stage4": {
@@ -45,12 +45,36 @@
     "production_write_path": "SAFE_NOT_CONNECTED"
   },
   "stage6_definition_status": "NOT_FROZEN",
-  "verdict": "STAGE4_RELEASED_SOURCE_BOUND_RESOLVER_ONLY",
+  "verdict": "STAGE5_OFFLINE_SHADOW_COMPLETE_NO_PRODUCTION_WRITE",
   "safety": {
     "master_changed": false,
     "sqlite_changed": false,
     "dictionary_changed": false,
     "training_authorized": false,
     "production_writes_authorized": false
+  },
+  "stage5_shadow": {
+    "status": "OFFLINE_SHADOW_COMPLETE",
+    "sample_manifest": "F:\\ActionSKUTracker\\runtime\\training\\qwen3_8b\\20260914\\stage5_shadow_current_20260914_v2\\stage5_fresh_current_20260914_manifest.json",
+    "sample_manifest_sha256": "a0f2693a33f557432d0d26954e728ba739a22087869598f4077940fc24cef011",
+    "sample_rows": 11,
+    "sample_field_count": 66,
+    "sample_guard_pass": 42,
+    "sample_guard_reject": 2,
+    "sample_fact_hallucination_escaped": 0,
+    "sample_source_fact_loss_escaped": 0,
+    "sample_pipeline_error": 0,
+    "sample_duplicate": 0,
+    "replay_verified": true,
+    "source_queue_preflight": {
+      "manifest": "F:\\ActionSKUTracker\\runtime\\training\\qwen3_8b\\20260914\\stage5_source_queue_999_preflight_v2\\stage5_source_queue_preflight_manifest.json",
+      "manifest_sha256": "5b621ea94b20fd591225de7373cb29b7f2db73caab16e28bab78a57f8a9bab9f",
+      "rows": 999,
+      "batch_count": 5,
+      "passed_batches": 5,
+      "failed_batches": 0
+    },
+    "production_writes": false,
+    "training_authorized": false
   }
 }
