@@ -3,7 +3,7 @@
   "audit_date": "2026-09-14",
   "repository": "F:\\ActionSKUTracker",
   "branch": "feat/export-foundation-v1",
-  "head": "ab9ae676064d3d64925f2288cfe062f4527be373",
+  "head": "6eae8733badd565581f72f2852a1881d5e7551dd",
   "origin_head": "1dc2fc0338c2b6ace73b4869b11a0ebfd1179c35",
   "worktree_clean": false,
   "stage4": {
@@ -13,7 +13,7 @@
     "release_mode": "MODEL_PLUS_SOURCE_BOUND_OWNER_RESOLVER",
     "training_authorized": false,
     "production_writes_authorized": false,
-    "closure_sha256": "91c96cdb4e1f7beb2c3ff4359f1acabf48623ef658b8c922f0977b03a5e5fdb4",
+    "closure_sha256": "0df04f323743641aad2f0f2969d679322f7ef8a0ffc56499bd93d4cf82ae6ef6",
     "p0_count": 0,
     "p1_count": 0
   },
