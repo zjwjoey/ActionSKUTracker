@@ -9,6 +9,7 @@ from typing import Any, Iterable, Mapping
 from ...database.connection import connect
 from ...database.schema import migrate_v2
 from ..hashes import SOURCE_HASH_CONTRACT_VERSION, canonical_json, value_hash
+from ..memory.repository import normalize_memory_source
 from ..contracts import SourceFacts, source_hash
 
 
@@ -89,7 +90,7 @@ class LocalizationRegistry:
                 new_hash = value_hash(str(new_value)) if new_value is not None else None
                 if new_hash == str(prior[1]):
                     continue
-                db.execute("""UPDATE translation_units SET freshness_status='STALE',updated_at=?
+                db.execute("""UPDATE translation_units SET freshness_status='STALE',status='STALE',updated_at=?
                     WHERE field_name=? AND source_version_id IN
                     (SELECT source_version_id FROM translation_source_versions WHERE official_sku=? AND source_version_id<>?)""", (_now(), field_key, official_sku, source_id))
                 db.execute("""UPDATE translation_revisions SET review_status='STALE'
@@ -110,7 +111,8 @@ class LocalizationRegistry:
             row = db.execute("SELECT COALESCE(MAX(revision),0) FROM translation_revisions WHERE unit_id=?", (unit_id,)).fetchone()
             revision = int(row[0]) + 1
             db.execute("INSERT INTO translation_revisions(revision_id,unit_id,revision,target_text,target_hash,provider,model,request_hash,response_hash,request_id,policy_version,terminology_version,tm_version,source_hash,parent_revision_id,repair_reason,qa_status,review_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (revision_id, unit_id, revision, target_text, value_hash(target_text), provider, model, request_hash, response_hash, request_id, policy_version, terminology_version, tm_version, source_hash, parent_revision_id, repair_reason, qa_status, review_status, _now()))
-            db.execute("UPDATE translation_units SET current_revision_id=?,updated_at=? WHERE unit_id=?", (revision_id, _now(), unit_id))
+            unit_status = "APPROVED" if str(review_status).upper() in {"APPROVED", "HUMAN_REVIEWED", "LOCKED"} else ("REVIEW_REQUIRED" if str(qa_status).upper() == "PASS" else "BLOCKED")
+            db.execute("UPDATE translation_units SET current_revision_id=?,status=?,updated_at=? WHERE unit_id=?", (revision_id, unit_status, _now(), unit_id))
         return revision_id
 
     def record_revision_for_sku(self, official_sku: str, field_name: str, target_text: str, *, source_hash: str,
@@ -150,7 +152,9 @@ class LocalizationRegistry:
             blockers = db.execute("SELECT COUNT(*) FROM translation_qa_findings WHERE revision_id=? AND status='OPEN' AND severity IN ('BLOCKER','ERROR','HIGH')", (revision_id,)).fetchone()[0]
             if blockers:
                 return False
-            db.execute("UPDATE translation_revisions SET review_status='APPROVED',approved_by=?,approved_at=? WHERE revision_id=? AND review_status NOT IN ('REJECTED','SUPERSEDED','STALE')", (actor, _now(), revision_id))
+            approved_at = _now()
+            db.execute("UPDATE translation_revisions SET review_status='APPROVED',approved_by=?,approved_at=? WHERE revision_id=? AND review_status NOT IN ('REJECTED','SUPERSEDED','STALE')", (actor, approved_at, revision_id))
+            db.execute("UPDATE translation_units SET status='APPROVED',updated_at=? WHERE current_revision_id=?", (approved_at, revision_id))
         self._revision_event(revision_id, "AUTO_APPROVED" if auto else "APPROVED", actor)
         return True
 
@@ -217,7 +221,7 @@ class LocalizationRegistry:
             row = db.execute("SELECT tm_id FROM translation_memory_entries WHERE source_language='es' AND target_language='zh' AND source_hash=? AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '')", (source_hash, field_name, context_key)).fetchone()
             if row:
                 return str(row[0])
-            db.execute("INSERT INTO translation_memory_entries(tm_id,source_language,target_language,source_text,target_text,source_hash,match_type,normalization_version,field_name,context_key,approval_status,source_revision_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", (tm_id, "es", "zh", source_text, target_text, source_hash, match_type, normalization_version, field_name, context_key, approval_status, source_revision_id, _now()))
+            db.execute("INSERT INTO translation_memory_entries(tm_id,source_language,target_language,source_text,target_text,source_hash,normalized_source_hash,match_type,normalization_version,field_name,context_key,approval_status,source_revision_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (tm_id, "es", "zh", source_text, target_text, source_hash, value_hash(normalize_memory_source(source_text)), match_type, normalization_version, field_name, context_key, approval_status, source_revision_id, _now()))
         return tm_id
 
     def ingest_records(self, records: Iterable[Mapping[str, Any]], *, source_run_id: str, observed_at: str) -> dict[str, int]:
@@ -301,6 +305,12 @@ class LocalizationRegistry:
             count = int(row[0] or 0) + 1
             status = "RETRY" if retry and count <= max_retries else "FAILED"
             cur = db.execute("UPDATE translation_queue SET status=?,retry_count=?,last_error=? WHERE queue_id=? AND status='CLAIMED'", (status, count, str(error)[:1000], queue_id))
+            return cur.rowcount == 1
+
+    def block_queue(self, queue_id: str, error: str) -> bool:
+        """Terminally block a queue item after a deterministic QA blocker."""
+        with connect(self.path) as db:
+            cur = db.execute("UPDATE translation_queue SET status='BLOCKED',last_error=? WHERE queue_id=? AND status='CLAIMED'", (str(error)[:1000], queue_id))
             return cur.rowcount == 1
 
     def queue_status(self) -> dict[str, int]:

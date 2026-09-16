@@ -17,7 +17,7 @@ _TOKEN_RE = re.compile(
     r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:€|EUR|\$|USD)(?![A-Za-z0-9])|"
     r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:x|×)\s?\d+(?:[.,]\d+)?(?:\s?(?:x|×)\s?\d+(?:[.,]\d+)?)?(?![A-Za-z0-9])|"
     r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:-|–)\s?\d+(?:[.,]\d+)?(?![A-Za-z0-9])|"
-    r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:mAh|kWh|Wh|Ah|dB|mg|mcg|μg|g|kg|ml|l|cm|mm|m|V|W|Hz|D|%)\b|"
+    r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:mAh|kWh|Wh|Ah|mW|kW|dB|mg|mcg|μg|g|kg|ml|cl|dl|l|L|cm|mm|m|V|W|Hz|D|°C|%)\b|"
     r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?(?![A-Za-z0-9])"
 )
 
@@ -49,18 +49,34 @@ def _token_type(value: str) -> str:
         return "SKU"
     if re.fullmatch(r"(?:CE|FSC|RoHS|GS|BCI|OEKO-TEX)", v, re.I):
         return "CERTIFICATION"
+    if re.fullmatch(r"IP\d{2}", v, re.I):
+        return "TECH"
+    if re.fullmatch(r"E\d+", v, re.I) or re.fullmatch(r"IP\d{2}", v, re.I):
+        return "TECH"
     if re.fullmatch(r"[A-Z]{1,5}[-/]?[A-Z0-9]{1,8}|[A-Z]{2,}\d+", v):
         return "MODEL" if re.search(r"\d", v) else "TECH"
-    if re.search(r"(?:mAh|kWh|Wh|Ah|dB|mg|mcg|μg|kg|ml|cm|mm|Hz|V|W|D|%)", v, re.I):
-        if "%" in v:
-            return "PERCENT"
-        if re.search(r"(?:mAh|kWh|Wh|Ah)$", v, re.I):
-            return "BATTERY_CAPACITY"
-        if re.search(r"dB$", v, re.I):
-            return "TECH"
-        if re.search(r"(?:V|W|Hz)$", v, re.I):
-            return "VOLTAGE" if re.search(r"V$", v, re.I) else "POWER"
-        return "QUANTITY"
+    if re.fullmatch(r"\d+(?:[.,]\d+)?\s?(?:€|EUR|\$|USD)", v, re.I):
+        return "MONEY"
+    if re.search(r"(?:mAh|kWh|Wh|Ah)$", v, re.I):
+        return "CAPACITY"
+    if re.search(r"(?:mW|kW|W)$", v, re.I):
+        return "POWER"
+    if re.search(r"Hz$", v, re.I):
+        return "FREQUENCY"
+    if re.search(r"V$", v, re.I):
+        return "VOLTAGE"
+    if re.search(r"(?:ml|cl|dl|l|L)$", v, re.I):
+        return "VOLUME"
+    if re.search(r"(?:mg|mcg|μg|g|kg)$", v, re.I):
+        return "WEIGHT"
+    if re.search(r"(?:cm|mm|m|°C)$", v, re.I):
+        return "UNIT"
+    if re.search(r"dB$", v, re.I):
+        return "TECH"
+    if re.search(r"%$", v):
+        return "PERCENT"
+    if re.search(r"D$", v):
+        return "UNIT"
     if re.search(r"(?:x|×|[-–])", v) and re.search(r"\d", v):
         return "RANGE" if re.search(r"[-–]", v) else "DIMENSION"
     return "NUMBER" if re.fullmatch(r"\d+(?:[.,]\d+)?", v) else "TECH"

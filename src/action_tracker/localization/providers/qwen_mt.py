@@ -39,6 +39,20 @@ def _looks_like_untranslated_spanish(source: str, target: str) -> bool:
     return bool(_SPANISH_MARKERS.search(source_text)) and target_text.casefold() == source_text.casefold()
 
 
+def to_qwen_term(item: Mapping[str, Any]) -> dict[str, str] | None:
+    """Serialize internal terminology metadata to the MT wire schema."""
+    source = str(item.get("source") or item.get("source_term") or "").strip()
+    target = str(item.get("target") or item.get("target_term") or "").strip()
+    return {"source": source, "target": target} if source and target else None
+
+
+def to_qwen_tm(item: Mapping[str, Any]) -> dict[str, str] | None:
+    """Serialize internal TM provenance to the MT wire schema."""
+    source = str(item.get("source") or item.get("source_text") or "").strip()
+    target = str(item.get("target") or item.get("target_text") or "").strip()
+    return {"source": source, "target": target} if source and target else None
+
+
 @dataclass
 class QwenMTProvider:
     """Alibaba Model Studio qwen-mt-flash adapter.
@@ -79,19 +93,9 @@ class QwenMTProvider:
             # The dedicated MT endpoint only accepts source/target pairs in
             # ``terms``.  Scope, priority and match-mode are resolver-side
             # selection metadata and must never leak into the wire contract.
-            options["terms"] = [
-                {"source": str(item.get("source") or ""), "target": str(item.get("target") or "")}
-                for item in request.terms
-                if str(item.get("source") or "").strip() and str(item.get("target") or "").strip()
-            ]
+            options["terms"] = [item for raw in request.terms if (item := to_qwen_term(raw)) is not None]
         if request.tm_entries:
-            options["tm_list"] = [
-                {"source": str(item.get("source") or item.get("source_text") or ""),
-                 "target": str(item.get("target") or item.get("target_text") or "")}
-                for item in request.tm_entries
-                if str(item.get("source") or item.get("source_text") or "").strip()
-                and str(item.get("target") or item.get("target_text") or "").strip()
-            ]
+            options["tm_list"] = [item for raw in request.tm_entries if (item := to_qwen_tm(raw)) is not None]
         return options
 
     def _content(self, request: TranslationRequest, field_name: str | None = None) -> tuple[str, dict[str, Any]]:

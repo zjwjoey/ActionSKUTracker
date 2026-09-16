@@ -39,3 +39,30 @@ Fuzzy TM is suggestion-only and can never silently become a production value.
 Qwen candidates are never production values until field-level QA, freshness,
 Owner approval and the existing immutable patch gate pass. Empty or fallback
 Chinese remains explicitly pending; it is not silently treated as approved.
+
+## Registry state contract
+
+| Layer | States | Meaning |
+|---|---|---|
+| `translation_units.status` | `PENDING`, `STALE`, `REVIEW_REQUIRED`, `APPROVED`, `BLOCKED` | Current field decision state |
+| `translation_units.freshness_status` | `FRESH`, `STALE` | Whether the field source hash matches the current source version |
+| `translation_revisions.qa_status` | `PENDING`, `PASS`, `FAIL` | Deterministic candidate guard result |
+| `translation_revisions.review_status` | `PENDING`, `APPROVED`, `HUMAN_REVIEWED`, `LOCKED`, `REJECTED`, `STALE` | Explicit field-level Owner decision |
+| `translation_queue.status` | `PENDING`, `CLAIMED`, `RETRY`, `COMPLETED`, `FAILED`, `BLOCKED` | Worker lifecycle |
+
+Only a fresh, QA-PASS, explicitly approved current revision can be projected
+into PRIMARY. Queue workers and providers never write the PRIMARY projection.
+
+## Runtime and safety boundary
+
+`build_translation_runtime()` is the single wiring point used by Shadow,
+Canary and Queue Worker. Shadow never allows provider calls; Canary requires
+an explicit provider flag and remains read-only. `localization.ai.enabled`,
+`localization.production_apply_enabled`, `knowledge.production_apply_enabled`
+and `localization.auto_approval_enabled` are all false by default.
+
+Protected fact types implemented by the current token engine are URL, HTML,
+SKU, EAN, MODEL, TECH, CERTIFICATION, MONEY, CAPACITY, POWER, FREQUENCY,
+VOLUME, WEIGHT, UNIT, PERCENT, RANGE, DIMENSION and NUMBER. Typed QA fails
+closed for protected-token, numeric, unit, model, category, terminology,
+Spanish-residue, HTML and required-field violations.

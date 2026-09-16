@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 import urllib.error
 from pathlib import Path
+from types import SimpleNamespace
 
 from action_tracker.localization.protection.tokens import ProtectedTokenError, protect_text, validate_roundtrip
 from action_tracker.localization.providers.qwen_mt import QwenMTProvider
 from action_tracker.localization.providers.base import FakeTranslationProvider, ProviderError, TranslationRequest
 from action_tracker.localization.registry.migration import apply_migration_preview
-from action_tracker.localization.runtime import shadow_run
+from action_tracker.localization.runtime import shadow_run, canary
+from action_tracker.localization.resolver import TranslationResolver
 from action_tracker.localization.registry.repository import LocalizationRegistry
 from action_tracker.localization.terminology.repository import TerminologyRepository
 from action_tracker.localization.evaluation import evaluate_frozen_gold
@@ -53,6 +55,19 @@ def test_shadow_run_is_read_only(tmp_path: Path):
     result = shadow_run([{"sku": "1", "name_es": "Auriculares", "cat1_es": "Hogar", "cat2_es": "Audio", "spec_es": "20 mg", "desc_es": "", "details_es": "Número del artículo: 1"}], output_dir=tmp_path)
     assert result["production_writes"] is False
     assert (tmp_path / "translation_run_summary.json").exists()
+
+
+def test_canary_explicit_provider_flag_reaches_fake_provider(tmp_path: Path):
+    resolver = TranslationResolver(provider=FakeTranslationProvider({"name": "耳机"}))
+    # Keep this fixture at the provider boundary: no deterministic dictionary
+    # hit is allowed to mask the explicit --provider behavior being tested.
+    resolver.engine.resolve = lambda *args, **kwargs: SimpleNamespace(fields={})
+    result = canary(
+        [{"sku": "1", "name_es": "Auriculares", "cat1_es": "Hogar", "cat2_es": "Audio", "spec_es": "", "desc_es": "", "details_es": ""}],
+        output_dir=tmp_path, field_name="name", resolver=resolver, allow_provider=True,
+    )
+    assert result["qwen_translated"] == 1
+    assert result["production_writes"] is False
 
 
 def test_fake_provider_is_deterministic_and_field_level():

@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
+from .contracts import SourceFacts, source_hash
+from .qa import guard_translation
+from .repair import repair_field
 from .resolver import TranslationResolver
 from .registry.repository import LocalizationRegistry
 
@@ -66,6 +69,8 @@ class TranslationQueueWorker:
             raise ValueError("QUEUE_SOURCE_FIELDS_INVALID")
         record: dict[str, Any] = {"sku": str(item["official_sku"])}
         record.update(fields)
+        if source_hash(record) != str(item["source_hash"]):
+            raise ValueError("QUEUE_SOURCE_HASH_MISMATCH")
         return record
 
     @staticmethod
@@ -89,14 +94,35 @@ class TranslationQueueWorker:
                 field_name = self._requested_field(item.get("requested_fields"))
                 resolution = self.resolver.resolve_field(record, field_name, allow_provider=True)
                 if not resolution.value:
-                    self.registry.fail_queue(queue_id, "NO_RESOLUTION", retry=False)
+                    self.registry.block_queue(queue_id, "NO_RESOLUTION")
                     blocked += 1
                     continue
-                qa_status = "PASS" if resolution.approved else "PENDING"
+                qa = guard_translation(SourceFacts.from_record(record), {field_name: resolution.value}, (field_name,))
+                repair_source = resolution.source
+                if qa["status"] != "PASS":
+                    repaired = repair_field(
+                        record, field_name, resolution.value,
+                        repair_reason="TRANSLATION_QUEUE_QA_REPAIR",
+                        provider=getattr(self.resolver, "provider", None),
+                    )
+                    resolution_value = repaired.value
+                    qa = repaired.qa
+                    repair_source = repaired.repair_source
+                else:
+                    resolution_value = resolution.value
+                if qa["status"] != "PASS":
+                    blocking = [f for f in qa.get("findings", []) if str(f.get("severity") or "").upper() in {"BLOCKER", "ERROR"}]
+                    if blocking:
+                        self.registry.block_queue(queue_id, ";".join(str(f.get("rule_id") or "QA_FAILURE") for f in blocking))
+                        blocked += 1
+                    else:
+                        self.registry.fail_queue(queue_id, "QA_RETRY_REQUIRED", retry=True)
+                        retried += 1
+                    continue
                 self.registry.record_revision_for_sku(
-                    str(item["official_sku"]), field_name, resolution.value,
-                    source_hash=str(item["source_hash"]), provider=resolution.source,
-                    repair_reason="TRANSLATION_QUEUE_WORKER", qa_status=qa_status,
+                    str(item["official_sku"]), field_name, resolution_value,
+                    source_hash=str(item["source_hash"]), provider=repair_source,
+                    repair_reason="TRANSLATION_QUEUE_WORKER", qa_status="PASS",
                 )
                 if self.registry.complete_queue(queue_id):
                     completed += 1
@@ -111,4 +137,3 @@ class TranslationQueueWorker:
 
 def process_translation_queue(registry: LocalizationRegistry, resolver: TranslationResolver, *, limit: int = 50, worker_id: str = "localization-worker") -> dict[str, int]:
     return TranslationQueueWorker(registry, resolver).process_once(limit=limit, worker_id=worker_id).as_dict()
-

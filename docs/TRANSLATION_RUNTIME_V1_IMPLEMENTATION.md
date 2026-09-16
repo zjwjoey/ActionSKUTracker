@@ -20,6 +20,9 @@ and Owner approval pass.
   versions, field units, append-only revisions/events, provider calls, QA
   findings, TM and scoped terminology. These records are not a production
   Apply path until the explicit immutable-patch gate is used.
+* `localization/runtime_builder.py` is the single construction boundary for
+  Registry, Knowledge/Engine, TM/terminology-backed Resolver, Provider and
+  Queue Worker. Shadow, Canary and Worker do not carry separate wiring.
 * `localization/hashes.py` documents the compatible `SOURCE_HASH_V1` contract
   and exposes a new deterministic V2 helper without rewriting historical V1
   hashes.
@@ -41,6 +44,28 @@ become stale and are re-enqueued. The explicit `translation-worker` consumes
 that queue through the resolver and records append-only Registry revisions; it
 never writes `product_localizations`.
 
+Queue states are `PENDING`, `CLAIMED`, `RETRY`, `COMPLETED`, `FAILED` and
+`BLOCKED`. A provider result that passes Typed QA is recorded as
+`REVIEW_REQUIRED`; the worker never auto-approves Qwen.
+
+The only Registry-to-production route is:
+
+```text
+fresh QA-PASS revision + explicit Owner approval
+        ↓
+PATCH_CREATED + PATCH_APPROVED (immutable)
+        ↓
+explicit translation-apply --from-registry --commit
+        ↓
+SQLite PRIMARY product_localizations
+        ↓
+read-only Master/Excel export
+```
+
+The apply command rechecks source freshness, current revision, QA blockers,
+approval status and the configured base commit. Both `knowledge` and
+`localization` production-apply flags remain false by default.
+
 Read-only operational commands are available:
 
 ```text
@@ -53,6 +78,9 @@ python -m action_tracker translation-worker --limit 50
 
 Migration apply is hash-bound and requires `--commit`; it only creates
 approved registry TM entries and never writes PRIMARY, Master or Dictionary.
+
+The formal configuration source is `localization:`. Older `translation:` and
+`ai:` blocks are compatibility-only and are not a second provider path.
 
 For an explicit shadow registration run use:
 

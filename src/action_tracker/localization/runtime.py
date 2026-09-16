@@ -38,7 +38,8 @@ def _write_report(output_dir: Path, summary: Mapping[str, Any], rows: list[Mappi
 
 
 def shadow_run(records: Iterable[Mapping[str, Any]], *, output_dir: Path, run_id: str | None = None,
-               resolver: TranslationResolver | None = None, db_path=None) -> dict[str, Any]:
+               resolver: TranslationResolver | None = None, db_path=None,
+               allow_provider: bool = False) -> dict[str, Any]:
     # Direct library callers may provide the PRIMARY/Shadow DB without having
     # to construct the resolver themselves.  The CLI already injects the
     # resolver explicitly; this prevents silent zero-hit reports in scripts.
@@ -46,7 +47,7 @@ def shadow_run(records: Iterable[Mapping[str, Any]], *, output_dir: Path, run_id
     rows: list[dict[str, Any]] = []
     counts = Counter()
     for record in records:
-        for field_name, result in resolver.resolve(record).items():
+        for field_name, result in resolver.resolve(record, allow_provider=allow_provider).items():
             rows.append({"sku": result.sku, "field_name": field_name, "source": result.source, "status": result.status, "needs_provider": result.needs_provider, "source_hash": result.source_hash, "value": result.value, "provenance": json.dumps(dict(result.provenance), ensure_ascii=False, sort_keys=True, default=str)})
             counts[result.source] += 1
             counts["qwen_needed" if result.needs_provider else "no_qwen_needed"] += 1
@@ -55,7 +56,8 @@ def shadow_run(records: Iterable[Mapping[str, Any]], *, output_dir: Path, run_id
 
 
 def canary(records: Iterable[Mapping[str, Any]], *, output_dir: Path, skus: Iterable[str] | None = None,
-           field_name: str | None = None, limit: int = 50, resolver: TranslationResolver | None = None, db_path=None) -> dict[str, Any]:
+           field_name: str | None = None, limit: int = 50, resolver: TranslationResolver | None = None, db_path=None,
+           allow_provider: bool = False) -> dict[str, Any]:
     wanted = {str(s) for s in skus or ()}
     selected = []
     for record in records:
@@ -69,6 +71,8 @@ def canary(records: Iterable[Mapping[str, Any]], *, output_dir: Path, skus: Iter
         # Keep the same report contract while limiting to one field.
         class OneField:
             def __init__(self, wrapped): self.wrapped = wrapped
-            def resolve(self, record): return {field_name: self.wrapped.resolve_field(record, field_name)}
+            def resolve(self, record, *, allow_provider: bool = False):
+                return {field_name: self.wrapped.resolve_field(record, field_name, allow_provider=allow_provider)}
         resolver = OneField(resolver or TranslationResolver(db_path=db_path))
-    return shadow_run(selected, output_dir=output_dir, run_id=_now_id("canary"), resolver=resolver, db_path=db_path)
+    return shadow_run(selected, output_dir=output_dir, run_id=_now_id("canary"), resolver=resolver,
+                      db_path=db_path, allow_provider=allow_provider)

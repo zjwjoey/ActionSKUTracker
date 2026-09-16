@@ -147,6 +147,7 @@ def build_parser() -> argparse.ArgumentParser:
     ca.add_argument("--sku", dest="skus", action="append")
     ca.add_argument("--field", dest="field_name")
     ca.add_argument("--limit", type=int, default=50)
+    ca.add_argument("--provider", action="store_true", help="显式允许本次 Canary 调用已配置 Provider")
     ca.add_argument("--output", required=True)
     ls = sub.add_parser("localization-live-smoke", help="显式执行少量 Provider smoke；默认不写生产")
     ls.add_argument("--limit", type=int, default=5)
@@ -155,6 +156,9 @@ def build_parser() -> argparse.ArgumentParser:
     tw = sub.add_parser("translation-worker", help="消费翻译队列并写入 Shadow Registry（不写 PRIMARY）")
     tw.add_argument("--limit", type=int, default=50)
     tw.add_argument("--worker-id", default="localization-worker")
+    tw.add_argument("--provider", action="store_true", help="显式允许本次 Worker 调用已配置 Provider")
+    tw.add_argument("--dry-run", action="store_true")
+    tw.add_argument("--once", action="store_true", help="执行一批后退出（默认行为）")
     # Stable English aliases for automation; the localization-* names remain
     # backward-compatible with existing scripts.
     tri = sub.add_parser("translation-registry-ingest", help=argparse.SUPPRESS)
@@ -166,7 +170,7 @@ def build_parser() -> argparse.ArgumentParser:
     tsh = sub.add_parser("translation-shadow-run", help=argparse.SUPPRESS)
     tsh.add_argument("--run-id"); tsh.add_argument("--output", required=True)
     tca = sub.add_parser("translation-canary", help=argparse.SUPPRESS)
-    tca.add_argument("--sku", dest="skus", action="append"); tca.add_argument("--field", dest="field_name"); tca.add_argument("--limit", type=int, default=50); tca.add_argument("--output", required=True)
+    tca.add_argument("--sku", dest="skus", action="append"); tca.add_argument("--field", dest="field_name"); tca.add_argument("--limit", type=int, default=50); tca.add_argument("--provider", action="store_true"); tca.add_argument("--output", required=True)
     tls = sub.add_parser("translation-live-smoke", help=argparse.SUPPRESS)
     tls.add_argument("--limit", type=int, default=5); tls.add_argument("--output", required=True)
     trep = sub.add_parser("translation-report", help=argparse.SUPPRESS)
@@ -177,7 +181,10 @@ def build_parser() -> argparse.ArgumentParser:
     trev = sub.add_parser("translation-review", help=argparse.SUPPRESS)
     trev.add_argument("--limit", type=int, default=100)
     tap = sub.add_parser("translation-apply", help=argparse.SUPPRESS)
-    tap.add_argument("--run-id", required=True); tap.add_argument("--dry-run", action="store_true"); tap.add_argument("--commit", action="store_true")
+    tap.add_argument("--run-id", required=False); tap.add_argument("--dry-run", action="store_true"); tap.add_argument("--commit", action="store_true")
+    tap.add_argument("--from-registry", action="store_true", help="从 Approved Registry Revision 构建 PRIMARY patch")
+    tap.add_argument("--base-commit-id", default="")
+    tap.add_argument("--actor", default="")
     tlp = sub.add_parser("translation-legacy-preview", help=argparse.SUPPRESS)
     tlp.add_argument("--directory", required=True); tlp.add_argument("--output", required=True)
     lr = sub.add_parser("localization-learning-report", help="查看最近一次 Localization learning candidates")
@@ -553,14 +560,17 @@ def main(argv=None) -> int:
         from .database.integration import database_path
         from .database.repository import ProductionRepository
         from .localization.runtime import shadow_run, canary
-        from .localization.resolver import TranslationResolver
+        from .localization.runtime_builder import build_translation_runtime
         try:
             records = ProductionRepository(database_path(cfg)).load_current_export_records()
-            resolver = TranslationResolver(db_path=database_path(cfg))
+            runtime = build_translation_runtime(cfg, allow_provider=bool(getattr(args, "provider", False)))
+            resolver = runtime.resolver
             if args.command in {"localization-shadow-run", "translation-shadow-run"}:
-                result = shadow_run(records, output_dir=Path(args.output), run_id=args.run_id, resolver=resolver)
+                result = shadow_run(records, output_dir=Path(args.output), run_id=args.run_id, resolver=resolver,
+                                    allow_provider=False)
             else:
-                result = canary(records, output_dir=Path(args.output), skus=args.skus, field_name=args.field_name, limit=args.limit, resolver=resolver)
+                result = canary(records, output_dir=Path(args.output), skus=args.skus, field_name=args.field_name,
+                                limit=args.limit, resolver=resolver, allow_provider=bool(getattr(args, "provider", False)))
             print(json.dumps(result, ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
@@ -573,18 +583,13 @@ def main(argv=None) -> int:
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
     if args.command == "translation-worker":
-        from .database.integration import database_path
-        from .localization.registry.repository import LocalizationRegistry
-        from .localization.resolver import TranslationResolver
-        from .localization.worker import process_translation_queue
-        from .localization.ai import provider_from_config, DisabledProvider
+        from .localization.runtime_builder import build_translation_runtime
         try:
-            db_path = database_path(cfg)
-            registry = LocalizationRegistry(db_path, role="SHADOW")
-            ai_cfg = ((cfg.get("localization") or {}).get("ai") or {})
-            provider = provider_from_config(ai_cfg)
-            resolver = TranslationResolver(db_path=db_path, registry=registry, provider=None if isinstance(provider, DisabledProvider) else provider)
-            result = process_translation_queue(registry, resolver, limit=args.limit, worker_id=args.worker_id)
+            runtime = build_translation_runtime(cfg, allow_provider=bool(args.provider))
+            if args.dry_run:
+                result = {"status": "PREVIEW_ONLY", "queue": runtime.registry.queue_status(), "production_writes": 0}
+            else:
+                result = runtime.worker.process_once(limit=args.limit, worker_id=args.worker_id).as_dict()
             print(json.dumps(result, ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
@@ -694,9 +699,31 @@ def main(argv=None) -> int:
                 print(json.dumps({"error": str(exc), "decision": result}, ensure_ascii=False), file=sys.stderr); return 2
         print(json.dumps(result, ensure_ascii=False)); return 0
     if args.command in {"localization-apply", "translation-apply"}:
-        from .localization.service import apply_from_audit
         try:
-            result = apply_from_audit(cfg, run_id=args.run_id, commit=bool(args.commit and not args.dry_run))
+            if getattr(args, "from_registry", False):
+                if not args.base_commit_id:
+                    raise ValueError("REGISTRY_APPLY_BASE_COMMIT_REQUIRED")
+                from .database.integration import database_path
+                from .knowledge.storage import KnowledgeStore
+                from .database.production import apply_approved_localization_patches
+                db_path = database_path(cfg)
+                store = KnowledgeStore(db_path, role="PRIMARY")
+                if args.dry_run or not args.commit:
+                    result = {"status": "PREVIEW_ONLY", "rows": store.preview_approved_registry_apply(), "production_writes": False}
+                else:
+                    if not args.actor:
+                        raise ValueError("REGISTRY_APPLY_ACTOR_REQUIRED")
+                    enabled = bool((cfg.get("knowledge") or {}).get("production_apply_enabled")) and bool((cfg.get("localization") or {}).get("production_apply_enabled"))
+                    if not enabled:
+                        raise PermissionError("LOCALIZATION_PRODUCTION_APPLY_DISABLED")
+                    staged = store.stage_approved_registry_patches(expected_base_commit_id=args.base_commit_id, actor=args.actor)
+                    applied = apply_approved_localization_patches(db_path, patch_ids=staged["patch_ids"], expected_base_commit_id=args.base_commit_id, actor="service:translation-apply", run_id=args.run_id or "translation_registry_apply") if staged["patch_ids"] else {"status": "NOOP", "applied_fields": 0}
+                    result = {"staged": staged, "applied": applied, "production_writes": True}
+            else:
+                if not args.run_id:
+                    raise ValueError("RUN_ID_REQUIRED")
+                from .localization.service import apply_from_audit
+                result = apply_from_audit(cfg, run_id=args.run_id, commit=bool(args.commit and not args.dry_run))
         except Exception as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2

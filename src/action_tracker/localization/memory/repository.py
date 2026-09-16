@@ -42,7 +42,13 @@ class TranslationMemoryRepository:
         normalized = normalize_memory_source(source_text)
         try:
             with connect(self.db_path) as db:
-                rows = db.execute("SELECT source_text,target_text,field_name,context_key,source_hash,match_type,normalization_version FROM translation_memory_entries WHERE approval_status='APPROVED' AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '')", (field_name, context_key)).fetchall()
+                normalized_hash = value_hash(normalized)
+                rows = db.execute("SELECT source_text,target_text,field_name,context_key,source_hash,match_type,normalization_version FROM translation_memory_entries WHERE approval_status='APPROVED' AND normalized_source_hash=? AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '')", (normalized_hash, field_name, context_key)).fetchall()
+                # Backward-compatible fallback for rows created before the
+                # additive normalized hash column existed. New rows use the
+                # indexed path above; legacy rows are a finite migration tail.
+                if not rows:
+                    rows = db.execute("SELECT source_text,target_text,field_name,context_key,source_hash,match_type,normalization_version FROM translation_memory_entries WHERE approval_status='APPROVED' AND normalized_source_hash IS NULL AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '')", (field_name, context_key)).fetchall()
         except Exception as exc:
             if "no such table" in str(exc).lower(): return None
             raise

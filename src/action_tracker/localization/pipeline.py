@@ -52,7 +52,7 @@ def translate_candidate(record: Mapping[str, Any], requested_fields: tuple[str, 
 def resolve_or_translate(record: Mapping[str, Any], requested_fields: tuple[str, ...], *, resolver: TranslationResolver,
                          provider: TranslationProvider | None = None, registry: LocalizationRegistry | None = None,
                          allow_provider: bool = False) -> dict[str, Any]:
-    """Single resolver entry used by future workers and canary paths.
+    """Single resolver entry used by the queue worker and canary paths.
 
     A deterministic/TM/approved hit is returned without calling a provider.
     Provider output remains a PENDING candidate until QA/Owner approval.

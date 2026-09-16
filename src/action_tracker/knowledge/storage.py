@@ -264,3 +264,18 @@ class KnowledgeStore:
                 )
                 patch_ids.append(patch_id)
         return {"patch_ids": patch_ids, "staged_fields": len(patch_ids), "production_writes": False}
+
+    def preview_approved_registry_apply(self, *, limit: int | None = None) -> list[dict[str, Any]]:
+        """Read-only preview of Registry-approved values versus PRIMARY."""
+        rows = self.approved_registry_projection(limit=limit)
+        preview: list[dict[str, Any]] = []
+        canonical = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}
+        with connect(self.path) as db:
+            for row in rows:
+                field = canonical.get(str(row["field_name"]), str(row["field_name"]))
+                if field not in {"name", "cat1", "cat2", "spec", "description", "details"}:
+                    continue
+                current = db.execute(f"SELECT {field} FROM product_localizations WHERE official_sku=? AND language='zh'", (row["official_sku"],)).fetchone()
+                old = current[0] if current else None
+                preview.append({"sku": row["official_sku"], "field": field, "revision_id": row["revision_id"], "source_hash": row["source_hash"], "old_value": old, "new_value": row["target_text"], "decision": "NO_CHANGE" if str(old or '') == str(row['target_text'] or '') else "WOULD_UPDATE", "production_writes": False})
+        return preview

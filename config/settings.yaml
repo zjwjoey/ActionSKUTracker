@@ -121,8 +121,8 @@ run:
   lock_stale_minutes: 180
   # 详情抓取后多久需要强制刷新（天）
   detail_refresh_days: 7
-  # 翻译：阶段一不做（中文列用西语 fallback 占位）。
-  # 后续启用时走 AI API（见下方 ai 段），不用外部翻译服务。
+  # 正式中文由 Translation Registry / PRIMARY projection 管理；未批准时
+  # 保持 PENDING/空值，展示层可按显式策略使用西语 fallback。
   translation_enabled: false
   image_download_enabled: false
   # dry-run 时是否对新品/变化 SKU 抓详情
@@ -176,6 +176,8 @@ localization:
 scoped_dictionary:
   enabled: false
 
+# Legacy compatibility configuration. Formal Translation V1 reads
+# localization.* above; these keys are retained for older callers only.
 translation:
   ai_enabled: false
   provider: null

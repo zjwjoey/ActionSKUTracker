@@ -33,6 +33,8 @@ Action 商品、中文描述或产品详情的显示文本中。型号、接口�
 - Translation System V1：字段级 source version、唯一 Resolver、TM/术语范围、Qwen-MT Provider、
   typed QA、repair/review、不可变 revision、Daily queue 和只读 Approved Projection；默认 fail-closed，
   详见 [`TRANSLATION_SYSTEM_V1`](docs/TRANSLATION_SYSTEM_V1.md)。
+- Translation Runtime V1 已收口为统一 Runtime Builder、字段级 Queue Worker 和
+  Approved Revision → Immutable Patch → SQLite PRIMARY 的显式链路；生产 Apply、自动审批和 AI 默认关闭。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
@@ -98,6 +100,12 @@ python -m action_tracker qa
 
 # 统计当前正式 CURRENT 的 AI-Free 字典覆盖率（只读）
 python -m action_tracker dictionary-coverage --run-id <正式run_id>
+
+# 消费翻译队列（一次执行，默认不启用 Provider）
+python -m action_tracker translation-worker --limit 50 --once
+
+# 只读预览 Registry 中已批准字段；正式 Apply 仍需显式配置与 Owner 参数
+python -m action_tracker translation-apply --from-registry --dry-run --base-commit-id <commit>
 
 # 生成字典字段应用预览；默认绝不写 Master
 python -m action_tracker dictionary-apply --run-id <正式run_id> --dry-run

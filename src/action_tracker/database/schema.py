@@ -450,6 +450,7 @@ CREATE TABLE IF NOT EXISTS translation_memory_entries (
  source_text TEXT NOT NULL,
  target_text TEXT NOT NULL,
  source_hash TEXT NOT NULL,
+ normalized_source_hash TEXT,
  match_type TEXT NOT NULL DEFAULT 'EXACT',
  normalization_version TEXT NOT NULL DEFAULT 'TM_NORMALIZATION_V1',
  field_name TEXT,
@@ -742,6 +743,7 @@ def migrate_v2(path, *, role: str = "SHADOW"):
             "translation_memory_entries": {
                 "match_type": "TEXT NOT NULL DEFAULT 'EXACT'",
                 "normalization_version": "TEXT NOT NULL DEFAULT 'TM_NORMALIZATION_V1'",
+                "normalized_source_hash": "TEXT",
             },
         }.items():
             for column, definition in columns.items():
@@ -752,3 +754,5 @@ def migrate_v2(path, *, role: str = "SHADOW"):
                         raise
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_price_history_event_key ON price_history(event_key) WHERE event_key IS NOT NULL")
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_event_history_event_key ON event_history(event_key) WHERE event_key IS NOT NULL")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_tm_normalized_lookup ON translation_memory_entries(source_language,target_language,normalized_source_hash,field_name,context_key,approval_status)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_terms_scoped_lookup ON terminology_entries(source_language,target_language,source_term,field_scope,cat1_scope,cat2_scope,product_type_scope,context_key,approval_status)")
