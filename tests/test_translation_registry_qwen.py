@@ -18,7 +18,7 @@ from action_tracker.localization.registry.repository import LocalizationRegistry
 from action_tracker.localization.pipeline import make_request
 from action_tracker.localization.qa import guard_translation
 from action_tracker.localization.contracts import SourceFacts, source_hash
-from action_tracker.localization.ai import QwenMTCompatibleProvider
+from action_tracker.localization.ai import QwenMTCompatibleProvider, provider_from_config, provider_health
 from action_tracker.localization.providers.base import TranslationResponse
 from action_tracker.localization.normalization import normalize_source_text, parse_detail_fields, format_detail_fields
 from action_tracker.localization.registry.migration import build_migration_preview
@@ -245,6 +245,28 @@ def test_qwen_missing_key_fails_closed(monkeypatch):
     request = TranslationRequest("123456", {"name_es": "Producto"}, ("name",), "source-hash")
     with pytest.raises(ProviderError, match="QWEN_API_KEY_MISSING"):
         provider.translate(request)
+
+
+def test_qwen_endpoint_uses_runtime_environment_override(monkeypatch):
+    monkeypatch.setenv("QWEN_MT_BASE_URL", "https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1")
+    monkeypatch.delenv("DASHSCOPE_BASE_URL", raising=False)
+    provider = provider_from_config({"enabled": True, "provider": "qwen_mt", "base_url": None})
+    assert provider.base_url == "https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+
+
+def test_qwen_provider_health_fails_fast_with_explicit_environment_errors(monkeypatch):
+    monkeypatch.delenv("QWEN_MT_BASE_URL", raising=False)
+    monkeypatch.delenv("DASHSCOPE_BASE_URL", raising=False)
+    monkeypatch.delenv("DASHSCOPE_API_KEY", raising=False)
+    provider = provider_from_config({"enabled": True, "provider": "qwen_mt", "base_url": None})
+    assert provider_health(provider)["error"] == "QWEN_BASE_URL_MISSING"
+
+    provider = provider_from_config({
+        "enabled": True,
+        "provider": "qwen_mt",
+        "base_url": "https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    })
+    assert provider_health(provider)["error"] == "QWEN_API_KEY_MISSING"
 
 
 @pytest.mark.parametrize("status", [400, 401, 403])

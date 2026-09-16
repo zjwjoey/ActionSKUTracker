@@ -283,8 +283,16 @@ def provider_from_config(config: Mapping[str, Any] | None) -> LocalizationAIProv
     if provider in {"qwen_mt", "qwen-mt", "qwen_mt_flash"}:
         terms = tuple(config.get("terms") or ())
         tm_entries = tuple(config.get("tm_entries") or ())
+        # Endpoint selection is deliberately environment-over-config so a
+        # workspace/region can be supplied at runtime without ever writing a
+        # tenant-specific URL or secret into the repository configuration.
+        base_url = (
+            os.environ.get("QWEN_MT_BASE_URL")
+            or os.environ.get("DASHSCOPE_BASE_URL")
+            or str(config.get("base_url") or "")
+        )
         return QwenMTCompatibleProvider(
-            str(config.get("base_url") or ""), str(config.get("model") or "qwen-mt-flash"),
+            base_url, str(config.get("model") or "qwen-mt-flash"),
             str(config.get("api_key_env") or "DASHSCOPE_API_KEY"), int(config.get("timeout") or 60),
             terms=terms, tm_entries=tm_entries, domain=str(config.get("domain") or "e-commerce"),
             max_batch_size=int(config.get("max_batch_size") or 20),
@@ -304,20 +312,28 @@ def provider_health(provider: LocalizationAIProvider) -> dict[str, Any]:
     """Perform a non-mutating endpoint/model check for an explicit CLI call."""
     if isinstance(provider, DisabledProvider):
         return {"status": "DISABLED", "provider": provider.provider, "model": provider.model}
+    provider_name = str(getattr(provider, "provider", "") or "")
     base_url = str(getattr(provider, "base_url", "") or "").rstrip("/")
     if not base_url:
-        return {"status": "INVALID_CONFIG", "provider": getattr(provider, "provider", ""), "model": getattr(provider, "model", "")}
+        error = "QWEN_BASE_URL_MISSING" if provider_name == "qwen_mt" else "BASE_URL_MISSING"
+        return {"status": "INVALID_CONFIG", "provider": provider_name, "model": getattr(provider, "model", ""), "error": error}
+    model = str(getattr(provider, "model", "") or "").strip()
+    if not model:
+        error = "QWEN_MODEL_MISSING" if provider_name == "qwen_mt" else "MODEL_MISSING"
+        return {"status": "INVALID_CONFIG", "provider": provider_name, "model": "", "error": error}
     headers = {"Accept": "application/json"}
     api_key_env = getattr(provider, "api_key_env", None)
     if api_key_env:
         api_key = os.environ.get(str(api_key_env))
+        if provider_name == "qwen_mt" and not api_key:
+            return {"status": "INVALID_CONFIG", "provider": provider_name, "model": model, "error": "QWEN_API_KEY_MISSING"}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
     request = urllib.request.Request(base_url + "/models", headers=headers, method="GET")
     try:
         with urllib.request.urlopen(request, timeout=int(getattr(provider, "timeout", 60))) as response:  # nosec B310 - explicit configured endpoint
             body = json.loads(response.read().decode() or "{}")
-        configured = str(getattr(provider, "model", "") or "").strip()
+        configured = model
         models = body.get("data") if isinstance(body, Mapping) else None
         if configured and isinstance(models, list):
             ids = {str(item.get("id") or item.get("name") or "") for item in models if isinstance(item, Mapping)}
