@@ -21,6 +21,8 @@ from action_tracker.localization.ai import QwenMTCompatibleProvider
 from action_tracker.localization.providers.base import TranslationResponse
 from action_tracker.localization.normalization import normalize_source_text, parse_detail_fields, format_detail_fields
 from action_tracker.localization.registry.migration import build_migration_preview
+from action_tracker.localization.resolver import TranslationResolver
+from action_tracker.localization.worker import TranslationQueueWorker
 
 
 def test_protected_tokens_round_trip_and_reject_missing():
@@ -29,6 +31,13 @@ def test_protected_tokens_round_trip_and_reject_missing():
     assert restore_text(protected.text, protected).endswith("https://example.test/x")
     with pytest.raises(ProtectedTokenError):
         restore_text(protected.text.replace("[[PROTECTED_0000]]", ""), protected)
+
+
+def test_protected_tokens_cover_battery_and_certification_facts():
+    protected = protect_text("1000 mAh batería FSC CE")
+    assert "BATTERY_CAPACITY" in protected.token_types
+    assert "CERTIFICATION" in protected.token_types
+    assert restore_text(protected.text, protected) == "1000 mAh batería FSC CE"
 
 
 def test_hash_contract_is_deterministic_and_distinct():
@@ -76,7 +85,9 @@ def test_registry_ingest_is_shadow_and_queues_field_units(tmp_path: Path):
     assert result["source_versions"] == 1
     assert result["units"] == 6
     with connect(db_path) as db:
-        assert db.execute("SELECT COUNT(*) FROM translation_queue").fetchone()[0] == 6
+        # Empty official source fields are retained as evidence but do not
+        # create translation work items.
+        assert db.execute("SELECT COUNT(*) FROM translation_queue").fetchone()[0] == 5
         assert db.execute("SELECT COUNT(*) FROM product_localizations").fetchone()[0] == 0
 
 
@@ -101,6 +112,55 @@ def test_qwen_payload_has_single_user_message_and_translation_options(monkeypatc
     assert payload["messages"][0]["role"] == "user"
     assert "system" not in {m["role"] for m in payload["messages"]}
     assert payload["translation_options"]["terms"]
+    assert payload["translation_options"]["domains"]
+    assert set(payload["translation_options"]["terms"][0]) == {"source", "target"}
+
+
+def test_registry_reuses_unchanged_field_and_queues_only_changed_field(tmp_path: Path):
+    db_path = tmp_path / "registry.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+    record1 = {"sku": "123456", "name_es": "Producto", "cat1_es": "", "cat2_es": "", "spec_es": "10 g", "desc_es": "", "details_es": ""}
+    record2 = {**record1, "spec_es": "20 g"}
+    from action_tracker.localization.contracts import source_hash
+    first = registry.register_source("123456", {key: record1[key] for key in record1 if key != "sku"}, source_hash(record1), observed_at="2026-09-16")
+    with connect(db_path) as db:
+        units = {str(row["field_name"]): str(row["unit_id"]) for row in db.execute("SELECT unit_id,field_name FROM translation_units WHERE source_version_id=?", (first,)).fetchall()}
+    name_revision = registry.record_revision(unit_id=units["name_es"], target_text="商品", provider="fake", model="fixture", request_hash="rq", response_hash="rs", source_hash="hash-1", qa_status="PASS", review_status="HUMAN_REVIEWED")
+    assert registry.approve_revision(name_revision, actor="human:test") is True
+    second = registry.register_source("123456", {key: record2[key] for key in record2 if key != "sku"}, source_hash(record2), observed_at="2026-09-17")
+    with connect(db_path) as db:
+        fresh = db.execute("""SELECT u.field_name,r.target_text,r.review_status,u.freshness_status
+            FROM translation_units u LEFT JOIN translation_revisions r ON r.revision_id=u.current_revision_id
+            WHERE u.source_version_id=? ORDER BY u.field_name""", (second,)).fetchall()
+    by_field = {str(row[0]): tuple(row[1:]) for row in fresh}
+    assert by_field["name_es"] == ("商品", "APPROVED", "FRESH")
+    assert by_field["spec_es"] == (None, None, "FRESH")
+    result = registry.ingest_records([record2], source_run_id="r2", observed_at="2026-09-17")
+    assert result["queue_insert_attempts"] == 1
+    with connect(db_path) as db:
+        queued = db.execute("SELECT requested_fields FROM translation_queue WHERE source_hash=?", (source_hash(record2),)).fetchall()
+    # Only the changed spec should be pending in the subsequent source version.
+    assert len(queued) == 1
+
+
+def test_translation_queue_worker_claims_resolves_and_completes_shadow_only(tmp_path: Path):
+    db_path = tmp_path / "registry.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+    record = {"sku": "123456", "name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "Cocina", "spec_es": "20 g", "desc_es": "Descripción", "details_es": "Número del artículo: 123456"}
+    registry.ingest_records([record], source_run_id="run-1", observed_at="2026-09-16")
+    from action_tracker.localization.providers.base import FakeTranslationProvider
+    resolver = TranslationResolver(db_path=db_path, registry=registry, provider=FakeTranslationProvider({"name": "商品"}))
+    result = TranslationQueueWorker(registry, resolver).process_once(limit=1, worker_id="test-worker")
+    assert result.claimed == 1
+    assert result.completed == 1
+    with connect(db_path) as db:
+        assert db.execute("SELECT COUNT(*) FROM product_localizations").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM translation_revisions").fetchone()[0] == 1
+        assert db.execute("SELECT status FROM translation_queue WHERE status='COMPLETED'").fetchone()[0] == "COMPLETED"
 
 
 def test_qwen_missing_key_fails_closed(monkeypatch):

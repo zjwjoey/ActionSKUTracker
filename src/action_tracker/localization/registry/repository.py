@@ -39,17 +39,63 @@ class LocalizationRegistry:
             row = db.execute("SELECT source_version_id FROM translation_source_versions WHERE official_sku=? AND source_hash=? AND hash_contract_version=?", (official_sku, source_hash, hash_contract_version)).fetchone()
             if row:
                 return str(row[0])
-            # A new official source version makes every prior field revision
-            # stale; the old evidence remains immutable and queryable.
-            db.execute("UPDATE translation_units SET freshness_status='STALE',updated_at=? WHERE source_version_id IN (SELECT source_version_id FROM translation_source_versions WHERE official_sku=? AND source_hash<>?)", (_now(), official_sku, source_hash))
-            db.execute("UPDATE translation_revisions SET review_status='STALE' WHERE unit_id IN (SELECT unit_id FROM translation_units WHERE source_version_id IN (SELECT source_version_id FROM translation_source_versions WHERE official_sku=? AND source_hash<>?)) AND review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED')", (official_sku, source_hash))
+            # Freshness is field-level.  A changed spec must not invalidate an
+            # already approved name/category translation.  Capture the latest
+            # prior unit/revision per field before inserting the immutable new
+            # source version, then stale only fields whose source_text_hash
+            # actually changed.
+            prior_rows = db.execute("""SELECT u.field_name,u.source_text_hash,u.current_revision_id,
+                    r.target_text,r.target_hash,r.provider,r.model,r.request_hash,r.response_hash,
+                    r.request_id,r.policy_version,r.terminology_version,r.tm_version,r.repair_reason,
+                    r.qa_status,r.review_status,r.approved_by,r.approved_at
+                FROM translation_units u
+                JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
+                LEFT JOIN translation_revisions r ON r.revision_id=u.current_revision_id
+                WHERE s.official_sku=?
+                  AND s.source_version_id=(SELECT source_version_id FROM translation_source_versions
+                    WHERE official_sku=? ORDER BY created_at DESC LIMIT 1)""", (official_sku, official_sku)).fetchall()
+            prior_by_field = {str(row[0]): row for row in prior_rows}
             db.execute("INSERT INTO translation_source_versions(source_version_id,official_sku,source_hash,hash_contract_version,source_fields_json,raw_fact_hash,normalized_fact_hash,raw_fact_json,normalized_fact_json,source_quality_status,observed_at,source_run_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", (source_id, official_sku, source_hash, hash_contract_version, payload, raw_hash, normalized_hash, raw_payload, normalized_payload, source_quality_status, observed_at, source_run_id, _now()))
             for field_name, value in fields.items():
                 if value is None:
                     continue
                 unit_id = str(uuid.uuid4())
                 text = str(value)
-                db.execute("INSERT OR IGNORE INTO translation_units(unit_id,source_version_id,field_name,source_text,source_text_hash,target_language,status,freshness_status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)", (unit_id, source_id, str(field_name), text, value_hash(text), "zh", "PENDING", "FRESH", _now(), _now()))
+                field_key = str(field_name)
+                text_hash = value_hash(text)
+                prior = prior_by_field.get(field_key)
+                reusable = bool(prior and str(prior[1]) == text_hash and prior[3] is not None
+                                and str(prior[14] or "").upper() == "PASS"
+                                and str(prior[15] or "").upper() in {"APPROVED", "HUMAN_REVIEWED", "LOCKED"})
+                db.execute("INSERT INTO translation_units(unit_id,source_version_id,field_name,source_text,source_text_hash,target_language,status,current_revision_id,freshness_status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", (unit_id, source_id, field_key, text, text_hash, "zh", "APPROVED" if reusable else "PENDING", None, "FRESH", _now(), _now()))
+                if reusable:
+                    revision_id = str(uuid.uuid4())
+                    db.execute("""INSERT INTO translation_revisions(
+                        revision_id,unit_id,revision,target_text,target_hash,provider,model,
+                        request_hash,response_hash,request_id,policy_version,terminology_version,
+                        tm_version,source_hash,parent_revision_id,repair_reason,qa_status,review_status,
+                        approved_by,approved_at,created_at)
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+                        revision_id, unit_id, 1, prior[3], prior[4], prior[5], prior[6], prior[7],
+                        prior[8], prior[9], prior[10], prior[11], prior[12], source_hash,
+                        str(prior[2]) if prior[2] else None, "FIELD_SOURCE_UNCHANGED_REUSE",
+                        prior[14], prior[15], prior[16], prior[17], _now()))
+                    db.execute("UPDATE translation_units SET current_revision_id=? WHERE unit_id=?", (revision_id, unit_id))
+                    db.execute("INSERT INTO translation_revision_events(event_id,revision_id,event_type,actor,evidence_json,occurred_at) VALUES(?,?,?,?,?,?)", (str(uuid.uuid4()), revision_id, "REUSED", "system:field-freshness", json.dumps({"source_hash": source_hash, "field_name": field_key}, ensure_ascii=False, sort_keys=True), _now()))
+
+            # Mark only changed fields stale across prior source versions.
+            for field_key, prior in prior_by_field.items():
+                new_value = fields.get(field_key)
+                new_hash = value_hash(str(new_value)) if new_value is not None else None
+                if new_hash == str(prior[1]):
+                    continue
+                db.execute("""UPDATE translation_units SET freshness_status='STALE',updated_at=?
+                    WHERE field_name=? AND source_version_id IN
+                    (SELECT source_version_id FROM translation_source_versions WHERE official_sku=? AND source_version_id<>?)""", (_now(), field_key, official_sku, source_id))
+                db.execute("""UPDATE translation_revisions SET review_status='STALE'
+                    WHERE unit_id IN (SELECT unit_id FROM translation_units WHERE field_name=?
+                        AND source_version_id IN (SELECT source_version_id FROM translation_source_versions WHERE official_sku=? AND source_version_id<>?))
+                      AND review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED')""", (field_key, official_sku, source_id))
         return source_id
 
     def record_provider_call(self, *, provider: str, model: str, request_hash: str, response_hash: str | None, source_hash: str, status: str, usage: Mapping[str, Any] | None = None, error_code: str | None = None, request_id: str | None = None, latency_ms: int | None = None, retry_count: int = 0, cost_estimate: float | None = None, artifact_ref: str | None = None) -> str:
@@ -190,11 +236,22 @@ class LocalizationRegistry:
             source_id = self.register_source(facts.sku, fields, source_hash(facts.as_record()), observed_at=observed_at, source_run_id=source_run_id)
             source_count += 1
             with connect(self.path) as db:
-                units = db.execute("SELECT unit_id,field_name FROM translation_units WHERE source_version_id=?", (source_id,)).fetchall()
+                units = db.execute("""SELECT u.unit_id,u.field_name,u.source_text,u.current_revision_id,
+                    r.qa_status,r.review_status FROM translation_units u
+                    LEFT JOIN translation_revisions r ON r.revision_id=u.current_revision_id
+                    WHERE u.source_version_id=?""", (source_id,)).fetchall()
                 for unit in units:
                     unit_count += 1
-                    queue_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"translation:{facts.sku}:{source_hash(facts.as_record())}:{unit['field_name']}"))
-                    db.execute("INSERT OR IGNORE INTO translation_queue(queue_id,official_sku,language,source_hash,requested_fields,reason,priority,status,run_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", (queue_id, facts.sku, "zh", source_hash(facts.as_record()), unit["field_name"], "SOURCE_VERSION_NEW_OR_CHANGED", "NORMAL", "PENDING", source_run_id, _now()))
+                    if not str(unit["source_text"] or "").strip():
+                        continue
+                    # Unchanged fields with a fresh approved revision are
+                    # reused and must not be re-enqueued.  Only missing,
+                    # pending or changed-field units enter the worker queue.
+                    if unit["current_revision_id"] and str(unit["qa_status"] or "").upper() == "PASS" and str(unit["review_status"] or "").upper() in {"APPROVED", "HUMAN_REVIEWED", "LOCKED"}:
+                        continue
+                    canonical = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}.get(str(unit["field_name"]), str(unit["field_name"]))
+                    queue_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"translation:{facts.sku}:{source_hash(facts.as_record())}:{canonical}"))
+                    db.execute("INSERT OR IGNORE INTO translation_queue(queue_id,official_sku,language,source_hash,requested_fields,reason,priority,status,run_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", (queue_id, facts.sku, "zh", source_hash(facts.as_record()), canonical, "SOURCE_VERSION_NEW_OR_CHANGED", "NORMAL", "PENDING", source_run_id, _now()))
                     queue_count += 1
         return {"source_versions": source_count, "units": unit_count, "queue_insert_attempts": queue_count, "skipped": skipped}
 

@@ -32,10 +32,11 @@ def test_qwen_builders_are_distinct_and_text_level():
     provider = QwenMTProvider("https://example.test/compatible-mode/v1")
     compatible, _ = provider._build_compatible_payload(request)
     native, _ = QwenMTProvider("https://example.test")._build_native_payload(request)
-    assert compatible["messages"][0]["content"].startswith("FIELD=name")
+    assert compatible["messages"][0]["content"] == "Pack [[PROTECTED_0000]] [[PROTECTED_0001]]"
     assert "fields" not in compatible["messages"][0]["content"]
     assert "messages" in native["input"]
     assert native["parameters"]["translation_options"]["source_lang"] == "Spanish"
+    assert isinstance(native["parameters"]["translation_options"]["domains"], str)
 
 
 def test_migration_apply_requires_manifest_and_explicit_commit(tmp_path: Path):
@@ -97,6 +98,8 @@ def test_qwen_native_http_response_restores_typed_token(monkeypatch):
     result = provider.translate(request)
     assert result.fields["name"] == "耳机 USB-C"
     assert calls and json.loads(calls[0].data)["parameters"]["translation_options"]["target_lang"] == "Chinese"
+    native_payload = json.loads(calls[0].data)
+    assert native_payload["input"]["messages"][0]["content"] == "Auriculares [[PROTECTED_0000]]"
 
 
 def test_qwen_retries_429_but_not_400(monkeypatch):

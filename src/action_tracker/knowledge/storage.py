@@ -200,3 +200,67 @@ class KnowledgeStore:
             actor="service:knowledge-apply", run_id=f"knowledge_apply_{commit_id or uuid.uuid4().hex[:12]}",
         )
         return int(result["applied_fields"])
+
+    def approved_registry_projection(self, *, limit: int | None = None) -> list[dict[str, Any]]:
+        """Read the field-level Registry approvals that are eligible for PRIMARY.
+
+        This is deliberately a projection query, not a write path.  It makes
+        the ownership boundary explicit: only fresh, QA-PASS, approved
+        revisions with no open blocking finding can become PRIMARY patches.
+        """
+        with connect(self.path) as db:
+            sql = """SELECT s.official_sku,s.source_hash,u.field_name,r.revision_id,
+                    r.target_text,r.target_hash,r.review_status,r.qa_status,
+                    r.approved_by,r.approved_at
+                FROM translation_revisions r
+                JOIN translation_units u ON u.current_revision_id=r.revision_id
+                JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
+                WHERE u.freshness_status='FRESH'
+                  AND r.qa_status='PASS'
+                  AND r.review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED')
+                  AND NOT EXISTS (SELECT 1 FROM translation_qa_findings f
+                    WHERE f.revision_id=r.revision_id AND f.status='OPEN'
+                      AND f.severity IN ('BLOCKER','ERROR','HIGH'))
+                ORDER BY s.official_sku,u.field_name"""
+            params: tuple[Any, ...] = ()
+            if limit is not None:
+                sql += " LIMIT ?"; params = (int(limit),)
+            return [dict(row) for row in db.execute(sql, params).fetchall()]
+
+    def stage_approved_registry_patches(self, *, expected_base_commit_id: str, actor: str, limit: int | None = None) -> dict[str, Any]:
+        """Convert Registry-approved fields into immutable PRIMARY patches.
+
+        The method only creates ``PATCH_CREATED`` + ``PATCH_APPROVED`` rows;
+        it never mutates ``product_localizations``.  The caller must still
+        invoke the existing atomic apply coordinator explicitly.
+        """
+        if not str(actor or "").startswith("human:"):
+            raise PermissionError("REGISTRY_APPLY_ACTOR_MUST_BE_HUMAN")
+        rows = self.approved_registry_projection(limit=limit)
+        patch_ids: list[str] = []
+        canonical = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}
+        with connect(self.path) as db:
+            for row in rows:
+                field = canonical.get(str(row["field_name"]), str(row["field_name"]))
+                if field not in {"name", "cat1", "cat2", "spec", "description", "details"}:
+                    continue
+                current = db.execute(f"SELECT {field} FROM product_localizations WHERE official_sku=? AND language='zh'", (row["official_sku"],)).fetchone()
+                old_value = current[0] if current else None
+                if str(old_value or "") == str(row["target_text"] or ""):
+                    continue
+                patch_id = hashlib.sha256(f"registry-approved|{row['revision_id']}|{expected_base_commit_id}|{field}".encode()).hexdigest()
+                create_localization_patch(
+                    self.path, patch_id=patch_id, official_sku=str(row["official_sku"]), language="zh",
+                    field_name=field, old_value=old_value, new_value=str(row["target_text"] or ""),
+                    source_hash=str(row["source_hash"]), source_allowlist=("REGISTRY_APPROVED",),
+                    created_by=actor, evidence={"field_name": field, "revision_id": row["revision_id"],
+                    "base_commit_id": expected_base_commit_id, "source_name": "REGISTRY_APPROVED"},
+                    reason="approved_registry_revision_to_primary",
+                )
+                append_patch_event(
+                    self.path, patch_id=patch_id, event_type="PATCH_APPROVED", actor=actor,
+                    evidence={"field_name": field, "revision_id": row["revision_id"],
+                              "base_commit_id": expected_base_commit_id, "source_name": "REGISTRY_APPROVED"},
+                )
+                patch_ids.append(patch_id)
+        return {"patch_ids": patch_ids, "staged_fields": len(patch_ids), "production_writes": False}

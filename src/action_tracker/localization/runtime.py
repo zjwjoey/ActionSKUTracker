@@ -38,8 +38,11 @@ def _write_report(output_dir: Path, summary: Mapping[str, Any], rows: list[Mappi
 
 
 def shadow_run(records: Iterable[Mapping[str, Any]], *, output_dir: Path, run_id: str | None = None,
-               resolver: TranslationResolver | None = None) -> dict[str, Any]:
-    resolver = resolver or TranslationResolver()
+               resolver: TranslationResolver | None = None, db_path=None) -> dict[str, Any]:
+    # Direct library callers may provide the PRIMARY/Shadow DB without having
+    # to construct the resolver themselves.  The CLI already injects the
+    # resolver explicitly; this prevents silent zero-hit reports in scripts.
+    resolver = resolver or TranslationResolver(db_path=db_path)
     rows: list[dict[str, Any]] = []
     counts = Counter()
     for record in records:
@@ -52,7 +55,7 @@ def shadow_run(records: Iterable[Mapping[str, Any]], *, output_dir: Path, run_id
 
 
 def canary(records: Iterable[Mapping[str, Any]], *, output_dir: Path, skus: Iterable[str] | None = None,
-           field_name: str | None = None, limit: int = 50, resolver: TranslationResolver | None = None) -> dict[str, Any]:
+           field_name: str | None = None, limit: int = 50, resolver: TranslationResolver | None = None, db_path=None) -> dict[str, Any]:
     wanted = {str(s) for s in skus or ()}
     selected = []
     for record in records:
@@ -67,5 +70,5 @@ def canary(records: Iterable[Mapping[str, Any]], *, output_dir: Path, skus: Iter
         class OneField:
             def __init__(self, wrapped): self.wrapped = wrapped
             def resolve(self, record): return {field_name: self.wrapped.resolve_field(record, field_name)}
-        resolver = OneField(resolver or TranslationResolver())
-    return shadow_run(selected, output_dir=output_dir, run_id=_now_id("canary"), resolver=resolver)
+        resolver = OneField(resolver or TranslationResolver(db_path=db_path))
+    return shadow_run(selected, output_dir=output_dir, run_id=_now_id("canary"), resolver=resolver, db_path=db_path)

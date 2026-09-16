@@ -54,7 +54,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             findings.append(QAFinding("NUMERIC_ADDED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "extra": dict(duplicated)}, source=source_text, target=target, message="numeric fact added", blocking=True))
         protected = protect_text(source_text)
         for value, kind in zip(protected.tokens, protected.token_types):
-            if kind in {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION"}:
+            if kind in {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "BATTERY_CAPACITY", "POWER", "VOLTAGE"}:
                 expected_count, actual_count = source_text.count(value), target.count(value)
                 if actual_count < expected_count:
                     findings.append(QAFinding("PROTECTED_TOKEN_MISSING", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))

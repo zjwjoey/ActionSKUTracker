@@ -35,6 +35,12 @@ The Daily adapter uses `apply_zh_formal`: missing Chinese stays empty/PENDING
 and is queued; Spanish is never persisted as approved Chinese. Export remains
 read-only against the approved PRIMARY projection.
 
+Source refresh is field-level: unchanged `source_text_hash` fields reuse a
+fresh approved revision in the new source version, while only changed fields
+become stale and are re-enqueued. The explicit `translation-worker` consumes
+that queue through the resolver and records append-only Registry revisions; it
+never writes `product_localizations`.
+
 Read-only operational commands are available:
 
 ```text
@@ -42,6 +48,7 @@ python -m action_tracker translation-status
 python -m action_tracker localization-shadow-run --output <dir>
 python -m action_tracker localization-canary --sku <SKU> --field name --output <dir>
 python -m action_tracker localization-live-smoke --output <report.json>
+python -m action_tracker translation-worker --limit 50
 ```
 
 Migration apply is hash-bound and requires `--commit`; it only creates

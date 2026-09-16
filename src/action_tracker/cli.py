@@ -152,6 +152,9 @@ def build_parser() -> argparse.ArgumentParser:
     ls.add_argument("--limit", type=int, default=5)
     ls.add_argument("--output", required=True)
     tr = sub.add_parser("translation-status", help="显示翻译注册表队列状态")
+    tw = sub.add_parser("translation-worker", help="消费翻译队列并写入 Shadow Registry（不写 PRIMARY）")
+    tw.add_argument("--limit", type=int, default=50)
+    tw.add_argument("--worker-id", default="localization-worker")
     # Stable English aliases for automation; the localization-* names remain
     # backward-compatible with existing scripts.
     tri = sub.add_parser("translation-registry-ingest", help=argparse.SUPPRESS)
@@ -567,6 +570,22 @@ def main(argv=None) -> int:
         try:
             registry = LocalizationRegistry(database_path(cfg), role="SHADOW")
             print(json.dumps(registry.queue_status(), ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-worker":
+        from .database.integration import database_path
+        from .localization.registry.repository import LocalizationRegistry
+        from .localization.resolver import TranslationResolver
+        from .localization.worker import process_translation_queue
+        from .localization.ai import provider_from_config, DisabledProvider
+        try:
+            db_path = database_path(cfg)
+            registry = LocalizationRegistry(db_path, role="SHADOW")
+            ai_cfg = ((cfg.get("localization") or {}).get("ai") or {})
+            provider = provider_from_config(ai_cfg)
+            resolver = TranslationResolver(db_path=db_path, registry=registry, provider=None if isinstance(provider, DisabledProvider) else provider)
+            result = process_translation_queue(registry, resolver, limit=args.limit, worker_id=args.worker_id)
+            print(json.dumps(result, ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
     if args.command in {"localization-live-smoke", "translation-live-smoke"}:

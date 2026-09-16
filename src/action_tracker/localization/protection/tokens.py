@@ -12,11 +12,12 @@ class ProtectedTokenError(ValueError):
 # Order matters: URLs/SKU/model tokens before generic numbers and units.
 _TOKEN_RE = re.compile(
     r"<[^>]+>|https?://[^\s;]+|(?<![A-Za-z0-9])(?:EAN[- ]?\d{8,14})(?![A-Za-z0-9])|(?<![A-Za-z0-9])(?:SKU[- ]?\d{4,}|\d{6,})(?![A-Za-z0-9])|"
+    r"(?<![A-Za-z0-9])(?:CE|FSC|RoHS|GS|BCI|OEKO-TEX)(?![A-Za-z0-9])|"
     r"(?<![A-Za-z0-9])(?:[A-Z]{1,5}[-/]?[A-Z0-9]{1,8}|[A-Z]{2,}\d+)(?![A-Za-z0-9])|"
     r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:€|EUR|\$|USD)(?![A-Za-z0-9])|"
     r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:x|×)\s?\d+(?:[.,]\d+)?(?:\s?(?:x|×)\s?\d+(?:[.,]\d+)?)?(?![A-Za-z0-9])|"
     r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:-|–)\s?\d+(?:[.,]\d+)?(?![A-Za-z0-9])|"
-    r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:mg|mcg|μg|g|kg|ml|l|cm|mm|m|V|W|Hz|D|%)\b|"
+    r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:mAh|kWh|Wh|Ah|dB|mg|mcg|μg|g|kg|ml|l|cm|mm|m|V|W|Hz|D|%)\b|"
     r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?(?![A-Za-z0-9])"
 )
 
@@ -46,11 +47,17 @@ def _token_type(value: str) -> str:
         return "EAN"
     if re.fullmatch(r"(?:SKU[- ]?\d{4,}|\d{6,})", v, re.I):
         return "SKU"
+    if re.fullmatch(r"(?:CE|FSC|RoHS|GS|BCI|OEKO-TEX)", v, re.I):
+        return "CERTIFICATION"
     if re.fullmatch(r"[A-Z]{1,5}[-/]?[A-Z0-9]{1,8}|[A-Z]{2,}\d+", v):
         return "MODEL" if re.search(r"\d", v) else "TECH"
-    if re.search(r"(?:mg|mcg|μg|kg|ml|cm|mm|Hz|V|W|D|%)", v, re.I):
+    if re.search(r"(?:mAh|kWh|Wh|Ah|dB|mg|mcg|μg|kg|ml|cm|mm|Hz|V|W|D|%)", v, re.I):
         if "%" in v:
             return "PERCENT"
+        if re.search(r"(?:mAh|kWh|Wh|Ah)$", v, re.I):
+            return "BATTERY_CAPACITY"
+        if re.search(r"dB$", v, re.I):
+            return "TECH"
         if re.search(r"(?:V|W|Hz)$", v, re.I):
             return "VOLTAGE" if re.search(r"V$", v, re.I) else "POWER"
         return "QUANTITY"

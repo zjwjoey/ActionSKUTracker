@@ -64,25 +64,45 @@ class QwenMTProvider:
         return {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field_name, field_name)
 
     def _options(self, request: TranslationRequest) -> dict[str, Any]:
-        options: dict[str, Any] = {"source_lang": "Spanish", "target_lang": request.target_language, "domains": [request.domain]}
+        # qwen-mt's ``domains`` contract is a single English prompt string,
+        # not a list of labels.  Keep the prompt deterministic so request
+        # hashes remain stable across retries and providers.
+        domain = str(request.domain or "e-commerce").strip() or "e-commerce"
+        domain_prompt = (
+            "The content is from an e-commerce retail product catalog. "
+            "Translate product names, specifications and descriptions accurately and concisely."
+            if domain.casefold() in {"e-commerce", "ecommerce", "retail"}
+            else f"The content is from the {domain} domain. Translate the supplied text accurately and concisely."
+        )
+        options: dict[str, Any] = {"source_lang": "Spanish", "target_lang": request.target_language, "domains": domain_prompt}
         if request.terms:
-            options["terms"] = [dict(item) for item in request.terms]
+            # The dedicated MT endpoint only accepts source/target pairs in
+            # ``terms``.  Scope, priority and match-mode are resolver-side
+            # selection metadata and must never leak into the wire contract.
+            options["terms"] = [
+                {"source": str(item.get("source") or ""), "target": str(item.get("target") or "")}
+                for item in request.terms
+                if str(item.get("source") or "").strip() and str(item.get("target") or "").strip()
+            ]
         if request.tm_entries:
-            options["tm_list"] = [dict(item) for item in request.tm_entries]
+            options["tm_list"] = [
+                {"source": str(item.get("source") or item.get("source_text") or ""),
+                 "target": str(item.get("target") or item.get("target_text") or "")}
+                for item in request.tm_entries
+                if str(item.get("source") or item.get("source_text") or "").strip()
+                and str(item.get("target") or item.get("target_text") or "").strip()
+            ]
         return options
 
     def _content(self, request: TranslationRequest, field_name: str | None = None) -> tuple[str, dict[str, Any]]:
         field = field_name or request.requested_fields[0]
         source_field = self._source_field(request, field)
         protected = protect_text(request.fields.get(source_field, request.fields.get(field, "")))
-        rules = (
-            "Translate only the supplied Spanish text to Simplified Chinese.",
-            "Return translated text only; never JSON, commentary, or markdown.",
-            "Preserve every protected placeholder exactly once and in order.",
-            "Do not add brand/IP names or the Chinese suffix 牌; retain model, interface, technical tokens, numbers and units.",
-            "Do not invent facts or marketing claims.",
-        )
-        content = "\n".join((f"FIELD={field}", f"RULES={' | '.join(rules)}", f"TEXT={protected.text}"))
+        # Qwen-MT is a dedicated text translation endpoint.  Its single user
+        # message must contain the text to translate, not a chat-style prompt
+        # with FIELD/RULES/TEXT wrappers.  Protected tokens and translation
+        # options carry the machine-readable constraints.
+        content = protected.text
         return content, {"protected": protected, "source_field": source_field}
 
     def _build_native_payload(self, request: TranslationRequest, field_name: str | None = None) -> tuple[dict[str, Any], Any]:
