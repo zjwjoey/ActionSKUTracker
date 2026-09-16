@@ -3,6 +3,11 @@ from __future__ import annotations
 import re
 
 POLICY_VERSION = "CHINESE_LOCALIZATION_STANDARD_V1"
+# Display policy requested for the Action Master Chinese projection.  Brand
+# knowledge remains available for QA/provenance, but brand names and the
+# suffix “牌” are never emitted in Chinese display fields.
+DISPLAY_POLICY_PROFILE = "ACTION_MASTER_NO_BRAND_V1"
+OMIT_BRAND_FROM_CHINESE_DISPLAY = True
 FIXED_CAT1 = (
     "DIY五金", "办公文具", "宠物用品", "厨房餐具", "服饰鞋包", "个人美容",
     "家居布置", "家务清洁", "旅行用品", "食品饮料", "数码影音", "玩具",

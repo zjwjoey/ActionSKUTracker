@@ -344,6 +344,125 @@ CREATE TABLE IF NOT EXISTS translation_approval_audit (
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
 
+-- Localization Intelligence V1 registry.  These are append-only registry
+-- records; they do not replace product facts or the production localization
+-- projection.  A source version is immutable and every generated revision is
+-- bound to its source hash and provider call.
+CREATE TABLE IF NOT EXISTS translation_source_versions (
+ source_version_id TEXT PRIMARY KEY,
+ official_sku TEXT NOT NULL,
+ source_hash TEXT NOT NULL,
+ hash_contract_version TEXT NOT NULL,
+ source_fields_json TEXT NOT NULL,
+ raw_fact_hash TEXT,
+ normalized_fact_hash TEXT,
+ raw_fact_json TEXT,
+ normalized_fact_json TEXT,
+ source_quality_status TEXT NOT NULL DEFAULT 'UNKNOWN',
+ observed_at TEXT NOT NULL,
+ source_run_id TEXT,
+ created_at TEXT NOT NULL,
+ UNIQUE(official_sku, source_hash, hash_contract_version),
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
+CREATE TABLE IF NOT EXISTS translation_units (
+ unit_id TEXT PRIMARY KEY,
+ source_version_id TEXT NOT NULL,
+ field_name TEXT NOT NULL,
+ source_text TEXT NOT NULL,
+ source_text_hash TEXT NOT NULL,
+ target_language TEXT NOT NULL DEFAULT 'zh',
+ status TEXT NOT NULL DEFAULT 'PENDING',
+ current_revision_id TEXT,
+ freshness_status TEXT NOT NULL DEFAULT 'FRESH',
+ updated_at TEXT,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY (source_version_id) REFERENCES translation_source_versions(source_version_id),
+ UNIQUE(source_version_id, field_name, target_language)
+);
+CREATE TABLE IF NOT EXISTS translation_revisions (
+ revision_id TEXT PRIMARY KEY,
+ unit_id TEXT NOT NULL,
+ revision INTEGER NOT NULL,
+ target_text TEXT NOT NULL,
+ target_hash TEXT NOT NULL,
+ provider TEXT NOT NULL,
+ model TEXT NOT NULL,
+ request_hash TEXT NOT NULL,
+ response_hash TEXT NOT NULL,
+ request_id TEXT,
+ policy_version TEXT,
+ terminology_version TEXT,
+ tm_version TEXT,
+ source_hash TEXT,
+ parent_revision_id TEXT,
+ qa_status TEXT NOT NULL DEFAULT 'PENDING',
+ review_status TEXT NOT NULL DEFAULT 'PENDING',
+ approved_by TEXT,
+ approved_at TEXT,
+ superseded_by TEXT,
+ created_at TEXT NOT NULL,
+ UNIQUE(unit_id, revision),
+ FOREIGN KEY (unit_id) REFERENCES translation_units(unit_id)
+);
+CREATE TABLE IF NOT EXISTS translation_provider_calls (
+ call_id TEXT PRIMARY KEY,
+ provider TEXT NOT NULL,
+ model TEXT NOT NULL,
+ request_hash TEXT NOT NULL,
+ response_hash TEXT,
+ source_hash TEXT NOT NULL,
+ status TEXT NOT NULL,
+ usage_json TEXT NOT NULL,
+ request_id TEXT,
+ latency_ms INTEGER,
+ retry_count INTEGER NOT NULL DEFAULT 0,
+ cost_estimate REAL,
+ artifact_ref TEXT,
+ error_code TEXT,
+ created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS translation_qa_findings (
+ finding_id TEXT PRIMARY KEY,
+ revision_id TEXT NOT NULL,
+ rule_id TEXT NOT NULL,
+ severity TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'OPEN',
+ evidence_json TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY (revision_id) REFERENCES translation_revisions(revision_id)
+);
+CREATE TABLE IF NOT EXISTS translation_memory_entries (
+ tm_id TEXT PRIMARY KEY,
+ source_language TEXT NOT NULL,
+ target_language TEXT NOT NULL,
+ source_text TEXT NOT NULL,
+ target_text TEXT NOT NULL,
+ source_hash TEXT NOT NULL,
+ field_name TEXT,
+ context_key TEXT,
+ approval_status TEXT NOT NULL DEFAULT 'PENDING',
+ source_revision_id TEXT,
+ created_at TEXT NOT NULL,
+ UNIQUE(source_language, target_language, source_hash, field_name, context_key)
+);
+CREATE TABLE IF NOT EXISTS terminology_entries (
+ term_id TEXT PRIMARY KEY,
+ source_term TEXT NOT NULL,
+ target_term TEXT NOT NULL,
+ source_language TEXT NOT NULL DEFAULT 'es',
+ target_language TEXT NOT NULL DEFAULT 'zh',
+ scope TEXT NOT NULL DEFAULT 'GLOBAL',
+ approval_status TEXT NOT NULL DEFAULT 'PENDING',
+ notes TEXT NOT NULL DEFAULT '',
+ created_at TEXT NOT NULL,
+ UNIQUE(source_term, target_language, scope)
+);
+CREATE INDEX IF NOT EXISTS idx_translation_units_status ON translation_units(status,field_name);
+CREATE INDEX IF NOT EXISTS idx_translation_revisions_review ON translation_revisions(review_status,qa_status);
+CREATE INDEX IF NOT EXISTS idx_tm_lookup ON translation_memory_entries(source_language,target_language,source_hash,approval_status);
+CREATE INDEX IF NOT EXISTS idx_terms_lookup ON terminology_entries(source_language,target_language,source_term,approval_status);
+
 -- Architecture V2 extraction/selection/delivery metadata.  These tables are
 -- additive: they contain query definitions, SKU membership and artifact
 -- provenance only; product/lifecycle/history tables remain the sole facts.
@@ -494,6 +613,7 @@ def migrate_v2(path, *, role: str = "SHADOW"):
             "schema_version": "2.0.0",
             "database_role": role,
             "fact_version_authority": source_table,
+            "localization_registry_version": "1.0",
         }.items():
             db.execute("INSERT INTO schema_metadata(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
         for table, column, definition in (
@@ -556,5 +676,32 @@ def migrate_v2(path, *, role: str = "SHADOW"):
             except Exception as exc:
                 if "duplicate column" not in str(exc).lower():
                     raise
+        # Translation Registry V1 is additive for databases created before
+        # the complete raw/normalized/provenance contract was frozen.
+        for table, columns in {
+            "translation_source_versions": {
+                "raw_fact_hash": "TEXT", "normalized_fact_hash": "TEXT",
+                "raw_fact_json": "TEXT", "normalized_fact_json": "TEXT",
+                "source_quality_status": "TEXT NOT NULL DEFAULT 'UNKNOWN'",
+            },
+            "translation_units": {
+                "current_revision_id": "TEXT", "freshness_status": "TEXT NOT NULL DEFAULT 'FRESH'", "updated_at": "TEXT",
+            },
+            "translation_revisions": {
+                "request_id": "TEXT", "policy_version": "TEXT", "terminology_version": "TEXT",
+                "tm_version": "TEXT", "source_hash": "TEXT", "parent_revision_id": "TEXT",
+                "approved_by": "TEXT", "approved_at": "TEXT", "superseded_by": "TEXT",
+            },
+            "translation_provider_calls": {
+                "request_id": "TEXT", "latency_ms": "INTEGER", "retry_count": "INTEGER NOT NULL DEFAULT 0",
+                "cost_estimate": "REAL", "artifact_ref": "TEXT",
+            },
+        }.items():
+            for column, definition in columns.items():
+                try:
+                    db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+                except Exception as exc:
+                    if "duplicate column" not in str(exc).lower():
+                        raise
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_price_history_event_key ON price_history(event_key) WHERE event_key IS NOT NULL")
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_event_history_event_key ON event_history(event_key) WHERE event_key IS NOT NULL")

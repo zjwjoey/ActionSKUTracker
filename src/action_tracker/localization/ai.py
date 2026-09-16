@@ -11,10 +11,12 @@ from typing import Any, Mapping, Protocol
 
 from .contracts import (
     POLICY_VERSION, SourceFacts, CANONICAL_AI_FIELDS, CANONICAL_TO_SOURCE,
-    ZH_TO_CANONICAL,
+    ZH_TO_CANONICAL, source_hash,
 )
 from .policy import FIXED_CAT1, has_ordinary_spanish
 from .validator import _NUMBER
+from .providers.qwen_mt import QwenMTProvider
+from .providers.base import TranslationRequest
 
 
 def _system_prompt() -> str:
@@ -22,7 +24,7 @@ def _system_prompt() -> str:
         "你是商品结构化中文标准化引擎。只返回一个 JSON 对象，禁止 Markdown、代码围栏、解释和思考过程。"
         "JSON 顶层必须包含 sku、source_hash、fields、semantic_items、product_type_candidate、detail_key_candidates、tech_token_candidates、confidence；"
         "fields 必须是对象，只填写 requested_fields 中的字段。不得改变 SKU、source_hash、价格、URL 或官方西语事实。"
-        "普通西班牙语必须翻译成中文；品牌、型号、技术词和标准单位按原文保留。必须保留所有数字。"
+        "普通西班牙语必须翻译成中文；型号、技术词和标准单位按原文保留。中文版不输出品牌/IP名称，也不添加“牌”；必须保留所有数字。"
         "未知或无法核实的内容放入 review_notes，不得臆造。"
     )
 
@@ -167,6 +169,28 @@ class LocalOpenAICompatibleProvider(OpenAICompatibleProvider):
         return result
 
 
+@dataclass
+class QwenMTCompatibleProvider:
+    """Bridge the dedicated qwen-mt provider to the localization candidate API."""
+
+    base_url: str
+    model: str = "qwen-mt-flash"
+    api_key_env: str = "DASHSCOPE_API_KEY"
+    timeout: int = 60
+    provider: str = "qwen_mt"
+    terms: tuple[Mapping[str, Any], ...] = ()
+    tm_entries: tuple[Mapping[str, Any], ...] = ()
+    domain: str = "e-commerce"
+
+    def complete(self, source: SourceFacts, requested_fields: tuple[str, ...]) -> Mapping[str, Any]:
+        source_fields = {canonical: getattr(source, CANONICAL_TO_SOURCE[canonical], "") for canonical in requested_fields if canonical in CANONICAL_TO_SOURCE}
+        source_hash_value = source_hash(source.as_record())
+        response = QwenMTProvider(self.base_url, self.model, self.api_key_env, self.timeout).translate(
+            TranslationRequest(source.sku, source_fields, requested_fields, source_hash_value, terms=self.terms, tm_entries=self.tm_entries, domain=self.domain)
+        )
+        return {"sku": source.sku, "canonical_id": source.canonical_id, "source_hash": source_hash_value, "fields": dict(response.fields), "confidence": None, "review_notes": "", "provider_request_hash": response.request_hash, "provider_response_hash": response.response_hash}
+
+
 def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, requested_fields: tuple[str, ...]) -> tuple[bool, tuple[str, ...]]:
     """Validate the provider envelope before it becomes a candidate."""
     reasons: list[str] = []
@@ -175,7 +199,7 @@ def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, reques
         reasons.append("AI_REQUESTED_FIELD_NON_CANONICAL")
     if not isinstance(payload, Mapping):
         return False, ("AI_RESPONSE_NOT_OBJECT",)
-    allowed_top = {"fields", "product_type_candidate", "semantic_items", "detail_key_candidates", "tech_token_candidates", "placement", "confidence", "review_notes", "sku", "canonical_id", "product_url", "current_price", "original_price", "source_hash"}
+    allowed_top = {"fields", "product_type_candidate", "semantic_items", "detail_key_candidates", "tech_token_candidates", "placement", "confidence", "review_notes", "sku", "canonical_id", "product_url", "current_price", "original_price", "source_hash", "provider_request_hash", "provider_response_hash"}
     if set(payload) - allowed_top:
         reasons.append("AI_RESPONSE_UNKNOWN_KEY")
     if "sku" in payload and str(payload.get("sku") or "").strip() != source.sku:
@@ -254,6 +278,14 @@ def provider_from_config(config: Mapping[str, Any] | None) -> LocalizationAIProv
         return DisabledProvider()
     provider = str(config.get("provider") or "openai_compatible").lower()
     if provider in {"fake", "test"}: return FakeProvider({})
+    if provider in {"qwen_mt", "qwen-mt", "qwen_mt_flash"}:
+        terms = tuple(config.get("terms") or ())
+        tm_entries = tuple(config.get("tm_entries") or ())
+        return QwenMTCompatibleProvider(
+            str(config.get("base_url") or ""), str(config.get("model") or "qwen-mt-flash"),
+            str(config.get("api_key_env") or "DASHSCOPE_API_KEY"), int(config.get("timeout") or 60),
+            terms=terms, tm_entries=tm_entries, domain=str(config.get("domain") or "e-commerce"),
+        )
     if provider in {"local_openai_compatible", "local", "ollama", "qwen"}:
         key_env = str(config.get("api_key_env") or "").strip() or None
         return LocalOpenAICompatibleProvider(
@@ -271,7 +303,13 @@ def provider_health(provider: LocalizationAIProvider) -> dict[str, Any]:
     base_url = str(getattr(provider, "base_url", "") or "").rstrip("/")
     if not base_url:
         return {"status": "INVALID_CONFIG", "provider": getattr(provider, "provider", ""), "model": getattr(provider, "model", "")}
-    request = urllib.request.Request(base_url + "/models", headers={"Accept": "application/json"}, method="GET")
+    headers = {"Accept": "application/json"}
+    api_key_env = getattr(provider, "api_key_env", None)
+    if api_key_env:
+        api_key = os.environ.get(str(api_key_env))
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+    request = urllib.request.Request(base_url + "/models", headers=headers, method="GET")
     try:
         with urllib.request.urlopen(request, timeout=int(getattr(provider, "timeout", 60))) as response:  # nosec B310 - explicit configured endpoint
             body = json.loads(response.read().decode() or "{}")
@@ -313,8 +351,8 @@ def resolve_unknown(engine, record: Mapping[str, Any], plan, provider: Localizat
                  "tech_token_candidates": result.get("tech_token_candidates") or [],
                  "confidence": result.get("confidence"),
                  "review_notes": result.get("review_notes", ""),
-                 "request_hash": hashlib.sha256(request_body.encode("utf-8")).hexdigest(),
-                 "response_hash": hashlib.sha256(json.dumps(result, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")).hexdigest(),
+                 "request_hash": str(result.get("provider_request_hash") or hashlib.sha256(request_body.encode("utf-8")).hexdigest()),
+                 "response_hash": str(result.get("provider_response_hash") or hashlib.sha256(json.dumps(result, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")).hexdigest()),
                  "generated_at": datetime.now(timezone.utc).isoformat(),
                  "schema_status": "PASS" if schema_ok else "FAIL",
                  "schema_reasons": schema_reasons}

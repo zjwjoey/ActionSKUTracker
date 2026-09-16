@@ -128,6 +128,13 @@ def build_parser() -> argparse.ArgumentParser:
     kf.add_argument("--run-id", default="knowledge-feed-v1-baseline", help="本轮 Feed 标识")
     sub.add_parser("localization-ai-status", help="检查本地 Localization AI Provider 配置与端点（只读）")
     sub.add_parser("localization-ai-check", help="执行虚构数据的本地 AI JSON 合同 smoke test（只读）")
+    ri = sub.add_parser("localization-registry-ingest", help="将 PRIMARY 当前西语事实登记到 Shadow 翻译注册表，不写生产字段")
+    ri.add_argument("--run-id", required=True, help="来源 observation run_id")
+    ri.add_argument("--observed-at", required=True, help="来源观测时间或日期")
+    mp = sub.add_parser("localization-migration-preview", help="预览 TM/Gold/Patch 迁移资格，不写任何生产数据")
+    mp.add_argument("--input", action="append", required=True, help="TM/Gold/Patch CSV/JSON/XLSX，可重复")
+    mp.add_argument("--output", required=True, help="预览输出目录")
+    mp.add_argument("--baseline", default="origin-main")
     lr = sub.add_parser("localization-learning-report", help="查看最近一次 Localization learning candidates")
     lr.add_argument("--run-id", help="指定报告 run_id")
     lp = sub.add_parser("localization-promote", help="记录候选知识晋升决定（默认只读）")
@@ -467,6 +474,26 @@ def main(argv=None) -> int:
         elif args.command == "localization-ai-check":
             result["smoke"] = {"status": "LOCAL_PROVIDER_NOT_VERIFIED", "reason": "endpoint health did not pass"}
         print(json.dumps(result, ensure_ascii=False)); return 0
+    if args.command == "localization-registry-ingest":
+        from .database.integration import database_path
+        from .database.repository import ProductionRepository
+        from .localization.registry.repository import LocalizationRegistry
+        try:
+            db_path = database_path(cfg)
+            records = ProductionRepository(db_path).load_current_export_records()
+            registry = LocalizationRegistry(db_path, role="PRIMARY")
+            result = registry.ingest_records(records, source_run_id=args.run_id, observed_at=args.observed_at)
+            result.update({"run_id": args.run_id, "production_writes": False, "target": "translation_registry"})
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "localization-migration-preview":
+        from .localization.registry.migration import build_migration_preview
+        try:
+            result = build_migration_preview([Path(item) for item in args.input], Path(args.output), baseline_name=args.baseline)
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
     if args.command == "localization-learning-report":
         from .localization.service import _report_root
         root = _report_root(cfg)

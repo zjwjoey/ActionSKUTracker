@@ -148,18 +148,24 @@ knowledge:
 # ---- Localization Intelligence V1 ----
 localization:
   policy_version: CHINESE_LOCALIZATION_STANDARD_V1
+  display_policy_profile: ACTION_MASTER_NO_BRAND_V1
+  omit_brand_from_chinese_display: true
   ai:
     enabled: false
-    # Provider is interchangeable; local Qwen3:8B is an example, not a
-    # required runtime dependency.  Set enabled explicitly for a smoke test.
-    provider: local_openai_compatible
+    # Dedicated Alibaba Qwen MT adapter.  Keep disabled until an explicit
+    # operator enables a shadow translation run; secrets are never stored in
+    # this file.
+    provider: qwen_mt
     base_url: null
-    model: qwen3:8b
-    api_key_env: null
+    model: qwen-mt-flash
+    api_key_env: DASHSCOPE_API_KEY
     temperature: 0
-    timeout: 120
+    timeout: 60
     max_batch_size: 20
     max_retries: 3
+    domain: e-commerce
+    terms: []
+    tm_entries: []
 
 scoped_dictionary:
   enabled: false
