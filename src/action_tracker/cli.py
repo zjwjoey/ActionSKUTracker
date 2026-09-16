@@ -168,6 +168,9 @@ def build_parser() -> argparse.ArgumentParser:
     tls.add_argument("--limit", type=int, default=5); tls.add_argument("--output", required=True)
     trep = sub.add_parser("translation-report", help=argparse.SUPPRESS)
     trep.add_argument("--input", required=True)
+    tge = sub.add_parser("translation-gold-eval", help="离线评估冻结 Gold，不写入任何生产数据")
+    tge.add_argument("--input", required=True, help="CSV 或 JSONL，包含 sku/field/source/prediction/gold")
+    tge.add_argument("--output", required=True)
     trev = sub.add_parser("translation-review", help=argparse.SUPPRESS)
     trev.add_argument("--limit", type=int, default=100)
     tap = sub.add_parser("translation-apply", help=argparse.SUPPRESS)
@@ -593,6 +596,22 @@ def main(argv=None) -> int:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
             print(json.dumps(payload, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-gold-eval":
+        from .localization.evaluation import evaluate_frozen_gold
+        try:
+            path = Path(args.input)
+            if path.suffix.casefold() == ".jsonl":
+                rows = [json.loads(line) for line in path.read_text(encoding="utf-8-sig").splitlines() if line.strip()]
+            else:
+                import csv
+                with path.open(encoding="utf-8-sig", newline="") as handle:
+                    rows = list(csv.DictReader(handle))
+            result = evaluate_frozen_gold(rows)
+            out = Path(args.output); out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(result, ensure_ascii=False)); return 0 if result["status"] == "PASS" else 3
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
     if args.command == "translation-review":

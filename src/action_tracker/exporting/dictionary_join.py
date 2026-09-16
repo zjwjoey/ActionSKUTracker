@@ -25,6 +25,7 @@ from ..dictionary import (
     normalize_category_key,
 )
 from ..services.normalization import parse_bool_zh, parse_price
+from ..localization.policy import OMIT_BRAND_FROM_CHINESE_DISPLAY
 
 
 class DictionaryJoinError(ValueError):
@@ -143,9 +144,13 @@ def build_zh_rows(records: Iterable[dict[str, Any]], context: DictionaryContext)
             and brand_row
             and is_confirmed_brand_record(brand_row)
         ):
-            title = format_confirmed_brand_title(
-                title, _text(brand_row.get("canonical_name")) or brand_id,
-            )
+            brand_value = _text(brand_row.get("canonical_name")) or brand_id
+            if OMIT_BRAND_FROM_CHINESE_DISPLAY:
+                # Remove only the identified brand span.  Generic text such
+                # as “扑克牌/行李牌” must remain untouched.
+                title = re.sub(rf"(?i)(?<!\w){re.escape(brand_value)}(?:牌)?", "", title, count=1).strip()
+            else:
+                title = format_confirmed_brand_title(title, brand_value)
         cat1, cat1_fallback = _resolve_category_field("cat1_zh", record, product, manual, context, source_hash)
         if cat1_fallback:
             fallbacks.append("中文分类1待审核")

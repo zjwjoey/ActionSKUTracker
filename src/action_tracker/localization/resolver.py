@@ -69,9 +69,14 @@ class TranslationResolver:
             with connect(self.db_path) as db:
                 row = db.execute("""SELECT r.target_text FROM translation_revisions r
                 JOIN translation_units u ON u.unit_id=r.unit_id
-                WHERE u.official_sku=? AND u.field_name IN (?,?)
+                JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
+                WHERE s.official_sku=? AND u.field_name IN (?,?)
                   AND r.source_hash=? AND r.qa_status='PASS'
+                  AND u.freshness_status='FRESH'
                   AND r.review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED')
+                  AND NOT EXISTS (SELECT 1 FROM translation_qa_findings f
+                                  WHERE f.revision_id=r.revision_id AND f.status='OPEN'
+                                    AND f.severity IN ('BLOCKER','ERROR','HIGH'))
                 ORDER BY r.revision DESC LIMIT 1""", (sku, field_name, source_field(field_name), source_hash_value)).fetchone()
         except Exception as exc:
             if "no such table" not in str(exc).lower():
@@ -101,14 +106,14 @@ class TranslationResolver:
         if self.tm:
             match = self.tm.exact(source_text, field_name=field_name, context_key=context_key)
             if match:
-                return Resolution(source.sku, field_name, source_text, source_hash_value, match.target_text, "tm_exact", "APPROVED", True, False, provenance={"tm_source_hash": match.source_hash})
+                return Resolution(source.sku, field_name, source_text, source_hash_value, match.target_text, "tm_exact", "APPROVED", True, False, provenance={"tm_source_hash": match.source_hash, "tm_match_type": match.match_type, "normalization_version": match.normalization_version, "context_key": match.context_key})
             match = self.tm.normalized_exact(source_text, field_name=field_name, context_key=context_key)
             if match:
-                return Resolution(source.sku, field_name, source_text, source_hash_value, match.target_text, "tm_normalized_exact", "APPROVED", True, False, provenance={"tm_source_hash": match.source_hash})
+                return Resolution(source.sku, field_name, source_text, source_hash_value, match.target_text, "tm_normalized_exact", "APPROVED", True, False, provenance={"tm_source_hash": match.source_hash, "tm_match_type": match.match_type, "normalization_version": match.normalization_version, "context_key": match.context_key})
             if context_key:
                 match = self.tm.exact(source_text, field_name=field_name, context_key=None)
                 if match:
-                    return Resolution(source.sku, field_name, source_text, source_hash_value, match.target_text, "tm_context", "APPROVED", True, False, provenance={"tm_source_hash": match.source_hash})
+                    return Resolution(source.sku, field_name, source_text, source_hash_value, match.target_text, "tm_context", "APPROVED", True, False, provenance={"tm_source_hash": match.source_hash, "tm_match_type": match.match_type, "normalization_version": match.normalization_version, "context_key": match.context_key})
 
         # Deterministic planning can resolve fixed categories and dictionary
         # hits.  It never turns a Spanish fallback into an approved Chinese
@@ -119,7 +124,15 @@ class TranslationResolver:
             return Resolution(source.sku, field_name, source_text, source_hash_value, planned.value, planned.source, "APPROVED", True, False, provenance={"policy_version": planned.policy_version})
 
         if allow_provider and self.provider and source_text:
-            terms = tuple(self.terminology.as_qwen_options(source_text, field_name=field_name, context_key=context_key, limit=20) if self.terminology else ())
+            terms = tuple(self.terminology.as_qwen_options(
+                source_text,
+                field_name=field_name,
+                cat1=source.cat1_es,
+                cat2=source.cat2_es,
+                product_type=product_type,
+                context_key=context_key,
+                limit=20,
+            ) if self.terminology else ())
             req = TranslationRequest(source.sku, {field_name: source_text}, (field_name,), source_hash_value, terms=terms, domain=product_type or "e-commerce")
             response = self.provider.translate(req)
             value = str(response.fields.get(field_name) or "")

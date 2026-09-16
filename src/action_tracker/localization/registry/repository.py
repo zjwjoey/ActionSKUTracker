@@ -121,6 +121,7 @@ class LocalizationRegistry:
             row = db.execute("""SELECT r.* FROM translation_revisions r JOIN translation_units u ON u.unit_id=r.unit_id
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
                 WHERE s.official_sku=? AND u.field_name IN (?,?) AND r.source_hash=?
+                  AND u.freshness_status='FRESH'
                   AND r.review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED') AND r.qa_status='PASS'
                   AND NOT EXISTS (SELECT 1 FROM translation_qa_findings f WHERE f.revision_id=r.revision_id AND f.status='OPEN' AND f.severity IN ('BLOCKER','ERROR','HIGH'))
                 ORDER BY r.revision DESC LIMIT 1""", (official_sku, field_name, canonical, source_hash)).fetchone()

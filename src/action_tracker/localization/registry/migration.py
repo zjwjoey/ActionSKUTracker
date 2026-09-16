@@ -120,7 +120,9 @@ def build_migration_preview(input_paths: Iterable[Path], output_dir: Path, *, ba
     context_only: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     conflicts: list[dict[str, Any]] = []
-    grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    # Context-dependent translations are distinct decisions, not conflicts.
+    # Only rows with the same identity *and* the same context can conflict.
+    grouped: dict[tuple[str, str, str, str, str, str, str, str], list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         reason = ""
         if not row["sku"] or not row["field_name"]:
@@ -136,7 +138,12 @@ def build_migration_preview(input_paths: Iterable[Path], output_dir: Path, *, ba
         if reason:
             rejected.append({**row, "rejection_reason": reason})
             continue
-        grouped[(row["sku"], row["field_name"], row["source_hash"])].append(row)
+        grouped[(
+            row["sku"], row["field_name"], row["source_hash"],
+            str(row.get("context_key") or ""), str(row.get("field_scope") or ""),
+            str(row.get("category_scope") or ""), str(row.get("product_type_scope") or ""),
+            str(row.get("shadow_scope") or ""),
+        )].append(row)
 
     for key, group in grouped.items():
         targets = {row["target_text"] for row in group}

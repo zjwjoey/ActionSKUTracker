@@ -278,7 +278,7 @@ def test_zh_export_uses_field_priority_and_preserves_fact_columns(tmp_path):
     assert manifest["dictionary_fallback_counts"] == {"中文描述待审核": 1}
 
 
-def test_zh_export_adds_confirmed_brand_marker_but_keeps_manual_title(tmp_path):
+def test_zh_export_omits_confirmed_brand_but_keeps_manual_title(tmp_path):
     cfg = _cfg(tmp_path)
     run_id = "2026-08-24_010000"
     record = _record("1001")
@@ -292,7 +292,7 @@ def test_zh_export_adds_confirmed_brand_marker_but_keeps_manual_title(tmp_path):
     result = export_catalog(cfg, language="zh", export_date="2026-08-24", no_images=True)
     workbook = openpyxl.load_workbook(result["output"], data_only=True)
     try:
-        assert workbook["商品全量"].cell(2, 3).value == "BrandX牌字典品名"
+        assert workbook["商品全量"].cell(2, 3).value == "字典品名"
     finally:
         workbook.close()
 

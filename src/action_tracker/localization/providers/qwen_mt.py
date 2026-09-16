@@ -7,6 +7,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+import re
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -16,6 +17,26 @@ from ..protection.tokens import ProtectedTokenError, protect_text, restore_text
 
 def _canonical(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+
+
+_SPANISH_MARKERS = re.compile(
+    r"\b(?:de|del|la|el|los|las|para|con|sin|una|uno|un|y|en|por|más|color|colores|tamaño|unidades|piezas|pack|set)\b",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_untranslated_spanish(source: str, target: str) -> bool:
+    """Return true only for a clearly unchanged Spanish response.
+
+    A product may legitimately consist solely of an alphanumeric model or
+    technical token.  Requiring a Spanish function-word marker and no CJK
+    output keeps the language guard narrow and avoids rejecting those names.
+    """
+    source_text = str(source or "").strip()
+    target_text = str(target or "").strip()
+    if not source_text or not target_text or re.search(r"[\u3400-\u9fff]", target_text):
+        return False
+    return bool(_SPANISH_MARKERS.search(source_text)) and target_text.casefold() == source_text.casefold()
 
 
 @dataclass
@@ -66,7 +87,15 @@ class QwenMTProvider:
 
     def _build_native_payload(self, request: TranslationRequest, field_name: str | None = None) -> tuple[dict[str, Any], Any]:
         content, meta = self._content(request, field_name)
-        payload = {"model": self.model, "input": {"messages": [{"role": "user", "content": content}]}, "translation_options": self._options(request)}
+        # DashScope's native REST contract nests generation controls under
+        # ``parameters``.  The OpenAI-compatible endpoint accepts the same
+        # options as an ``extra_body``/top-level extension, so the two
+        # adapters must not share one guessed payload shape.
+        payload = {
+            "model": self.model,
+            "input": {"messages": [{"role": "user", "content": content}]},
+            "parameters": {"translation_options": self._options(request)},
+        }
         return payload, meta
 
     def _build_compatible_payload(self, request: TranslationRequest, field_name: str | None = None) -> tuple[dict[str, Any], Any]:
@@ -76,7 +105,7 @@ class QwenMTProvider:
 
     def _payload(self, request: TranslationRequest) -> dict[str, Any]:
         """Backward-compatible payload helper; now uses text-level translation."""
-        if "/compatible-mode/" in self.base_url or self.base_url.rstrip("/").endswith("/v1"):
+        if "/compatible-mode/" in self.base_url:
             return self._build_compatible_payload(request)[0]
         return self._build_native_payload(request)[0]
 
@@ -99,7 +128,7 @@ class QwenMTProvider:
         return text
 
     def _translate_one(self, request: TranslationRequest, field_name: str) -> tuple[str, str, str, str, Mapping[str, Any], int]:
-        compatible = "/compatible-mode/" in self.base_url or self.base_url.rstrip("/").endswith("/v1")
+        compatible = "/compatible-mode/" in self.base_url
         payload, meta = (self._build_compatible_payload(request, field_name) if compatible else self._build_native_payload(request, field_name))
         request_json = _canonical(payload)
         request_hash = hashlib.sha256(request_json.encode("utf-8")).hexdigest()
@@ -123,6 +152,16 @@ class QwenMTProvider:
                         text = str((parsed.get("fields") or {}).get(field_name, text))
                     except json.JSONDecodeError:
                         pass
+                if not text.strip():
+                    raise ProviderError("QWEN_RESPONSE_EMPTY")
+                # qwen-mt is a translation engine, so an unchanged Spanish
+                # sentence is an unusable response rather than a successful
+                # translation.  Technical-only strings (USB-C, LED, model
+                # codes) are allowed; the guard requires a Spanish lexical
+                # marker before failing closed.
+                source_value = str(request.fields.get(meta["source_field"], request.fields.get(field_name, "")) or "")
+                if request.target_language.lower().startswith("chinese") and _looks_like_untranslated_spanish(source_value, text):
+                    raise ProviderError("QWEN_UNEXPECTED_LANGUAGE")
                 restored = restore_text(text, meta["protected"])
                 return restored, request_hash, hashlib.sha256(text.encode("utf-8")).hexdigest(), str(body.get("request_id") or request.request_id or uuid.uuid4()), body.get("usage") if isinstance(body.get("usage"), Mapping) else {}, attempt
             except urllib.error.HTTPError as exc:

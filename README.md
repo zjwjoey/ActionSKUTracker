@@ -30,6 +30,9 @@ Action 商品、中文描述或产品详情的显示文本中。型号、接口�
 - Saved View CLI：`saved-view create/list/update/delete`；Selection 成员创建后保持固定。
 - Data Quality & Integrity V1：历史问题审计/修复候选、只读 Master Quality Gate、采集指标/健康基线、
   Collection 状态与 Schema Drift；详见 [`DATA_QUALITY_INTEGRITY_V1`](docs/DATA_QUALITY_INTEGRITY_V1.md)。
+- Translation System V1：字段级 source version、唯一 Resolver、TM/术语范围、Qwen-MT Provider、
+  typed QA、repair/review、不可变 revision、Daily queue 和只读 Approved Projection；默认 fail-closed，
+  详见 [`TRANSLATION_SYSTEM_V1`](docs/TRANSLATION_SYSTEM_V1.md)。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
@@ -67,6 +70,9 @@ Master / State
 - [Data Quality & Integrity V1 Plan](docs/DATA_QUALITY_INTEGRITY_V1_PLAN.md)
 - [Data Quality & Integrity V1 Acceptance Draft](docs/DATA_QUALITY_INTEGRITY_V1_ACCEPTANCE.md)
 - [Data Quality & Integrity V1 Self-Audit](docs/DATA_QUALITY_INTEGRITY_V1_SELF_AUDIT.md)
+- [Translation System V1](docs/TRANSLATION_SYSTEM_V1.md)
+- [Translation System V1 Contract](docs/TRANSLATION_SYSTEM_V1_CONTRACT.md)
+- [Translation Runtime V1](docs/TRANSLATION_RUNTIME_V1_IMPLEMENTATION.md)
 
 ## 快速使用
 
