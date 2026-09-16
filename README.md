@@ -35,6 +35,10 @@ Action 商品、中文描述或产品详情的显示文本中。型号、接口�
   详见 [`TRANSLATION_SYSTEM_V1`](docs/TRANSLATION_SYSTEM_V1.md)。
 - Translation Runtime V1 已收口为统一 Runtime Builder、字段级 Queue Worker 和
   Approved Revision → Immutable Patch → SQLite PRIMARY 的显式链路；生产 Apply、自动审批和 AI 默认关闭。
+  Queue Worker 只对网络/超时/429/5xx（及瞬时 SQLite I/O）有限重试；终止性
+  Provider 错误进入 FAILED/BLOCKED。真实 Provider 调用与 revision 通过
+  `provider_call_id`、request/response hash、usage 和 retry_count 可追溯，
+  Resolver 命中的术语同时进入 Qwen 请求和最终 QA。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 

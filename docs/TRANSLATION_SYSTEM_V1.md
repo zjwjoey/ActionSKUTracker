@@ -95,7 +95,23 @@ SKUs queue all available fields; unchanged source versions reuse their
 approved revisions; a changed source marks prior units/revisions stale and
 queues only changed fields.  Queue claiming is transactional and records
 `PENDING`, `CLAIMED`, `RETRY`, `COMPLETED`, `FAILED` and `BLOCKED` with retry
-metadata.  Provider failure never rolls back the official Spanish commit.
+metadata.  `RETRY` is reserved for network/timeout/429/5xx and transient
+SQLite I/O; 400/401/403, malformed or empty responses, protected-token
+failures and deterministic QA/data blockers are terminal (`FAILED` or
+`BLOCKED`) and are never re-enqueued indefinitely.  Retry count is bounded
+by the queue maximum. Provider failure never rolls back the official Spanish
+commit.
+
+Every real provider attempt is written to `translation_provider_calls`,
+including failed attempts.  A successful provider revision stores the
+`provider_call_id`, provider/model, request/response hashes, request id,
+usage and retry count in structured revision provenance.  Deterministic,
+TM, terminology and manual resolutions do not fabricate provider calls.
+
+Resolver-selected approved terminology is retained in the resolution
+provenance, sent to Qwen only as the official `{source,target}` pair, and
+passed again to Typed QA.  A required approved term missing from the target
+is a blocking `TERMINOLOGY_VIOLATION`.
 
 The legacy `apply_zh` function remains only as a compatibility adapter for old
 fixtures.  The formal Daily path uses `apply_zh_formal`: missing Chinese stays

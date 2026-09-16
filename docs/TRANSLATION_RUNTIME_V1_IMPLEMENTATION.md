@@ -45,8 +45,19 @@ that queue through the resolver and records append-only Registry revisions; it
 never writes `product_localizations`.
 
 Queue states are `PENDING`, `CLAIMED`, `RETRY`, `COMPLETED`, `FAILED` and
-`BLOCKED`. A provider result that passes Typed QA is recorded as
-`REVIEW_REQUIRED`; the worker never auto-approves Qwen.
+`BLOCKED`. Retry is bounded and only used for retryable provider/network
+errors or transient SQLite I/O. Terminal provider errors (400/401/403,
+invalid/empty response and protected-token mismatch) become `FAILED` or
+`BLOCKED`; unknown runtime errors become `FAILED`. A provider result that
+passes Typed QA is recorded as `REVIEW_REQUIRED`; the worker never
+auto-approves Qwen.
+
+Provider calls are append-only audit rows for both success and failure. The
+worker links a successful revision to its `provider_call_id` and stores the
+real provider/model/request id, request/response hashes, usage and retry
+count. Non-provider resolutions use their own resolution source and do not
+pretend to be Qwen calls. Resolver-selected terminology is carried through
+the Qwen request and the same selected terms are supplied to Typed QA.
 
 The only Registry-to-production route is:
 

@@ -390,6 +390,8 @@ CREATE TABLE IF NOT EXISTS translation_revisions (
  model TEXT NOT NULL,
  request_hash TEXT NOT NULL,
  response_hash TEXT NOT NULL,
+ provider_call_id TEXT,
+ provenance_json TEXT NOT NULL DEFAULT '{}',
  request_id TEXT,
  policy_version TEXT,
  terminology_version TEXT,
@@ -724,6 +726,7 @@ def migrate_v2(path, *, role: str = "SHADOW"):
                 "request_id": "TEXT", "policy_version": "TEXT", "terminology_version": "TEXT",
                 "tm_version": "TEXT", "source_hash": "TEXT", "parent_revision_id": "TEXT",
                 "repair_reason": "TEXT",
+                "provider_call_id": "TEXT", "provenance_json": "TEXT NOT NULL DEFAULT '{}'",
                 "approved_by": "TEXT", "approved_at": "TEXT", "superseded_by": "TEXT",
             },
             "translation_provider_calls": {

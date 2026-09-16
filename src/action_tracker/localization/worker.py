@@ -9,6 +9,7 @@ It never writes ``product_localizations`` or any other PRIMARY projection.
 from __future__ import annotations
 
 import json
+import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping
@@ -18,6 +19,8 @@ from .qa import guard_translation
 from .repair import repair_field
 from .resolver import TranslationResolver
 from .registry.repository import LocalizationRegistry
+from .providers.base import ProviderError
+from .protection.tokens import ProtectedTokenError
 
 
 _SOURCE_TO_CANONICAL = {
@@ -84,6 +87,27 @@ class TranslationQueueWorker:
                 pass
         return _SOURCE_TO_CANONICAL.get(raw, raw)
 
+    def _record_provider_failure(self, exc: BaseException, item: Mapping[str, Any]) -> None:
+        """Persist a real provider attempt when the provider exposed identity."""
+        request_hash = getattr(exc, "request_hash", None)
+        if not request_hash:
+            # Missing API keys and local validation failures happen before an
+            # HTTP request; there is no provider call to record.
+            return
+        self.registry.record_provider_call(
+            provider=str(getattr(exc, "provider", None) or getattr(self.resolver.provider, "provider", "unknown")),
+            model=str(getattr(exc, "model", None) or getattr(self.resolver.provider, "model", "unknown")),
+            request_hash=str(request_hash),
+            response_hash=getattr(exc, "response_hash", None),
+            source_hash=str(item.get("source_hash") or ""),
+            status="FAILED",
+            usage=getattr(exc, "usage", {}) or {},
+            request_id=getattr(exc, "request_id", None),
+            latency_ms=getattr(exc, "latency_ms", None),
+            retry_count=int(getattr(exc, "retry_count", 0) or 0),
+            error_code=str(getattr(exc, "code", type(exc).__name__)),
+        )
+
     def process_once(self, *, limit: int = 50, worker_id: str = "localization-worker") -> QueueWorkerResult:
         claimed = self.registry.claim_queue(limit=limit, worker_id=worker_id)
         completed = retried = failed = blocked = 0
@@ -97,19 +121,26 @@ class TranslationQueueWorker:
                     self.registry.block_queue(queue_id, "NO_RESOLUTION")
                     blocked += 1
                     continue
-                qa = guard_translation(SourceFacts.from_record(record), {field_name: resolution.value}, (field_name,))
+                terminology = tuple(resolution.provenance.get("terminology") or ())
+                qa = guard_translation(SourceFacts.from_record(record), {field_name: resolution.value}, (field_name,), terminology=terminology)
                 repair_source = resolution.source
                 if qa["status"] != "PASS":
                     repaired = repair_field(
                         record, field_name, resolution.value,
                         repair_reason="TRANSLATION_QUEUE_QA_REPAIR",
                         provider=getattr(self.resolver, "provider", None),
+                        terminology=terminology,
                     )
                     resolution_value = repaired.value
                     qa = repaired.qa
                     repair_source = repaired.repair_source
+                    if repaired.provenance:
+                        resolution_provenance = dict(repaired.provenance)
+                    else:
+                        resolution_provenance = dict(resolution.provenance or {})
                 else:
                     resolution_value = resolution.value
+                    resolution_provenance = dict(resolution.provenance or {})
                 if qa["status"] != "PASS":
                     blocking = [f for f in qa.get("findings", []) if str(f.get("severity") or "").upper() in {"BLOCKER", "ERROR"}]
                     if blocking:
@@ -119,19 +150,65 @@ class TranslationQueueWorker:
                         self.registry.fail_queue(queue_id, "QA_RETRY_REQUIRED", retry=True)
                         retried += 1
                     continue
+                provider_call_id = None
+                provenance = resolution_provenance
+                provenance["resolution_source"] = str(repair_source).upper()
+                provider_name = str(provenance.get("provider") or repair_source)
+                model = provenance.get("model")
+                request_hash = provenance.get("request_hash")
+                response_hash = provenance.get("response_hash")
+                request_id = provenance.get("request_id")
+                if str(repair_source).lower() == "qwen_mt" and request_hash:
+                    provider_call_id = self.registry.record_provider_call(
+                        provider=provider_name, model=str(model or provider_name),
+                        request_hash=str(request_hash), response_hash=str(response_hash or ""),
+                        source_hash=str(item["source_hash"]), status="COMPLETED",
+                        usage=provenance.get("usage") or {}, request_id=request_id,
+                        retry_count=int(provenance.get("retry_count", 0) or 0),
+                    )
                 self.registry.record_revision_for_sku(
                     str(item["official_sku"]), field_name, resolution_value,
-                    source_hash=str(item["source_hash"]), provider=repair_source,
+                    source_hash=str(item["source_hash"]), provider=provider_name,
+                    model=str(model) if model else None,
+                    request_hash=str(request_hash) if request_hash else None,
+                    response_hash=str(response_hash) if response_hash else None,
+                    request_id=str(request_id) if request_id else None,
+                    provider_call_id=provider_call_id,
+                    provenance={**provenance, "resolution_source": str(repair_source).upper()},
+                    terminology_version=str(provenance.get("terminology_version") or "") or None,
                     repair_reason="TRANSLATION_QUEUE_WORKER", qa_status="PASS",
                 )
                 if self.registry.complete_queue(queue_id):
                     completed += 1
-            except Exception as exc:  # provider/network/QA errors are retryable by policy
-                retry = self.registry.fail_queue(queue_id, f"{type(exc).__name__}:{exc}", retry=True)
+            except ProviderError as exc:
+                self._record_provider_failure(exc, item)
+                if "PROTECTED_TOKEN" in str(exc.code).upper():
+                    self.registry.block_queue(queue_id, f"{exc.code}:{exc}")
+                    blocked += 1
+                    continue
+                retry = self.registry.fail_queue(queue_id, f"{exc.code}:{exc}", retry=bool(exc.retryable))
+                if exc.retryable and retry:
+                    retried += 1
+                else:
+                    failed += 1
+            except ProtectedTokenError as exc:
+                self.registry.block_queue(queue_id, f"PROTECTED_TOKEN:{exc}")
+                blocked += 1
+            except (ValueError, KeyError) as exc:
+                # Missing source, stale source and deterministic data/QA
+                # blockers must not be retried forever.
+                self.registry.block_queue(queue_id, f"{type(exc).__name__}:{exc}")
+                blocked += 1
+            except sqlite3.OperationalError as exc:
+                retry = self.registry.fail_queue(queue_id, f"SQLITE_TRANSIENT:{exc}", retry=True)
                 if retry:
                     retried += 1
                 else:
                     failed += 1
+            except Exception as exc:
+                # Unknown program errors are terminal FAILED, not data RETRY.
+                self.registry.fail_queue(queue_id, f"{type(exc).__name__}:{exc}", retry=False)
+                failed += 1
         return QueueWorkerResult(len(claimed), completed, retried, failed, blocked)
 
 

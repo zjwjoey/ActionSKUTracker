@@ -164,8 +164,8 @@ class QwenMTProvider:
         http_request = urllib.request.Request(url, data=request_json.encode("utf-8"), method="POST", headers={"Authorization": f"Bearer {os.environ.get(self.api_key_env)}", "Content-Type": "application/json", "X-DashScope-WorkSpace": os.environ.get("DASHSCOPE_WORKSPACE", "")})
         last_error: ProviderError | None = None
         for attempt in range(self.max_retries + 1):
+            started = time.monotonic()
             try:
-                started = time.monotonic()
                 with urllib.request.urlopen(http_request, timeout=self.timeout) as response:  # nosec B310 - configured endpoint
                     body = json.loads(response.read().decode("utf-8"))
                 text = self._response_text(body, compatible)
@@ -196,6 +196,16 @@ class QwenMTProvider:
                 last_error = ProviderError("QWEN_RESPONSE_JSON_INVALID", str(exc))
             except (ProviderError, ProtectedTokenError) as exc:
                 last_error = exc if isinstance(exc, ProviderError) else ProviderError("QWEN_PROTECTED_TOKEN_MISMATCH", str(exc))
+            # Preserve the real request identity on terminal and retryable
+            # failures.  The queue worker can therefore audit a failed call
+            # without fabricating a target-text hash.
+            if last_error is not None:
+                last_error.provider = self.provider
+                last_error.model = self.model
+                last_error.request_hash = request_hash
+                last_error.request_id = request.request_id or None
+                last_error.retry_count = attempt
+                last_error.latency_ms = int((time.monotonic() - started) * 1000)
             if not last_error.retryable or attempt >= self.max_retries:
                 break
             time.sleep(self.backoff_seconds * (2 ** attempt))

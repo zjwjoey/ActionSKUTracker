@@ -66,5 +66,17 @@ class TerminologyRepository:
     def as_qwen_options(self, source_text: str, *, scope: str = "GLOBAL", field_name: str | None = None,
                         cat1: str | None = None, cat2: str | None = None, product_type: str | None = None,
                         context_key: str | None = None, limit: int = 20) -> list[dict[str, str]]:
-        return [{"source": item.source_term, "target": item.target_term, "scope": item.scope, "match_mode": item.match_mode}
-                for item in self.resolve(source_text, scope=scope, field_name=field_name, cat1=cat1, cat2=cat2, product_type=product_type, context_key=context_key, limit=limit)]
+        # Keep the complete selected hint internally.  qwen_mt.to_qwen_term
+        # deliberately projects this down to the official {source,target}
+        # wire contract, so scope and approval metadata never leak to Qwen.
+        return [{
+            "term_id": item.term_id, "source": item.source_term,
+            "target": item.target_term, "scope": item.scope,
+            "priority": item.priority, "field_scope": item.field_scope,
+            "cat1_scope": item.cat1_scope, "cat2_scope": item.cat2_scope,
+            "product_type_scope": item.product_type_scope,
+            "context_key": item.context_key, "match_mode": item.match_mode,
+            "do_not_translate": item.do_not_translate,
+            "keep_original": item.keep_original,
+            "forbidden_target": item.forbidden_target,
+        } for item in self.resolve(source_text, scope=scope, field_name=field_name, cat1=cat1, cat2=cat2, product_type=product_type, context_key=context_key, limit=limit)]

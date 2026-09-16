@@ -50,6 +50,25 @@ Chinese remains explicitly pending; it is not silently treated as approved.
 | `translation_revisions.review_status` | `PENDING`, `APPROVED`, `HUMAN_REVIEWED`, `LOCKED`, `REJECTED`, `STALE` | Explicit field-level Owner decision |
 | `translation_queue.status` | `PENDING`, `CLAIMED`, `RETRY`, `COMPLETED`, `FAILED`, `BLOCKED` | Worker lifecycle |
 
+Queue failure policy is fail-closed: retryable provider errors are network,
+timeout, HTTP 429 and HTTP 5xx; transient SQLite I/O may retry. HTTP 400,
+401, 403, invalid/empty/unexpected-language responses and protected-token
+errors are terminal and cannot loop. Data/source mismatch and QA blockers
+are `BLOCKED`; unknown program exceptions are `FAILED`. `COMPLETED` means
+automatic processing produced a revision, not that it was Owner-approved or
+written to PRIMARY.
+
+`translation_revisions.provider_call_id` and `provenance_json` link a
+provider-backed revision to the append-only provider call containing
+provider, model, request id, request hash, response hash, usage and retry
+count. Deterministic, TM, terminology and manual resolutions retain their
+own `resolution_source` and never create a fake provider call.
+
+Approved terminology selected by the Resolver is retained in provenance,
+projected to Qwen as only `{source,target}` pairs, and passed to QA. Missing
+approved targets raise blocking `TERMINOLOGY_VIOLATION`; forbidden targets
+raise `FORBIDDEN_TERM`.
+
 Only a fresh, QA-PASS, explicitly approved current revision can be projected
 into PRIMARY. Queue workers and providers never write the PRIMARY projection.
 

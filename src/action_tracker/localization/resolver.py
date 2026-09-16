@@ -137,7 +137,16 @@ class TranslationResolver:
             response = self.provider.translate(req)
             value = str(response.fields.get(field_name) or "")
             if value:
-                return Resolution(source.sku, field_name, source_text, source_hash_value, value, "qwen_mt", "PENDING", False, False, provenance={"provider": response.provider, "model": response.model, "request_hash": response.request_hash, "response_hash": response.response_hash})
+                return Resolution(source.sku, field_name, source_text, source_hash_value, value, "qwen_mt", "PENDING", False, False, provenance={
+                    "resolution_source": "QWEN_MT", "provider": response.provider,
+                    "model": response.model, "request_id": response.request_id,
+                    "request_hash": response.request_hash,
+                    "response_hash": response.response_hash,
+                    "usage": dict(response.usage or {}),
+                    "retry_count": int((response.usage or {}).get("retry_count", 0) or 0),
+                    "request_count": int((response.usage or {}).get("request_count", 1) or 1),
+                    "terminology": [dict(term) for term in terms],
+                })
 
         return Resolution(source.sku, field_name, source_text, source_hash_value, "", "missing", "PENDING", False, bool(source_text), ("NO_APPROVED_RESOLUTION",))
 

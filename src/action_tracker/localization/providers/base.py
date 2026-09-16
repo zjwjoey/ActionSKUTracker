@@ -9,10 +9,22 @@ from typing import Any, Mapping, Protocol
 class ProviderError(RuntimeError):
     """A typed, retryable or terminal provider failure."""
 
-    def __init__(self, code: str, message: str = "", *, retryable: bool = False):
+    def __init__(self, code: str, message: str = "", *, retryable: bool = False,
+                 provider: str | None = None, model: str | None = None,
+                 request_hash: str | None = None, response_hash: str | None = None,
+                 request_id: str | None = None, usage: Mapping[str, Any] | None = None,
+                 retry_count: int = 0, latency_ms: int | None = None):
         super().__init__(message or code)
         self.code = code
         self.retryable = retryable
+        self.provider = provider
+        self.model = model
+        self.request_hash = request_hash
+        self.response_hash = response_hash
+        self.request_id = request_id
+        self.usage = dict(usage or {})
+        self.retry_count = int(retry_count)
+        self.latency_ms = latency_ms
 
 
 @dataclass(frozen=True)
