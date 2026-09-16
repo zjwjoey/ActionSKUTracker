@@ -28,8 +28,13 @@ The current Action Master profile is `ACTION_MASTER_NO_BRAND_V1`:
 
 ## Translation order
 
-`manual field lock → approved product revision → scoped TM → scoped
-terminology → deterministic rules → Qwen candidate → review`.
+The single `TranslationResolver` is the only formal decision point:
+
+`manual field lock → approved revision (same source hash) → exact TM →
+normalized exact TM → context TM → scoped terminology/rules → qwen-mt-flash
+candidate → human review`.
+
+Fuzzy TM is suggestion-only and can never silently become a production value.
 
 Qwen candidates are never production values until field-level QA, freshness,
 Owner approval and the existing immutable patch gate pass. Empty or fallback

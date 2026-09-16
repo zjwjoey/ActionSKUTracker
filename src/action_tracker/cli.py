@@ -135,6 +135,43 @@ def build_parser() -> argparse.ArgumentParser:
     mp.add_argument("--input", action="append", required=True, help="TM/Gold/Patch CSV/JSON/XLSX，可重复")
     mp.add_argument("--output", required=True, help="预览输出目录")
     mp.add_argument("--baseline", default="origin-main")
+    ma = sub.add_parser("localization-migration-apply", help="应用未改变且已校验 hash 的迁移预览（默认只读）")
+    ma.add_argument("--preview", required=True)
+    ma.add_argument("--manifest-hash", required=True)
+    ma.add_argument("--commit", action="store_true")
+    ma.add_argument("--actor", default="")
+    sh = sub.add_parser("localization-shadow-run", help="对 PRIMARY CURRENT 做只读翻译解析 Shadow")
+    sh.add_argument("--run-id")
+    sh.add_argument("--output", required=True)
+    ca = sub.add_parser("localization-canary", help="对指定 SKU/字段做只读 Canary")
+    ca.add_argument("--sku", dest="skus", action="append")
+    ca.add_argument("--field", dest="field_name")
+    ca.add_argument("--limit", type=int, default=50)
+    ca.add_argument("--output", required=True)
+    ls = sub.add_parser("localization-live-smoke", help="显式执行少量 Provider smoke；默认不写生产")
+    ls.add_argument("--limit", type=int, default=5)
+    ls.add_argument("--output", required=True)
+    tr = sub.add_parser("translation-status", help="显示翻译注册表队列状态")
+    # Stable English aliases for automation; the localization-* names remain
+    # backward-compatible with existing scripts.
+    tri = sub.add_parser("translation-registry-ingest", help=argparse.SUPPRESS)
+    tri.add_argument("--run-id", required=True); tri.add_argument("--observed-at", required=True)
+    tmr = sub.add_parser("translation-migration-preview", help=argparse.SUPPRESS)
+    tmr.add_argument("--input", action="append", required=True); tmr.add_argument("--output", required=True); tmr.add_argument("--baseline", default="origin-main")
+    tma = sub.add_parser("translation-migration-apply", help=argparse.SUPPRESS)
+    tma.add_argument("--preview", required=True); tma.add_argument("--manifest-hash", required=True); tma.add_argument("--commit", action="store_true"); tma.add_argument("--actor", default="")
+    tsh = sub.add_parser("translation-shadow-run", help=argparse.SUPPRESS)
+    tsh.add_argument("--run-id"); tsh.add_argument("--output", required=True)
+    tca = sub.add_parser("translation-canary", help=argparse.SUPPRESS)
+    tca.add_argument("--sku", dest="skus", action="append"); tca.add_argument("--field", dest="field_name"); tca.add_argument("--limit", type=int, default=50); tca.add_argument("--output", required=True)
+    tls = sub.add_parser("translation-live-smoke", help=argparse.SUPPRESS)
+    tls.add_argument("--limit", type=int, default=5); tls.add_argument("--output", required=True)
+    trep = sub.add_parser("translation-report", help=argparse.SUPPRESS)
+    trep.add_argument("--input", required=True)
+    trev = sub.add_parser("translation-review", help=argparse.SUPPRESS)
+    trev.add_argument("--limit", type=int, default=100)
+    tap = sub.add_parser("translation-apply", help=argparse.SUPPRESS)
+    tap.add_argument("--run-id", required=True); tap.add_argument("--dry-run", action="store_true"); tap.add_argument("--commit", action="store_true")
     lr = sub.add_parser("localization-learning-report", help="查看最近一次 Localization learning candidates")
     lr.add_argument("--run-id", help="指定报告 run_id")
     lp = sub.add_parser("localization-promote", help="记录候选知识晋升决定（默认只读）")
@@ -474,7 +511,7 @@ def main(argv=None) -> int:
         elif args.command == "localization-ai-check":
             result["smoke"] = {"status": "LOCAL_PROVIDER_NOT_VERIFIED", "reason": "endpoint health did not pass"}
         print(json.dumps(result, ensure_ascii=False)); return 0
-    if args.command == "localization-registry-ingest":
+    if args.command in {"localization-registry-ingest", "translation-registry-ingest"}:
         from .database.integration import database_path
         from .database.repository import ProductionRepository
         from .localization.registry.repository import LocalizationRegistry
@@ -487,11 +524,82 @@ def main(argv=None) -> int:
             print(json.dumps(result, ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
-    if args.command == "localization-migration-preview":
+    if args.command in {"localization-migration-preview", "translation-migration-preview"}:
         from .localization.registry.migration import build_migration_preview
         try:
             result = build_migration_preview([Path(item) for item in args.input], Path(args.output), baseline_name=args.baseline)
             print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command in {"localization-migration-apply", "translation-migration-apply"}:
+        from .database.integration import database_path
+        from .localization.registry.repository import LocalizationRegistry
+        from .localization.registry.migration import apply_migration_preview
+        try:
+            registry = LocalizationRegistry(database_path(cfg), role="SHADOW")
+            result = apply_migration_preview(registry, Path(args.preview), manifest_hash=args.manifest_hash, commit=bool(args.commit), actor=args.actor)
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command in {"localization-shadow-run", "localization-canary", "translation-shadow-run", "translation-canary"}:
+        from .database.integration import database_path
+        from .database.repository import ProductionRepository
+        from .localization.runtime import shadow_run, canary
+        try:
+            records = ProductionRepository(database_path(cfg)).load_current_export_records()
+            if args.command in {"localization-shadow-run", "translation-shadow-run"}:
+                result = shadow_run(records, output_dir=Path(args.output), run_id=args.run_id)
+            else:
+                result = canary(records, output_dir=Path(args.output), skus=args.skus, field_name=args.field_name, limit=args.limit)
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-status":
+        from .database.integration import database_path
+        from .localization.registry.repository import LocalizationRegistry
+        try:
+            registry = LocalizationRegistry(database_path(cfg), role="SHADOW")
+            print(json.dumps(registry.queue_status(), ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command in {"localization-live-smoke", "translation-live-smoke"}:
+        from .localization.ai import provider_from_config, provider_health, validate_ai_response
+        from .localization.contracts import SourceFacts
+        try:
+            ai_cfg = ((cfg.get("localization") or {}).get("ai") or {})
+            provider = provider_from_config({**ai_cfg, "enabled": True})
+            health = provider_health(provider)
+            result = {"provider": getattr(provider, "provider", type(provider).__name__), "model": getattr(provider, "model", ""), "health": health, "production_writes": False}
+            if health.get("status") != "PASS":
+                result["status"] = "LIVE_QWEN_API_NOT_VERIFIED"
+            else:
+                samples = [SourceFacts.from_record({"sku": f"SMOKE-{i}", "name_es": text, "spec_es": spec, "details_es": f"Número del artículo: SMOKE-{i}"}) for i, (text, spec) in enumerate((("Auriculares inalámbricos USB-C", "20 mg"), ("Pack de bombillas LED", "9 W E27"), ("Mesa plegable", "80 x 50 cm"), ("Cable de carga", "1,2 m"), ("Batería", "1000 mAh"))[:max(1, min(args.limit, 5))], 1)]
+                checked = []
+                for sample in samples:
+                    payload = provider.complete(sample, ("name", "spec"))
+                    ok, reasons = validate_ai_response(payload, sample, ("name", "spec"))
+                    checked.append({"sku": sample.sku, "qa": "PASS" if ok else "FAIL", "reasons": reasons})
+                result.update({"status": "PASS" if all(item["qa"] == "PASS" for item in checked) else "FAIL", "fields": checked})
+            out = Path(args.output); out.parent.mkdir(parents=True, exist_ok=True); out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(result, ensure_ascii=False)); return 0 if result.get("status") == "PASS" else 3
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-report":
+        path = Path(args.input)
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            print(json.dumps(payload, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-review":
+        from .database.integration import database_path
+        from .localization.registry.repository import LocalizationRegistry
+        try:
+            registry = LocalizationRegistry(database_path(cfg), role="SHADOW")
+            from .database.connection import connect
+            with connect(database_path(cfg)) as db:
+                rows = [dict(row) for row in db.execute("SELECT queue_id,official_sku,requested_fields,status,retry_count,last_error FROM translation_queue WHERE status IN ('PENDING','RETRY','FAILED','BLOCKED') ORDER BY created_at LIMIT ?", (int(args.limit),)).fetchall()]
+            print(json.dumps({"count": len(rows), "rows": rows, "production_writes": False}, ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
     if args.command == "localization-learning-report":
@@ -536,7 +644,7 @@ def main(argv=None) -> int:
             except KnowledgePromotionError as exc:
                 print(json.dumps({"error": str(exc), "decision": result}, ensure_ascii=False), file=sys.stderr); return 2
         print(json.dumps(result, ensure_ascii=False)); return 0
-    if args.command == "localization-apply":
+    if args.command in {"localization-apply", "translation-apply"}:
         from .localization.service import apply_from_audit
         try:
             result = apply_from_audit(cfg, run_id=args.run_id, commit=bool(args.commit and not args.dry_run))

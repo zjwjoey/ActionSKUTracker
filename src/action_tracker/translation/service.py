@@ -46,6 +46,29 @@ def apply_zh(rec: dict[str, Any]) -> dict[str, Any]:
     return rec
 
 
+def apply_zh_formal(rec: dict[str, Any]) -> dict[str, Any]:
+    """Formal production adapter: never stores Spanish as Chinese.
+
+    Legacy ``apply_zh`` remains available for old fixture compatibility, but
+    the official registry/PRIMARY path must use this function.  Missing
+    Chinese values stay empty and are explicitly marked PENDING so they enter
+    the translation queue rather than contaminating approved projections.
+    """
+    result = dict(rec)
+    missing = []
+    for zh, es in zip(_ZH_FIELDS, _ES_FIELDS):
+        if not str(result.get(zh) or "").strip() and str(result.get(es) or "").strip():
+            result[zh] = ""
+            missing.append(zh)
+    if missing:
+        result["translation_status"] = "PENDING"
+        result["translation_missing_fields"] = tuple(missing)
+        result["display_fallback"] = "ES"
+    elif str(result.get("translation_status") or "").upper() in {"FALLBACK_ES", "NOT_CONFIGURED", ""}:
+        result["translation_status"] = "PENDING"
+    return result
+
+
 def refresh_translation_state(trans: dict[str, dict], updated_records: dict[str, dict], state_dir) -> dict[str, dict]:
     """根据更新后的记录刷新 translation_state；西语 source_hash 变了才标记 STALE。"""
     from .. import state as st

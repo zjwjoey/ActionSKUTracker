@@ -144,7 +144,7 @@ def build_migration_preview(input_paths: Iterable[Path], output_dir: Path, *, ba
         eligible.append(winner)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    headers = ["source_file", "source_row", "sku", "field_name", "source_hash", "target_text", "status", "source_text", "source_version_id", "migration_status", "context_count", "rejection_reason", "conflict_reason"]
+    headers = ["source_file", "source_row", "sku", "field_name", "source_hash", "target_text", "status", "source_text", "source_version_id", "shadow_scope", "migration_status", "context_count", "rejection_reason", "conflict_reason"]
     for name, data in (("eligible.csv", eligible), ("rejected.csv", rejected), ("conflicts.csv", conflicts)):
         path = output_dir / name
         with path.open("w", encoding="utf-8-sig", newline="") as handle:
@@ -164,3 +164,34 @@ def build_migration_preview(input_paths: Iterable[Path], output_dir: Path, *, ba
     manifest["manifest_hash"] = hashlib.sha256(json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     (output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return manifest
+
+
+def apply_migration_preview(registry, preview_dir: Path, *, manifest_hash: str, commit: bool = False,
+                            actor: str = "") -> dict[str, Any]:
+    """Apply only an unchanged, eligible preview when explicitly committed.
+
+    The default is a no-write verification.  A hash mismatch or an absent
+    explicit commit is fail-closed; this prevents Preview A from being
+    accidentally applied to changed TM/Gold/Patch inputs.
+    """
+    preview_dir = Path(preview_dir)
+    manifest_path = preview_dir / "manifest.json"
+    if not manifest_path.exists():
+        raise ValueError("MIGRATION_MANIFEST_MISSING")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if str(manifest.get("manifest_hash") or "") != str(manifest_hash):
+        raise ValueError("MIGRATION_MANIFEST_HASH_MISMATCH")
+    result = {"manifest_hash": manifest_hash, "eligible": int(manifest.get("eligible_count", 0)), "applied": 0, "production_writes": False, "actor": actor or ""}
+    if not commit:
+        result["status"] = "PREVIEW_ONLY"
+        return result
+    if not registry:
+        raise ValueError("MIGRATION_REGISTRY_REQUIRED")
+    rows = _read_rows(preview_dir / "eligible.csv")
+    for row in rows:
+        context_key = str(row.get("shadow_scope") or "") or None
+        registry.add_tm(str(row.get("source_text") or ""), str(row.get("target_text") or ""), field_name=str(row.get("field_name") or "") or None, context_key=context_key, approval_status="APPROVED")
+    result["applied"] = len(rows)
+    result["production_writes"] = False
+    result["status"] = "APPLIED_TO_REGISTRY"
+    return result

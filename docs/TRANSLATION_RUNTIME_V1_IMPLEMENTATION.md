@@ -19,9 +19,28 @@ design without enabling production writes:
   and exposes a new deterministic V2 helper without rewriting historical V1
   hashes.
 
-The configuration remains `enabled: false`. A real API call requires an
-explicit operator change and an environment key; no credential is committed.
-The existing Daily/Export/Master paths are unchanged in this phase.
+The configuration remains `enabled: false`, `production_apply_enabled: false`
+and `auto_approval_enabled: false`. A real API call requires an explicit
+operator change and an environment key; no credential is committed.
+
+The formal path now has one field-level `TranslationResolver` with this
+priority: manual lock, approved revision, exact/normalized/context TM,
+scoped terminology/deterministic rules, then an explicitly enabled Provider.
+The Daily adapter uses `apply_zh_formal`: missing Chinese stays empty/PENDING
+and is queued; Spanish is never persisted as approved Chinese. Export remains
+read-only against the approved PRIMARY projection.
+
+Read-only operational commands are available:
+
+```text
+python -m action_tracker translation-status
+python -m action_tracker localization-shadow-run --output <dir>
+python -m action_tracker localization-canary --sku <SKU> --field name --output <dir>
+python -m action_tracker localization-live-smoke --output <report.json>
+```
+
+Migration apply is hash-bound and requires `--commit`; it only creates
+approved registry TM entries and never writes PRIMARY, Master or Dictionary.
 
 For an explicit shadow registration run use:
 

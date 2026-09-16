@@ -150,6 +150,10 @@ localization:
   policy_version: CHINESE_LOCALIZATION_STANDARD_V1
   display_policy_profile: ACTION_MASTER_NO_BRAND_V1
   omit_brand_from_chinese_display: true
+  registry_enabled: true
+  production_apply_enabled: false
+  auto_approval_enabled: false
+  formal_daily_chain: true
   ai:
     enabled: false
     # Dedicated Alibaba Qwen MT adapter.  Keep disabled until an explicit

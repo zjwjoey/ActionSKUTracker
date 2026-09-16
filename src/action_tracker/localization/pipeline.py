@@ -8,6 +8,7 @@ from .contracts import SourceFacts, source_hash
 from .qa import guard_translation
 from .registry.repository import LocalizationRegistry
 from .providers.base import TranslationProvider, TranslationRequest, TranslationResponse
+from .resolver import TranslationResolver
 
 
 @dataclass(frozen=True)
@@ -46,3 +47,15 @@ def translate_candidate(record: Mapping[str, Any], requested_fields: tuple[str, 
             qa=qa,
         )
     return TranslationCandidate(source.sku, request.source_hash, requested_fields, response.fields, response.provider, response.model, response.request_hash, response.response_hash, qa)
+
+
+def resolve_or_translate(record: Mapping[str, Any], requested_fields: tuple[str, ...], *, resolver: TranslationResolver,
+                         provider: TranslationProvider | None = None, registry: LocalizationRegistry | None = None,
+                         allow_provider: bool = False) -> dict[str, Any]:
+    """Single resolver entry used by future workers and canary paths.
+
+    A deterministic/TM/approved hit is returned without calling a provider.
+    Provider output remains a PENDING candidate until QA/Owner approval.
+    """
+    results = resolver.resolve(record, allow_provider=allow_provider and provider is not None)
+    return {"sku": str(record.get("sku") or record.get("official_sku") or ""), "fields": {field: results[field].value for field in requested_fields}, "provenance": {field: results[field].provenance | {"source": results[field].source, "status": results[field].status} for field in requested_fields}, "ready": all(results[field].approved for field in requested_fields), "production_writes": False}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -17,8 +18,8 @@ class QAFinding:
     evidence: Mapping[str, Any]
 
 
-def _numbers(value: str) -> set[str]:
-    return {item.replace(",", ".") for item in re.findall(r"\d+(?:[.,]\d+)?", value or "")}
+def _numbers(value: str) -> Counter[str]:
+    return Counter(item.replace(",", ".") for item in re.findall(r"\d+(?:[.,]\d+)?", value or ""))
 
 
 def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...]) -> tuple[QAFinding, ...]:
@@ -34,8 +35,13 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             findings.append(QAFinding("NULL_UNDEFINED_RESIDUAL", "HIGH", field_name, {"value": target}))
         if has_ordinary_spanish(target, allowed_tokens=set()):
             findings.append(QAFinding("SPANISH_RESIDUAL", "HIGH", field_name, {"value": target}))
-        if _numbers(source_text) - _numbers(target):
-            findings.append(QAFinding("NUMERIC_DROPPED", "HIGH", field_name, {"source": sorted(_numbers(source_text)), "target": sorted(_numbers(target))}))
+        source_numbers, target_numbers = _numbers(source_text), _numbers(target)
+        dropped = source_numbers - target_numbers
+        duplicated = target_numbers - source_numbers
+        if dropped:
+            findings.append(QAFinding("NUMERIC_DROPPED", "HIGH", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "missing": dict(dropped)}))
+        if duplicated:
+            findings.append(QAFinding("NUMERIC_DUPLICATED", "HIGH", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "extra": dict(duplicated)}))
         if field_name == "cat1" and target not in FIXED_CAT1:
             findings.append(QAFinding("INVALID_CATEGORY", "HIGH", field_name, {"value": target}))
         if "<" in target and ">" in target:

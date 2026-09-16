@@ -149,3 +149,36 @@ class LocalizationRegistry:
         with connect(self.path) as db:
             rows = db.execute(f"SELECT source_text,target_text,field_name,context_key,source_hash FROM translation_memory_entries WHERE approval_status='APPROVED' AND source_hash IN ({placeholders})", hashes).fetchall()
         return [dict(row) for row in rows]
+
+    def claim_queue(self, *, limit: int = 50, worker_id: str = "localization-worker") -> list[dict[str, Any]]:
+        """Atomically claim pending/retry units so a worker cannot double-consume."""
+        now = _now()
+        claimed: list[dict[str, Any]] = []
+        with connect(self.path) as db:
+            db.execute("BEGIN IMMEDIATE")
+            rows = db.execute("SELECT queue_id,official_sku,language,source_hash,requested_fields,retry_count,run_id FROM translation_queue WHERE status IN ('PENDING','RETRY') ORDER BY CASE priority WHEN 'HIGH' THEN 0 WHEN 'NORMAL' THEN 1 ELSE 2 END,created_at LIMIT ?", (int(limit),)).fetchall()
+            for row in rows:
+                cur = db.execute("UPDATE translation_queue SET status='CLAIMED',claimed_at=?,last_error=? WHERE queue_id=? AND status IN ('PENDING','RETRY')", (now, worker_id, row[0]))
+                if cur.rowcount == 1:
+                    claimed.append(dict(row))
+            db.commit()
+        return claimed
+
+    def complete_queue(self, queue_id: str) -> bool:
+        with connect(self.path) as db:
+            cur = db.execute("UPDATE translation_queue SET status='COMPLETED',completed_at=? WHERE queue_id=? AND status='CLAIMED'", (_now(), queue_id))
+            return cur.rowcount == 1
+
+    def fail_queue(self, queue_id: str, error: str, *, retry: bool = True, max_retries: int = 3) -> bool:
+        with connect(self.path) as db:
+            row = db.execute("SELECT retry_count FROM translation_queue WHERE queue_id=? AND status='CLAIMED'", (queue_id,)).fetchone()
+            if not row:
+                return False
+            count = int(row[0] or 0) + 1
+            status = "RETRY" if retry and count <= max_retries else "FAILED"
+            cur = db.execute("UPDATE translation_queue SET status=?,retry_count=?,last_error=? WHERE queue_id=? AND status='CLAIMED'", (status, count, str(error)[:1000], queue_id))
+            return cur.rowcount == 1
+
+    def queue_status(self) -> dict[str, int]:
+        with connect(self.path) as db:
+            return {str(row[0]): int(row[1]) for row in db.execute("SELECT status,COUNT(*) FROM translation_queue GROUP BY status").fetchall()}
