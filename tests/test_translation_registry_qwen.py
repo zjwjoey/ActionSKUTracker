@@ -53,6 +53,20 @@ def test_registry_keeps_source_and_revisions_append_only(tmp_path: Path):
         assert db.execute("SELECT target_text FROM translation_revisions WHERE revision_id=?", (revision_id,)).fetchone()[0] == "商品"
 
 
+def test_registry_source_change_stales_old_revision_and_blocks_reuse(tmp_path: Path):
+    db_path = tmp_path / "registry.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+    first = registry.register_source("123456", {"name_es": "Producto"}, "hash-1", observed_at="2026-09-16")
+    with connect(db_path) as db:
+        unit_id = db.execute("SELECT unit_id FROM translation_units WHERE source_version_id=?", (first,)).fetchone()[0]
+    revision_id = registry.record_revision(unit_id=unit_id, target_text="商品", provider="fake", model="fixture", request_hash="rq", response_hash="rs", source_hash="hash-1", qa_status="PASS", review_status="HUMAN_REVIEWED")
+    assert registry.approve_revision(revision_id, actor="human:test") is True
+    registry.register_source("123456", {"name_es": "Producto nuevo"}, "hash-2", observed_at="2026-09-17")
+    assert registry.get_current_approved_revision("123456", "name_es", "hash-1") is None
+
+
 def test_registry_ingest_is_shadow_and_queues_field_units(tmp_path: Path):
     db_path = tmp_path / "registry.sqlite"
     registry = LocalizationRegistry(db_path)
