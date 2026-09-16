@@ -329,6 +329,17 @@ def provider_health(provider: LocalizationAIProvider) -> dict[str, Any]:
             return {"status": "INVALID_CONFIG", "provider": provider_name, "model": model, "error": "QWEN_API_KEY_MISSING"}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
+    # qwen-mt-flash's compatible endpoint is a translation endpoint and does
+    # not guarantee an OpenAI-style GET /models route.  Treat configuration as
+    # healthy after the explicit key/base/model checks; the subsequent Live
+    # Smoke POST is the real contract/endpoint verification.
+    if provider_name == "qwen_mt":
+        return {
+            "status": "PASS",
+            "provider": provider_name,
+            "model": model,
+            "health_check": "CONFIG_ONLY_QWEN_MT",
+        }
     request = urllib.request.Request(base_url + "/models", headers=headers, method="GET")
     try:
         with urllib.request.urlopen(request, timeout=int(getattr(provider, "timeout", 60))) as response:  # nosec B310 - explicit configured endpoint

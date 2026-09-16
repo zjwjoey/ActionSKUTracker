@@ -269,6 +269,18 @@ def test_qwen_provider_health_fails_fast_with_explicit_environment_errors(monkey
     assert provider_health(provider)["error"] == "QWEN_API_KEY_MISSING"
 
 
+def test_qwen_provider_health_does_not_assume_models_endpoint(monkeypatch):
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "fixture-key")
+    provider = provider_from_config({
+        "enabled": True,
+        "provider": "qwen_mt",
+        "base_url": "https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    })
+    health = provider_health(provider)
+    assert health["status"] == "PASS"
+    assert health["health_check"] == "CONFIG_ONLY_QWEN_MT"
+
+
 @pytest.mark.parametrize("status", [400, 401, 403])
 def test_qwen_client_errors_are_not_retried(monkeypatch, status):
     monkeypatch.setenv("DASHSCOPE_API_KEY", "fixture-key")
