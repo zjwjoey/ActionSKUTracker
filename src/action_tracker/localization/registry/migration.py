@@ -77,6 +77,11 @@ def _normalize_row(row: Mapping[str, Any], source_path: Path, ordinal: int) -> d
         "field_name": field, "source_hash": source_hash, "target_text": target,
         "status": status, "source_text": source_text, "source_version_id": source_version,
         "shadow_scope": shadow_scope,
+        "context_key": _text(row, "context_key", "context"),
+        "field_scope": _text(row, "field_scope"),
+        "category_scope": _text(row, "category_scope", "cat1_scope", "cat2_scope"),
+        "product_type_scope": _text(row, "product_type_scope"),
+        "approval_evidence": _text(row, "approval_evidence", "evidence"),
     }
 
 
@@ -112,6 +117,7 @@ def build_migration_preview(input_paths: Iterable[Path], output_dir: Path, *, ba
                 rows.append(_normalize_row(row, path, ordinal))
 
     eligible: list[dict[str, Any]] = []
+    context_only: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     conflicts: list[dict[str, Any]] = []
     grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -142,10 +148,13 @@ def build_migration_preview(input_paths: Iterable[Path], output_dir: Path, *, ba
         winner["migration_status"] = "ELIGIBLE"
         winner["context_count"] = len(group)
         eligible.append(winner)
+        if str(winner.get("status") or "").upper() == "CONTEXT_ONLY" or winner.get("shadow_scope"):
+            winner["migration_status"] = "CONTEXT_ONLY"
+            context_only.append(dict(winner))
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    headers = ["source_file", "source_row", "sku", "field_name", "source_hash", "target_text", "status", "source_text", "source_version_id", "shadow_scope", "migration_status", "context_count", "rejection_reason", "conflict_reason"]
-    for name, data in (("eligible.csv", eligible), ("rejected.csv", rejected), ("conflicts.csv", conflicts)):
+    headers = ["source_file", "source_row", "sku", "field_name", "source_hash", "target_text", "status", "source_text", "source_version_id", "shadow_scope", "context_key", "field_scope", "category_scope", "product_type_scope", "approval_evidence", "migration_status", "context_count", "rejection_reason", "conflict_reason"]
+    for name, data in (("eligible.csv", eligible), ("context_only.csv", context_only), ("rejected.csv", rejected), ("conflicts.csv", conflicts)):
         path = output_dir / name
         with path.open("w", encoding="utf-8-sig", newline="") as handle:
             writer = csv.DictWriter(handle, fieldnames=headers, extrasaction="ignore")
@@ -157,9 +166,9 @@ def build_migration_preview(input_paths: Iterable[Path], output_dir: Path, *, ba
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "input_files": input_manifest,
         "input_row_count": len(rows),
-        "eligible_count": len(eligible), "rejected_count": len(rejected), "conflict_count": len(conflicts),
+        "eligible_count": len(eligible), "context_only_count": len(context_only), "rejected_count": len(rejected), "conflict_count": len(conflicts),
         "production_writes": False, "sqlite_writes": False, "master_writes": False, "dictionary_writes": False,
-        "outputs": {name: str(output_dir / name) for name in ("eligible.csv", "rejected.csv", "conflicts.csv")},
+        "outputs": {name: str(output_dir / name) for name in ("eligible.csv", "context_only.csv", "rejected.csv", "conflicts.csv")},
     }
     manifest["manifest_hash"] = hashlib.sha256(json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     (output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -181,6 +190,10 @@ def apply_migration_preview(registry, preview_dir: Path, *, manifest_hash: str, 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if str(manifest.get("manifest_hash") or "") != str(manifest_hash):
         raise ValueError("MIGRATION_MANIFEST_HASH_MISMATCH")
+    for item in manifest.get("input_files") or []:
+        path = Path(str(item.get("path") or ""))
+        if not path.exists() or str(item.get("sha256") or "") != _sha(path):
+            raise ValueError("MIGRATION_INPUT_FRESHNESS_MISMATCH")
     result = {"manifest_hash": manifest_hash, "eligible": int(manifest.get("eligible_count", 0)), "applied": 0, "production_writes": False, "actor": actor or ""}
     if not commit:
         result["status"] = "PREVIEW_ONLY"
@@ -189,7 +202,7 @@ def apply_migration_preview(registry, preview_dir: Path, *, manifest_hash: str, 
         raise ValueError("MIGRATION_REGISTRY_REQUIRED")
     rows = _read_rows(preview_dir / "eligible.csv")
     for row in rows:
-        context_key = str(row.get("shadow_scope") or "") or None
+        context_key = str(row.get("context_key") or row.get("shadow_scope") or "") or None
         registry.add_tm(str(row.get("source_text") or ""), str(row.get("target_text") or ""), field_name=str(row.get("field_name") or "") or None, context_key=context_key, approval_status="APPROVED")
     result["applied"] = len(rows)
     result["production_writes"] = False

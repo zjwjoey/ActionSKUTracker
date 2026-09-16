@@ -181,11 +181,13 @@ class QwenMTCompatibleProvider:
     terms: tuple[Mapping[str, Any], ...] = ()
     tm_entries: tuple[Mapping[str, Any], ...] = ()
     domain: str = "e-commerce"
+    max_batch_size: int = 20
+    max_characters_per_request: int = 12000
 
     def complete(self, source: SourceFacts, requested_fields: tuple[str, ...]) -> Mapping[str, Any]:
         source_fields = {canonical: getattr(source, CANONICAL_TO_SOURCE[canonical], "") for canonical in requested_fields if canonical in CANONICAL_TO_SOURCE}
         source_hash_value = source_hash(source.as_record())
-        response = QwenMTProvider(self.base_url, self.model, self.api_key_env, self.timeout).translate(
+        response = QwenMTProvider(self.base_url, self.model, self.api_key_env, self.timeout, max_batch_size=self.max_batch_size, max_characters_per_request=self.max_characters_per_request).translate(
             TranslationRequest(source.sku, source_fields, requested_fields, source_hash_value, terms=self.terms, tm_entries=self.tm_entries, domain=self.domain)
         )
         return {"sku": source.sku, "canonical_id": source.canonical_id, "source_hash": source_hash_value, "fields": dict(response.fields), "confidence": None, "review_notes": "", "provider_request_hash": response.request_hash, "provider_response_hash": response.response_hash}
@@ -285,6 +287,8 @@ def provider_from_config(config: Mapping[str, Any] | None) -> LocalizationAIProv
             str(config.get("base_url") or ""), str(config.get("model") or "qwen-mt-flash"),
             str(config.get("api_key_env") or "DASHSCOPE_API_KEY"), int(config.get("timeout") or 60),
             terms=terms, tm_entries=tm_entries, domain=str(config.get("domain") or "e-commerce"),
+            max_batch_size=int(config.get("max_batch_size") or 20),
+            max_characters_per_request=int(config.get("max_characters_per_request") or 12000),
         )
     if provider in {"local_openai_compatible", "local", "ollama", "qwen"}:
         key_env = str(config.get("api_key_env") or "").strip() or None

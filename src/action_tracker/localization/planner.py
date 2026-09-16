@@ -6,7 +6,7 @@ from typing import Any
 
 from .contracts import CANONICAL_TO_ZH, ZH_TO_CANONICAL, LocalizationField, LocalizationPlan, SemanticFact, SourceFacts
 from .formatter import format_details, format_spec, format_text, format_unit_price
-from .policy import FIXED_CAT1, has_ordinary_spanish, map_cat1
+from .policy import FIXED_CAT1, OMIT_BRAND_FROM_CHINESE_DISPLAY, has_ordinary_spanish, map_cat1
 from ..dictionary import normalize_category_key
 
 _FIELD_NAMES = dict(ZH_TO_CANONICAL)
@@ -36,6 +36,12 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     def clean(value: str) -> bool:
         return bool(value) and not has_ordinary_spanish(value, allowed_tokens=allowed_tokens)
     name, ns = value("name_zh")
+    if OMIT_BRAND_FROM_CHINESE_DISPLAY and name:
+        forbidden_display_tokens = [brand, *(f.value for f in facts if f.semantic_type == "IP_CHARACTER")]
+        for token in sorted({str(item).strip() for item in forbidden_display_tokens if str(item).strip()}, key=len, reverse=True):
+            # Only remove an identified span, never every occurrence of the
+            # Chinese character “牌” (which is valid in 棋牌/扑克牌 etc.).
+            name = re.sub(rf"(?i)(?<!\w){re.escape(token)}(?:牌)?", "", name, count=1).strip()
     if not name:
         # Colors, quantities and dimensions are selection parameters and are
         # deliberately kept out of the stable product name.  Identity-level
@@ -46,11 +52,9 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         deduped_identity = list(dict.fromkeys(identity))
         functions = [x for x in deduped_identity if x not in {f.canonical_value or f.value for f in facts if f.semantic_type != "FUNCTION"}]
         other_identity = [x for x in deduped_identity if x not in functions]
-        name = "".join(x for x in (brand + "牌" if brand else "", *functions, product_type, *other_identity) if x)
-    elif brand and not name.startswith(brand + "牌"):
-        # Confirmed brand evidence may decorate a dictionary title; an
-        # explicit field-level manual override can opt out by passing the
-        # already-prefixed value.
+        display_brand = "" if OMIT_BRAND_FROM_CHINESE_DISPLAY else brand
+        name = "".join(x for x in (display_brand + "牌" if display_brand else "", *functions, product_type, *other_identity) if x)
+    elif brand and not OMIT_BRAND_FROM_CHINESE_DISPLAY and not name.startswith(brand + "牌"):
         name = brand + "牌" + name
     if not name:
         name = source.name_es

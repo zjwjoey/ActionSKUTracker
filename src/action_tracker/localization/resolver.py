@@ -46,24 +46,42 @@ class TranslationResolver:
         self.provider = provider
         self.engine = engine or LocalizationEngine()
         self.manual_locks = dict(manual_locks or {})
-        self.tm = TranslationMemoryRepository(self.db_path) if self.db_path else None
-        self.terminology = TerminologyRepository(self.db_path) if self.db_path else None
+        self._registry_tables_available = False
+        if self.db_path:
+            try:
+                from ..database.connection import connect
+                with connect(self.db_path) as db:
+                    tables = {str(row[0]) for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+                self._registry_tables_available = "translation_memory_entries" in tables or "translation_revisions" in tables
+            except Exception:
+                self._registry_tables_available = False
+        self.tm = TranslationMemoryRepository(self.db_path) if self.db_path and "translation_memory_entries" in locals().get("tables", set()) else None
+        self.terminology = TerminologyRepository(self.db_path) if self.db_path and "terminology_entries" in locals().get("tables", set()) else None
 
     def _approved_revision(self, sku: str, field_name: str, source_hash_value: str) -> str | None:
-        if not self.db_path:
+        if self.registry is not None:
+            row = self.registry.get_current_approved_revision(sku, field_name, source_hash_value)
+            return str(row.get("target_text")) if row else None
+        if not self.db_path or not self._registry_tables_available:
             return None
         from ..database.connection import connect
-        with connect(self.db_path) as db:
-            row = db.execute("""SELECT r.target_text FROM translation_revisions r
+        try:
+            with connect(self.db_path) as db:
+                row = db.execute("""SELECT r.target_text FROM translation_revisions r
                 JOIN translation_units u ON u.unit_id=r.unit_id
                 WHERE u.official_sku=? AND u.field_name IN (?,?)
                   AND r.source_hash=? AND r.qa_status='PASS'
                   AND r.review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED')
                 ORDER BY r.revision DESC LIMIT 1""", (sku, field_name, source_field(field_name), source_hash_value)).fetchone()
+        except Exception as exc:
+            if "no such table" not in str(exc).lower():
+                raise
+            return None
         return str(row[0]) if row else None
 
     def resolve_field(self, record: Mapping[str, Any], field_name: str, *, existing: Mapping[str, Any] | None = None,
-                      allow_provider: bool = False, context_key: str | None = None) -> Resolution:
+                      allow_provider: bool = False, context_key: str | None = None,
+                      product_type: str | None = None) -> Resolution:
         source = SourceFacts.from_record(record)
         if field_name not in CANONICAL_AI_FIELDS:
             raise ValueError(f"UNSUPPORTED_TRANSLATION_FIELD:{field_name}")
@@ -101,7 +119,8 @@ class TranslationResolver:
             return Resolution(source.sku, field_name, source_text, source_hash_value, planned.value, planned.source, "APPROVED", True, False, provenance={"policy_version": planned.policy_version})
 
         if allow_provider and self.provider and source_text:
-            req = TranslationRequest(source.sku, {field_name: source_text}, (field_name,), source_hash_value, terms=tuple(self.registry.approved_terms() if self.registry else ()))
+            terms = tuple(self.terminology.as_qwen_options(source_text, field_name=field_name, context_key=context_key, limit=20) if self.terminology else ())
+            req = TranslationRequest(source.sku, {field_name: source_text}, (field_name,), source_hash_value, terms=terms, domain=product_type or "e-commerce")
             response = self.provider.translate(req)
             value = str(response.fields.get(field_name) or "")
             if value:
@@ -110,6 +129,5 @@ class TranslationResolver:
         return Resolution(source.sku, field_name, source_text, source_hash_value, "", "missing", "PENDING", False, bool(source_text), ("NO_APPROVED_RESOLUTION",))
 
     def resolve(self, record: Mapping[str, Any], *, existing: Mapping[str, Any] | None = None,
-                allow_provider: bool = False, context_key: str | None = None) -> dict[str, Resolution]:
-        return {field_name: self.resolve_field(record, field_name, existing=existing, allow_provider=allow_provider, context_key=context_key) for field_name in CANONICAL_AI_FIELDS}
-
+                allow_provider: bool = False, context_key: str | None = None, product_type: str | None = None) -> dict[str, Resolution]:
+        return {field_name: self.resolve_field(record, field_name, existing=existing, allow_provider=allow_provider, context_key=context_key, product_type=product_type) for field_name in CANONICAL_AI_FIELDS}

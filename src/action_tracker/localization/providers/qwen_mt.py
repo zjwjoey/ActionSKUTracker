@@ -34,6 +34,9 @@ class QwenMTProvider:
     timeout: int = 60
     max_retries: int = 2
     backoff_seconds: float = 1.5
+    max_batch_size: int = 20
+    max_characters_per_request: int = 12000
+    rate_limit_per_second: float = 0.0
     provider: str = "qwen_mt"
 
     def _source_field(self, request: TranslationRequest, field_name: str) -> str:
@@ -146,6 +149,8 @@ class QwenMTProvider:
         request_id = request.request_id or str(uuid.uuid4())
         retries = 0
         for field_name in request.requested_fields:
+            if self.rate_limit_per_second and normalized:
+                time.sleep(1.0 / self.rate_limit_per_second)
             value, rq, rs, rid, used, retry_count = self._translate_one(request, field_name)
             normalized[field_name] = value
             request_hashes.append(rq); response_hashes.append(rs); retries += retry_count
@@ -157,8 +162,11 @@ class QwenMTProvider:
             request_id = rid or request_id
         return TranslationResponse(normalized, self.provider, self.model, request.source_hash, hashlib.sha256("|".join(request_hashes).encode()).hexdigest(), hashlib.sha256("|".join(response_hashes).encode()).hexdigest(), request_id, {**usage, "retry_count": retries, "request_count": len(request.requested_fields)}, {})
 
-    def translate_batch(self, requests: list[TranslationRequest], *, max_batch_size: int = 20) -> list[TranslationResponse]:
+    def translate_batch(self, requests: list[TranslationRequest], *, max_batch_size: int | None = None) -> list[TranslationResponse]:
         """Deterministic bounded batch helper; each field remains text-level."""
+        max_batch_size = int(max_batch_size or self.max_batch_size)
         if len(requests) > max_batch_size:
             raise ProviderError("QWEN_BATCH_LIMIT_EXCEEDED")
+        if sum(len(item.source_text) for item in requests) > self.max_characters_per_request:
+            raise ProviderError("QWEN_REQUEST_CHARACTER_LIMIT_EXCEEDED")
         return [self.translate(request) for request in requests]

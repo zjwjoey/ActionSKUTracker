@@ -143,7 +143,7 @@ dictionary_apply:
 # localization writes and model/auto-approval paths stay explicitly closed.
 knowledge:
   production_apply_enabled: false
-  fallback_to_spanish: true
+  fallback_to_spanish: false
 
 # ---- Localization Intelligence V1 ----
 localization:
@@ -166,7 +166,9 @@ localization:
     temperature: 0
     timeout: 60
     max_batch_size: 20
+    max_characters_per_request: 12000
     max_retries: 3
+    rate_limit_per_second: 0
     domain: e-commerce
     terms: []
     tm_entries: []

@@ -172,6 +172,8 @@ def build_parser() -> argparse.ArgumentParser:
     trev.add_argument("--limit", type=int, default=100)
     tap = sub.add_parser("translation-apply", help=argparse.SUPPRESS)
     tap.add_argument("--run-id", required=True); tap.add_argument("--dry-run", action="store_true"); tap.add_argument("--commit", action="store_true")
+    tlp = sub.add_parser("translation-legacy-preview", help=argparse.SUPPRESS)
+    tlp.add_argument("--directory", required=True); tlp.add_argument("--output", required=True)
     lr = sub.add_parser("localization-learning-report", help="查看最近一次 Localization learning candidates")
     lr.add_argument("--run-id", help="指定报告 run_id")
     lp = sub.add_parser("localization-promote", help="记录候选知识晋升决定（默认只读）")
@@ -545,12 +547,14 @@ def main(argv=None) -> int:
         from .database.integration import database_path
         from .database.repository import ProductionRepository
         from .localization.runtime import shadow_run, canary
+        from .localization.resolver import TranslationResolver
         try:
             records = ProductionRepository(database_path(cfg)).load_current_export_records()
+            resolver = TranslationResolver(db_path=database_path(cfg))
             if args.command in {"localization-shadow-run", "translation-shadow-run"}:
-                result = shadow_run(records, output_dir=Path(args.output), run_id=args.run_id)
+                result = shadow_run(records, output_dir=Path(args.output), run_id=args.run_id, resolver=resolver)
             else:
-                result = canary(records, output_dir=Path(args.output), skus=args.skus, field_name=args.field_name, limit=args.limit)
+                result = canary(records, output_dir=Path(args.output), skus=args.skus, field_name=args.field_name, limit=args.limit, resolver=resolver)
             print(json.dumps(result, ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
@@ -600,6 +604,13 @@ def main(argv=None) -> int:
             with connect(database_path(cfg)) as db:
                 rows = [dict(row) for row in db.execute("SELECT queue_id,official_sku,requested_fields,status,retry_count,last_error FROM translation_queue WHERE status IN ('PENDING','RETRY','FAILED','BLOCKED') ORDER BY created_at LIMIT ?", (int(args.limit),)).fetchall()]
             print(json.dumps({"count": len(rows), "rows": rows, "production_writes": False}, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-legacy-preview":
+        from .localization.legacy import build_legacy_registry_preview
+        try:
+            result = build_legacy_registry_preview(Path(args.directory), Path(args.output))
+            print(json.dumps(result, ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
     if args.command == "localization-learning-report":

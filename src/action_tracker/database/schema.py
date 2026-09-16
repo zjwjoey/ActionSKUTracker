@@ -396,6 +396,7 @@ CREATE TABLE IF NOT EXISTS translation_revisions (
  tm_version TEXT,
  source_hash TEXT,
  parent_revision_id TEXT,
+ repair_reason TEXT,
  qa_status TEXT NOT NULL DEFAULT 'PENDING',
  review_status TEXT NOT NULL DEFAULT 'PENDING',
  approved_by TEXT,
@@ -432,6 +433,16 @@ CREATE TABLE IF NOT EXISTS translation_qa_findings (
  created_at TEXT NOT NULL,
  FOREIGN KEY (revision_id) REFERENCES translation_revisions(revision_id)
 );
+CREATE TABLE IF NOT EXISTS translation_revision_events (
+ event_id TEXT PRIMARY KEY,
+ revision_id TEXT NOT NULL,
+ event_type TEXT NOT NULL,
+ actor TEXT NOT NULL,
+ evidence_json TEXT NOT NULL DEFAULT '{}',
+ occurred_at TEXT NOT NULL,
+ FOREIGN KEY (revision_id) REFERENCES translation_revisions(revision_id)
+);
+CREATE INDEX IF NOT EXISTS idx_translation_revision_events_revision ON translation_revision_events(revision_id, occurred_at);
 CREATE TABLE IF NOT EXISTS translation_memory_entries (
  tm_id TEXT PRIMARY KEY,
  source_language TEXT NOT NULL,
@@ -439,6 +450,8 @@ CREATE TABLE IF NOT EXISTS translation_memory_entries (
  source_text TEXT NOT NULL,
  target_text TEXT NOT NULL,
  source_hash TEXT NOT NULL,
+ match_type TEXT NOT NULL DEFAULT 'EXACT',
+ normalization_version TEXT NOT NULL DEFAULT 'TM_NORMALIZATION_V1',
  field_name TEXT,
  context_key TEXT,
  approval_status TEXT NOT NULL DEFAULT 'PENDING',
@@ -452,10 +465,29 @@ CREATE TABLE IF NOT EXISTS terminology_entries (
  target_term TEXT NOT NULL,
  source_language TEXT NOT NULL DEFAULT 'es',
  target_language TEXT NOT NULL DEFAULT 'zh',
+ term_type TEXT NOT NULL DEFAULT 'TERM',
+ field_scope TEXT,
+ cat1_scope TEXT,
+ cat2_scope TEXT,
+ product_type_scope TEXT,
+ context_key TEXT,
+ priority INTEGER NOT NULL DEFAULT 0,
+ match_mode TEXT NOT NULL DEFAULT 'SUBSTRING',
+ case_sensitive INTEGER NOT NULL DEFAULT 0,
+ do_not_translate INTEGER NOT NULL DEFAULT 0,
+ keep_original INTEGER NOT NULL DEFAULT 0,
+ forbidden_target TEXT,
  scope TEXT NOT NULL DEFAULT 'GLOBAL',
  approval_status TEXT NOT NULL DEFAULT 'PENDING',
+ version TEXT NOT NULL DEFAULT '1',
+ revision INTEGER NOT NULL DEFAULT 1,
+ approved_by TEXT,
+ approved_at TEXT,
+ source TEXT,
+ evidence TEXT,
  notes TEXT NOT NULL DEFAULT '',
  created_at TEXT NOT NULL,
+ updated_at TEXT,
  UNIQUE(source_term, target_language, scope)
 );
 CREATE INDEX IF NOT EXISTS idx_translation_units_status ON translation_units(status,field_name);
@@ -690,11 +722,26 @@ def migrate_v2(path, *, role: str = "SHADOW"):
             "translation_revisions": {
                 "request_id": "TEXT", "policy_version": "TEXT", "terminology_version": "TEXT",
                 "tm_version": "TEXT", "source_hash": "TEXT", "parent_revision_id": "TEXT",
+                "repair_reason": "TEXT",
                 "approved_by": "TEXT", "approved_at": "TEXT", "superseded_by": "TEXT",
             },
             "translation_provider_calls": {
                 "request_id": "TEXT", "latency_ms": "INTEGER", "retry_count": "INTEGER NOT NULL DEFAULT 0",
                 "cost_estimate": "REAL", "artifact_ref": "TEXT",
+            },
+            "terminology_entries": {
+                "term_type": "TEXT NOT NULL DEFAULT 'TERM'", "field_scope": "TEXT", "cat1_scope": "TEXT",
+                "cat2_scope": "TEXT", "product_type_scope": "TEXT", "context_key": "TEXT",
+                "priority": "INTEGER NOT NULL DEFAULT 0", "match_mode": "TEXT NOT NULL DEFAULT 'SUBSTRING'",
+                "case_sensitive": "INTEGER NOT NULL DEFAULT 0", "do_not_translate": "INTEGER NOT NULL DEFAULT 0",
+                "keep_original": "INTEGER NOT NULL DEFAULT 0", "forbidden_target": "TEXT",
+                "version": "TEXT NOT NULL DEFAULT '1'", "revision": "INTEGER NOT NULL DEFAULT 1",
+                "approved_by": "TEXT", "approved_at": "TEXT", "source": "TEXT", "evidence": "TEXT",
+                "updated_at": "TEXT",
+            },
+            "translation_memory_entries": {
+                "match_type": "TEXT NOT NULL DEFAULT 'EXACT'",
+                "normalization_version": "TEXT NOT NULL DEFAULT 'TM_NORMALIZATION_V1'",
             },
         }.items():
             for column, definition in columns.items():

@@ -5,9 +5,11 @@ from pathlib import Path
 
 from action_tracker.localization.protection.tokens import ProtectedTokenError, protect_text, validate_roundtrip
 from action_tracker.localization.providers.qwen_mt import QwenMTProvider
-from action_tracker.localization.providers.base import TranslationRequest
+from action_tracker.localization.providers.base import FakeTranslationProvider, TranslationRequest
 from action_tracker.localization.registry.migration import apply_migration_preview
 from action_tracker.localization.runtime import shadow_run
+from action_tracker.localization.registry.repository import LocalizationRegistry
+from action_tracker.localization.terminology.repository import TerminologyRepository
 
 
 def test_typed_protection_preserves_sequence_and_multiplicity():
@@ -48,3 +50,17 @@ def test_shadow_run_is_read_only(tmp_path: Path):
     assert result["production_writes"] is False
     assert (tmp_path / "translation_run_summary.json").exists()
 
+
+def test_fake_provider_is_deterministic_and_field_level():
+    request = TranslationRequest("1", {"name": "Auriculares"}, ("name",), "h")
+    result = FakeTranslationProvider({"name": "耳机"}).translate(request)
+    assert result.fields == {"name": "耳机"}
+    assert result.request_hash == result.response_hash
+
+
+def test_terminology_scope_and_priority_are_resolved_without_global_dump(tmp_path: Path):
+    registry = LocalizationRegistry(tmp_path / "terms.sqlite")
+    registry.add_term("LED", "LED", approval_status="APPROVED", field_scope="name", priority=1)
+    registry.add_term("LED light", "发光二极管灯", approval_status="APPROVED", product_type_scope="lighting", priority=9)
+    hints = TerminologyRepository(tmp_path / "terms.sqlite").resolve("LED light", field_name="name", product_type="lighting")
+    assert hints and hints[0].target_term == "发光二极管灯"

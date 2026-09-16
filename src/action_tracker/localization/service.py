@@ -256,7 +256,7 @@ def apply_from_audit(cfg: Mapping[str, Any], *, run_id: str, commit: bool = Fals
     if not commit:
         result["formal_apply"] = False
         return result
-    enabled = bool((cfg.get("knowledge") or {}).get("production_apply_enabled"))
+    enabled = bool((cfg.get("knowledge") or {}).get("production_apply_enabled")) and bool((cfg.get("localization") or {}).get("production_apply_enabled"))
     if not enabled:
         raise PermissionError("LOCALIZATION_PRODUCTION_APPLY_DISABLED")
     db_path = database_path(dict(cfg))

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import hashlib
+import json
 from typing import Any, Mapping, Protocol
 
 
@@ -25,6 +27,20 @@ class TranslationRequest:
     domain: str = "e-commerce"
     request_id: str = ""
 
+    @property
+    def field_name(self) -> str:
+        return self.requested_fields[0] if self.requested_fields else ""
+
+    @property
+    def source_text(self) -> str:
+        field = self.field_name
+        source_key = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field, field)
+        return str(self.fields.get(source_key, self.fields.get(field, "")) or "")
+
+    @property
+    def source_language(self) -> str:
+        return "es"
+
 
 @dataclass(frozen=True)
 class TranslationResponse:
@@ -44,3 +60,21 @@ class TranslationProvider(Protocol):
     model: str
 
     def translate(self, request: TranslationRequest) -> TranslationResponse: ...
+
+
+@dataclass
+class FakeTranslationProvider:
+    """Deterministic fixture provider; never performs network I/O."""
+
+    mapping: Mapping[str, str] = field(default_factory=dict)
+    provider: str = "fake"
+    model: str = "fixture"
+
+    def translate(self, request: TranslationRequest) -> TranslationResponse:
+        values = {}
+        for field_name in request.requested_fields:
+            source_key = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field_name, field_name)
+            values[field_name] = str(self.mapping.get(field_name, request.fields.get(source_key, request.fields.get(field_name, ""))))
+        payload = json.dumps(values, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        return TranslationResponse(values, self.provider, self.model, request.source_hash, digest, digest, request.request_id or "fake-request")
