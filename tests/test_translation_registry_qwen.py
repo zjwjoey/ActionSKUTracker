@@ -120,6 +120,7 @@ def test_qwen_payload_has_single_user_message_and_translation_options(monkeypatc
     assert payload["translation_options"]["terms"]
     assert payload["translation_options"]["domains"]
     assert set(payload["translation_options"]["terms"][0]) == {"source", "target"}
+    assert "temperature" not in payload
 
 
 def test_registry_reuses_unchanged_field_and_queues_only_changed_field(tmp_path: Path):

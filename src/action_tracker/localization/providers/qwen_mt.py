@@ -124,7 +124,10 @@ class QwenMTProvider:
 
     def _build_compatible_payload(self, request: TranslationRequest, field_name: str | None = None) -> tuple[dict[str, Any], Any]:
         content, meta = self._content(request, field_name)
-        payload = {"model": self.model, "messages": [{"role": "user", "content": content}], "translation_options": self._options(request), "temperature": 0}
+        # Keep the wire payload aligned with the Qwen-MT compatible examples.
+        # Generation controls are not needed for a translation smoke and some
+        # workspace gateways reject extra chat-only parameters.
+        payload = {"model": self.model, "messages": [{"role": "user", "content": content}], "translation_options": self._options(request)}
         return payload, meta
 
     def _payload(self, request: TranslationRequest) -> dict[str, Any]:
@@ -161,7 +164,11 @@ class QwenMTProvider:
             url += "/chat/completions"
         elif not compatible and not url.endswith("/services/aigc/text-generation/generation"):
             url += "/services/aigc/text-generation/generation"
-        http_request = urllib.request.Request(url, data=request_json.encode("utf-8"), method="POST", headers={"Authorization": f"Bearer {os.environ.get(self.api_key_env)}", "Content-Type": "application/json", "X-DashScope-WorkSpace": os.environ.get("DASHSCOPE_WORKSPACE", "")})
+        headers = {"Authorization": f"Bearer {os.environ.get(self.api_key_env)}", "Content-Type": "application/json"}
+        workspace = os.environ.get("DASHSCOPE_WORKSPACE", "").strip()
+        if workspace:
+            headers["X-DashScope-WorkSpace"] = workspace
+        http_request = urllib.request.Request(url, data=request_json.encode("utf-8"), method="POST", headers=headers)
         last_error: ProviderError | None = None
         for attempt in range(self.max_retries + 1):
             started = time.monotonic()
@@ -189,7 +196,16 @@ class QwenMTProvider:
                 restored = restore_text(text, meta["protected"])
                 return restored, request_hash, hashlib.sha256(text.encode("utf-8")).hexdigest(), str(body.get("request_id") or request.request_id or uuid.uuid4()), body.get("usage") if isinstance(body.get("usage"), Mapping) else {}, attempt
             except urllib.error.HTTPError as exc:
-                last_error = ProviderError(f"QWEN_HTTP_{exc.code}", retryable=exc.code == 429 or exc.code >= 500)
+                # Preserve a bounded provider diagnostic for operator triage;
+                # never include request headers or the API key.
+                try:
+                    body = exc.read(2048).decode("utf-8", errors="replace").strip()
+                except Exception:
+                    body = ""
+                detail = f"QWEN_HTTP_{exc.code}: HTTP {exc.code}"
+                if body:
+                    detail += f": {body}"
+                last_error = ProviderError(f"QWEN_HTTP_{exc.code}", detail, retryable=exc.code == 429 or exc.code >= 500)
             except (urllib.error.URLError, TimeoutError) as exc:
                 last_error = ProviderError("QWEN_NETWORK_ERROR", str(exc), retryable=True)
             except json.JSONDecodeError as exc:
