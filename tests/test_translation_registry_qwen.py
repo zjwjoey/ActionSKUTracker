@@ -128,6 +128,20 @@ def test_qwen_payload_has_single_user_message_and_translation_options(monkeypatc
     assert "temperature" not in payload
 
 
+def test_qwen_minimal_payload_excludes_optional_translation_options():
+    provider = QwenMTProvider("https://example.test/compatible-mode/v1", include_optional_options=False)
+    request = TranslationRequest("123456", {"name_es": "No me reí después de ver este video"}, ("name",), "source-hash", target_language="zh-CN", domain="ignored")
+    payload = provider._payload(request)
+    assert payload["translation_options"] == {"source_lang": "Spanish", "target_lang": "Chinese"}
+
+
+def test_qwen_wire_language_aliases_are_normalized():
+    provider = QwenMTProvider("https://example.test/compatible-mode/v1", include_optional_options=False)
+    request = TranslationRequest("123456", {"name_es": "Producto"}, ("name",), "source-hash", target_language="zh")
+    payload = provider._payload(request)
+    assert payload["translation_options"] == {"source_lang": "Spanish", "target_lang": "Chinese"}
+
+
 def test_qwen_mt_wire_payload_keeps_source_text_without_internal_placeholders():
     provider = QwenMTProvider("https://example.test/compatible-mode/v1")
     request = TranslationRequest("123456", {"name_es": "Auriculares USB-C 20 mg"}, ("name",), "source-hash")

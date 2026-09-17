@@ -24,6 +24,7 @@ def main() -> int:
     parser.add_argument("--endpoint", default=DEFAULT_ENDPOINT)
     parser.add_argument("--limit", type=int, default=1)
     parser.add_argument("--mode", choices=("smoke", "canary"), default="smoke")
+    parser.add_argument("--minimal", action="store_true", help="smoke 模式下只发送官方最小 Qwen-MT 请求")
     parser.add_argument("--field", default="", help="可选字段；留空则按全部可翻译字段执行")
     parser.add_argument("--keep-proxy", action="store_true")
     args = parser.parse_args()
@@ -77,6 +78,8 @@ def main() -> int:
 
     if args.mode == "smoke":
         command = [python, "-m", "action_tracker", "localization-live-smoke", "--limit", str(args.limit), "--output", str(output)]
+        if args.minimal:
+            command.append("--minimal")
     else:
         command = [python, "-m", "action_tracker", "localization-canary", "--limit", str(args.limit), "--provider", "--output", str(output)]
         if args.field:

@@ -94,6 +94,9 @@ class QwenMTProvider:
     max_characters_per_request: int = 12000
     rate_limit_per_second: float = 0.0
     provider: str = "qwen_mt"
+    # The official minimal smoke must contain only source/target language
+    # options.  Normal registry calls keep the richer domain/term/TM options.
+    include_optional_options: bool = True
 
     def _source_field(self, request: TranslationRequest, field_name: str) -> str:
         return {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field_name, field_name)
@@ -102,6 +105,21 @@ class QwenMTProvider:
         # qwen-mt's ``domains`` contract is a single English prompt string,
         # not a list of labels.  Keep the prompt deterministic so request
         # hashes remain stable across retries and providers.
+        def wire_language(value: str, default: str) -> str:
+            normalized = str(value or "").strip().casefold().replace("_", "-")
+            aliases = {
+                "es": "Spanish", "es-es": "Spanish", "spanish": "Spanish",
+                "zh": "Chinese", "zh-cn": "Chinese", "zh-hans": "Chinese", "chinese": "Chinese",
+            }
+            return aliases.get(normalized, str(value or default).strip() or default)
+
+        options: dict[str, Any] = {
+            "source_lang": wire_language(request.source_language, "Spanish"),
+            "target_lang": wire_language(request.target_language, "Chinese"),
+        }
+        if not self.include_optional_options:
+            return options
+
         domain = str(request.domain or "e-commerce").strip() or "e-commerce"
         domain_prompt = (
             "The content is from an e-commerce retail product catalog. "
@@ -109,7 +127,7 @@ class QwenMTProvider:
             if domain.casefold() in {"e-commerce", "ecommerce", "retail"}
             else f"The content is from the {domain} domain. Translate the supplied text accurately and concisely."
         )
-        options: dict[str, Any] = {"source_lang": "Spanish", "target_lang": request.target_language, "domains": domain_prompt}
+        options["domains"] = domain_prompt
         if request.terms:
             # The dedicated MT endpoint only accepts source/target pairs in
             # ``terms``.  Scope, priority and match-mode are resolver-side

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -162,6 +163,7 @@ def build_parser() -> argparse.ArgumentParser:
     ls = sub.add_parser("localization-live-smoke", help="显式执行少量 Provider smoke；默认不写生产")
     ls.add_argument("--limit", type=int, default=5)
     ls.add_argument("--output", required=True)
+    ls.add_argument("--minimal", action="store_true", help="执行官方最小 Qwen-MT wire smoke，不带 domains/terms/TM")
     tr = sub.add_parser("translation-status", help="显示翻译注册表队列状态")
     tw = sub.add_parser("translation-worker", help="消费翻译队列并写入 Shadow Registry（不写 PRIMARY）")
     tw.add_argument("--limit", type=int, default=50)
@@ -696,15 +698,61 @@ def main(argv=None) -> int:
     if args.command in {"localization-live-smoke", "translation-live-smoke"}:
         from .localization.ai import provider_from_config, provider_health, validate_ai_response
         from .localization.contracts import SourceFacts
+        from .localization.providers.base import TranslationRequest
+        from .localization.providers.qwen_mt import QwenMTProvider
         out = Path(args.output)
         out.parent.mkdir(parents=True, exist_ok=True)
         try:
             ai_cfg = ((cfg.get("localization") or {}).get("ai") or {})
             provider = provider_from_config({**ai_cfg, "enabled": True})
             health = provider_health(provider)
-            result = {"provider": getattr(provider, "provider", type(provider).__name__), "model": getattr(provider, "model", ""), "endpoint": getattr(provider, "base_url", ""), "health": health, "production_writes": False}
+            configured_base = str(ai_cfg.get("base_url") or "").strip()
+            env_base = os.environ.get("QWEN_MT_BASE_URL") or os.environ.get("DASHSCOPE_BASE_URL") or ""
+            result = {
+                "provider": getattr(provider, "provider", type(provider).__name__),
+                "model": getattr(provider, "model", ""),
+                "endpoint": getattr(provider, "base_url", ""),
+                "api_key_present": bool(os.environ.get(str(getattr(provider, "api_key_env", "DASHSCOPE_API_KEY")))) if getattr(provider, "api_key_env", None) else False,
+                "base_url_source": "LOCAL_CONFIG" if configured_base else ("ENV" if env_base else "MISSING"),
+                "workspace_header_present": bool(os.environ.get("DASHSCOPE_WORKSPACE")),
+                "health": health,
+                "production_writes": False,
+            }
             if health.get("status") != "PASS":
                 result["status"] = "LIVE_QWEN_API_NOT_VERIFIED"
+            elif getattr(args, "minimal", False):
+                # Do not run the full resolver here.  This request is the
+                # first diagnostic layer and intentionally excludes domains,
+                # terms, TM entries, prompts and internal metadata.
+                minimal = QwenMTProvider(
+                    str(getattr(provider, "base_url", "")),
+                    str(getattr(provider, "model", "qwen-mt-flash")),
+                    str(getattr(provider, "api_key_env", "DASHSCOPE_API_KEY")),
+                    int(getattr(provider, "timeout", 60)),
+                    max_retries=0,
+                    include_optional_options=False,
+                )
+                request = TranslationRequest(
+                    "SMOKE-MINIMAL",
+                    {"name_es": "No me reí después de ver este video"},
+                    ("name",),
+                    "minimal-qwen-mt-smoke-v1",
+                    target_language="Chinese",
+                    domain="",
+                )
+                response = minimal.translate(request)
+                result.update({
+                    "status": "PASS",
+                    "minimal_status": "MINIMAL_QWEN_MT_SMOKE_PASS",
+                    "translation": response.fields.get("name", ""),
+                    "provider_calls": 1,
+                    "success": 1,
+                    "failed": 0,
+                    "retry_count": int(response.usage.get("retry_count", 0) or 0),
+                    "request_hash_present": bool(response.request_hash),
+                    "response_hash_present": bool(response.response_hash),
+                    "request_id_present": bool(response.request_id),
+                })
             else:
                 samples = [SourceFacts.from_record({"sku": f"SMOKE-{i}", "name_es": text, "spec_es": spec, "details_es": f"Número del artículo: SMOKE-{i}"}) for i, (text, spec) in enumerate((("Auriculares inalámbricos USB-C", "20 mg"), ("Pack de bombillas LED", "9 W E27"), ("Mesa plegable", "80 x 50 cm"), ("Cable de carga", "1,2 m"), ("Batería", "1000 mAh"))[:max(1, min(args.limit, 5))], 1)]
                 checked = []
