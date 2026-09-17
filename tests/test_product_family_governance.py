@@ -13,6 +13,8 @@ from action_tracker.localization.knowledge import KnowledgeLoader, ensure_schema
 from action_tracker.dictionary import PRODUCT_DICTIONARY_HEADERS
 from action_tracker.localization.registry.repository import LocalizationRegistry
 from action_tracker.localization.memory.repository import TranslationMemoryRepository
+from action_tracker.localization.runtime import shadow_run, canary
+from action_tracker.localization.contracts import SourceFacts, source_hash
 import csv
 
 
@@ -93,3 +95,31 @@ def test_scoped_terminology_conflict_fails_closed(tmp_path: Path):
     repo = TerminologyRepository(tmp_path / "registry.db")
     assert repo.resolve("Material: Goma", field_name="details", family_id="CLEANING_CLOTH", context_key="material") == ()
     assert len(repo.last_conflicts) == 1
+
+
+def test_product_dictionary_reviewed_row_is_stale_when_source_hash_changes():
+    record = {"sku": "1", "name_es": "Paño de microfibra", "cat1_es": "Hogar", "cat2_es": "Limpieza"}
+    engine = LocalizationEngine(knowledge={"trusted_product_by_sku": {"1": {"source_hash": "old", "name_zh_standard": "旧值", "locked": "1"}}, "product_by_sku": {"1": {"source_hash": "old", "locked": "1"}}})
+    plan = engine.resolve(record)
+    assert plan.readiness == "REVIEW_REQUIRED"
+    assert engine.knowledge["product_trust_by_sku"]["1"] == "STALE_LOCKED_KNOWLEDGE"
+
+
+def test_shadow_and_canary_reports_carry_family_context(tmp_path: Path):
+    record = {"sku": "1", "name_es": "Paño de microfibra", "cat1_es": "Hogar", "cat2_es": "Limpieza", "details_es": "Material: Goma"}
+    shadow = shadow_run([record], output_dir=tmp_path / "shadow")
+    assert shadow["production_writes"] is False
+    assert (tmp_path / "shadow" / "translation_units.csv").read_text(encoding="utf-8-sig").splitlines()[0].find("family_id") >= 0
+    canary_result = canary([record], output_dir=tmp_path / "canary", limit=1)
+    assert canary_result["production_writes"] is False
+    assert (tmp_path / "canary" / "translation_units.csv").exists()
+
+
+def test_scoped_terminology_specific_rule_wins(tmp_path: Path):
+    from action_tracker.localization.terminology.repository import TerminologyRepository
+    registry = LocalizationRegistry(tmp_path / "registry.db")
+    registry.add_term("Goma", "通用", approval_status="APPROVED", priority=10)
+    registry.add_term("Goma", "橡胶", field_scope="details", family_scope="CLEANING_CLOTH", context_key="material", approval_status="APPROVED", priority=1)
+    repo = TerminologyRepository(tmp_path / "registry.db")
+    hints = repo.resolve("Material: Goma", field_name="details", family_id="CLEANING_CLOTH", context_key="material")
+    assert hints and hints[0].target_term == "橡胶"
