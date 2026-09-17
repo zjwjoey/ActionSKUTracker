@@ -58,3 +58,4 @@ tests/test_data_quality_integrity.py
 tests/test_translation_registry_qwen.py
 tests/test_translation_system_v1_completion.py
 tests/test_translation_v1_final_guarantees.py
+tests/test_product_family_governance.py

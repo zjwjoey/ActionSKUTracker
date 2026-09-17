@@ -8,6 +8,7 @@ from .contracts import CANONICAL_TO_ZH, ZH_TO_CANONICAL, LocalizationField, Loca
 from .formatter import format_details, format_spec, format_text, format_unit_price
 from .policy import FIXED_CAT1, OMIT_BRAND_FROM_CHINESE_DISPLAY, has_ordinary_spanish, map_cat1
 from ..dictionary import normalize_category_key
+from .product_family import classify_product_family
 
 _FIELD_NAMES = dict(ZH_TO_CANONICAL)
 
@@ -54,6 +55,11 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         other_identity = [x for x in deduped_identity if x not in functions]
         display_brand = "" if OMIT_BRAND_FROM_CHINESE_DISPLAY else brand
         name = "".join(x for x in (display_brand + "牌" if display_brand else "", *functions, product_type, *other_identity) if x)
+        family = classify_product_family(source, semantic_facts=facts)
+        if family.family_id == "CLEANING_CLOTH":
+            material = "微纤维" if re.search(r"(?<!\w)microfibra(?!\w)", source.name_es, re.I) else ""
+            usage = "地板" if re.search(r"\bpara\s+el\s+suelo\b", source.name_es, re.I) else ""
+            name = "".join((material, usage, "清洁布")) or "清洁布"
     elif brand and not OMIT_BRAND_FROM_CHINESE_DISPLAY and not name.startswith(brand + "牌"):
         name = brand + "牌" + name
     if not name:

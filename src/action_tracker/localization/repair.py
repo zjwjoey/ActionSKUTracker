@@ -9,6 +9,7 @@ from .normalization.target import normalize_target_text
 from .providers.base import TranslationProvider, TranslationRequest
 from .qa import guard_translation
 from .policy import DISPLAY_POLICY_PROFILE, strip_forbidden_display_tokens
+from .product_family import TranslationContext, context_for_field
 
 
 @dataclass(frozen=True)
@@ -28,10 +29,12 @@ def repair_field(record: Mapping[str, Any], field_name: str, candidate: str, *, 
                  provider: TranslationProvider | None = None, registry=None,
                  parent_revision_id: str | None = None,
                  terminology: tuple[Mapping[str, Any], ...] = (),
-                 semantic_facts: tuple[Any, ...] = ()) -> RepairResult:
+                  semantic_facts: tuple[Any, ...] = (),
+                  context: TranslationContext | None = None) -> RepairResult:
     source = SourceFacts.from_record(record)
     value = normalize_target_text(candidate)
-    qa = guard_translation(source, {field_name: value}, (field_name,), terminology=terminology, semantic_facts=semantic_facts)
+    field_context = context_for_field(context, field_name) if context is not None else None
+    qa = guard_translation(source, {field_name: value}, (field_name,), terminology=terminology, semantic_facts=semantic_facts, context=field_context)
     repair_source = "deterministic"
     provenance: dict[str, Any] = {"resolution_source": "DETERMINISTIC_REPAIR"}
     if qa["status"] != "PASS" and provider is not None:
@@ -45,6 +48,11 @@ def repair_field(record: Mapping[str, Any], field_name: str, candidate: str, *, 
             source.sku,
             {field_name: getattr(source, {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}[field_name])},
             (field_name,), source.source_hash, terms=tuple(provider_terms),
+            family_id=field_context.family_id if field_context else None,
+            family_policy_version=field_context.family_policy_version if field_context else None,
+            context_key=field_context.context_key if field_context else None,
+            product_type=field_context.product_type if field_context else None,
+            context=field_context.as_dict() if field_context else None,
         )
         response = provider.translate(request)
         value = str(response.fields.get(field_name) or "")
@@ -55,7 +63,7 @@ def repair_field(record: Mapping[str, Any], field_name: str, candidate: str, *, 
                 if getattr(fact, "semantic_type", "") in {"BRAND", "IP_CHARACTER"}
             ]
             value = strip_forbidden_display_tokens(value, brand_tokens)
-        qa = guard_translation(source, {field_name: value}, (field_name,), terminology=terminology, semantic_facts=semantic_facts)
+        qa = guard_translation(source, {field_name: value}, (field_name,), terminology=terminology, semantic_facts=semantic_facts, context=field_context)
         repair_source = response.provider
         provenance = {
             "resolution_source": "QWEN_MT",
@@ -66,6 +74,7 @@ def repair_field(record: Mapping[str, Any], field_name: str, candidate: str, *, 
             "usage": dict(response.usage or {}),
             "retry_count": int((response.usage or {}).get("retry_count", 0) or 0),
             "display_policy_profile": DISPLAY_POLICY_PROFILE,
+            "translation_context": field_context.as_dict() if field_context else {},
         }
     revision_id = None
     if registry is not None:

@@ -33,7 +33,18 @@ class LocalizationEngine:
         # paths fall back to a generic product type (e.g. ``清洁布``) and drop
         # identity facts such as ``微纤维`` or ``地板`` from the name.
         record_knowledge = dict(self.knowledge)
-        product = (self.knowledge.get("product_by_sku") or {}).get(source.sku, {})
+        trusted_products = self.knowledge.get("trusted_product_by_sku")
+        # Loaded knowledge snapshots expose the trust-gated view.  Legacy
+        # in-memory fixtures without that view remain backward compatible.
+        product_map = trusted_products if trusted_products is not None else (self.knowledge.get("product_by_sku") or {})
+        product = product_map.get(source.sku, {})
+        if trusted_products is not None and isinstance(product, Mapping):
+            row_hash = str(product.get("source_hash") or "").strip()
+            if row_hash and row_hash != source.source_hash:
+                product = {}
+                legacy = (self.knowledge.get("product_by_sku") or {}).get(source.sku, {})
+                if isinstance(legacy, Mapping):
+                    self.knowledge.setdefault("product_trust_by_sku", {})[source.sku] = "STALE_LOCKED_KNOWLEDGE" if str(legacy.get("locked") or "").strip().lower() in {"1", "true", "yes", "locked"} else "STALE"
         if isinstance(product, Mapping):
             record_knowledge.update({
                 "name_zh": product.get("name_zh_standard") or product.get("name_zh") or "",
@@ -46,6 +57,9 @@ class LocalizationEngine:
         known_brands = set(record_knowledge.get("brands") or ())
         facts = parse_semantic_facts(source, known_brands=known_brands, dictionaries=record_knowledge)
         plan = plan_localization(source, facts, knowledge=record_knowledge, existing=existing)
+        from .product_family import build_translation_context
+        from dataclasses import replace
+        plan = replace(plan, context=build_translation_context(record, "", semantic_facts=plan.semantic_facts))
         existing_hash = str((existing or {}).get("source_hash") or "")
         if existing_hash and existing_hash != source.source_hash and not bool((existing or {}).get("retranslate")):
             # Daily observation may detect changed Spanish facts before a new
@@ -59,7 +73,7 @@ class LocalizationEngine:
                     stale_fields[key] = LocalizationField(str(old), "existing_localization", "STALE", existing_hash, "STALE", field.policy_version, ("SOURCE_HASH_CHANGED",), field.provenance)
                 else:
                     stale_fields[key] = field
-            plan = LocalizationPlan(plan.sku, source.source_hash, stale_fields, plan.semantic_facts, "REVIEW_REQUIRED", tuple(dict.fromkeys((*plan.review_reasons, "SOURCE_HASH_CHANGED"))), plan.knowledge_hits, plan.ai_used)
+            plan = LocalizationPlan(plan.sku, source.source_hash, stale_fields, plan.semantic_facts, "REVIEW_REQUIRED", tuple(dict.fromkeys((*plan.review_reasons, "SOURCE_HASH_CHANGED"))), plan.knowledge_hits, plan.ai_used, plan.context)
         return plan
 
     def validate(self, record: Mapping[str, Any], plan: LocalizationPlan) -> LocalizationValidation:
@@ -97,7 +111,8 @@ class LocalizationEngine:
             reasons = () if status == "READY" else (("STALE_LOCALIZATION",) if status == "STALE" else ("MISSING_LOCALIZATION",))
             fields[output_key] = LocalizationField(value, source_name, status, str(metadata.get("source_hash") or record.get("zh_source_hash") or ""), freshness, self.policy_version, reasons)
         reasons = tuple(dict.fromkeys(r for f in fields.values() for r in f.review_reasons))
-        return LocalizationPlan(source.sku, source.source_hash, fields, (), "AUTO_READY" if not reasons else "REVIEW_REQUIRED", reasons, (), False)
+        from .product_family import build_translation_context
+        return LocalizationPlan(source.sku, source.source_hash, fields, (), "AUTO_READY" if not reasons else "REVIEW_REQUIRED", reasons, (), False, build_translation_context(record, ""))
 
     @staticmethod
     def field_values(plan: LocalizationPlan) -> dict[str, str]:

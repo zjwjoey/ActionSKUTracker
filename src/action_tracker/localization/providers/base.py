@@ -38,6 +38,11 @@ class TranslationRequest:
     tm_entries: tuple[Mapping[str, Any], ...] = ()
     domain: str = "e-commerce"
     request_id: str = ""
+    family_id: str = "UNKNOWN"
+    family_policy_version: str = ""
+    context_key: str = ""
+    product_type: str = ""
+    context: Mapping[str, Any] = field(default_factory=dict)
 
     @property
     def field_name(self) -> str:

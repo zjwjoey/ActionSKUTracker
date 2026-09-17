@@ -149,6 +149,16 @@ def build_parser() -> argparse.ArgumentParser:
     ca.add_argument("--limit", type=int, default=50)
     ca.add_argument("--provider", action="store_true", help="显式允许本次 Canary 调用已配置 Provider")
     ca.add_argument("--output", required=True)
+    fa = sub.add_parser("translation-family-audit", help="审计当前商品族与 Canonical QA")
+    fa.add_argument("--family", default="", help="可选 family_id；留空审计全部")
+    fa.add_argument("--output", help="可选 JSON 报告路径")
+    fr = sub.add_parser("translation-family-regression", help="运行产品族回归测试")
+    fr.add_argument("--family", default="CLEANING_CLOTH")
+    fr.add_argument("--output", help="可选 JSON 报告路径")
+    ff = sub.add_parser("translation-family-feedback", help="从人工修正中生成产品族候选，不自动批准")
+    ff.add_argument("--input", required=True, help="JSON/JSONL/CSV 人工修正记录")
+    ff.add_argument("--output", required=True)
+    ff.add_argument("--min-occurrences", type=int, default=3)
     ls = sub.add_parser("localization-live-smoke", help="显式执行少量 Provider smoke；默认不写生产")
     ls.add_argument("--limit", type=int, default=5)
     ls.add_argument("--output", required=True)
@@ -554,6 +564,95 @@ def main(argv=None) -> int:
         try:
             registry = LocalizationRegistry(database_path(cfg), role="SHADOW")
             result = apply_migration_preview(registry, Path(args.preview), manifest_hash=args.manifest_hash, commit=bool(args.commit), actor=args.actor)
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-family-audit":
+        from .database.integration import database_path
+        from .database.repository import ProductionRepository
+        from .localization.product_family import ProductFamilyRegistry, classify_product_family
+        from .localization.canonical_qa import canonical_guard
+        from .localization.engine import LocalizationEngine
+        from .localization.product_family import context_for_field
+        try:
+            records = ProductionRepository(database_path(cfg)).load_current_export_records()
+            registry = ProductFamilyRegistry()
+            engine = LocalizationEngine()
+            counts = {"family_counts": {}, "canonical_pass": 0, "canonical_fail": 0, "unknown_family": 0, "terminology_conflicts": 0}
+            rows = []
+            for record in records:
+                match = classify_product_family(record, registry=registry)
+                if args.family and match.family_id != args.family:
+                    continue
+                counts["family_counts"][match.family_id] = counts["family_counts"].get(match.family_id, 0) + 1
+                counts["unknown_family"] += int(match.family_id == "UNKNOWN")
+                row = {"sku": str(record.get("sku") or record.get("official_sku") or ""), "family_id": match.family_id, "confidence": match.confidence, "evidence": list(match.evidence), "policy_version": match.policy_version}
+                if match.family_id != "UNKNOWN":
+                    plan = engine.resolve(record)
+                    base_context = getattr(plan, "context", None)
+                    canonical_findings = []
+                    current_fields = {"name": record.get("name_zh") or record.get("name_zh_standard") or record.get("name_zh_display") or "", "cat1": record.get("cat1_zh") or record.get("category1_zh") or "", "cat2": record.get("cat2_zh") or record.get("category2_zh") or "", "spec": record.get("spec_zh") or "", "description": record.get("desc_zh") or record.get("description_zh") or "", "details": record.get("details_zh") or ""}
+                    for field_name, value in current_fields.items():
+                        if base_context is None:
+                            continue
+                        check = canonical_guard(context_for_field(base_context, field_name), {field_name: value}, registry=registry, production=False)
+                        canonical_findings.extend(check.get("findings") or [])
+                    row["canonical_status"] = "PASS" if not canonical_findings else "FAIL"
+                    row["canonical_findings"] = canonical_findings
+                    counts["canonical_pass" if not canonical_findings else "canonical_fail"] += 1
+                    counts["terminology_conflicts"] += len(canonical_findings)
+                else:
+                    row["canonical_status"] = "NOT_RUN"
+                    row["canonical_findings"] = []
+                rows.append(row)
+            result = {"schema_version": "PRODUCT_FAMILY_AUDIT_V1", **counts, "rows": rows, "production_writes": False}
+            if args.output:
+                Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-family-regression":
+        from .localization.product_family import ProductFamilyRegistry, build_translation_context
+        from .localization.engine import LocalizationEngine
+        from .localization.canonical_qa import canonical_guard
+        from .localization.contracts import SourceFacts
+        try:
+            cases = (
+                ({"sku": "F-1", "name_es": "Paño de microfibra", "cat1_es": "Hogar", "cat2_es": "Limpieza"}, "name", "微纤维清洁布"),
+                ({"sku": "F-2", "name_es": "Paño de microfibra para el suelo", "cat1_es": "Hogar", "cat2_es": "Limpieza"}, "name", "微纤维地板清洁布"),
+                ({"sku": "F-3", "name_es": "Bayeta", "cat1_es": "Hogar", "cat2_es": "Limpieza"}, "name", "清洁布"),
+                ({"sku": "F-4", "name_es": "Paño", "cat1_es": "Hogar", "cat2_es": "Limpieza", "desc_es": "Paño de microfibra"}, "description", "超细纤维"),
+                ({"sku": "F-5", "name_es": "Paño de limpieza", "cat1_es": "Hogar", "cat2_es": "Limpieza", "details_es": "Material: Goma"}, "details", "材质：橡胶"),
+                ({"sku": "F-6", "name_es": "Paño de limpieza", "cat1_es": "Hogar", "cat2_es": "Limpieza", "desc_es": "Envase ahorro de gomas para sujetar objetos."}, "description", "橡皮筋"),
+            )
+            rows = []; passed = 0
+            for record, field_name, expected in cases:
+                source = SourceFacts.from_record(record)
+                plan = LocalizationEngine().resolve(record)
+                context = build_translation_context(record, field_name, semantic_facts=plan.semantic_facts, detail_key="material" if field_name == "details" else "")
+                target = expected
+                qa = canonical_guard(context, {field_name: target})
+                ok = qa["status"] == "PASS" and ((field_name != "name") or expected in target)
+                passed += int(ok)
+                rows.append({"sku": source.sku, "field_name": field_name, "family_id": context.family_id, "expected": expected, "canonical_qa": qa, "status": "PASS" if ok else "FAIL"})
+            result = {"schema_version": "CLEANING_CLOTH_REGRESSION_V1", "family": args.family, "total": len(rows), "passed": passed, "failed": len(rows) - passed, "rows": rows, "production_writes": False}
+            if args.output:
+                Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(result, ensure_ascii=False)); return 0 if not result["failed"] else 3
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-family-feedback":
+        from .localization.feedback import mine_family_feedback
+        try:
+            source = Path(args.input)
+            if source.suffix.casefold() == ".csv":
+                import csv
+                rows = list(csv.DictReader(source.open(encoding="utf-8-sig", newline="")))
+            else:
+                payload = json.loads(source.read_text(encoding="utf-8"))
+                rows = payload if isinstance(payload, list) else payload.get("rows", [])
+            result = {"schema_version": "PRODUCT_FAMILY_FEEDBACK_V1", "candidates": mine_family_feedback(rows, min_occurrences=args.min_occurrences), "auto_approved": False, "production_writes": False}
+            Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
             print(json.dumps(result, ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2

@@ -12,6 +12,7 @@ _TERM_MAP = {
     "barritas para gato": ("PRODUCT_TYPE", "猫零食条"), "barritas para gatos": ("PRODUCT_TYPE", "猫零食条"),
     "auriculares": ("PRODUCT_TYPE", "耳机"), "cartulina": ("PRODUCT_TYPE", "彩色手工卡纸"),
     "cola para madera": ("PRODUCT_TYPE", "木工胶"), "gofres": ("PRODUCT_TYPE", "华夫饼"),
+    "microfibra": ("MATERIAL", "超细纤维"), "goma": ("MATERIAL", "橡胶"),
     "iluminación": ("PRODUCT_TYPE", "照明灯"), "cápsulas": ("PRODUCT_TYPE", "胶囊"),
     "calcetines": ("PRODUCT_TYPE", "袜子"), "manoplas": ("PRODUCT_TYPE", "沐浴手套"),
     "lámpara": ("PRODUCT_TYPE", "灯"), "concentrador": ("PRODUCT_TYPE", "集线器"),
@@ -88,7 +89,7 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
                 semantic = kind if kind in {"PRODUCT_TYPE", "BRAND", "SERIES", "MODEL", "TECH_TOKEN", "MATERIAL", "FUNCTION", "CARE", "COMPATIBILITY", "DESCRIPTION_FACT"} else "DESCRIPTION_FACT"
                 add(semantic, term, zh, field, "term_dictionary")
         for term, (kind, zh) in _TERM_MAP.items():
-            if term in lower and (kind, zh) not in seen:
+            if re.search(rf"(?<!\w){re.escape(term)}(?!\w)", lower) and (kind, zh) not in seen:
                 add(kind, term, zh, field, term)
         for token, zh in _COLORS.items():
             if re.search(rf"\b{re.escape(token)}\b", lower) and ("COLOR", zh) not in seen:

@@ -219,6 +219,7 @@ class LocalizationPlan:
     review_reasons: tuple[str, ...] = ()
     knowledge_hits: tuple[str, ...] = ()
     ai_used: bool = False
+    context: Any = None
 
     def as_dict(self) -> dict[str, Any]:
         return {"sku": self.sku, "source_hash": self.source_hash,
@@ -229,7 +230,8 @@ class LocalizationPlan:
                 "description_facts": [f.as_dict() for f in self.description_facts],
                 "detail_pairs": [f.as_dict() for f in self.detail_pairs],
                 "readiness": self.readiness, "review_reasons": list(self.review_reasons),
-                "knowledge_hits": list(self.knowledge_hits), "ai_used": self.ai_used}
+                "knowledge_hits": list(self.knowledge_hits), "ai_used": self.ai_used,
+                "context": self.context.as_dict() if hasattr(self.context, "as_dict") else self.context}
 
     @property
     def name_tokens(self) -> tuple[SemanticFact, ...]:

@@ -56,7 +56,7 @@ class KnowledgeLoader:
         self.directory = Path(directory)
 
     def load(self) -> dict[str, Any]:
-        result: KnowledgeContext = KnowledgeContext({"brands": set(), "cat1_map": {}, "cat2_map": {}, "product_by_sku": {}, "product_types": {}, "product_type_rows": [], "detail_keys": {}, "tech_tokens": {}, "phrases": {}, "terms": [], "manual_overrides": [], "manual_by_sku": {}, "model_by_sku": {}, "source_damage_by_sku": {}})
+        result: KnowledgeContext = KnowledgeContext({"brands": set(), "cat1_map": {}, "cat2_map": {}, "product_by_sku": {}, "trusted_product_by_sku": {}, "product_suggestions_by_sku": {}, "product_trust_by_sku": {}, "product_types": {}, "product_type_rows": [], "detail_keys": {}, "tech_tokens": {}, "phrases": {}, "terms": [], "manual_overrides": [], "manual_by_sku": {}, "model_by_sku": {}, "source_damage_by_sku": {}})
         brand = self.directory / "brand_dictionary.csv"
         if brand.exists():
             for row in csv.DictReader(brand.open(encoding="utf-8-sig")):
@@ -74,7 +74,21 @@ class KnowledgeLoader:
         if product.exists():
             for row in csv.DictReader(product.open(encoding="utf-8-sig")):
                 sku = str(row.get("sku") or "").strip()
-                if sku: result["product_by_sku"][sku] = row
+                if sku:
+                    result["product_by_sku"][sku] = row
+                    status = str(row.get("review_status") or "").strip().upper()
+                    translation_status = str(row.get("translation_status") or "").strip().upper()
+                    locked = str(row.get("locked") or "").strip().lower() in {"1", "true", "yes", "locked"}
+                    # Trust is field input, not a blanket SKU approval.  The
+                    # source-hash freshness check is completed by Engine when
+                    # it has the current official source record.
+                    trusted = locked or status in ACCEPTED_KNOWLEDGE_STATUSES
+                    trust_state = "TRUSTED_PENDING_FRESHNESS" if trusted else (translation_status or status or "UNREVIEWED")
+                    result["product_trust_by_sku"][sku] = trust_state
+                    if trusted:
+                        result["trusted_product_by_sku"][sku] = row
+                    else:
+                        result["product_suggestions_by_sku"][sku] = row
         term = self.directory / "term_dictionary.csv"
         if term.exists():
             with term.open(encoding="utf-8-sig", newline="") as fh:
@@ -129,6 +143,8 @@ class KnowledgeLoader:
                     result["product_types"] = {str(row.get("source_term") or "").casefold(): str(row.get("canonical_zh") or "") for row in rows}
                 if filename == "tech_token_dictionary.csv":
                     result["tech_tokens"] = {str(row.get("token") or ""): str(row.get("canonical_token") or row.get("token") or "") for row in rows}
+        from .product_family import ProductFamilyRegistry
+        result["family_policies"] = {item.family_id: {"policy_version": item.policy_version, "review_status": item.review_status} for item in ProductFamilyRegistry().all()}
         result["hash"] = self.content_hash()
         return result
 
@@ -136,6 +152,9 @@ class KnowledgeLoader:
         values = []
         for path in sorted(self.directory.glob("*.csv")):
             values.append((path.name, _sha(path)))
+        from .product_family import ProductFamilyRegistry
+        policy_payload = [(item.family_id, item.policy_version, item.review_status, item.aliases, item.naming_rules, tuple((rule.source_term, rule.target_term, rule.field_name, rule.context_key) for rule in item.canonical_terms)) for item in ProductFamilyRegistry().all()]
+        values.append(("product_family_policies", policy_payload))
         return hashlib.sha256(json.dumps(values, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
@@ -165,7 +184,8 @@ def ensure_schemas(directory: Path) -> dict[str, Any]:
             with path.open(encoding="utf-8-sig", newline="") as fh:
                 row_count = max(0, sum(1 for _ in fh) - 1)
             entries[name] = {"sha256": _sha(path), "schema_version": "legacy", "row_count": row_count}
-    payload = {"schema_version": "LOCALIZATION_KNOWLEDGE_V1", "manifest_schema_version": 2, "files": entries}
+    from .product_family import ProductFamilyRegistry
+    payload = {"schema_version": "LOCALIZATION_KNOWLEDGE_V1", "manifest_schema_version": 3, "files": entries, "product_family_policies": [{"family_id": item.family_id, "policy_version": item.policy_version, "review_status": item.review_status} for item in ProductFamilyRegistry().all()]}
     fd, tmp = tempfile.mkstemp(prefix="localization_manifest.", suffix=".tmp", dir=directory)
     os.close(fd)
     Path(tmp).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

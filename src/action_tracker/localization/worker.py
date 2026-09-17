@@ -21,6 +21,7 @@ from .resolver import TranslationResolver
 from .registry.repository import LocalizationRegistry
 from .providers.base import ProviderError
 from .protection.tokens import ProtectedTokenError
+from .canonical_qa import canonical_guard
 
 
 _SOURCE_TO_CANONICAL = {
@@ -116,14 +117,16 @@ class TranslationQueueWorker:
             try:
                 record = self._source_record(item)
                 field_name = self._requested_field(item.get("requested_fields"))
-                resolution = self.resolver.resolve_field(record, field_name, allow_provider=True)
-                semantic_facts = tuple(getattr(self.resolver.engine.resolve(record), "semantic_facts", ()) or ())
+                plan = self.resolver.engine.resolve(record)
+                context = getattr(plan, "context", None)
+                resolution = self.resolver.resolve_field(record, field_name, allow_provider=True, context=context)
+                semantic_facts = tuple(getattr(plan, "semantic_facts", ()) or ())
                 if not resolution.value:
                     self.registry.block_queue(queue_id, "NO_RESOLUTION")
                     blocked += 1
                     continue
                 terminology = tuple(resolution.provenance.get("terminology") or ())
-                qa = guard_translation(SourceFacts.from_record(record), {field_name: resolution.value}, (field_name,), terminology=terminology, semantic_facts=semantic_facts)
+                qa = guard_translation(SourceFacts.from_record(record), {field_name: resolution.value}, (field_name,), terminology=terminology, semantic_facts=semantic_facts, context=context)
                 repair_source = resolution.source
                 if qa["status"] != "PASS":
                     repaired = repair_field(
@@ -132,6 +135,7 @@ class TranslationQueueWorker:
                         provider=getattr(self.resolver, "provider", None),
                         terminology=terminology,
                         semantic_facts=semantic_facts,
+                        context=context,
                     )
                     resolution_value = repaired.value
                     qa = repaired.qa
@@ -143,6 +147,13 @@ class TranslationQueueWorker:
                 else:
                     resolution_value = resolution.value
                     resolution_provenance = dict(resolution.provenance or {})
+                if context is not None:
+                    canonical = canonical_guard(context, {field_name: resolution_value}, production=False)
+                    resolution_provenance["canonical_qa"] = canonical
+                    if canonical["status"] != "PASS":
+                        self.registry.block_queue(queue_id, ";".join(str(f.get("rule_id") or "CANONICAL_QA") for f in canonical.get("findings", [])))
+                        blocked += 1
+                        continue
                 if qa["status"] != "PASS":
                     blocking = [f for f in qa.get("findings", []) if str(f.get("severity") or "").upper() in {"BLOCKER", "ERROR"}]
                     if blocking:
