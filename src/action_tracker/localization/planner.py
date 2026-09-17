@@ -57,9 +57,18 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         name = "".join(x for x in (display_brand + "牌" if display_brand else "", *functions, product_type, *other_identity) if x)
         family = classify_product_family(source, semantic_facts=facts)
         if family.family_id == "CLEANING_CLOTH":
-            material = "微纤维" if re.search(r"(?<!\w)microfibra(?!\w)", source.name_es, re.I) else ""
-            usage = "地板" if re.search(r"\bpara\s+el\s+suelo\b", source.name_es, re.I) else ""
-            name = "".join((material, usage, "清洁布")) or "清洁布"
+            material = "微纤维" if re.search(r"(?<!\w)microfibras?(?!\w)", source.name_es, re.I) else ""
+            if re.search(r"\bpara\s+(?:el\s+)?suelo\b", source.name_es, re.I):
+                usage = "地板"
+            elif re.search(r"\bpara\s+(?:el\s+)?coche\b", source.name_es, re.I):
+                usage = "车用"
+            else:
+                usage = ""
+            size = ""
+            size_match = re.search(r"\b(?:XXL|XL)\b", source.name_es, re.I)
+            if size_match:
+                size = size_match.group(0).upper()
+            name = "".join((material, usage, size, "清洁布")) or "清洁布"
     elif brand and not OMIT_BRAND_FROM_CHINESE_DISPLAY and not name.startswith(brand + "牌"):
         name = brand + "牌" + name
     if not name:

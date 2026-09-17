@@ -7,12 +7,12 @@ from .contracts import SemanticFact, SourceFacts
 
 _TERM_MAP = {
     "gomas": ("PRODUCT_TYPE", "橡皮筋"), "barra de cola": ("PRODUCT_TYPE", "胶棒"),
-    "alfombrilla para cortar": ("PRODUCT_TYPE", "切割垫"), "paño": ("PRODUCT_TYPE", "清洁布"),
+    "alfombrilla para cortar": ("PRODUCT_TYPE", "切割垫"), "papel de cocina": ("PRODUCT_TYPE", "厨房纸"), "paño": ("PRODUCT_TYPE", "清洁布"),
     "paños": ("PRODUCT_TYPE", "清洁布"), "detergente": ("PRODUCT_TYPE", "洗洁精"),
     "barritas para gato": ("PRODUCT_TYPE", "猫零食条"), "barritas para gatos": ("PRODUCT_TYPE", "猫零食条"),
     "auriculares": ("PRODUCT_TYPE", "耳机"), "cartulina": ("PRODUCT_TYPE", "彩色手工卡纸"),
     "cola para madera": ("PRODUCT_TYPE", "木工胶"), "gofres": ("PRODUCT_TYPE", "华夫饼"),
-    "microfibra": ("MATERIAL", "超细纤维"), "goma": ("MATERIAL", "橡胶"),
+    "microfibra": ("MATERIAL", "超细纤维"), "microfibras": ("MATERIAL", "超细纤维"), "goma": ("MATERIAL", "橡胶"),
     "iluminación": ("PRODUCT_TYPE", "照明灯"), "cápsulas": ("PRODUCT_TYPE", "胶囊"),
     "calcetines": ("PRODUCT_TYPE", "袜子"), "manoplas": ("PRODUCT_TYPE", "沐浴手套"),
     "lámpara": ("PRODUCT_TYPE", "灯"), "concentrador": ("PRODUCT_TYPE", "集线器"),
@@ -105,6 +105,8 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
             token = match.group(0)
             kind = "TECH_TOKEN" if token.upper().startswith(("USB", "E")) or token[0].isalpha() else "MODEL"
             add(kind, token, token, field, token)
+        for match in re.finditer(r"\b(?:XXL|XL)\b", text, re.I):
+            add("TECH_TOKEN", match.group(0).upper(), match.group(0).upper(), field, match.group(0))
         for kind, pattern in _SEMANTIC_PATTERNS:
             for match in re.finditer(pattern, text, re.I):
                 raw = match.group(0)

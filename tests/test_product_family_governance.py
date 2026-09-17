@@ -29,6 +29,46 @@ def test_cleaning_cloth_classifier_is_phrase_aware_and_fail_closed():
     assert classify_product_family({"sku": "3", "name_es": "Paño"}).family_id == UNKNOWN_FAMILY
 
 
+def test_cleaning_cloth_classifier_does_not_promote_kitchen_paper_from_details():
+    record = {
+        "sku": "2569291",
+        "name_es": "Papel de cocina XL Pure Soft",
+        "cat1_es": "Hogar",
+        "cat2_es": "Artículos de limpieza",
+        "details_es": "Sustancia: Paño; Número de hojas: 100",
+    }
+    assert classify_product_family(record).family_id == UNKNOWN_FAMILY
+    plan = LocalizationEngine().resolve(record)
+    assert plan.fields["name_zh"].value == "厨房纸XL"
+
+
+def test_cleaning_cloth_real_usage_and_plural_facts_are_preserved():
+    engine = LocalizationEngine()
+    cases = (
+        ("2561275", "Paños de microfibras Spargo", "微纤维清洁布"),
+        ("2564340", "Bayeta de microfibra para suelo XL Spargo", "微纤维地板XL清洁布"),
+        ("3221671", "Paño de microfibra para coche XL C&C", "微纤维车用XL清洁布"),
+    )
+    for sku, name_es, expected in cases:
+        record = {"sku": sku, "name_es": name_es, "cat1_es": "Hogar", "cat2_es": "Artículos de limpieza"}
+        plan = engine.resolve(record)
+        assert plan.fields["name_zh"].value == expected
+
+
+def test_fact_qa_allows_numeric_relocation_from_official_fields():
+    source = SourceFacts.from_record({
+        "sku": "2528705",
+        "name_es": "Paño de microfibras",
+        "spec_es": "Varios colores",
+        "desc_es": "Aprox. 40 x 40 cm de tamaño",
+        "details_es": "Color: Azul",
+    })
+    result = __import__("action_tracker.localization.qa", fromlist=["guard_translation"]).guard_translation(
+        source, {"spec": "多种颜色｜40cm｜40×40cm｜蓝色"}, ("spec",)
+    )
+    assert result["status"] == "PASS"
+
+
 def test_family_context_has_source_hash_and_field_scope():
     record = {"sku": "1", "name_es": "Bayeta", "cat1_es": "Hogar", "cat2_es": "Limpieza"}
     plan = LocalizationEngine().resolve(record)

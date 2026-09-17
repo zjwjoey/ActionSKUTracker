@@ -25,6 +25,7 @@ _SEMANTIC_TARGET_ALIASES = {
     # ``microfibra`` is rendered in the existing catalog as either
     # ``超细纤维`` or the shorter ``微纤维``; both preserve the material fact.
     "microfibra": ("超细纤维", "微纤维"),
+    "microfibras": ("超细纤维", "微纤维"),
     "madera": ("木质", "木材", "木制", "木头"),
 }
 
@@ -85,8 +86,21 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             if source_term.casefold() in source_text.casefold() and not any(alias.casefold() in target.casefold() for alias in aliases):
                 findings.append(QAFinding("SEMANTIC_FACT_DROPPED", "ERROR", field_name, {"semantic_type": fact_type, "source_term": source_term, "expected_target": canonical}, source=source_text, target=target, message="semantic product fact is not represented in target", blocking=True))
         source_numbers, target_numbers = _numbers(source_text), _numbers(target)
+        # A planner may legitimately move an official numeric fact from
+        # description/details into the canonical spec field.  Keep dropped
+        # checks field-local, but only call a target number "added" when it
+        # is absent from every official Spanish source field.
+        all_source_text = " ".join(
+            str(getattr(source, attr, "") or "")
+            for attr in ("name_es", "spec_es", "desc_es", "details_es", "cat1_es", "cat2_es")
+        )
+        all_source_numbers = _numbers(all_source_text)
         dropped = source_numbers - target_numbers
-        duplicated = target_numbers - source_numbers
+        # Repetition of a number that is already present in another official
+        # field is not an invented fact (for example ``40cm`` plus
+        # ``40×40cm`` rendered into the canonical spec).  Only values absent
+        # from the complete official payload are additions.
+        duplicated = Counter({value: count for value, count in target_numbers.items() if value not in all_source_numbers})
         if dropped:
             findings.append(QAFinding("NUMERIC_DROPPED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "missing": dict(dropped)}, source=source_text, target=target, message="numeric fact dropped", blocking=True))
         if duplicated:

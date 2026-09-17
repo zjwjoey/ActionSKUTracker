@@ -107,8 +107,8 @@ def _phrase_present(text: str, phrase: str) -> bool:
 _CLEANING_CLOTH_ALIASES = (
     "paño", "paños", "bayeta", "bayetas",
     "paño de limpieza", "paños de limpieza",
-    "paño de microfibra", "paños de microfibra",
-    "bayeta de microfibra", "bayetas de microfibra",
+    "paño de microfibra", "paños de microfibra", "paño de microfibras", "paños de microfibras",
+    "bayeta de microfibra", "bayetas de microfibra", "bayeta de microfibras", "bayetas de microfibras",
 )
 
 _CLEANING_CLOTH_POLICY = ProductFamilyPolicy(
@@ -162,6 +162,14 @@ def classify_product_family(source: SourceFacts | Mapping[str, Any], *, semantic
     text = _family_text(source)
     candidates: list[ProductFamilyMatch] = []
     for policy in registry.all():
+        # A low-priority occurrence in details (for example ``Sustancia:
+        # Paño`` on a kitchen-paper product) must not override an explicit
+        # product identity in the name.  Keep this exclusion versioned with
+        # the family policy rather than relying on downstream translation QA.
+        if policy.family_id == "CLEANING_CLOTH":
+            name_text = source.name_es.casefold()
+            if re.search(r"\b(?:papel\s+de\s+cocina|papel\s+hig[ií]enico|toallitas?|pañuelos?)\b", name_text, re.I):
+                continue
         aliases = tuple(alias for alias in policy.aliases if _phrase_present(text, alias))
         if not aliases:
             continue
