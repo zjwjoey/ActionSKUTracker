@@ -698,3 +698,88 @@ def test_source_change_e2e_reuses_name_and_queues_only_spec(tmp_path: Path):
     by_field = {str(row[0]): tuple(row[1:]) for row in rows}
     assert by_field["name_es"] == ("FRESH", "商品", "APPROVED")
     assert by_field["spec_es"] == ("FRESH", None, None)
+
+
+def _seed_single_field_revision(tmp_path: Path, *, canonical_qa_status: str = "PASS", review_status: str = "HUMAN_REVIEWED"):
+    db_path = tmp_path / f"reuse-{canonical_qa_status.lower()}.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+    first = registry.register_source("123456", {"name_es": "Paño de microfibra"}, "source-v1", observed_at="2026-09-16")
+    with connect(db_path) as db:
+        unit_id = db.execute("SELECT unit_id FROM translation_units WHERE source_version_id=? AND field_name='name_es'", (first,)).fetchone()[0]
+    revision_id = registry.record_revision(
+        unit_id=str(unit_id), target_text="微纤维清洁布", provider="fake", model="fixture",
+        request_hash="rq", response_hash="rs", source_hash="source-v1", qa_status="PASS",
+        canonical_qa_status=canonical_qa_status, review_status=review_status,
+        provider_call_id="provider-call-v1", provenance={"fixture": "source-v1"},
+    )
+    return db_path, registry, revision_id
+
+
+def test_reuse_preserves_canonical_pass_and_provenance_without_provider_call(tmp_path: Path):
+    db_path, registry, parent_id = _seed_single_field_revision(tmp_path, canonical_qa_status="PASS")
+    assert registry.approve_revision(parent_id, actor="human:test") is True
+    second = registry.register_source("123456", {"name_es": "Paño de microfibra"}, "source-v2", observed_at="2026-09-17")
+    with connect(db_path) as db:
+        row = db.execute("""SELECT u.current_revision_id,r.qa_status,r.canonical_qa_status,r.review_status,
+                r.parent_revision_id,r.repair_reason,r.provider_call_id,r.provenance_json
+            FROM translation_units u JOIN translation_revisions r ON r.revision_id=u.current_revision_id
+            WHERE u.source_version_id=? AND u.field_name='name_es'""", (second,)).fetchone()
+        calls = db.execute("SELECT COUNT(*) FROM translation_provider_calls").fetchone()[0]
+        event = db.execute("SELECT evidence_json FROM translation_revision_events WHERE revision_id=? AND event_type='REUSED'", (row[0],)).fetchone()
+    assert row[1:6] == ("PASS", "PASS", "APPROVED", parent_id, "FIELD_SOURCE_UNCHANGED_REUSE")
+    assert row[6] == "provider-call-v1"
+    assert json.loads(row[7])["fixture"] == "source-v1"
+    assert calls == 0
+    evidence = json.loads(event[0])
+    assert evidence["parent_revision_id"] == parent_id
+    assert evidence["canonical_qa_status"] == "PASS"
+
+
+def test_reuse_preserves_canonical_not_required(tmp_path: Path):
+    db_path, registry, parent_id = _seed_single_field_revision(tmp_path, canonical_qa_status="NOT_REQUIRED")
+    assert registry.approve_revision(parent_id, actor="human:test") is True
+    second = registry.register_source("123456", {"name_es": "Paño de microfibra"}, "source-v2", observed_at="2026-09-17")
+    with connect(db_path) as db:
+        row = db.execute("""SELECT r.qa_status,r.canonical_qa_status,r.review_status
+            FROM translation_units u JOIN translation_revisions r ON r.revision_id=u.current_revision_id
+            WHERE u.source_version_id=? AND u.field_name='name_es'""", (second,)).fetchone()
+    assert tuple(row) == ("PASS", "NOT_REQUIRED", "APPROVED")
+
+
+def test_not_run_revision_is_not_reused_and_cannot_be_approved(tmp_path: Path):
+    db_path, registry, revision_id = _seed_single_field_revision(tmp_path, canonical_qa_status="NOT_RUN", review_status="APPROVED")
+    assert registry.approve_revision(revision_id, actor="human:test") is False
+    second = registry.register_source("123456", {"name_es": "Paño de microfibra"}, "source-v2", observed_at="2026-09-17")
+    with connect(db_path) as db:
+        row = db.execute("""SELECT u.current_revision_id,u.status
+            FROM translation_units u WHERE u.source_version_id=? AND u.field_name='name_es'""", (second,)).fetchone()
+    assert row[0] is None
+    assert row[1] == "PENDING"
+    result = registry.ingest_records([{"sku": "123456", "name_es": "Paño de microfibra"}], source_run_id="run-2", observed_at="2026-09-17")
+    assert result["queue_insert_attempts"] == 1
+
+
+def test_canonical_fail_is_not_reused(tmp_path: Path):
+    db_path, registry, revision_id = _seed_single_field_revision(tmp_path, canonical_qa_status="FAIL", review_status="PENDING")
+    second = registry.register_source("123456", {"name_es": "Paño de microfibra"}, "source-v2", observed_at="2026-09-17")
+    with connect(db_path) as db:
+        row = db.execute("SELECT u.current_revision_id,u.status FROM translation_units u WHERE u.source_version_id=? AND u.field_name='name_es'", (second,)).fetchone()
+    assert row[0] is None
+    assert row[1] == "PENDING"
+    assert registry.approve_revision(revision_id, actor="human:test") is False
+
+
+def test_changed_spec_keeps_name_approved_and_canonical(tmp_path: Path):
+    db_path, registry, parent_id = _seed_single_field_revision(tmp_path, canonical_qa_status="PASS")
+    assert registry.approve_revision(parent_id, actor="human:test") is True
+    second = registry.register_source("123456", {"name_es": "Paño de microfibra", "spec_es": "60 x 70 cm"}, "source-v2", observed_at="2026-09-17")
+    with connect(db_path) as db:
+        rows = db.execute("""SELECT u.field_name,u.current_revision_id,u.status,r.qa_status,r.canonical_qa_status,r.review_status
+            FROM translation_units u LEFT JOIN translation_revisions r ON r.revision_id=u.current_revision_id
+            WHERE u.source_version_id=? ORDER BY u.field_name""", (second,)).fetchall()
+    by_field = {str(row[0]): row for row in rows}
+    assert tuple(by_field["name_es"][2:]) == ("APPROVED", "PASS", "PASS", "APPROVED")
+    assert by_field["spec_es"][1] is None
+    assert by_field["spec_es"][2] == "PENDING"

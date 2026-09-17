@@ -47,8 +47,9 @@ class LocalizationRegistry:
             # actually changed.
             prior_rows = db.execute("""SELECT u.field_name,u.source_text_hash,u.current_revision_id,
                     r.target_text,r.target_hash,r.provider,r.model,r.request_hash,r.response_hash,
-                    r.request_id,r.policy_version,r.terminology_version,r.tm_version,r.repair_reason,
-                    r.qa_status,r.review_status,r.approved_by,r.approved_at
+                    r.provider_call_id,r.provenance_json,r.request_id,r.policy_version,
+                    r.terminology_version,r.tm_version,r.repair_reason,r.qa_status,
+                    r.canonical_qa_status,r.review_status,r.approved_by,r.approved_at
                 FROM translation_units u
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
                 LEFT JOIN translation_revisions r ON r.revision_id=u.current_revision_id
@@ -66,23 +67,26 @@ class LocalizationRegistry:
                 text_hash = value_hash(text)
                 prior = prior_by_field.get(field_key)
                 reusable = bool(prior and str(prior[1]) == text_hash and prior[3] is not None
-                                and str(prior[14] or "").upper() == "PASS"
-                                and str(prior[15] or "").upper() in {"APPROVED", "HUMAN_REVIEWED", "LOCKED"})
+                                and str(prior[16] or "").upper() == "PASS"
+                                and str(prior[17] or "NOT_RUN").upper() in {"PASS", "NOT_REQUIRED"}
+                                and str(prior[18] or "").upper() in {"APPROVED", "HUMAN_REVIEWED", "LOCKED"})
                 db.execute("INSERT INTO translation_units(unit_id,source_version_id,field_name,source_text,source_text_hash,target_language,status,current_revision_id,freshness_status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", (unit_id, source_id, field_key, text, text_hash, "zh", "APPROVED" if reusable else "PENDING", None, "FRESH", _now(), _now()))
                 if reusable:
                     revision_id = str(uuid.uuid4())
                     db.execute("""INSERT INTO translation_revisions(
                         revision_id,unit_id,revision,target_text,target_hash,provider,model,
-                        request_hash,response_hash,request_id,policy_version,terminology_version,
-                        tm_version,source_hash,parent_revision_id,repair_reason,qa_status,review_status,
-                        approved_by,approved_at,created_at)
-                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+                        request_hash,response_hash,provider_call_id,provenance_json,request_id,
+                        policy_version,terminology_version,tm_version,source_hash,parent_revision_id,
+                        repair_reason,qa_status,canonical_qa_status,review_status,approved_by,
+                        approved_at,created_at)
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
                         revision_id, unit_id, 1, prior[3], prior[4], prior[5], prior[6], prior[7],
-                        prior[8], prior[9], prior[10], prior[11], prior[12], source_hash,
-                        str(prior[2]) if prior[2] else None, "FIELD_SOURCE_UNCHANGED_REUSE",
-                        prior[14], prior[15], prior[16], prior[17], _now()))
+                        prior[8], prior[9], prior[10], prior[11], prior[12], prior[13], prior[14],
+                        source_hash, str(prior[2]) if prior[2] else None,
+                        "FIELD_SOURCE_UNCHANGED_REUSE", prior[16], prior[17], prior[18],
+                        prior[19], prior[20], _now()))
                     db.execute("UPDATE translation_units SET current_revision_id=? WHERE unit_id=?", (revision_id, unit_id))
-                    db.execute("INSERT INTO translation_revision_events(event_id,revision_id,event_type,actor,evidence_json,occurred_at) VALUES(?,?,?,?,?,?)", (str(uuid.uuid4()), revision_id, "REUSED", "system:field-freshness", json.dumps({"source_hash": source_hash, "field_name": field_key}, ensure_ascii=False, sort_keys=True), _now()))
+                    db.execute("INSERT INTO translation_revision_events(event_id,revision_id,event_type,actor,evidence_json,occurred_at) VALUES(?,?,?,?,?,?)", (str(uuid.uuid4()), revision_id, "REUSED", "system:field-freshness", json.dumps({"source_hash": source_hash, "field_name": field_key, "parent_revision_id": prior[2], "qa_status": prior[16], "canonical_qa_status": prior[17]}, ensure_ascii=False, sort_keys=True), _now()))
 
             # Mark only changed fields stale across prior source versions.
             for field_key, prior in prior_by_field.items():
@@ -168,17 +172,16 @@ class LocalizationRegistry:
             if not row or str(row[0]).lower() not in {"1", "true", "yes"}:
                 raise ValueError("AUTO_APPROVAL_DISABLED")
         with connect(self.path) as db:
-            row = db.execute("SELECT qa_status,review_status FROM translation_revisions WHERE revision_id=?", (revision_id,)).fetchone()
-            if not row or str(row[0]).upper() != "PASS":
-                return False
-            canonical_status = db.execute("SELECT canonical_qa_status FROM translation_revisions WHERE revision_id=?", (revision_id,)).fetchone()
-            if canonical_status and str(canonical_status[0] or "NOT_RUN").upper() == "FAIL":
+            row = db.execute("SELECT qa_status,canonical_qa_status,review_status FROM translation_revisions WHERE revision_id=?", (revision_id,)).fetchone()
+            if not row or str(row[0]).upper() != "PASS" or str(row[1] or "NOT_RUN").upper() not in {"PASS", "NOT_REQUIRED"}:
                 return False
             blockers = db.execute("SELECT COUNT(*) FROM translation_qa_findings WHERE revision_id=? AND status='OPEN' AND severity IN ('BLOCKER','ERROR','HIGH')", (revision_id,)).fetchone()[0]
             if blockers:
                 return False
             approved_at = _now()
-            db.execute("UPDATE translation_revisions SET review_status='APPROVED',approved_by=?,approved_at=? WHERE revision_id=? AND review_status NOT IN ('REJECTED','SUPERSEDED','STALE')", (actor, approved_at, revision_id))
+            cur = db.execute("UPDATE translation_revisions SET review_status='APPROVED',approved_by=?,approved_at=? WHERE revision_id=? AND review_status NOT IN ('REJECTED','SUPERSEDED','STALE')", (actor, approved_at, revision_id))
+            if cur.rowcount != 1:
+                return False
             db.execute("UPDATE translation_units SET status='APPROVED',updated_at=? WHERE current_revision_id=?", (approved_at, revision_id))
         self._revision_event(revision_id, "AUTO_APPROVED" if auto else "APPROVED", actor)
         return True
@@ -281,7 +284,7 @@ class LocalizationRegistry:
             source_count += 1
             with connect(self.path) as db:
                 units = db.execute("""SELECT u.unit_id,u.field_name,u.source_text,u.current_revision_id,
-                    r.qa_status,r.review_status FROM translation_units u
+                    r.qa_status,r.canonical_qa_status,r.review_status FROM translation_units u
                     LEFT JOIN translation_revisions r ON r.revision_id=u.current_revision_id
                     WHERE u.source_version_id=?""", (source_id,)).fetchall()
                 for unit in units:
@@ -291,7 +294,10 @@ class LocalizationRegistry:
                     # Unchanged fields with a fresh approved revision are
                     # reused and must not be re-enqueued.  Only missing,
                     # pending or changed-field units enter the worker queue.
-                    if unit["current_revision_id"] and str(unit["qa_status"] or "").upper() == "PASS" and str(unit["review_status"] or "").upper() in {"APPROVED", "HUMAN_REVIEWED", "LOCKED"}:
+                    if (unit["current_revision_id"]
+                            and str(unit["qa_status"] or "").upper() == "PASS"
+                            and str(unit["canonical_qa_status"] or "NOT_RUN").upper() in {"PASS", "NOT_REQUIRED"}
+                            and str(unit["review_status"] or "").upper() in {"APPROVED", "HUMAN_REVIEWED", "LOCKED"}):
                         continue
                     canonical = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}.get(str(unit["field_name"]), str(unit["field_name"]))
                     queue_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"translation:{facts.sku}:{source_hash(facts.as_record())}:{canonical}"))
