@@ -33,7 +33,7 @@ class TranslationMemoryRepository:
         source_hash = value_hash(source_text)
         try:
             with connect(self.db_path) as db:
-                row = db.execute("SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version FROM translation_memory_entries WHERE approval_status='APPROVED' AND source_hash=? AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(family_id,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '') ORDER BY created_at DESC LIMIT 1", (source_hash, field_name, family_id, context_key)).fetchone()
+                row = db.execute("SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version FROM (SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version,approval_status,created_at FROM translation_memory_entries UNION ALL SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version,approval_status,created_at FROM translation_memory_scoped_entries) tm WHERE approval_status='APPROVED' AND source_hash=? AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(family_id,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '') ORDER BY created_at DESC LIMIT 1", (source_hash, field_name, family_id, context_key)).fetchone()
         except Exception as exc:
             if "no such table" in str(exc).lower(): return None
             raise
@@ -44,12 +44,12 @@ class TranslationMemoryRepository:
         try:
             with connect(self.db_path) as db:
                 normalized_hash = value_hash(normalized)
-                rows = db.execute("SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version FROM translation_memory_entries WHERE approval_status='APPROVED' AND normalized_source_hash=? AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(family_id,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '')", (normalized_hash, field_name, family_id, context_key)).fetchall()
+                rows = db.execute("SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version FROM (SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version,normalized_source_hash,approval_status FROM translation_memory_entries UNION ALL SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version,normalized_source_hash,approval_status FROM translation_memory_scoped_entries) tm WHERE approval_status='APPROVED' AND normalized_source_hash=? AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(family_id,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '')", (normalized_hash, field_name, family_id, context_key)).fetchall()
                 # Backward-compatible fallback for rows created before the
                 # additive normalized hash column existed. New rows use the
                 # indexed path above; legacy rows are a finite migration tail.
                 if not rows:
-                    rows = db.execute("SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version FROM translation_memory_entries WHERE approval_status='APPROVED' AND normalized_source_hash IS NULL AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(family_id,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '')", (field_name, family_id, context_key)).fetchall()
+                    rows = db.execute("SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version FROM (SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version,normalized_source_hash,approval_status FROM translation_memory_entries UNION ALL SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version,normalized_source_hash,approval_status FROM translation_memory_scoped_entries) tm WHERE approval_status='APPROVED' AND normalized_source_hash IS NULL AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(family_id,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '')", (field_name, family_id, context_key)).fetchall()
         except Exception as exc:
             if "no such table" in str(exc).lower(): return None
             raise
@@ -62,7 +62,7 @@ class TranslationMemoryRepository:
         normalized = normalize_memory_source(source_text)
         try:
             with connect(self.db_path) as db:
-                rows = db.execute("SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version FROM translation_memory_entries WHERE approval_status='APPROVED' AND COALESCE(field_name,'')=COALESCE(?, '') AND (family_id=? OR family_id IS NULL) AND (context_key=? OR context_key IS NULL) ORDER BY created_at DESC LIMIT 200", (field_name, family_id, context_key)).fetchall()
+                rows = db.execute("SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version FROM (SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version,approval_status,created_at FROM translation_memory_entries UNION ALL SELECT source_text,target_text,field_name,family_id,context_key,source_hash,match_type,normalization_version,approval_status,created_at FROM translation_memory_scoped_entries) tm WHERE approval_status='APPROVED' AND COALESCE(field_name,'')=COALESCE(?, '') AND (family_id=? OR family_id IS NULL) AND (context_key=? OR context_key IS NULL) ORDER BY created_at DESC LIMIT 200", (field_name, family_id, context_key)).fetchall()
         except Exception as exc:
             if "no such table" in str(exc).lower(): return ()
             raise

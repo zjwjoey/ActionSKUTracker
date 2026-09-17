@@ -220,8 +220,9 @@ class LocalizationRegistry:
                  forbidden_target: str | None = None, source: str | None = None, evidence: str | None = None,
                  approved_by: str | None = None) -> str:
         term_id = str(uuid.uuid4())
+        table = "terminology_scoped_entries" if family_scope else "terminology_entries"
         with connect(self.path) as db:
-            row = db.execute("""SELECT term_id FROM terminology_entries
+            row = db.execute(f"""SELECT term_id FROM {table}
                 WHERE source_term=? AND target_term=? AND target_language='zh' AND scope=?
                   AND COALESCE(field_scope,'')=COALESCE(?, '')
                   AND COALESCE(cat1_scope,'')=COALESCE(?, '')
@@ -231,7 +232,7 @@ class LocalizationRegistry:
                   AND COALESCE(context_key,'')=COALESCE(?, '')""", (source_term, target_term, scope, field_scope, cat1_scope, cat2_scope, product_type_scope, family_scope, context_key)).fetchone()
             if row:
                 return str(row[0])
-            db.execute("""INSERT INTO terminology_entries(term_id,source_term,target_term,scope,approval_status,notes,created_at,
+            db.execute(f"""INSERT INTO {table}(term_id,source_term,target_term,scope,approval_status,notes,created_at,
                 term_type,field_scope,cat1_scope,cat2_scope,product_type_scope,family_scope,context_key,priority,match_mode,
                 case_sensitive,do_not_translate,keep_original,forbidden_target,source,evidence,approved_by,approved_at,updated_at)
                 VALUES(?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (term_id, source_term, target_term, scope, approval_status, notes, _now(), term_type, field_scope, cat1_scope, cat2_scope, product_type_scope, family_scope, context_key, int(priority), match_mode, int(case_sensitive), int(do_not_translate), int(keep_original), forbidden_target, source, evidence, approved_by, _now() if approved_by else None, _now()))
@@ -240,11 +241,12 @@ class LocalizationRegistry:
     def add_tm(self, source_text: str, target_text: str, *, field_name: str | None = None, family_id: str | None = None, context_key: str | None = None, approval_status: str = "PENDING", match_type: str = "EXACT", normalization_version: str = "TM_NORMALIZATION_V1", source_revision_id: str | None = None) -> str:
         tm_id = str(uuid.uuid4())
         source_hash = value_hash(source_text)
+        table = "translation_memory_scoped_entries" if family_id else "translation_memory_entries"
         with connect(self.path) as db:
-            row = db.execute("SELECT tm_id FROM translation_memory_entries WHERE source_language='es' AND target_language='zh' AND source_hash=? AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(family_id,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '')", (source_hash, field_name, family_id, context_key)).fetchone()
+            row = db.execute(f"SELECT tm_id FROM {table} WHERE source_language='es' AND target_language='zh' AND source_hash=? AND COALESCE(field_name,'')=COALESCE(?, '') AND COALESCE(family_id,'')=COALESCE(?, '') AND COALESCE(context_key,'')=COALESCE(?, '')", (source_hash, field_name, family_id, context_key)).fetchone()
             if row:
                 return str(row[0])
-            db.execute("INSERT INTO translation_memory_entries(tm_id,source_language,target_language,source_text,target_text,source_hash,normalized_source_hash,match_type,normalization_version,field_name,family_id,context_key,approval_status,source_revision_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (tm_id, "es", "zh", source_text, target_text, source_hash, value_hash(normalize_memory_source(source_text)), match_type, normalization_version, field_name, family_id, context_key, approval_status, source_revision_id, _now()))
+            db.execute(f"INSERT INTO {table}(tm_id,source_language,target_language,source_text,target_text,source_hash,normalized_source_hash,match_type,normalization_version,field_name,family_id,context_key,approval_status,source_revision_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (tm_id, "es", "zh", source_text, target_text, source_hash, value_hash(normalize_memory_source(source_text)), match_type, normalization_version, field_name, family_id, context_key, approval_status, source_revision_id, _now()))
         return tm_id
 
     def ingest_records(self, records: Iterable[Mapping[str, Any]], *, source_run_id: str, observed_at: str) -> dict[str, int]:
@@ -287,9 +289,9 @@ class LocalizationRegistry:
             if source_terms:
                 terms = tuple(source_terms)
                 placeholders = ",".join("?" for _ in terms)
-                rows = db.execute(f"SELECT source_term,target_term,scope FROM terminology_entries WHERE approval_status='APPROVED' AND source_term IN ({placeholders})", terms).fetchall()
+                rows = db.execute(f"SELECT source_term,target_term,scope FROM (SELECT source_term,target_term,scope,approval_status FROM terminology_entries UNION ALL SELECT source_term,target_term,scope,approval_status FROM terminology_scoped_entries) terms WHERE approval_status='APPROVED' AND source_term IN ({placeholders})", terms).fetchall()
             else:
-                rows = db.execute("SELECT source_term,target_term,scope FROM terminology_entries WHERE approval_status='APPROVED' ORDER BY source_term").fetchall()
+                rows = db.execute("SELECT source_term,target_term,scope FROM (SELECT source_term,target_term,scope,approval_status FROM terminology_entries UNION ALL SELECT source_term,target_term,scope,approval_status FROM terminology_scoped_entries) terms WHERE approval_status='APPROVED' ORDER BY source_term").fetchall()
         return [dict(row) for row in rows]
 
     def approved_tm(self, source_hashes: Iterable[str]) -> list[dict[str, Any]]:
@@ -298,7 +300,7 @@ class LocalizationRegistry:
             return []
         placeholders = ",".join("?" for _ in hashes)
         with connect(self.path) as db:
-            rows = db.execute(f"SELECT source_text,target_text,field_name,context_key,source_hash FROM translation_memory_entries WHERE approval_status='APPROVED' AND source_hash IN ({placeholders})", hashes).fetchall()
+            rows = db.execute(f"SELECT source_text,target_text,field_name,context_key,source_hash FROM (SELECT source_text,target_text,field_name,context_key,source_hash,approval_status FROM translation_memory_entries UNION ALL SELECT source_text,target_text,field_name,context_key,source_hash,approval_status FROM translation_memory_scoped_entries) tm WHERE approval_status='APPROVED' AND source_hash IN ({placeholders})", hashes).fetchall()
         return [dict(row) for row in rows]
 
     def claim_queue(self, *, limit: int = 50, worker_id: str = "localization-worker") -> list[dict[str, Any]]:

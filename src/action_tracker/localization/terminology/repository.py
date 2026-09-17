@@ -48,7 +48,12 @@ class TerminologyRepository:
             with connect(self.db_path) as db:
                 rows = db.execute("""SELECT term_id,source_term,target_term,scope,priority,do_not_translate,
                 field_scope,cat1_scope,cat2_scope,product_type_scope,family_scope,context_key,match_mode,
-                case_sensitive,keep_original,forbidden_target FROM terminology_entries
+                case_sensitive,keep_original,forbidden_target FROM (SELECT term_id,source_term,target_term,scope,priority,do_not_translate,
+                field_scope,cat1_scope,cat2_scope,product_type_scope,family_scope,context_key,match_mode,
+                case_sensitive,keep_original,forbidden_target,approval_status FROM terminology_entries
+                UNION ALL SELECT term_id,source_term,target_term,scope,priority,do_not_translate,
+                field_scope,cat1_scope,cat2_scope,product_type_scope,family_scope,context_key,match_mode,
+                case_sensitive,keep_original,forbidden_target,approval_status FROM terminology_scoped_entries) terms
                 WHERE approval_status='APPROVED' AND (scope=? OR scope='GLOBAL' OR scope IS NULL)
                 ORDER BY CASE WHEN family_scope IS NOT NULL THEN 0 WHEN product_type_scope IS NOT NULL THEN 1 WHEN cat2_scope IS NOT NULL THEN 2 WHEN cat1_scope IS NOT NULL THEN 3 WHEN field_scope IS NOT NULL THEN 4 ELSE 5 END,
                          priority DESC, LENGTH(source_term) DESC, source_term LIMIT ?""", (scope, max(limit * 4, limit))).fetchall()

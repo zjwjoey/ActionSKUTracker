@@ -758,91 +758,35 @@ def migrate_v2(path, *, role: str = "SHADOW"):
                 except Exception as exc:
                     if "duplicate column" not in str(exc).lower():
                         raise
-        # The family scope is part of the TM identity.  Databases created by
-        # older registry builds have an inline UNIQUE constraint that predates
-        # family_id; rebuild that one table additively so two approved terms
-        # with the same source/context can safely coexist in different
-        # product families.  All rows are copied verbatim and production
-        # projection tables are untouched.
-        tm_sql_row = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='translation_memory_entries'").fetchone()
-        tm_sql = str(tm_sql_row[0] or "") if tm_sql_row else ""
-        if tm_sql and "UNIQUE(source_language, target_language, source_hash, field_name, context_key)" in tm_sql.replace("\n", " "):
-            db.execute("ALTER TABLE translation_memory_entries RENAME TO translation_memory_entries_legacy_family")
-            db.execute("""CREATE TABLE translation_memory_entries (
-                tm_id TEXT PRIMARY KEY,
-                source_language TEXT NOT NULL,
-                target_language TEXT NOT NULL,
-                source_text TEXT NOT NULL,
-                target_text TEXT NOT NULL,
-                source_hash TEXT NOT NULL,
-                normalized_source_hash TEXT,
-                match_type TEXT NOT NULL DEFAULT 'EXACT',
-                normalization_version TEXT NOT NULL DEFAULT 'TM_NORMALIZATION_V1',
-                field_name TEXT,
-                family_id TEXT,
-                context_key TEXT,
-                approval_status TEXT NOT NULL DEFAULT 'PENDING',
-                source_revision_id TEXT,
-                created_at TEXT NOT NULL,
-                UNIQUE(source_language, target_language, source_hash, field_name, family_id, context_key)
-            )""")
-            db.execute("""INSERT INTO translation_memory_entries(
-                tm_id,source_language,target_language,source_text,target_text,source_hash,
-                normalized_source_hash,match_type,normalization_version,field_name,family_id,
-                context_key,approval_status,source_revision_id,created_at)
-                SELECT tm_id,source_language,target_language,source_text,target_text,source_hash,
-                normalized_source_hash,match_type,normalization_version,field_name,family_id,
-                context_key,approval_status,source_revision_id,created_at
-                FROM translation_memory_entries_legacy_family""")
-            db.execute("DROP TABLE translation_memory_entries_legacy_family")
-        term_sql_row = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='terminology_entries'").fetchone()
-        term_sql = str(term_sql_row[0] or "") if term_sql_row else ""
-        if term_sql and "UNIQUE(source_term, target_language, scope)" in term_sql.replace("\n", " "):
-            db.execute("ALTER TABLE terminology_entries RENAME TO terminology_entries_legacy_scope")
-            db.execute("""CREATE TABLE terminology_entries (
-                term_id TEXT PRIMARY KEY,
-                source_term TEXT NOT NULL,
-                target_term TEXT NOT NULL,
-                source_language TEXT NOT NULL DEFAULT 'es',
-                target_language TEXT NOT NULL DEFAULT 'zh',
-                term_type TEXT NOT NULL DEFAULT 'TERM',
-                field_scope TEXT,
-                cat1_scope TEXT,
-                cat2_scope TEXT,
-                product_type_scope TEXT,
-                family_scope TEXT,
-                context_key TEXT,
-                priority INTEGER NOT NULL DEFAULT 0,
-                match_mode TEXT NOT NULL DEFAULT 'SUBSTRING',
-                case_sensitive INTEGER NOT NULL DEFAULT 0,
-                do_not_translate INTEGER NOT NULL DEFAULT 0,
-                keep_original INTEGER NOT NULL DEFAULT 0,
-                forbidden_target TEXT,
-                scope TEXT NOT NULL DEFAULT 'GLOBAL',
-                approval_status TEXT NOT NULL DEFAULT 'PENDING',
-                version TEXT NOT NULL DEFAULT '1',
-                revision INTEGER NOT NULL DEFAULT 1,
-                approved_by TEXT,
-                approved_at TEXT,
-                source TEXT,
-                evidence TEXT,
-                notes TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL,
-                updated_at TEXT,
-                UNIQUE(source_term, target_term, target_language, scope, field_scope, cat1_scope, cat2_scope, product_type_scope, family_scope, context_key)
-            )""")
-            db.execute("""INSERT INTO terminology_entries(
-                term_id,source_term,target_term,source_language,target_language,term_type,field_scope,
-                cat1_scope,cat2_scope,product_type_scope,family_scope,context_key,priority,match_mode,
-                case_sensitive,do_not_translate,keep_original,forbidden_target,scope,approval_status,
-                version,revision,approved_by,approved_at,source,evidence,notes,created_at,updated_at)
-                SELECT term_id,source_term,target_term,source_language,target_language,term_type,field_scope,
-                cat1_scope,cat2_scope,product_type_scope,family_scope,context_key,priority,match_mode,
-                case_sensitive,do_not_translate,keep_original,forbidden_target,scope,approval_status,
-                version,revision,approved_by,approved_at,source,evidence,notes,created_at,updated_at
-                FROM terminology_entries_legacy_scope""")
-            db.execute("DROP TABLE terminology_entries_legacy_scope")
+        # Family-scoped rows use additive sidecar tables.  This preserves old
+        # SQLite inline UNIQUE constraints exactly as they are; production
+        # databases are never rebuilt or rewritten by this migration.
+        db.execute("""CREATE TABLE IF NOT EXISTS translation_memory_scoped_entries (
+            tm_id TEXT PRIMARY KEY, source_language TEXT NOT NULL, target_language TEXT NOT NULL,
+            source_text TEXT NOT NULL, target_text TEXT NOT NULL, source_hash TEXT NOT NULL,
+            normalized_source_hash TEXT, match_type TEXT NOT NULL DEFAULT 'EXACT',
+            normalization_version TEXT NOT NULL DEFAULT 'TM_NORMALIZATION_V1', field_name TEXT,
+            family_id TEXT, context_key TEXT, approval_status TEXT NOT NULL DEFAULT 'PENDING',
+            source_revision_id TEXT, created_at TEXT NOT NULL,
+            UNIQUE(source_language,target_language,source_hash,field_name,family_id,context_key)
+        )""")
+        db.execute("""CREATE TABLE IF NOT EXISTS terminology_scoped_entries (
+            term_id TEXT PRIMARY KEY, source_term TEXT NOT NULL, target_term TEXT NOT NULL,
+            source_language TEXT NOT NULL DEFAULT 'es', target_language TEXT NOT NULL DEFAULT 'zh',
+            term_type TEXT NOT NULL DEFAULT 'TERM', field_scope TEXT, cat1_scope TEXT,
+            cat2_scope TEXT, product_type_scope TEXT, family_scope TEXT, context_key TEXT,
+            priority INTEGER NOT NULL DEFAULT 0, match_mode TEXT NOT NULL DEFAULT 'SUBSTRING',
+            case_sensitive INTEGER NOT NULL DEFAULT 0, do_not_translate INTEGER NOT NULL DEFAULT 0,
+            keep_original INTEGER NOT NULL DEFAULT 0, forbidden_target TEXT,
+            scope TEXT NOT NULL DEFAULT 'GLOBAL', approval_status TEXT NOT NULL DEFAULT 'PENDING',
+            version TEXT NOT NULL DEFAULT '1', revision INTEGER NOT NULL DEFAULT 1,
+            approved_by TEXT, approved_at TEXT, source TEXT, evidence TEXT,
+            notes TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT,
+            UNIQUE(source_term,target_term,target_language,scope,field_scope,cat1_scope,cat2_scope,product_type_scope,family_scope,context_key)
+        )""")
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_price_history_event_key ON price_history(event_key) WHERE event_key IS NOT NULL")
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_event_history_event_key ON event_history(event_key) WHERE event_key IS NOT NULL")
         db.execute("CREATE INDEX IF NOT EXISTS idx_tm_normalized_lookup ON translation_memory_entries(source_language,target_language,normalized_source_hash,field_name,family_id,context_key,approval_status)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_tm_scoped_lookup ON translation_memory_scoped_entries(source_language,target_language,normalized_source_hash,field_name,family_id,context_key,approval_status)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_terms_scoped_lookup ON terminology_entries(source_language,target_language,source_term,field_scope,cat1_scope,cat2_scope,product_type_scope,family_scope,context_key,approval_status)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_terms_sidecar_lookup ON terminology_scoped_entries(source_language,target_language,source_term,field_scope,cat1_scope,cat2_scope,product_type_scope,family_scope,context_key,approval_status)")
