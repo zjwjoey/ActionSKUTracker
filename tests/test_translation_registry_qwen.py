@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import io
 import os
 import sqlite3
 import urllib.error
@@ -11,18 +12,22 @@ import pytest
 from action_tracker.database.connection import connect
 from action_tracker.localization.hashes import localization_source_hash_v1, source_hash_v2
 from action_tracker.services.hashing import localization_source_hash
-from action_tracker.localization.providers.base import ProviderError, TranslationRequest
+from action_tracker.localization.providers.base import FakeTranslationProvider, ProviderError, TranslationRequest
 from action_tracker.localization.providers.qwen_mt import QwenMTProvider
 from action_tracker.localization.protection.tokens import ProtectedTokenError, protect_text, restore_text
 from action_tracker.localization.registry.repository import LocalizationRegistry
 from action_tracker.localization.pipeline import make_request
+from action_tracker.localization.pipeline import translate_candidate
 from action_tracker.localization.qa import guard_translation
 from action_tracker.localization.contracts import SourceFacts, source_hash
 from action_tracker.localization.ai import QwenMTCompatibleProvider, provider_from_config, provider_health
+from action_tracker.localization.providers.qwen_mt import endpoint_diagnostics
 from action_tracker.localization.providers.base import TranslationResponse
 from action_tracker.localization.normalization import normalize_source_text, parse_detail_fields, format_detail_fields
 from action_tracker.localization.registry.migration import build_migration_preview
 from action_tracker.localization.resolver import TranslationResolver
+from action_tracker.localization.engine import LocalizationEngine
+from action_tracker.localization.contracts import SemanticFact
 from action_tracker.localization.worker import TranslationQueueWorker
 from action_tracker.localization.runtime_builder import build_translation_runtime
 from action_tracker.database.schema import migrate_v2
@@ -121,6 +126,14 @@ def test_qwen_payload_has_single_user_message_and_translation_options(monkeypatc
     assert payload["translation_options"]["domains"]
     assert set(payload["translation_options"]["terms"][0]) == {"source", "target"}
     assert "temperature" not in payload
+
+
+def test_qwen_mt_wire_payload_keeps_source_text_without_internal_placeholders():
+    provider = QwenMTProvider("https://example.test/compatible-mode/v1")
+    request = TranslationRequest("123456", {"name_es": "Auriculares USB-C 20 mg"}, ("name",), "source-hash")
+    payload = provider._payload(request)
+    assert payload["messages"][0]["content"] == "Auriculares USB-C 20 mg"
+    assert "[[PROTECTED_" not in payload["messages"][0]["content"]
 
 
 def test_registry_reuses_unchanged_field_and_queues_only_changed_field(tmp_path: Path):
@@ -230,6 +243,32 @@ def test_runtime_builder_shares_registry_resolver_and_worker(tmp_path: Path):
     assert getattr(runtime.provider, "provider", "") == "disabled"
 
 
+def test_runtime_builder_explicit_canary_opt_in_keeps_default_disabled(monkeypatch, tmp_path: Path):
+    cfg = {
+        "project_root": tmp_path,
+        "storage": {"db_path": str(tmp_path / "runtime.sqlite")},
+        "paths": {"dictionary": tmp_path / "dictionary"},
+        "localization": {"policy_version": "TEST", "ai": {"enabled": False, "provider": "qwen_mt"}},
+    }
+    monkeypatch.setenv("ACTION_TRACKER_ALLOW_QWEN_PROVIDER", "1")
+    monkeypatch.setenv("QWEN_MT_BASE_URL", "https://workspace.example/compatible-mode/v1")
+    runtime = build_translation_runtime(cfg, allow_provider=True)
+    assert getattr(runtime.provider, "provider", "") == "qwen_mt"
+
+
+def test_runtime_builder_canary_selects_qwen_for_legacy_config(monkeypatch, tmp_path: Path):
+    cfg = {
+        "project_root": tmp_path,
+        "storage": {"db_path": str(tmp_path / "runtime.sqlite")},
+        "paths": {"dictionary": tmp_path / "dictionary"},
+    }
+    monkeypatch.setenv("ACTION_TRACKER_ALLOW_QWEN_PROVIDER", "1")
+    monkeypatch.setenv("QWEN_MT_BASE_URL", "https://workspace.example/compatible-mode/v1")
+    runtime = build_translation_runtime(cfg, allow_provider=True)
+    assert getattr(runtime.provider, "provider", "") == "qwen_mt"
+    assert getattr(runtime.provider, "model", "") == "qwen-mt-flash"
+
+
 def test_tm_normalized_lookup_uses_indexed_hash(tmp_path: Path):
     registry = LocalizationRegistry(tmp_path / "terms.sqlite")
     registry.add_tm("  LED   light ", "LED灯", field_name="name", approval_status="APPROVED")
@@ -282,6 +321,40 @@ def test_qwen_provider_health_does_not_assume_models_endpoint(monkeypatch):
     assert health["health_check"] == "CONFIG_ONLY_QWEN_MT"
 
 
+def test_qwen_provider_health_reports_safe_endpoint_contract(monkeypatch):
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "fixture-key")
+    provider = provider_from_config({
+        "enabled": True,
+        "provider": "qwen_mt",
+        "base_url": "https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    })
+    health = provider_health(provider)
+    assert health["endpoint_host"] == "ws-example.cn-beijing.maas.aliyuncs.com"
+    assert health["endpoint_contract"] == "QWEN_MT_OPENAI_COMPATIBLE_V1"
+
+
+def test_qwen_provider_health_rejects_unknown_endpoint_path(monkeypatch):
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "fixture-key")
+    provider = provider_from_config({
+        "enabled": True,
+        "provider": "qwen_mt",
+        "base_url": "https://ws-example.cn-beijing.maas.aliyuncs.com/not-the-api",
+    })
+    health = provider_health(provider)
+    assert health["status"] == "INVALID_CONFIG"
+    assert health["error"] == "QWEN_ENDPOINT_PATH_INVALID"
+
+
+def test_qwen_endpoint_diagnostics_never_contains_secret():
+    result = endpoint_diagnostics("https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1")
+    assert result == {
+        "endpoint": "https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+        "endpoint_host": "ws-example.cn-beijing.maas.aliyuncs.com",
+        "endpoint_path": "/compatible-mode/v1",
+        "endpoint_contract": "QWEN_MT_OPENAI_COMPATIBLE_V1",
+    }
+
+
 @pytest.mark.parametrize("status", [400, 401, 403])
 def test_qwen_client_errors_are_not_retried(monkeypatch, status):
     monkeypatch.setenv("DASHSCOPE_API_KEY", "fixture-key")
@@ -299,14 +372,178 @@ def test_qwen_client_errors_are_not_retried(monkeypatch, status):
     assert attempts == [status]
 
 
+def test_qwen_400_error_includes_safe_endpoint_hint(monkeypatch):
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "fixture-key")
+
+    def fail(request, timeout):
+        raise urllib.error.HTTPError(request.full_url, 400, "bad", {}, io.BytesIO(b"Bad Request"))
+
+    monkeypatch.setattr("urllib.request.urlopen", fail)
+    provider = QwenMTProvider("https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", max_retries=0)
+    request = TranslationRequest("123456", {"name_es": "Producto"}, ("name",), "source-hash")
+    with pytest.raises(ProviderError) as caught:
+        provider.translate(request)
+    assert "host=ws-example.cn-beijing.maas.aliyuncs.com" in str(caught.value)
+    assert "model=qwen-mt-flash" in str(caught.value)
+
+
+def test_qwen_compatible_endpoint_ignores_stale_workspace_header(monkeypatch):
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "fixture-key")
+    monkeypatch.setenv("DASHSCOPE_WORKSPACE", "old-workspace")
+    seen = {}
+
+    def succeed(request, timeout):
+        seen["workspace_header"] = request.headers.get("X-dashscope-workspace")
+        return type("Response", (), {
+            "__enter__": lambda self: self,
+            "__exit__": lambda self, *args: False,
+            "read": lambda self: json.dumps({"choices": [{"message": {"content": "耳机"}}]}, ensure_ascii=False).encode("utf-8"),
+        })()
+
+    monkeypatch.setattr("urllib.request.urlopen", succeed)
+    provider = QwenMTProvider("https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", max_retries=0)
+    request = TranslationRequest("123456", {"name_es": "Auriculares"}, ("name",), "source-hash")
+    provider.translate(request)
+    assert seen["workspace_header"] is None
+
+
 def test_qwen_legacy_localization_bridge(monkeypatch):
     def fake_translate(self, request):
         return TranslationResponse({"name": "耳机"}, "qwen_mt", "qwen-mt-flash", request.source_hash, "rq", "rs", "id")
     monkeypatch.setattr("action_tracker.localization.ai.QwenMTProvider.translate", fake_translate)
     source = SourceFacts.from_record({"sku": "123456", "name_es": "Auriculares"})
-    result = QwenMTCompatibleProvider("https://example.test/compatible-mode/v1", api_key_env="KEY").complete(source, ("name",))
+    provider = QwenMTCompatibleProvider("https://example.test/compatible-mode/v1", api_key_env="KEY")
+    result = provider.complete(source, ("name",))
     assert result["fields"] == {"name": "耳机"}
     assert result["source_hash"]
+    direct = provider.translate(TranslationRequest("123456", {"name_es": "Auriculares"}, ("name",), "source-hash"))
+    assert direct.fields == {"name": "耳机"}
+
+
+def test_resolver_uses_qwen_compatible_adapter_translate_contract(monkeypatch):
+    def fake_translate(self, request):
+        return TranslationResponse(
+            {"description": "适用于日常使用。"}, "qwen_mt", "qwen-mt-flash",
+            request.source_hash, "rq", "rs", "id",
+        )
+
+    monkeypatch.setattr("action_tracker.localization.ai.QwenMTProvider.translate", fake_translate)
+    provider = QwenMTCompatibleProvider("https://example.test/compatible-mode/v1", api_key_env="KEY")
+    resolver = TranslationResolver(provider=provider)
+    result = resolver.resolve_field(
+        {"sku": "123456", "desc_es": "Adecuado para uso diario."},
+        "description", allow_provider=True,
+    )
+    assert result.source == "qwen_mt"
+    assert result.value == "适用于日常使用。"
+
+
+def test_provider_name_applies_no_brand_display_policy_after_translation():
+    resolver = TranslationResolver(
+        provider=FakeTranslationProvider({"name": "Spectrum小型涂料滚筒"}),
+        engine=LocalizationEngine(knowledge={"brands": {"Spectrum"}}),
+    )
+    result = resolver.resolve_field(
+        {"sku": "1221001", "name_es": "Rodillos de pintura pequeños Spectrum"},
+        "name", allow_provider=True,
+    )
+    assert result.value == "小型涂料滚筒"
+    assert result.provenance["display_policy_profile"] == "ACTION_MASTER_NO_BRAND_V1"
+    assert result.provenance["provider_raw_value"] == "Spectrum小型涂料滚筒"
+
+
+def test_guard_blocks_dropped_reviewed_product_fact():
+    source = SourceFacts.from_record({
+        "sku": "10280",
+        "desc_es": "Envase ahorro de gomas para sujetar objetos.",
+    })
+    fact = SemanticFact("PRODUCT_TYPE", "gomas", "橡皮筋", "橡皮筋", "name_es")
+    result = guard_translation(
+        source, {"description": "节省空间的包装，可快速固定物品。"},
+        ("description",), semantic_facts=(fact,),
+    )
+    assert result["status"] == "FAIL"
+    assert any(item["rule_id"] == "SEMANTIC_FACT_DROPPED" for item in result["findings"])
+
+
+def test_guard_accepts_known_semantic_synonyms():
+    source = SourceFacts.from_record({
+        "sku": "100241",
+        "desc_es": "Esta bayeta limpia suelos de madera.",
+    })
+    facts = (
+        SemanticFact("PRODUCT_TYPE", "paño", "清洁布", "清洁布", "desc_es"),
+        SemanticFact("MATERIAL", "madera", "木质", "木质", "desc_es"),
+    )
+    result = guard_translation(
+        source, {"description": "这款抹布可清洁木制地板。"},
+        ("description",), semantic_facts=facts,
+    )
+    assert result["status"] == "PASS"
+
+
+def test_guard_accepts_microfiber_synonym():
+    source = SourceFacts.from_record({
+        "sku": "102235",
+        "name_es": "Paños de microfibra Spargo",
+    })
+    fact = SemanticFact("MATERIAL", "microfibra", "超细纤维", "超细纤维", "name_es")
+    result = guard_translation(
+        source, {"name": "微纤维清洁布"},
+        ("name",), semantic_facts=(fact,),
+    )
+    assert result["status"] == "PASS"
+
+
+def test_resolver_sends_reviewed_semantic_facts_as_provider_terms():
+    seen = {}
+
+    class CapturingProvider:
+        provider = "fake"
+        model = "fixture"
+
+        def translate(self, request):
+            seen["terms"] = tuple(request.terms)
+            return TranslationResponse(
+                {"description": "橡皮筋可快速固定物品。"}, "fake", "fixture",
+                request.source_hash, "rq", "rs", "id",
+            )
+
+    resolver = TranslationResolver(provider=CapturingProvider())
+    result = resolver.resolve_field(
+        {"sku": "10280", "desc_es": "Envase ahorro de gomas para sujetar objetos."},
+        "description", allow_provider=True,
+    )
+    assert result.value == "橡皮筋可快速固定物品。"
+    assert {term["source"]: term["target"] for term in seen["terms"]}["gomas"] == "橡皮筋"
+
+
+def test_engine_uses_sku_product_dictionary_for_deterministic_name():
+    engine = LocalizationEngine(knowledge={
+        "product_by_sku": {
+            "100241": {
+                "name_zh_standard": "微纤维地板清洁布",
+                "spec_zh_standard": "50×60cm｜多种颜色",
+            },
+        },
+    })
+    plan = engine.resolve({
+        "sku": "100241",
+        "name_es": "Paño de microfibra para el suelo Spargo",
+        "spec_es": "50x60 cm | varios colores",
+    })
+    assert plan.fields["name_zh"].value == "微纤维地板清洁布"
+    assert plan.fields["name_zh"].source == "knowledge"
+
+
+def test_pipeline_applies_same_name_policy_and_semantic_guard():
+    candidate = translate_candidate(
+        {"sku": "1221001", "name_es": "Rodillos de pintura pequeños Spectrum"},
+        ("name",), FakeTranslationProvider({"name": "Spectrum小型涂料滚筒"}),
+        engine=LocalizationEngine(knowledge={"brands": {"Spectrum"}}),
+    )
+    assert candidate.fields["name"] == "小型涂料滚筒"
+    assert candidate.qa["status"] == "PASS"
 
 
 def test_normalization_is_mechanical_and_preserves_duplicate_details():
@@ -354,6 +591,16 @@ def test_typed_qa_detects_model_unit_and_terminology_violations():
     rule_ids = {item["rule_id"] for item in result["findings"]}
     assert "MODEL_CHANGED" in rule_ids
     assert "UNIT_DROPPED" in rule_ids or "PROTECTED_TOKEN_CHANGED" in rule_ids
+
+
+def test_typed_qa_accepts_equivalent_celsius_and_fixed_category_mapping():
+    source = SourceFacts.from_record({
+        "sku": "123456", "cat1_es": "Bricolaje", "details_es": "Lavable a 60 °C",
+    })
+    result = guard_translation(
+        source, {"cat1": "DIY五金", "details": "可机洗，60℃"}, ("cat1", "details"),
+    )
+    assert result["status"] == "PASS"
 
 
 def test_translation_registry_to_primary_and_export_e2e(tmp_path: Path):

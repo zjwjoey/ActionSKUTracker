@@ -18,6 +18,22 @@ _LATIN = re.compile(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]")
 _TECH = re.compile(r"^(?:USB(?:-[A-Z])?|LED|LCD|DIY|FSC|E27|A\d+|D\d+|XL?|[A-Z]{1,6}\d{2,}[A-Z0-9-]*|[A-Z]{2,6}|\d+(?:mg|mcg|mAh|V|W|D))$")
 
 
+def strip_forbidden_display_tokens(value: str, tokens: list[str] | tuple[str, ...] | set[str] = ()) -> str:
+    """Remove identified brand/IP spans from a Chinese display value.
+
+    This deliberately removes only the exact source token (plus an optional
+    ``牌`` suffix).  It must not remove every occurrence of the Chinese
+    character ``牌`` because that would corrupt legitimate words such as
+    ``扑克牌`` and ``行李牌``.
+    """
+    rendered = str(value or "").strip()
+    if not OMIT_BRAND_FROM_CHINESE_DISPLAY or not rendered:
+        return rendered
+    for token in sorted({str(item).strip() for item in tokens if str(item).strip()}, key=len, reverse=True):
+        rendered = re.sub(rf"(?i)(?<!\w){re.escape(token)}(?:牌)?", "", rendered, count=1).strip()
+    return rendered
+
+
 def has_ordinary_spanish(value: str, *, allowed_tokens: set[str] | None = None) -> bool:
     allowed = {t.lower() for t in (allowed_tokens or set())}
     for token in _LATIN.findall(value or ""):

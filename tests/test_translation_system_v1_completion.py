@@ -34,7 +34,9 @@ def test_qwen_builders_are_distinct_and_text_level():
     provider = QwenMTProvider("https://example.test/compatible-mode/v1")
     compatible, _ = provider._build_compatible_payload(request)
     native, _ = QwenMTProvider("https://example.test")._build_native_payload(request)
-    assert compatible["messages"][0]["content"] == "Pack [[PROTECTED_0000]] [[PROTECTED_0001]]"
+    # Compatible Qwen-MT receives source text verbatim; internal protected
+    # placeholders are not part of the provider wire contract.
+    assert compatible["messages"][0]["content"] == "Pack LED 9 W"
     assert "fields" not in compatible["messages"][0]["content"]
     assert "messages" in native["input"]
     assert native["parameters"]["translation_options"]["source_lang"] == "Spanish"

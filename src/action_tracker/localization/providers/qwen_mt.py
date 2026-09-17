@@ -10,6 +10,7 @@ import uuid
 import re
 from dataclasses import dataclass
 from typing import Any, Mapping
+from urllib.parse import urlparse
 
 from .base import ProviderError, TranslationRequest, TranslationResponse
 from ..protection.tokens import ProtectedTokenError, protect_text, restore_text
@@ -17,6 +18,26 @@ from ..protection.tokens import ProtectedTokenError, protect_text, restore_text
 
 def _canonical(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def endpoint_diagnostics(base_url: str) -> dict[str, str]:
+    """Return safe diagnostics for operator triage (never includes a key)."""
+    raw = str(base_url or "").strip().rstrip("/")
+    parsed = urlparse(raw)
+    host = str(parsed.hostname or "")
+    path = str(parsed.path or "").rstrip("/")
+    if path.endswith("/compatible-mode/v1"):
+        contract = "QWEN_MT_OPENAI_COMPATIBLE_V1"
+    elif path.endswith("/api/v1"):
+        contract = "QWEN_MT_DASHSCOPE_V1"
+    else:
+        contract = "UNKNOWN_ENDPOINT_PATH"
+    return {
+        "endpoint": raw,
+        "endpoint_host": host,
+        "endpoint_path": path,
+        "endpoint_contract": contract,
+    }
 
 
 _SPANISH_MARKERS = re.compile(
@@ -101,13 +122,20 @@ class QwenMTProvider:
     def _content(self, request: TranslationRequest, field_name: str | None = None) -> tuple[str, dict[str, Any]]:
         field = field_name or request.requested_fields[0]
         source_field = self._source_field(request, field)
-        protected = protect_text(request.fields.get(source_field, request.fields.get(field, "")))
+        raw_text = str(request.fields.get(source_field, request.fields.get(field, "")) or "")
         # Qwen-MT is a dedicated text translation endpoint.  Its single user
         # message must contain the text to translate, not a chat-style prompt
         # with FIELD/RULES/TEXT wrappers.  Protected tokens and translation
-        # options carry the machine-readable constraints.
-        content = protected.text
-        return content, {"protected": protected, "source_field": source_field}
+        # options carry the machine-readable constraints.  Do not inject our
+        # internal ``[[PROTECTED_####]]`` placeholders into the MT request:
+        # those are resolver-internal markers, not part of the Qwen-MT wire
+        # contract, and some gateways reject them with a generic 400.  The
+        # typed QA guard still checks that technical tokens/numbers survive
+        # the returned translation.
+        if "/compatible-mode/" in self.base_url:
+            return raw_text, {"protected": None, "source_field": source_field}
+        protected = protect_text(raw_text)
+        return protected.text, {"protected": protected, "source_field": source_field}
 
     def _build_native_payload(self, request: TranslationRequest, field_name: str | None = None) -> tuple[dict[str, Any], Any]:
         content, meta = self._content(request, field_name)
@@ -165,8 +193,13 @@ class QwenMTProvider:
         elif not compatible and not url.endswith("/services/aigc/text-generation/generation"):
             url += "/services/aigc/text-generation/generation"
         headers = {"Authorization": f"Bearer {os.environ.get(self.api_key_env)}", "Content-Type": "application/json"}
+        # The workspace-specific compatible endpoint already binds the
+        # request to a workspace.  Sending a stale X-DashScope-WorkSpace
+        # header from an older shell session can make an otherwise valid key
+        # fail with a generic 400/401, so only use the header for native API
+        # calls where it is part of the contract.
         workspace = os.environ.get("DASHSCOPE_WORKSPACE", "").strip()
-        if workspace:
+        if workspace and not compatible:
             headers["X-DashScope-WorkSpace"] = workspace
         http_request = urllib.request.Request(url, data=request_json.encode("utf-8"), method="POST", headers=headers)
         last_error: ProviderError | None = None
@@ -193,7 +226,7 @@ class QwenMTProvider:
                 source_value = str(request.fields.get(meta["source_field"], request.fields.get(field_name, "")) or "")
                 if request.target_language.lower().startswith("chinese") and _looks_like_untranslated_spanish(source_value, text):
                     raise ProviderError("QWEN_UNEXPECTED_LANGUAGE")
-                restored = restore_text(text, meta["protected"])
+                restored = restore_text(text, meta["protected"]) if meta.get("protected") is not None else text
                 return restored, request_hash, hashlib.sha256(text.encode("utf-8")).hexdigest(), str(body.get("request_id") or request.request_id or uuid.uuid4()), body.get("usage") if isinstance(body.get("usage"), Mapping) else {}, attempt
             except urllib.error.HTTPError as exc:
                 # Preserve a bounded provider diagnostic for operator triage;
@@ -205,6 +238,18 @@ class QwenMTProvider:
                 detail = f"QWEN_HTTP_{exc.code}: HTTP {exc.code}"
                 if body:
                     detail += f": {body}"
+                if exc.code == 400:
+                    # Alibaba's gateway often returns only ``Bad Request``.
+                    # Add a safe, actionable hint without exposing headers or
+                    # the API key; the endpoint/model pair is the common cause
+                    # when a key was created in another workspace.
+                    endpoint = endpoint_diagnostics(self.base_url)
+                    detail += (
+                        f"; check endpoint/model/payload"
+                        f" (host={endpoint['endpoint_host']},"
+                        f" contract={endpoint['endpoint_contract']},"
+                        f" model={self.model})"
+                    )
                 last_error = ProviderError(f"QWEN_HTTP_{exc.code}", detail, retryable=exc.code == 429 or exc.code >= 500)
             except (urllib.error.URLError, TimeoutError) as exc:
                 last_error = ProviderError("QWEN_NETWORK_ERROR", str(exc), retryable=True)

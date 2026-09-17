@@ -16,6 +16,7 @@ from .contracts import (
 from .policy import FIXED_CAT1, has_ordinary_spanish
 from .validator import _NUMBER
 from .providers.qwen_mt import QwenMTProvider
+from .providers.qwen_mt import endpoint_diagnostics
 from .providers.base import TranslationRequest
 
 
@@ -184,10 +185,27 @@ class QwenMTCompatibleProvider:
     max_batch_size: int = 20
     max_characters_per_request: int = 12000
 
+    def translate(self, request: TranslationRequest):
+        """Expose the resolver's native TranslationProvider contract.
+
+        ``complete`` is retained for the legacy candidate API, whereas the
+        Translation Registry resolver consumes a ``TranslationRequest`` and
+        calls ``translate``.  Both paths therefore share the exact Qwen-MT
+        wire implementation instead of relying on an unsafe generic adapter.
+        """
+        return QwenMTProvider(
+            self.base_url,
+            self.model,
+            self.api_key_env,
+            self.timeout,
+            max_batch_size=self.max_batch_size,
+            max_characters_per_request=self.max_characters_per_request,
+        ).translate(request)
+
     def complete(self, source: SourceFacts, requested_fields: tuple[str, ...]) -> Mapping[str, Any]:
         source_fields = {canonical: getattr(source, CANONICAL_TO_SOURCE[canonical], "") for canonical in requested_fields if canonical in CANONICAL_TO_SOURCE}
         source_hash_value = source_hash(source.as_record())
-        response = QwenMTProvider(self.base_url, self.model, self.api_key_env, self.timeout, max_batch_size=self.max_batch_size, max_characters_per_request=self.max_characters_per_request).translate(
+        response = self.translate(
             TranslationRequest(source.sku, source_fields, requested_fields, source_hash_value, terms=self.terms, tm_entries=self.tm_entries, domain=self.domain)
         )
         return {"sku": source.sku, "canonical_id": source.canonical_id, "source_hash": source_hash_value, "fields": dict(response.fields), "confidence": None, "review_notes": "", "provider_request_hash": response.request_hash, "provider_response_hash": response.response_hash}
@@ -283,13 +301,15 @@ def provider_from_config(config: Mapping[str, Any] | None) -> LocalizationAIProv
     if provider in {"qwen_mt", "qwen-mt", "qwen_mt_flash"}:
         terms = tuple(config.get("terms") or ())
         tm_entries = tuple(config.get("tm_entries") or ())
-        # Endpoint selection is deliberately environment-over-config so a
-        # workspace/region can be supplied at runtime without ever writing a
-        # tenant-specific URL or secret into the repository configuration.
+        # An explicit profile endpoint is authoritative.  Environment
+        # variables remain a convenient runtime fallback, but must not
+        # silently override a profile/test endpoint and make endpoint
+        # diagnostics non-deterministic.
         base_url = (
-            os.environ.get("QWEN_MT_BASE_URL")
+            str(config.get("base_url") or "").strip()
+            or os.environ.get("QWEN_MT_BASE_URL")
             or os.environ.get("DASHSCOPE_BASE_URL")
-            or str(config.get("base_url") or "")
+            or ""
         )
         return QwenMTCompatibleProvider(
             base_url, str(config.get("model") or "qwen-mt-flash"),
@@ -334,11 +354,21 @@ def provider_health(provider: LocalizationAIProvider) -> dict[str, Any]:
     # healthy after the explicit key/base/model checks; the subsequent Live
     # Smoke POST is the real contract/endpoint verification.
     if provider_name == "qwen_mt":
+        diagnostics = endpoint_diagnostics(base_url)
+        if diagnostics["endpoint_contract"] == "UNKNOWN_ENDPOINT_PATH":
+            return {
+                "status": "INVALID_CONFIG",
+                "provider": provider_name,
+                "model": model,
+                "error": "QWEN_ENDPOINT_PATH_INVALID",
+                **diagnostics,
+            }
         return {
             "status": "PASS",
             "provider": provider_name,
             "model": model,
             "health_check": "CONFIG_ONLY_QWEN_MT",
+            **diagnostics,
         }
     request = urllib.request.Request(base_url + "/models", headers=headers, method="GET")
     try:

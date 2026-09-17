@@ -27,9 +27,25 @@ class LocalizationEngine:
 
     def resolve(self, record: Mapping[str, Any], *, existing: Mapping[str, Any] | None = None) -> LocalizationPlan:
         source = self.source_facts(record)
-        known_brands = set(self.knowledge.get("brands") or ())
-        facts = parse_semantic_facts(source, known_brands=known_brands, dictionaries=self.knowledge)
-        plan = plan_localization(source, facts, knowledge=self.knowledge, existing=existing)
+        # Product dictionary values are SKU-scoped knowledge.  Merge the
+        # current SKU's reviewed fields into the otherwise shared knowledge
+        # snapshot before planning; without this, runtime Resolver/Canary
+        # paths fall back to a generic product type (e.g. ``清洁布``) and drop
+        # identity facts such as ``微纤维`` or ``地板`` from the name.
+        record_knowledge = dict(self.knowledge)
+        product = (self.knowledge.get("product_by_sku") or {}).get(source.sku, {})
+        if isinstance(product, Mapping):
+            record_knowledge.update({
+                "name_zh": product.get("name_zh_standard") or product.get("name_zh") or "",
+                "cat1_zh": product.get("cat1_zh_standard") or product.get("cat1_zh") or "",
+                "cat2_zh": product.get("cat2_zh_standard") or product.get("cat2_zh") or "",
+                "spec_zh": product.get("spec_zh_standard") or product.get("spec_zh") or "",
+                "desc_zh": product.get("desc_zh") or product.get("description_zh") or "",
+                "details_zh": product.get("details_zh") or product.get("details") or "",
+            })
+        known_brands = set(record_knowledge.get("brands") or ())
+        facts = parse_semantic_facts(source, known_brands=known_brands, dictionaries=record_knowledge)
+        plan = plan_localization(source, facts, knowledge=record_knowledge, existing=existing)
         existing_hash = str((existing or {}).get("source_hash") or "")
         if existing_hash and existing_hash != source.source_hash and not bool((existing or {}).get("retranslate")):
             # Daily observation may detect changed Spanish facts before a new

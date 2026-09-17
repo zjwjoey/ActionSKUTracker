@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -55,7 +56,24 @@ def build_translation_runtime(cfg: Mapping[str, Any] | None = None, *, db_path: 
     ai_cfg = dict(localization_cfg.get("ai") or {})
     # An explicit provider permission is necessary but never sufficient to
     # override the production configuration gate.
-    provider = provider_from_config({**ai_cfg, "enabled": bool(allow_provider and ai_cfg.get("enabled"))})
+    # The repository configuration keeps AI disabled by default.  A read-only
+    # Canary may explicitly opt in through the wrapper's process-scoped flag;
+    # this never enables production writes and disappears with the process.
+    explicit_canary_enable = os.environ.get("ACTION_TRACKER_ALLOW_QWEN_PROVIDER") == "1"
+    if explicit_canary_enable and not ai_cfg.get("provider"):
+        # A production data root may still carry an older settings.yaml that
+        # predates the Translation V1 localization.ai block.  An explicit
+        # read-only Canary must still select Qwen-MT, never the legacy generic
+        # OpenAI-compatible provider (which has no translate() contract).
+        ai_cfg.update({
+            "provider": "qwen_mt",
+            "model": os.environ.get("QWEN_MT_MODEL") or "qwen-mt-flash",
+            "api_key_env": "DASHSCOPE_API_KEY",
+        })
+    provider = provider_from_config({
+        **ai_cfg,
+        "enabled": bool(allow_provider and (ai_cfg.get("enabled") or explicit_canary_enable)),
+    })
     engine = LocalizationEngine(knowledge=knowledge, policy_version=str(localization_cfg.get("policy_version") or "CHINESE_LOCALIZATION_STANDARD_V1"))
     resolver = TranslationResolver(db_path=path, registry=registry,
                                    provider=None if isinstance(provider, DisabledProvider) else provider,

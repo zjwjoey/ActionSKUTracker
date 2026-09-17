@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from typing import Any, Mapping
 
 from .contracts import SourceFacts, source_hash
+from .engine import LocalizationEngine
+from .policy import DISPLAY_POLICY_PROFILE, strip_forbidden_display_tokens
 from .qa import guard_translation
 from .registry.repository import LocalizationRegistry
 from .providers.base import TranslationProvider, TranslationRequest, TranslationResponse
@@ -24,18 +26,44 @@ class TranslationCandidate:
     qa: Mapping[str, Any]
 
 
-def make_request(record: Mapping[str, Any], requested_fields: tuple[str, ...], registry: LocalizationRegistry | None = None) -> TranslationRequest:
+def make_request(record: Mapping[str, Any], requested_fields: tuple[str, ...], registry: LocalizationRegistry | None = None, *, extra_terms: tuple[Mapping[str, Any], ...] = ()) -> TranslationRequest:
     source = SourceFacts.from_record(record)
     source_fields = {field: str(getattr(source, {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}[field]) or "") for field in requested_fields}
-    terms = tuple(registry.approved_terms()) if registry else ()
-    return TranslationRequest(source.sku, source_fields, requested_fields, source_hash(source.as_record()), terms=terms)
+    terms = list(registry.approved_terms()) if registry else []
+    terms.extend(extra_terms)
+    return TranslationRequest(source.sku, source_fields, requested_fields, source_hash(source.as_record()), terms=tuple(terms))
 
 
-def translate_candidate(record: Mapping[str, Any], requested_fields: tuple[str, ...], provider: TranslationProvider, registry: LocalizationRegistry | None = None) -> TranslationCandidate:
+def translate_candidate(record: Mapping[str, Any], requested_fields: tuple[str, ...], provider: TranslationProvider, registry: LocalizationRegistry | None = None, *, engine: LocalizationEngine | None = None) -> TranslationCandidate:
     source = SourceFacts.from_record(record)
-    request = make_request(record, requested_fields, registry)
+    engine = engine or LocalizationEngine()
+    plan = engine.resolve(record)
+    semantic_facts = tuple(plan.semantic_facts)
+    semantic_terms: list[dict[str, str]] = []
+    display_tokens: list[str] = []
+    semantic_types = {"PRODUCT_TYPE", "FUNCTION", "MATERIAL", "COMPATIBILITY", "CARE", "NUTRITION", "VARIANT", "DETAIL_KEY"}
+    seen_terms: set[str] = set()
+    for fact in semantic_facts:
+        source_term = str(fact.source_text or "").strip()
+        if not source_term or source_term.casefold() in seen_terms:
+            continue
+        if fact.semantic_type in {"BRAND", "IP_CHARACTER"}:
+            display_tokens.append(source_term)
+            target_term = source_term
+        elif fact.semantic_type in semantic_types:
+            target_term = str(fact.canonical_value or fact.value or "").strip()
+            if not target_term or target_term.casefold() == source_term.casefold():
+                continue
+        else:
+            continue
+        semantic_terms.append({"source": source_term, "target": target_term})
+        seen_terms.add(source_term.casefold())
+    request = make_request(record, requested_fields, registry, extra_terms=tuple(semantic_terms))
     response: TranslationResponse = provider.translate(request)
-    qa = guard_translation(source, response.fields, requested_fields)
+    fields = dict(response.fields)
+    if "name" in fields:
+        fields["name"] = strip_forbidden_display_tokens(fields["name"], display_tokens)
+    qa = guard_translation(source, fields, requested_fields, semantic_facts=semantic_facts)
     if registry is not None:
         registry.record_response(
             official_sku=source.sku,
@@ -46,7 +74,7 @@ def translate_candidate(record: Mapping[str, Any], requested_fields: tuple[str, 
             response=response,
             qa=qa,
         )
-    return TranslationCandidate(source.sku, request.source_hash, requested_fields, response.fields, response.provider, response.model, response.request_hash, response.response_hash, qa)
+    return TranslationCandidate(source.sku, request.source_hash, requested_fields, fields, response.provider, response.model, response.request_hash, response.response_hash, qa)
 
 
 def resolve_or_translate(record: Mapping[str, Any], requested_fields: tuple[str, ...], *, resolver: TranslationResolver,

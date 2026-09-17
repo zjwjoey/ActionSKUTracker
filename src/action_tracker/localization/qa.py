@@ -10,8 +10,23 @@ from .policy import FIXED_CAT1, has_ordinary_spanish
 from .protection.tokens import ProtectedTokenError, protect_text, restore_text
 
 
-_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|°C)(?![A-Za-z0-9])", re.I)
+_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|°C|℃)(?![A-Za-z0-9])", re.I)
 _STRICT_TOKEN_TYPES = {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "CAPACITY", "BATTERY_CAPACITY"}
+
+# Deterministic semantic facts use one canonical target, while natural
+# Chinese allows a small set of equivalent renderings.  These aliases are
+# intentionally conservative and only cover terms already present in the
+# seeded semantic map; they prevent the Guard from rejecting valid outputs
+# such as ``paño -> 抹布`` and ``madera -> 木制``.
+_SEMANTIC_TARGET_ALIASES = {
+    "gomas": ("橡皮筋", "橡胶圈", "松紧带"),
+    "paño": ("清洁布", "抹布", "擦布", "湿布"),
+    "paños": ("清洁布", "抹布", "擦布", "湿布"),
+    # ``microfibra`` is rendered in the existing catalog as either
+    # ``超细纤维`` or the shorter ``微纤维``; both preserve the material fact.
+    "microfibra": ("超细纤维", "微纤维"),
+    "madera": ("木质", "木材", "木制", "木头"),
+}
 
 
 @dataclass(frozen=True)
@@ -36,7 +51,12 @@ def _numbers(value: str) -> Counter[str]:
     return Counter(item.replace(",", ".") for item in re.findall(r"\d+(?:[.,]\d+)?", value or ""))
 
 
-def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = ()) -> tuple[QAFinding, ...]:
+def _normalize_unit(unit: str) -> str:
+    """Normalize display-equivalent units for QA comparison only."""
+    return str(unit or "").casefold().replace("℃", "°c")
+
+
+def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = ()) -> tuple[QAFinding, ...]:
     findings: list[QAFinding] = []
     for field_name in requested_fields:
         target = fields.get(field_name)
@@ -49,6 +69,21 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             findings.append(QAFinding("NULL_UNDEFINED_RESIDUAL", "BLOCKER", field_name, {"value": target}, source=source_text, target=target, blocking=True))
         if has_ordinary_spanish(target, allowed_tokens=set()):
             findings.append(QAFinding("SPANISH_RESIDUAL", "ERROR", field_name, {"value": target}, source=source_text, target=target, blocking=True))
+        # Technical/numeric guards cannot detect an omitted ordinary product
+        # noun.  Reuse deterministic semantic facts when the source term is
+        # present in this field and has a reviewed canonical Chinese value.
+        # Brand/IP facts are intentionally excluded because the display policy
+        # requires those spans to be omitted from Chinese names.
+        covered_types = {"PRODUCT_TYPE", "FUNCTION", "MATERIAL", "COMPATIBILITY", "CARE", "NUTRITION", "VARIANT"}
+        for fact in semantic_facts:
+            fact_type = str(getattr(fact, "semantic_type", "") or "")
+            source_term = str(getattr(fact, "source_text", "") or "").strip()
+            canonical = str(getattr(fact, "canonical_value", "") or getattr(fact, "value", "") or "").strip()
+            if fact_type not in covered_types or not source_term or not canonical or canonical.casefold() == source_term.casefold():
+                continue
+            aliases = _SEMANTIC_TARGET_ALIASES.get(source_term.casefold(), (canonical,))
+            if source_term.casefold() in source_text.casefold() and not any(alias.casefold() in target.casefold() for alias in aliases):
+                findings.append(QAFinding("SEMANTIC_FACT_DROPPED", "ERROR", field_name, {"semantic_type": fact_type, "source_term": source_term, "expected_target": canonical}, source=source_text, target=target, message="semantic product fact is not represented in target", blocking=True))
         source_numbers, target_numbers = _numbers(source_text), _numbers(target)
         dropped = source_numbers - target_numbers
         duplicated = target_numbers - source_numbers
@@ -68,8 +103,9 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     findings.append(QAFinding("MODEL_DROPPED", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
                 elif same_kind >= expected_count:
                     findings.append(QAFinding("PROTECTED_TOKEN_CHANGED", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
+        allow_fixed_category_tokens = field_name == "cat1" and target in FIXED_CAT1
         for (kind, value), actual_count in target_strict.items():
-            if actual_count > source_strict.get((kind, value), 0):
+            if actual_count > source_strict.get((kind, value), 0) and not allow_fixed_category_tokens:
                 rule = "MODEL_CHANGED" if kind == "MODEL" and not source_strict.get((kind, value), 0) else "PROTECTED_TOKEN_ADDED"
                 findings.append(QAFinding(rule, "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": source_strict.get((kind, value), 0), "actual": actual_count}, source=source_text, target=target, blocking=True))
         for value, kind in zip(protected.tokens, protected.token_types):
@@ -79,8 +115,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     findings.append(QAFinding("PROTECTED_TOKEN_MISSING", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
                 elif actual_count > expected_count:
                     findings.append(QAFinding("PROTECTED_TOKEN_DUPLICATED", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
-        source_units = _STRICT_UNIT_RE.findall(source_text)
-        target_units = {unit.casefold() for unit in _STRICT_UNIT_RE.findall(target)}
+        source_units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(source_text)}
+        target_units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(target)}
         for unit in source_units:
             if unit.casefold() not in target_units:
                 findings.append(QAFinding("UNIT_DROPPED", "BLOCKER", field_name, {"unit": unit}, source=source_text, target=target, message="technical unit dropped", blocking=True))
@@ -99,6 +135,6 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
     return tuple(findings)
 
 
-def guard_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = ()) -> dict[str, Any]:
-    findings = audit_translation(source, fields, requested_fields, terminology=terminology)
+def guard_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = ()) -> dict[str, Any]:
+    findings = audit_translation(source, fields, requested_fields, terminology=terminology, semantic_facts=semantic_facts)
     return {"status": "PASS" if not findings else "FAIL", "findings": [finding.as_dict() for finding in findings]}

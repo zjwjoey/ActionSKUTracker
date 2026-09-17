@@ -117,12 +117,13 @@ class TranslationQueueWorker:
                 record = self._source_record(item)
                 field_name = self._requested_field(item.get("requested_fields"))
                 resolution = self.resolver.resolve_field(record, field_name, allow_provider=True)
+                semantic_facts = tuple(getattr(self.resolver.engine.resolve(record), "semantic_facts", ()) or ())
                 if not resolution.value:
                     self.registry.block_queue(queue_id, "NO_RESOLUTION")
                     blocked += 1
                     continue
                 terminology = tuple(resolution.provenance.get("terminology") or ())
-                qa = guard_translation(SourceFacts.from_record(record), {field_name: resolution.value}, (field_name,), terminology=terminology)
+                qa = guard_translation(SourceFacts.from_record(record), {field_name: resolution.value}, (field_name,), terminology=terminology, semantic_facts=semantic_facts)
                 repair_source = resolution.source
                 if qa["status"] != "PASS":
                     repaired = repair_field(
@@ -130,6 +131,7 @@ class TranslationQueueWorker:
                         repair_reason="TRANSLATION_QUEUE_QA_REPAIR",
                         provider=getattr(self.resolver, "provider", None),
                         terminology=terminology,
+                        semantic_facts=semantic_facts,
                     )
                     resolution_value = repaired.value
                     qa = repaired.qa

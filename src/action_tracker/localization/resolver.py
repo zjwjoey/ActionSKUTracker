@@ -17,6 +17,7 @@ from .providers.base import TranslationProvider, TranslationRequest
 from .registry.repository import LocalizationRegistry
 from .terminology.repository import TerminologyRepository
 from .hashes import value_hash
+from .policy import DISPLAY_POLICY_PROFILE, strip_forbidden_display_tokens
 
 
 @dataclass(frozen=True)
@@ -124,7 +125,7 @@ class TranslationResolver:
             return Resolution(source.sku, field_name, source_text, source_hash_value, planned.value, planned.source, "APPROVED", True, False, provenance={"policy_version": planned.policy_version})
 
         if allow_provider and self.provider and source_text:
-            terms = tuple(self.terminology.as_qwen_options(
+            term_rows = list(self.terminology.as_qwen_options(
                 source_text,
                 field_name=field_name,
                 cat1=source.cat1_es,
@@ -133,9 +134,40 @@ class TranslationResolver:
                 context_key=context_key,
                 limit=20,
             ) if self.terminology else ())
+            # The dedicated Qwen-MT endpoint does not accept our generic
+            # system prompt.  Put reviewed semantic facts on its terms list
+            # instead, so facts such as ``gomas -> 橡皮筋`` cannot be silently
+            # dropped by the provider.  Brand/IP spans are deliberately sent
+            # source-to-source and removed from Chinese names afterwards.
+            display_tokens: list[str] = []
+            semantic_types = {"PRODUCT_TYPE", "FUNCTION", "MATERIAL", "COMPATIBILITY", "CARE", "NUTRITION", "VARIANT", "DETAIL_KEY"}
+            term_by_source = {
+                str(item.get("source") or item.get("source_term") or "").strip().casefold(): dict(item)
+                for item in term_rows
+                if str(item.get("source") or item.get("source_term") or "").strip()
+            }
+            for fact in getattr(plan, "semantic_facts", ()):
+                token = str(fact.source_text or "").strip()
+                if not token:
+                    continue
+                if fact.semantic_type in {"BRAND", "IP_CHARACTER"}:
+                    if field_name == "name":
+                        display_tokens.append(token)
+                    target = token
+                elif fact.semantic_type in semantic_types:
+                    target = str(fact.canonical_value or fact.value or "").strip()
+                    if not target or target.casefold() == token.casefold():
+                        continue
+                else:
+                    continue
+                term_by_source.setdefault(token.casefold(), {"source": token, "target": target})
+            terms = tuple(term_by_source.values())
             req = TranslationRequest(source.sku, {field_name: source_text}, (field_name,), source_hash_value, terms=terms, domain=product_type or "e-commerce")
             response = self.provider.translate(req)
             value = str(response.fields.get(field_name) or "")
+            raw_value = value
+            if field_name == "name" and display_tokens:
+                value = strip_forbidden_display_tokens(value, display_tokens)
             if value:
                 return Resolution(source.sku, field_name, source_text, source_hash_value, value, "qwen_mt", "PENDING", False, False, provenance={
                     "resolution_source": "QWEN_MT", "provider": response.provider,
@@ -146,6 +178,8 @@ class TranslationResolver:
                     "retry_count": int((response.usage or {}).get("retry_count", 0) or 0),
                     "request_count": int((response.usage or {}).get("request_count", 1) or 1),
                     "terminology": [dict(term) for term in terms],
+                    "display_policy_profile": DISPLAY_POLICY_PROFILE,
+                    "provider_raw_value": raw_value if raw_value != value else "",
                 })
 
         return Resolution(source.sku, field_name, source_text, source_hash_value, "", "missing", "PENDING", False, bool(source_text), ("NO_APPROVED_RESOLUTION",))

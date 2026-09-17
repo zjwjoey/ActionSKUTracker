@@ -513,7 +513,8 @@ def main(argv=None) -> int:
         provider = provider_from_config(ai_cfg)
         health = provider_health(provider)
         result = {"provider": getattr(provider, "provider", type(provider).__name__),
-                  "model": getattr(provider, "model", ""), "endpoint": ai_cfg.get("base_url") or "",
+                  "model": getattr(provider, "model", ""),
+                  "endpoint": getattr(provider, "base_url", "") or ai_cfg.get("base_url") or "",
                   "enabled": bool(ai_cfg.get("enabled") or ai_cfg.get("ai_enabled")), "health": health}
         if args.command == "localization-ai-check" and health.get("status") == "PASS":
             source = SourceFacts.from_record({"sku": "TEST-LOCAL-QWEN", "name_es": "Espumador eléctrico portátil"})
@@ -596,11 +597,13 @@ def main(argv=None) -> int:
     if args.command in {"localization-live-smoke", "translation-live-smoke"}:
         from .localization.ai import provider_from_config, provider_health, validate_ai_response
         from .localization.contracts import SourceFacts
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
         try:
             ai_cfg = ((cfg.get("localization") or {}).get("ai") or {})
             provider = provider_from_config({**ai_cfg, "enabled": True})
             health = provider_health(provider)
-            result = {"provider": getattr(provider, "provider", type(provider).__name__), "model": getattr(provider, "model", ""), "health": health, "production_writes": False}
+            result = {"provider": getattr(provider, "provider", type(provider).__name__), "model": getattr(provider, "model", ""), "endpoint": getattr(provider, "base_url", ""), "health": health, "production_writes": False}
             if health.get("status") != "PASS":
                 result["status"] = "LIVE_QWEN_API_NOT_VERIFIED"
             else:
@@ -611,10 +614,19 @@ def main(argv=None) -> int:
                     ok, reasons = validate_ai_response(payload, sample, ("name", "spec"))
                     checked.append({"sku": sample.sku, "qa": "PASS" if ok else "FAIL", "reasons": reasons})
                 result.update({"status": "PASS" if all(item["qa"] == "PASS" for item in checked) else "FAIL", "fields": checked})
-            out = Path(args.output); out.parent.mkdir(parents=True, exist_ok=True); out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
             print(json.dumps(result, ensure_ascii=False)); return 0 if result.get("status") == "PASS" else 3
         except Exception as exc:
-            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+            # Always overwrite the output path so operators never mistake a
+            # previous run's report for the current failure.
+            failure = {
+                "status": "FAIL",
+                "error": f"{type(exc).__name__}: {exc}",
+                "production_writes": False,
+            }
+            out.write_text(json.dumps(failure, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(failure, ensure_ascii=False))
+            return 2
     if args.command == "translation-report":
         path = Path(args.input)
         try:
