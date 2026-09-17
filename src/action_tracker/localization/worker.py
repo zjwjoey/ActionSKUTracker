@@ -22,6 +22,7 @@ from .registry.repository import LocalizationRegistry
 from .providers.base import ProviderError
 from .protection.tokens import ProtectedTokenError
 from .canonical_qa import canonical_guard
+from .product_family import context_for_field
 
 
 _SOURCE_TO_CANONICAL = {
@@ -37,6 +38,7 @@ class QueueWorkerResult:
     retried: int
     failed: int
     blocked: int
+    review_required: int = 0
 
     def as_dict(self) -> dict[str, int]:
         return {
@@ -45,6 +47,7 @@ class QueueWorkerResult:
             "retried": self.retried,
             "failed": self.failed,
             "blocked": self.blocked,
+            "review_required": self.review_required,
             "production_writes": 0,
         }
 
@@ -111,7 +114,7 @@ class TranslationQueueWorker:
 
     def process_once(self, *, limit: int = 50, worker_id: str = "localization-worker") -> QueueWorkerResult:
         claimed = self.registry.claim_queue(limit=limit, worker_id=worker_id)
-        completed = retried = failed = blocked = 0
+        completed = retried = failed = blocked = review_required = 0
         for item in claimed:
             queue_id = str(item["queue_id"])
             try:
@@ -148,12 +151,17 @@ class TranslationQueueWorker:
                     resolution_value = resolution.value
                     resolution_provenance = dict(resolution.provenance or {})
                 if context is not None:
-                    canonical = canonical_guard(context, {field_name: resolution_value}, production=False)
-                    resolution_provenance["canonical_qa"] = canonical
-                    if canonical["status"] != "PASS":
-                        self.registry.block_queue(queue_id, ";".join(str(f.get("rule_id") or "CANONICAL_QA") for f in canonical.get("findings", [])))
-                        blocked += 1
-                        continue
+                    canonical = canonical_guard(context_for_field(context, field_name), {field_name: resolution_value}, production=False)
+                else:
+                    canonical = {"status": "NOT_REQUIRED", "findings": [], "runtime_blocking": False}
+                resolution_provenance["canonical_qa"] = canonical
+                # Policy/terminology conflicts make the result indeterminate
+                # and are genuine queue blockers.  Ordinary canonical style
+                # violations remain durable revisions for human correction.
+                if canonical.get("status") == "FAIL" and bool(canonical.get("runtime_blocking")):
+                    self.registry.block_queue(queue_id, ";".join(str(f.get("rule_id") or "CANONICAL_QA") for f in canonical.get("findings", [])))
+                    blocked += 1
+                    continue
                 if qa["status"] != "PASS":
                     blocking = [f for f in qa.get("findings", []) if str(f.get("severity") or "").upper() in {"BLOCKER", "ERROR"}]
                     if blocking:
@@ -179,7 +187,8 @@ class TranslationQueueWorker:
                         usage=provenance.get("usage") or {}, request_id=request_id,
                         retry_count=int(provenance.get("retry_count", 0) or 0),
                     )
-                self.registry.record_revision_for_sku(
+                canonical_status = str(canonical.get("status") or "NOT_REQUIRED")
+                revision_id = self.registry.record_revision_for_sku(
                     str(item["official_sku"]), field_name, resolution_value,
                     source_hash=str(item["source_hash"]), provider=provider_name,
                     model=str(model) if model else None,
@@ -189,10 +198,31 @@ class TranslationQueueWorker:
                     provider_call_id=provider_call_id,
                     provenance={**provenance, "resolution_source": str(repair_source).upper()},
                     terminology_version=str(provenance.get("terminology_version") or "") or None,
-                    repair_reason="TRANSLATION_QUEUE_WORKER", qa_status="PASS",
+                    repair_reason="TRANSLATION_QUEUE_WORKER", qa_status=str(qa.get("status") or "FAIL"),
+                    canonical_qa_status=canonical_status,
+                    canonical_findings=tuple(canonical.get("findings") or ()),
                 )
+                # Persist both QA layers on the immutable revision.  Canonical
+                # findings never turn a recoverable translation into a queue
+                # failure, but they do force review and exclude approval.
+                for finding in qa.get("findings") or ():
+                    self.registry.record_finding(
+                        revision_id, rule_id=str(finding.get("rule_id") or "QA_FAILURE"),
+                        severity=str(finding.get("severity") or "HIGH"), field_name=field_name,
+                        qa_layer="FACT", blocking=bool(finding.get("blocking", True)),
+                        evidence=dict(finding.get("evidence") or {}),
+                    )
+                for finding in canonical.get("findings") or ():
+                    self.registry.record_finding(
+                        revision_id, rule_id=str(finding.get("rule_id") or "CANONICAL_QA"),
+                        severity=str(finding.get("severity") or "HIGH"), field_name=field_name,
+                        qa_layer="CANONICAL", blocking=bool(finding.get("blocking", True)),
+                        evidence=dict(finding.get("evidence") or {}),
+                    )
                 if self.registry.complete_queue(queue_id):
                     completed += 1
+                    if canonical_status == "FAIL":
+                        review_required += 1
             except ProviderError as exc:
                 self._record_provider_failure(exc, item)
                 if "PROTECTED_TOKEN" in str(exc.code).upper():
@@ -222,7 +252,7 @@ class TranslationQueueWorker:
                 # Unknown program errors are terminal FAILED, not data RETRY.
                 self.registry.fail_queue(queue_id, f"{type(exc).__name__}:{exc}", retry=False)
                 failed += 1
-        return QueueWorkerResult(len(claimed), completed, retried, failed, blocked)
+        return QueueWorkerResult(len(claimed), completed, retried, failed, blocked, review_required)
 
 
 def process_translation_queue(registry: LocalizationRegistry, resolver: TranslationResolver, *, limit: int = 50, worker_id: str = "localization-worker") -> dict[str, int]:

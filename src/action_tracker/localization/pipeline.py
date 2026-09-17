@@ -83,10 +83,13 @@ def translate_candidate(record: Mapping[str, Any], requested_fields: tuple[str, 
         fields["name"] = strip_forbidden_display_tokens(fields["name"], display_tokens)
     qa = guard_translation(source, fields, requested_fields, semantic_facts=semantic_facts)
     canonical = canonical_guard(context, fields, production=False) if context is not None else {"status": "PASS", "findings": []}
-    if canonical.get("status") != "PASS":
-        qa = {**qa, "status": "FAIL", "findings": [*qa.get("findings", []), *canonical.get("findings", [])], "canonical": canonical}
-    else:
-        qa = {**qa, "canonical": canonical}
+    qa = {**qa, "canonical": canonical,
+          "canonical_qa_status": canonical.get("status", "NOT_RUN"),
+          "canonical_findings": canonical.get("findings", []),
+          "family_id": context.family_id if context is not None else "UNKNOWN",
+          "family_policy_version": context.family_policy_version if context is not None else "UNKNOWN",
+          "context_key": context.context_key if context is not None else "",
+          "overall_ready": qa.get("fact_status") == "PASS" and canonical.get("status") in {"PASS", "NOT_REQUIRED"}}
     if registry is not None:
         registry.record_response(
             official_sku=source.sku,

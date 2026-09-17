@@ -35,6 +35,17 @@ description prose. For the cleaning-cloth family, names use `清洁布`, name
 `橡皮筋`. Conflicting scoped terminology fails closed as
 `TERMINOLOGY_CONFLICT`.
 
+Canonical correctness is independent of Production Enforcement. A finding
+always makes `canonical_qa_status=FAIL`, even in Shadow/Canary or Worker mode;
+`blocking` is only a stage-flow hint. The Worker persists a Fact-QA-PASS plus
+Canonical-QA-FAIL revision as `REVIEW_REQUIRED` and completes the queue for
+human correction. Only policy/terminology conflicts remain queue `BLOCKED`.
+Approved Projection and Production Apply require:
+`qa_status=PASS`, `canonical_qa_status in (PASS, NOT_REQUIRED)`, fresh source,
+approved review status, and no open blocker/error/high finding. Manual
+corrections must create a new revision and rerun both QA layers; a failed
+revision cannot be approved.
+
 ## Reports and safety
 
 Use `translation-family-audit`, `translation-family-regression`, and

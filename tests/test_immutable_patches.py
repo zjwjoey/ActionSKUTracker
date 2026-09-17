@@ -72,3 +72,18 @@ def test_patch_rejects_unknown_field_and_missing_allowlist(tmp_path):
             path, patch_id="p2", official_sku="1001", language="zh", field_name="name",
             old_value="旧名", new_value="新名", source_hash="h1", source_allowlist=[], created_by="human",
         )
+
+
+def test_apply_gate_rejects_canonical_failed_revision(tmp_path: Path):
+    path = _db(tmp_path)
+    create_localization_patch(
+        path, patch_id="canonical-fail", official_sku="1001", language="zh", field_name="name",
+        old_value="旧名", new_value="微纤维抹布", source_hash="h1",
+        source_allowlist=["REGISTRY_APPROVED"], created_by="human:reviewer",
+    )
+    append_patch_event(
+        path, patch_id="canonical-fail", event_type="PATCH_APPROVED", actor="human:reviewer",
+        evidence={"field_name": "name", "canonical_qa_status": "FAIL", "revision_id": "r1"},
+    )
+    with pytest.raises(ImmutablePatchError, match="PATCH_CANONICAL_QA_FAILED"):
+        validate_patch_apply(path, patch_id="canonical-fail", current_source_hash="h1", source_name="REGISTRY_APPROVED")

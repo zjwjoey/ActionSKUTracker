@@ -137,12 +137,13 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
 
 def guard_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = (), context: Any = None, production: bool = False) -> dict[str, Any]:
     findings = audit_translation(source, fields, requested_fields, terminology=terminology, semantic_facts=semantic_facts)
-    result = {"status": "PASS" if not findings else "FAIL", "fact_status": "PASS" if not findings else "FAIL", "findings": [finding.as_dict() for finding in findings], "canonical_status": "NOT_RUN"}
+    result = {"status": "PASS" if not findings else "FAIL", "fact_status": "PASS" if not findings else "FAIL", "findings": [finding.as_dict() for finding in findings], "canonical_status": "NOT_RUN", "canonical_qa_status": "NOT_RUN", "overall_ready": not findings}
     if context is not None:
         from .canonical_qa import canonical_guard
         canonical = canonical_guard(context, fields, production=production)
         result["canonical_status"] = canonical.get("status", "FAIL")
+        result["canonical_qa_status"] = canonical.get("status", "FAIL")
         result["canonical_findings"] = canonical.get("findings", [])
-        if canonical.get("status") != "PASS" and production:
-            result["status"] = "FAIL"
+        result["canonical"] = canonical
+        result["overall_ready"] = not findings and canonical.get("status") in {"PASS", "NOT_REQUIRED"}
     return result

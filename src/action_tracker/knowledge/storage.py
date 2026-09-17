@@ -211,12 +211,14 @@ class KnowledgeStore:
         with connect(self.path) as db:
             sql = """SELECT s.official_sku,s.source_hash,u.field_name,r.revision_id,
                     r.target_text,r.target_hash,r.review_status,r.qa_status,
+                    COALESCE(r.canonical_qa_status,'NOT_RUN') AS canonical_qa_status,
                     r.approved_by,r.approved_at
                 FROM translation_revisions r
                 JOIN translation_units u ON u.current_revision_id=r.revision_id
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
                 WHERE u.freshness_status='FRESH'
                   AND r.qa_status='PASS'
+                  AND COALESCE(r.canonical_qa_status,'NOT_RUN') IN ('PASS','NOT_REQUIRED')
                   AND r.review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED')
                   AND NOT EXISTS (SELECT 1 FROM translation_qa_findings f
                     WHERE f.revision_id=r.revision_id AND f.status='OPEN'
@@ -254,13 +256,15 @@ class KnowledgeStore:
                     field_name=field, old_value=old_value, new_value=str(row["target_text"] or ""),
                     source_hash=str(row["source_hash"]), source_allowlist=("REGISTRY_APPROVED",),
                     created_by=actor, evidence={"field_name": field, "revision_id": row["revision_id"],
-                    "base_commit_id": expected_base_commit_id, "source_name": "REGISTRY_APPROVED"},
+                    "base_commit_id": expected_base_commit_id, "source_name": "REGISTRY_APPROVED",
+                    "canonical_qa_status": row.get("canonical_qa_status", "NOT_REQUIRED")},
                     reason="approved_registry_revision_to_primary",
                 )
                 append_patch_event(
                     self.path, patch_id=patch_id, event_type="PATCH_APPROVED", actor=actor,
                     evidence={"field_name": field, "revision_id": row["revision_id"],
-                              "base_commit_id": expected_base_commit_id, "source_name": "REGISTRY_APPROVED"},
+                              "base_commit_id": expected_base_commit_id, "source_name": "REGISTRY_APPROVED",
+                              "canonical_qa_status": row.get("canonical_qa_status", "NOT_REQUIRED")},
                 )
                 patch_ids.append(patch_id)
         return {"patch_ids": patch_ids, "staged_fields": len(patch_ids), "production_writes": False}
@@ -277,5 +281,5 @@ class KnowledgeStore:
                     continue
                 current = db.execute(f"SELECT {field} FROM product_localizations WHERE official_sku=? AND language='zh'", (row["official_sku"],)).fetchone()
                 old = current[0] if current else None
-                preview.append({"sku": row["official_sku"], "field": field, "revision_id": row["revision_id"], "source_hash": row["source_hash"], "old_value": old, "new_value": row["target_text"], "decision": "NO_CHANGE" if str(old or '') == str(row['target_text'] or '') else "WOULD_UPDATE", "production_writes": False})
+                preview.append({"sku": row["official_sku"], "field": field, "revision_id": row["revision_id"], "source_hash": row["source_hash"], "canonical_qa_status": row.get("canonical_qa_status", "NOT_RUN"), "old_value": old, "new_value": row["target_text"], "decision": "NO_CHANGE" if str(old or '') == str(row['target_text'] or '') else "WOULD_UPDATE", "production_writes": False})
         return preview

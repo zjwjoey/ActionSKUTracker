@@ -75,6 +75,7 @@ class TranslationResolver:
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
                 WHERE s.official_sku=? AND u.field_name IN (?,?)
                   AND r.source_hash=? AND r.qa_status='PASS'
+                  AND COALESCE(r.canonical_qa_status,'NOT_RUN') IN ('PASS','NOT_REQUIRED')
                   AND u.freshness_status='FRESH'
                   AND r.review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED')
                   AND NOT EXISTS (SELECT 1 FROM translation_qa_findings f

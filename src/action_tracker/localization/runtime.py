@@ -29,7 +29,7 @@ def _write_report(output_dir: Path, summary: Mapping[str, Any], rows: list[Mappi
         "tm_hits.csv": (["sku", "field_name", "source", "source_hash", "value", "provenance"], lambda row: str(row.get("source", "")).startswith("tm_")),
         "terminology_hits.csv": (["sku", "field_name", "source", "source_hash", "value", "provenance"], lambda row: str(row.get("source", "")) in {"terminology", "term_dictionary", "deterministic"}),
         "qwen_calls.csv": (["sku", "field_name", "source", "source_hash", "value", "provenance"], lambda row: str(row.get("source", "")) == "qwen_mt"),
-        "qa_findings.csv": (["sku", "field_name", "rule_id", "severity", "message", "source_hash"], lambda row: bool(row.get("_qa_findings"))),
+        "qa_findings.csv": (["sku", "field_name", "rule_id", "severity", "qa_layer", "blocking", "message", "source_hash"], lambda row: bool(row.get("_qa_findings"))),
         "blocked.csv": (["sku", "field_name", "status", "source_hash", "value", "qa_status", "qa_rule_id"], lambda row: str(row.get("status", "")).upper() in {"PENDING", "BLOCKED"} and (bool(row.get("needs_provider")) or row.get("qa_status") == "FAIL")),
         "review_required.csv": (["sku", "field_name", "status", "source_hash", "value", "provenance"], lambda row: str(row.get("status", "")).upper() in {"PENDING", "REVIEW_REQUIRED"}),
     }
@@ -79,23 +79,25 @@ def shadow_run(records: Iterable[Mapping[str, Any]], *, output_dir: Path, run_id
             context = context_for_field(context, field_name) if context is not None else build_translation_context(record, field_name, semantic_facts=semantic_facts)
             canonical = canonical_guard(context, {field_name: result.value}, production=False) if result.value else {"status": "PASS", "findings": []}
             canonical_findings = [dict(item) for item in canonical.get("findings") or ()]
-            counts["canonical_pass" if canonical.get("status") == "PASS" else "canonical_fail"] += 1 if result.value else 0
-            if canonical.get("status") != "PASS":
+            if result.value:
+                counts["canonical_pass" if canonical.get("status") in {"PASS", "NOT_REQUIRED"} else "canonical_fail"] += 1
+            if canonical.get("status") == "FAIL":
                 qa_findings.extend(canonical_findings)
-                qa_status = "FAIL"
             if str(result.value or "").strip():
                 counts["fact_qa_pass" if fact_qa_status == "PASS" else "fact_qa_fail"] += 1
-                counts["qa_pass" if qa_status == "PASS" else "qa_fail"] += 1
+                counts["qa_pass" if fact_qa_status == "PASS" else "qa_fail"] += 1
             if result.status.upper() in {"PENDING", "REVIEW_REQUIRED"} or result.source == "missing":
                 counts["review_required"] += 1
-            if result.needs_provider or qa_status == "FAIL":
+            if result.needs_provider or fact_qa_status == "FAIL" or canonical.get("runtime_blocking"):
                 counts["blocked"] += 1
+            if canonical.get("status") == "FAIL":
+                counts["review_required"] += 1
             provenance = dict(result.provenance)
             provenance.update({"family_id": context.family_id, "family_policy_version": context.family_policy_version, "context_key": context.context_key, "translation_context": context.as_dict(), "canonical_qa_status": canonical.get("status")})
             rows.append({"sku": result.sku, "field_name": field_name, "source": result.source, "status": result.status, "needs_provider": result.needs_provider, "source_hash": result.source_hash, "value": result.value, "family_id": context.family_id, "family_policy_version": context.family_policy_version, "context_key": context.context_key, "fact_qa_status": fact_qa_status, "canonical_qa_status": canonical.get("status", ""), "provenance": json.dumps(provenance, ensure_ascii=False, sort_keys=True, default=str), "qa_status": qa_status, "qa_rule_id": ";".join(str(item.get("rule_id") or "") for item in qa_findings), "qa_severity": ";".join(str(item.get("severity") or "") for item in qa_findings), "qa_message": ";".join(str(item.get("message") or "") for item in qa_findings), "_qa_findings": qa_findings})
             counts[result.source] += 1
             counts["qwen_needed" if result.needs_provider else "no_qwen_needed"] += 1
-    summary = {"run_id": run_id or _now_id("shadow"), "total_translation_units": len(rows), "manual_hit": counts.get("manual_field_lock", 0), "approved_revision_reuse": counts.get("approved_revision", 0), "tm_exact": counts.get("tm_exact", 0), "tm_normalized": counts.get("tm_normalized_exact", 0), "tm_context": counts.get("tm_context", 0), "terminology_or_rule": counts.get("terminology", 0) + counts.get("term_dictionary", 0) + counts.get("deterministic", 0), "provider_calls": counts.get("qwen_mt", 0), "qwen_translated": counts.get("qwen_mt", 0), "qwen_needed": counts.get("qwen_needed", 0), "qa_pass": counts.get("qa_pass", 0), "qa_fail": counts.get("qa_fail", 0), "fact_qa_pass": counts.get("fact_qa_pass", 0), "fact_qa_fail": counts.get("fact_qa_fail", 0), "canonical_qa_pass": counts.get("canonical_pass", 0), "canonical_qa_fail": counts.get("canonical_fail", 0), "review_required": counts.get("review_required", 0), "blocked": counts.get("blocked", 0), "production_writes": False}
+    summary = {"run_id": run_id or _now_id("shadow"), "total_translation_units": len(rows), "manual_hit": counts.get("manual_field_lock", 0), "approved_revision_reuse": counts.get("approved_revision", 0), "tm_exact": counts.get("tm_exact", 0), "tm_normalized": counts.get("tm_normalized_exact", 0), "tm_context": counts.get("tm_context", 0), "terminology_or_rule": counts.get("terminology", 0) + counts.get("term_dictionary", 0) + counts.get("deterministic", 0), "provider_calls": counts.get("qwen_mt", 0), "qwen_translated": counts.get("qwen_mt", 0), "qwen_needed": counts.get("qwen_needed", 0), "qa_pass": counts.get("qa_pass", 0), "qa_fail": counts.get("qa_fail", 0), "fact_qa_pass": counts.get("fact_qa_pass", 0), "fact_qa_fail": counts.get("fact_qa_fail", 0), "canonical_qa_pass": counts.get("canonical_pass", 0), "canonical_qa_fail": counts.get("canonical_fail", 0), "review_required": counts.get("review_required", 0), "blocked": counts.get("blocked", 0), "overall_ready": sum(1 for row in rows if row.get("fact_qa_status") == "PASS" and row.get("canonical_qa_status") in {"PASS", "NOT_REQUIRED"}), "production_writes": False}
     return _write_report(Path(output_dir), summary, rows)
 
 

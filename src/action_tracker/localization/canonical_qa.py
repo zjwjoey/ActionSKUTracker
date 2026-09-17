@@ -18,7 +18,24 @@ class CanonicalFinding:
     blocking: bool = True
 
     def as_dict(self) -> dict[str, Any]:
-        return {"rule_id": self.rule_id, "severity": self.severity, "field_name": self.field_name, "message": self.message, "evidence": dict(self.evidence), "blocking": self.blocking, "qa_layer": "CANONICAL"}
+        # ``blocking`` is retained for backwards compatibility with older
+        # reports.  It is deliberately *not* used to decide canonical
+        # correctness: every finding makes canonical QA fail.  The explicit
+        # stage gates below make the distinction visible to Worker/Approval/
+        # Production callers.
+        runtime_blocking = self.rule_id in {"FAMILY_POLICY_CONFLICT", "TERMINOLOGY_CONFLICT"}
+        return {
+            "rule_id": self.rule_id,
+            "severity": self.severity,
+            "field_name": self.field_name,
+            "message": self.message,
+            "evidence": dict(self.evidence),
+            "blocking": self.blocking,
+            "approval_blocking": True,
+            "production_blocking": True,
+            "runtime_blocking": runtime_blocking,
+            "qa_layer": "CANONICAL",
+        }
 
 
 def audit_canonical(context: TranslationContext, fields: Mapping[str, Any], *, registry: ProductFamilyRegistry | None = None, production: bool = False) -> tuple[CanonicalFinding, ...]:
@@ -69,5 +86,21 @@ def audit_canonical(context: TranslationContext, fields: Mapping[str, Any], *, r
 
 
 def canonical_guard(context: TranslationContext, fields: Mapping[str, Any], *, registry: ProductFamilyRegistry | None = None, production: bool = False) -> dict[str, Any]:
+    if context.family_id == UNKNOWN_FAMILY:
+        return {
+            "status": "NOT_REQUIRED", "findings": [], "qa_layer": "CANONICAL",
+            "family_id": context.family_id, "family_policy_version": context.family_policy_version,
+            "approval_blocking": False, "production_blocking": False, "runtime_blocking": False,
+        }
     findings = audit_canonical(context, fields, registry=registry, production=production)
-    return {"status": "PASS" if not any(item.blocking for item in findings) else "FAIL", "findings": [item.as_dict() for item in findings], "qa_layer": "CANONICAL", "family_id": context.family_id, "family_policy_version": context.family_policy_version}
+    finding_rows = [item.as_dict() for item in findings]
+    return {
+        "status": "PASS" if not findings else "FAIL",
+        "findings": finding_rows,
+        "qa_layer": "CANONICAL",
+        "family_id": context.family_id,
+        "family_policy_version": context.family_policy_version,
+        "approval_blocking": bool(findings),
+        "production_blocking": bool(findings),
+        "runtime_blocking": any(bool(item.get("runtime_blocking")) for item in finding_rows),
+    }

@@ -1,4 +1,5 @@
 from pathlib import Path
+from action_tracker.database.connection import connect
 
 from action_tracker.localization.canonical_qa import canonical_guard
 from action_tracker.localization.feedback import mine_family_feedback
@@ -12,9 +13,11 @@ from action_tracker.localization.engine import LocalizationEngine
 from action_tracker.localization.knowledge import KnowledgeLoader, ensure_schemas
 from action_tracker.dictionary import PRODUCT_DICTIONARY_HEADERS
 from action_tracker.localization.registry.repository import LocalizationRegistry
+from action_tracker.localization.resolver import TranslationResolver, Resolution
 from action_tracker.localization.memory.repository import TranslationMemoryRepository
 from action_tracker.localization.runtime import shadow_run, canary
 from action_tracker.localization.contracts import SourceFacts, source_hash
+from action_tracker.knowledge.storage import KnowledgeStore
 import csv
 
 
@@ -123,3 +126,72 @@ def test_scoped_terminology_specific_rule_wins(tmp_path: Path):
     repo = TerminologyRepository(tmp_path / "registry.db")
     hints = repo.resolve("Material: Goma", field_name="details", family_id="CLEANING_CLOTH", context_key="material")
     assert hints and hints[0].target_term == "橡胶"
+
+
+def _seed_family_worker(tmp_path: Path, target: str):
+    db_path = tmp_path / f"family-worker-{target}.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+    record = {
+        "sku": "123456", "name_es": "Paño de microfibra",
+        "cat1_es": "", "cat2_es": "", "spec_es": "",
+        "desc_es": "", "details_es": "",
+    }
+    registry.ingest_records([record], source_run_id="family-run", observed_at="2026-09-17")
+    class StubResolver:
+        provider = None
+        engine = LocalizationEngine()
+
+        def resolve(self, record, *, allow_provider=False):
+            return {"name": self.resolve_field(record, "name", allow_provider=allow_provider)}
+
+        def resolve_field(self, record, field_name, *, allow_provider=False, context=None):
+            source = SourceFacts.from_record(record)
+            plan = self.engine.resolve(record)
+            return Resolution(source.sku, field_name, source.name_es, source.source_hash, target,
+                              "qwen_mt", "PENDING", False, False, provenance={
+                                  "provider": "fixture", "model": "fixture",
+                                  "request_hash": "rq", "response_hash": "rs",
+                              })
+
+    resolver = StubResolver()
+    return db_path, registry, record, resolver
+
+
+def test_worker_canonical_fail_is_reviewable_but_never_approved_or_projected(tmp_path: Path):
+    db_path, registry, record, resolver = _seed_family_worker(tmp_path, "微纤维抹布")
+    from action_tracker.localization.worker import TranslationQueueWorker
+    result = TranslationQueueWorker(registry, resolver).process_once(limit=1, worker_id="family-test")
+    assert result.completed == 1 and result.blocked == 0 and result.review_required == 1
+    with connect(db_path) as db:
+        row = db.execute("SELECT r.qa_status,r.canonical_qa_status,r.review_status,q.status FROM translation_revisions r JOIN translation_units u ON u.current_revision_id=r.revision_id JOIN translation_queue q ON q.official_sku='123456'").fetchone()
+        revision_id = db.execute("SELECT revision_id FROM translation_revisions").fetchone()[0]
+        finding = db.execute("SELECT qa_layer,field_name,rule_id FROM translation_qa_findings WHERE revision_id=?", (revision_id,)).fetchone()
+    assert tuple(row) == ("PASS", "FAIL", "PENDING", "COMPLETED")
+    assert tuple(finding) == ("CANONICAL", "name", "FAMILY_PRODUCT_TYPE_NONCANONICAL")
+    assert registry.approve_revision(revision_id, actor="human:test") is False
+    assert KnowledgeStore(db_path).approved_registry_projection() == []
+
+
+def test_worker_canonical_pass_can_be_approved_and_projected(tmp_path: Path):
+    db_path, registry, record, resolver = _seed_family_worker(tmp_path, "微纤维清洁布")
+    from action_tracker.localization.worker import TranslationQueueWorker
+    result = TranslationQueueWorker(registry, resolver).process_once(limit=1, worker_id="family-test")
+    assert result.completed == 1 and result.review_required == 0
+    with connect(db_path) as db:
+        revision_id = db.execute("SELECT revision_id FROM translation_revisions").fetchone()[0]
+        status = db.execute("SELECT canonical_qa_status FROM translation_revisions WHERE revision_id=?", (revision_id,)).fetchone()[0]
+    assert status == "PASS"
+    assert registry.approve_revision(revision_id, actor="human:test") is True
+    assert len(KnowledgeStore(db_path).approved_registry_projection()) == 1
+
+
+def test_canonical_context_rules_cover_name_description_and_detail_material():
+    record = {"sku": "x", "name_es": "Paño de microfibra", "cat1_es": "Hogar", "cat2_es": "Limpieza", "desc_es": "Paño de microfibra", "details_es": "Material: Goma"}
+    plan = LocalizationEngine().resolve(record)
+    assert canonical_guard(build_translation_context(record, "name", semantic_facts=plan.semantic_facts), {"name": "清洁布微纤维"})["status"] == "FAIL"
+    assert canonical_guard(build_translation_context(record, "description", semantic_facts=plan.semantic_facts), {"description": "采用微纤维材质"})["status"] == "FAIL"
+    detail = canonical_guard(build_translation_context(record, "details", semantic_facts=plan.semantic_facts, detail_key="material"), {"details": "材质：橡胶"})
+    assert detail["status"] == "PASS"
+    assert detail["approval_blocking"] is False

@@ -105,12 +105,14 @@ class LocalizationRegistry:
             db.execute("INSERT INTO translation_provider_calls(call_id,provider,model,request_hash,response_hash,source_hash,status,usage_json,request_id,latency_ms,retry_count,cost_estimate,artifact_ref,error_code,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (call_id, provider, model, request_hash, response_hash, source_hash, status, json.dumps(dict(usage or {}), ensure_ascii=False, sort_keys=True), request_id, latency_ms, retry_count, cost_estimate, artifact_ref, error_code, _now()))
         return call_id
 
-    def record_revision(self, *, unit_id: str, target_text: str, provider: str, model: str, request_hash: str, response_hash: str, qa_status: str = "PENDING", review_status: str = "PENDING", request_id: str | None = None, policy_version: str | None = None, terminology_version: str | None = None, tm_version: str | None = None, source_hash: str | None = None, parent_revision_id: str | None = None, repair_reason: str | None = None, provider_call_id: str | None = None, provenance: Mapping[str, Any] | None = None) -> str:
+    def record_revision(self, *, unit_id: str, target_text: str, provider: str, model: str, request_hash: str, response_hash: str, qa_status: str = "PENDING", canonical_qa_status: str = "NOT_REQUIRED", review_status: str = "PENDING", request_id: str | None = None, policy_version: str | None = None, terminology_version: str | None = None, tm_version: str | None = None, source_hash: str | None = None, parent_revision_id: str | None = None, repair_reason: str | None = None, provider_call_id: str | None = None, provenance: Mapping[str, Any] | None = None) -> str:
         revision_id = str(uuid.uuid4())
         with connect(self.path) as db:
             row = db.execute("SELECT COALESCE(MAX(revision),0) FROM translation_revisions WHERE unit_id=?", (unit_id,)).fetchone()
             revision = int(row[0]) + 1
-            db.execute("INSERT INTO translation_revisions(revision_id,unit_id,revision,target_text,target_hash,provider,model,request_hash,response_hash,provider_call_id,provenance_json,request_id,policy_version,terminology_version,tm_version,source_hash,parent_revision_id,repair_reason,qa_status,review_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (revision_id, unit_id, revision, target_text, value_hash(target_text), provider, model, request_hash, response_hash, provider_call_id, json.dumps(dict(provenance or {}), ensure_ascii=False, sort_keys=True, default=str), request_id, policy_version, terminology_version, tm_version, source_hash, parent_revision_id, repair_reason, qa_status, review_status, _now()))
+            provenance_payload = dict(provenance or {})
+            provenance_payload.setdefault("canonical_qa_status", canonical_qa_status)
+            db.execute("INSERT INTO translation_revisions(revision_id,unit_id,revision,target_text,target_hash,provider,model,request_hash,response_hash,provider_call_id,provenance_json,request_id,policy_version,terminology_version,tm_version,source_hash,parent_revision_id,repair_reason,qa_status,canonical_qa_status,review_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (revision_id, unit_id, revision, target_text, value_hash(target_text), provider, model, request_hash, response_hash, provider_call_id, json.dumps(provenance_payload, ensure_ascii=False, sort_keys=True, default=str), request_id, policy_version, terminology_version, tm_version, source_hash, parent_revision_id, repair_reason, qa_status, canonical_qa_status, review_status, _now()))
             unit_status = "APPROVED" if str(review_status).upper() in {"APPROVED", "HUMAN_REVIEWED", "LOCKED"} else ("REVIEW_REQUIRED" if str(qa_status).upper() == "PASS" else "BLOCKED")
             db.execute("UPDATE translation_units SET current_revision_id=?,status=?,updated_at=? WHERE unit_id=?", (revision_id, unit_status, _now(), unit_id))
         return revision_id
@@ -121,7 +123,9 @@ class LocalizationRegistry:
                                 request_hash: str | None = None, response_hash: str | None = None,
                                 request_id: str | None = None, provider_call_id: str | None = None,
                                 provenance: Mapping[str, Any] | None = None,
-                                terminology_version: str | None = None) -> str:
+                                terminology_version: str | None = None,
+                                canonical_qa_status: str = "NOT_REQUIRED",
+                                canonical_findings: Iterable[Mapping[str, Any]] = ()) -> str:
         """Create a field-only repair revision without overwriting its parent."""
         canonical = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field_name, field_name)
         with connect(self.path) as db:
@@ -134,20 +138,23 @@ class LocalizationRegistry:
         # those sources may use a local value digest as provenance; provider
         # resolutions must pass their real request/response hashes.
         digest = value_hash(target_text)
+        revision_provenance = dict(provenance or {})
+        revision_provenance.setdefault("canonical_qa_status", canonical_qa_status)
+        revision_provenance.setdefault("canonical_qa_findings", [dict(item) for item in canonical_findings])
         return self.record_revision(
             unit_id=str(row[0]), target_text=target_text, provider=provider,
             model=model or provider, request_hash=request_hash or digest,
             response_hash=response_hash or digest, request_id=request_id,
-            provider_call_id=provider_call_id, provenance=provenance,
+            provider_call_id=provider_call_id, provenance=revision_provenance,
             terminology_version=terminology_version, source_hash=source_hash,
             parent_revision_id=parent_revision_id, repair_reason=repair_reason,
-            qa_status=qa_status,
+            qa_status=qa_status, canonical_qa_status=canonical_qa_status,
         )
 
-    def record_finding(self, revision_id: str, *, rule_id: str, severity: str, evidence: Mapping[str, Any], status: str = "OPEN") -> str:
+    def record_finding(self, revision_id: str, *, rule_id: str, severity: str, evidence: Mapping[str, Any], status: str = "OPEN", field_name: str | None = None, qa_layer: str = "FACT", blocking: bool = True) -> str:
         finding_id = str(uuid.uuid4())
         with connect(self.path) as db:
-            db.execute("INSERT INTO translation_qa_findings(finding_id,revision_id,rule_id,severity,status,evidence_json,created_at) VALUES(?,?,?,?,?,?,?)", (finding_id, revision_id, rule_id, severity, status, json.dumps(dict(evidence), ensure_ascii=False, sort_keys=True, default=str), _now()))
+            db.execute("INSERT INTO translation_qa_findings(finding_id,revision_id,rule_id,severity,field_name,qa_layer,blocking,status,evidence_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", (finding_id, revision_id, rule_id, severity, field_name, qa_layer, int(bool(blocking)), status, json.dumps(dict(evidence), ensure_ascii=False, sort_keys=True, default=str), _now()))
         return finding_id
 
     def _revision_event(self, revision_id: str, event_type: str, actor: str, evidence: Mapping[str, Any] | None = None) -> None:
@@ -163,6 +170,9 @@ class LocalizationRegistry:
         with connect(self.path) as db:
             row = db.execute("SELECT qa_status,review_status FROM translation_revisions WHERE revision_id=?", (revision_id,)).fetchone()
             if not row or str(row[0]).upper() != "PASS":
+                return False
+            canonical_status = db.execute("SELECT canonical_qa_status FROM translation_revisions WHERE revision_id=?", (revision_id,)).fetchone()
+            if canonical_status and str(canonical_status[0] or "NOT_RUN").upper() == "FAIL":
                 return False
             blockers = db.execute("SELECT COUNT(*) FROM translation_qa_findings WHERE revision_id=? AND status='OPEN' AND severity IN ('BLOCKER','ERROR','HIGH')", (revision_id,)).fetchone()[0]
             if blockers:
@@ -188,6 +198,7 @@ class LocalizationRegistry:
                 WHERE s.official_sku=? AND u.field_name IN (?,?) AND r.source_hash=?
                   AND u.freshness_status='FRESH'
                   AND r.review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED') AND r.qa_status='PASS'
+                  AND COALESCE(r.canonical_qa_status,'NOT_RUN') IN ('PASS','NOT_REQUIRED')
                   AND NOT EXISTS (SELECT 1 FROM translation_qa_findings f WHERE f.revision_id=r.revision_id AND f.status='OPEN' AND f.severity IN ('BLOCKER','ERROR','HIGH'))
                 ORDER BY r.revision DESC LIMIT 1""", (official_sku, field_name, canonical, source_hash)).fetchone()
         return dict(row) if row else None
@@ -199,16 +210,20 @@ class LocalizationRegistry:
         revisions = []
         with connect(self.path) as db:
             units = {str(row["field_name"]): str(row["unit_id"]) for row in db.execute("SELECT unit_id,field_name FROM translation_units WHERE source_version_id=?", (source_id,)).fetchall()}
-        findings = qa.get("findings") if isinstance(qa, Mapping) else []
+        findings = list(qa.get("findings") or ()) if isinstance(qa, Mapping) else []
+        canonical_payload = qa.get("canonical") if isinstance(qa, Mapping) and isinstance(qa.get("canonical"), Mapping) else {}
+        findings.extend(list(canonical_payload.get("findings") or ()))
         for field_name, value in response.fields.items():
             unit_id = units.get(field_name) or units.get({"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field_name, field_name))
             if not unit_id:
                 continue
-            revision_id = self.record_revision(unit_id=unit_id, target_text=str(value), provider=response.provider, model=response.model, request_hash=response.request_hash, response_hash=response.response_hash, request_id=response.request_id, provider_call_id=provider_call_id, provenance={"provider": response.provider, "model": response.model, "request_id": response.request_id, "request_hash": response.request_hash, "response_hash": response.response_hash, "usage": dict(response.usage or {})}, source_hash=source_hash_value, qa_status=str(qa.get("status") or "FAIL"), review_status="PENDING")
+            canonical = canonical_payload
+            canonical_status = str(qa.get("canonical_qa_status") or canonical.get("status") or "NOT_REQUIRED")
+            revision_id = self.record_revision(unit_id=unit_id, target_text=str(value), provider=response.provider, model=response.model, request_hash=response.request_hash, response_hash=response.response_hash, request_id=response.request_id, provider_call_id=provider_call_id, provenance={"provider": response.provider, "model": response.model, "request_id": response.request_id, "request_hash": response.request_hash, "response_hash": response.response_hash, "usage": dict(response.usage or {}), "family_id": qa.get("family_id"), "family_policy_version": qa.get("family_policy_version"), "context_key": qa.get("context_key"), "canonical_qa_status": canonical_status, "canonical_qa_findings": list(canonical.get("findings") or qa.get("canonical_findings") or [])}, source_hash=source_hash_value, qa_status=str(qa.get("fact_status") or qa.get("status") or "FAIL"), canonical_qa_status=canonical_status, review_status="PENDING")
             revisions.append(revision_id)
             for finding in findings or []:
                 if str(finding.get("field_name") or "") in {field_name, ""}:
-                    self.record_finding(revision_id, rule_id=str(finding.get("rule_id") or "UNKNOWN"), severity=str(finding.get("severity") or "HIGH"), evidence=dict(finding.get("evidence") or {}))
+                    self.record_finding(revision_id, rule_id=str(finding.get("rule_id") or "UNKNOWN"), severity=str(finding.get("severity") or "HIGH"), field_name=str(finding.get("field_name") or field_name), qa_layer=str(finding.get("qa_layer") or ("CANONICAL" if finding in (canonical.get("findings") or []) else "FACT")), blocking=bool(finding.get("blocking", True)), evidence=dict(finding.get("evidence") or {}))
         return {"source_version_id": source_id, "revision_ids": revisions}
 
     def add_term(self, source_term: str, target_term: str, *, scope: str = "GLOBAL", approval_status: str = "PENDING", notes: str = "",
