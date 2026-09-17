@@ -39,11 +39,32 @@ def repair_field(record: Mapping[str, Any], field_name: str, candidate: str, *, 
     provenance: dict[str, Any] = {"resolution_source": "DETERMINISTIC_REPAIR"}
     if qa["status"] != "PASS" and provider is not None:
         provider_terms = list(terminology)
-        if field_name == "name":
-            for fact in semantic_facts:
-                if getattr(fact, "semantic_type", "") in {"BRAND", "IP_CHARACTER"} and str(getattr(fact, "source_text", "") or "").strip():
-                    token = str(fact.source_text).strip()
-                    provider_terms.append({"source": token, "target": token})
+        expected_source_field = {
+            "name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es",
+            "spec": "spec_es", "description": "desc_es", "details": "details_es",
+        }.get(field_name, field_name)
+        semantic_types = {"PRODUCT_TYPE", "FUNCTION", "MATERIAL", "COMPATIBILITY", "CARE", "NUTRITION", "VARIANT", "DETAIL_KEY"}
+        existing_terms = {
+            str(item.get("source") or item.get("source_term") or "").strip().casefold()
+            for item in provider_terms if isinstance(item, Mapping)
+        }
+        for fact in semantic_facts:
+            if str(getattr(fact, "source_field", "") or "") != expected_source_field:
+                continue
+            token = str(getattr(fact, "source_text", "") or "").strip()
+            if not token or token.casefold() in existing_terms:
+                continue
+            fact_type = str(getattr(fact, "semantic_type", "") or "")
+            if fact_type in {"BRAND", "IP_CHARACTER"}:
+                target = token
+            elif fact_type in semantic_types:
+                target = str(getattr(fact, "canonical_value", "") or getattr(fact, "value", "") or "").strip()
+                if not target or target.casefold() == token.casefold():
+                    continue
+            else:
+                continue
+            provider_terms.append({"source": token, "target": target})
+            existing_terms.add(token.casefold())
         request = TranslationRequest(
             source.sku,
             {field_name: getattr(source, {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}[field_name])},

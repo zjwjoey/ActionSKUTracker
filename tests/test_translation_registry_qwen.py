@@ -29,6 +29,7 @@ from action_tracker.localization.resolver import TranslationResolver
 from action_tracker.localization.engine import LocalizationEngine
 from action_tracker.localization.contracts import SemanticFact
 from action_tracker.localization.semantic import parse_semantic_facts
+from action_tracker.localization.repair import repair_field
 from action_tracker.localization.worker import TranslationQueueWorker
 from action_tracker.localization.runtime_builder import build_translation_runtime
 from action_tracker.database.schema import migrate_v2
@@ -520,6 +521,42 @@ def test_sku_10280_description_source_fact_remains_a_real_failure():
     assert result["status"] == "FAIL"
     dropped = [item for item in result["findings"] if item["rule_id"] == "SEMANTIC_FACT_DROPPED"]
     assert dropped and all(item["evidence"]["source_term"] == "gomas" for item in dropped)
+
+
+def test_sku_10280_repair_injects_description_scoped_semantic_term():
+    source_record = {
+        "sku": "10280",
+        "name_es": "Gomas elásticas Office Essentials",
+        "spec_es": "100 gramos",
+        "desc_es": "Multiusos\nEnvase ahorro de gomas para sujetar o agrupar objetos o papeles con rapidez.",
+        "details_es": "Color: Beige; Material: Goma; Número del artículo: 10280",
+        "cat1_es": "Oficina y papelería",
+        "cat2_es": "Accesorios de oficina",
+    }
+    facts = parse_semantic_facts(SourceFacts.from_record(source_record))
+    captured = {}
+
+    class CapturingProvider:
+        provider = "fake"
+        model = "fixture"
+
+        def translate(self, request):
+            captured["terms"] = tuple(request.terms)
+            return TranslationResponse(
+                {"description": "多用途；经济装橡皮筋，可快速固定或整理物品或纸张。"},
+                "fake", "fixture", request.source_hash, "rq", "rs", "rid",
+            )
+
+    result = repair_field(
+        source_record,
+        "description",
+        "多用途\n节省型包装，可快速固定或整理物品与文件。",
+        repair_reason="SEMANTIC_FACT_DROPPED",
+        provider=CapturingProvider(),
+        semantic_facts=facts,
+    )
+    assert {term["source"]: term["target"] for term in captured["terms"]}["gomas"] == "橡皮筋"
+    assert result.qa["status"] == "PASS"
 
 
 def test_guard_accepts_known_semantic_synonyms():
