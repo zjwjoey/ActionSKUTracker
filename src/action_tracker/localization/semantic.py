@@ -41,7 +41,13 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     dictionaries = dictionaries or {}
     text_fields = (("name_es", source.name_es), ("spec_es", source.spec_es), ("desc_es", source.desc_es), ("details_es", source.details_es))
     facts: list[SemanticFact] = []
-    seen: set[tuple[str, str]] = set()
+    # Semantic provenance is field-scoped.  The same source term can be a
+    # real fact in more than one official field (for example ``gomas`` in
+    # both the title and description), so field_name is part of the
+    # de-duplication key.  Collapsing it at SKU scope loses evidence and
+    # makes downstream QA unable to distinguish a name fact from a
+    # description fact.
+    seen: set[tuple[str, str, str, str]] = set()
     # Versioned dictionaries are preferred over the small deterministic seed
     # map.  Aliases are matched as phrases, never as arbitrary substrings of
     # an unrelated word.
@@ -55,7 +61,7 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     if isinstance(tech_rows, Mapping):
         tech_rows = [{"token": key, "canonical_token": value, "token_type": "TECH_TOKEN"} for key, value in tech_rows.items()]
     def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
-        key = (kind, source_text.casefold(), zh)
+        key = (kind, source_text.casefold(), zh, field)
         if key in seen or not source_text or not zh:
             return
         facts.append(SemanticFact(kind, source_text, zh, canonical or zh, field, evidence, 1.0, "", source.source_hash))
@@ -89,10 +95,10 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
                 semantic = kind if kind in {"PRODUCT_TYPE", "BRAND", "SERIES", "MODEL", "TECH_TOKEN", "MATERIAL", "FUNCTION", "CARE", "COMPATIBILITY", "DESCRIPTION_FACT"} else "DESCRIPTION_FACT"
                 add(semantic, term, zh, field, "term_dictionary")
         for term, (kind, zh) in _TERM_MAP.items():
-            if re.search(rf"(?<!\w){re.escape(term)}(?!\w)", lower) and (kind, zh) not in seen:
+            if re.search(rf"(?<!\w){re.escape(term)}(?!\w)", lower):
                 add(kind, term, zh, field, term)
         for token, zh in _COLORS.items():
-            if re.search(rf"\b{re.escape(token)}\b", lower) and ("COLOR", zh) not in seen:
+            if re.search(rf"\b{re.escape(token)}\b", lower):
                 add("COLOR", token, zh, field, token)
         for match in re.finditer(r"\b\d+(?:[.,]\d+)?\s?(?:mg|mcg|mAh|ml|l|g|kg|cm|mm|V|W|pulgadas?|unidades?|piezas?|pares?|denier)\b", text, re.I):
             raw = match.group(0).replace(" ", "")
@@ -112,8 +118,7 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
                 raw = match.group(0)
                 # Keep the source token as value; the formatter/planner owns
                 # Chinese rendering and therefore cannot silently lose facts.
-                if (kind, raw.lower()) not in seen:
-                    add(kind, raw, raw, field, raw)
+                add(kind, raw, raw, field, raw)
     # The knowledge loader stores aliases in a set.  Sorting is required here:
     # otherwise Python hash randomisation can change fact order between CLI
     # processes and therefore change the first brand selected by the planner.

@@ -20,6 +20,7 @@ _STRICT_TOKEN_TYPES = {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "C
 # such as ``paño -> 抹布`` and ``madera -> 木制``.
 _SEMANTIC_TARGET_ALIASES = {
     "gomas": ("橡皮筋", "橡胶圈", "松紧带"),
+    "goma": ("橡胶",),
     "paño": ("清洁布", "抹布", "擦布", "湿布"),
     "paños": ("清洁布", "抹布", "擦布", "湿布"),
     # ``microfibra`` is rendered in the existing catalog as either
@@ -28,6 +29,43 @@ _SEMANTIC_TARGET_ALIASES = {
     "microfibras": ("超细纤维", "微纤维"),
     "madera": ("木质", "木材", "木制", "木头"),
 }
+
+_SOURCE_FIELD_BY_TARGET = {
+    "name": "name_es",
+    "cat1": "cat1_es",
+    "cat2": "cat2_es",
+    "spec": "spec_es",
+    "description": "desc_es",
+    "details": "details_es",
+}
+
+# Semantic facts are checked in their source-field scope by default.  A
+# future planner may add a reviewed, explicit cross-field relocation contract;
+# until such a contract exists, a generic ``placement`` value is not enough
+# to make (for example) a details material fact required in the name.
+_EXPLICIT_CROSS_FIELD_RELOCATIONS: frozenset[tuple[str, str, str]] = frozenset()
+
+
+def _source_term_present(source_text: str, source_term: str) -> bool:
+    """Match a semantic term as a word/phrase, never as a substring.
+
+    This keeps ``goma`` (material: rubber) from matching ``gomas``
+    (product type: elastic bands), while retaining accents and multi-word
+    phrases used by the Spanish source facts.
+    """
+    if not source_text or not source_term:
+        return False
+    return bool(re.search(rf"(?<!\w){re.escape(source_term.strip())}(?!\w)", source_text, flags=re.IGNORECASE))
+
+
+def _fact_applies_to_field(fact: Any, field_name: str) -> bool:
+    source_field = str(getattr(fact, "source_field", "") or "")
+    target_source_field = _SOURCE_FIELD_BY_TARGET.get(field_name, "")
+    if source_field == target_source_field:
+        return True
+    placement = str(getattr(fact, "placement", "") or "")
+    semantic_type = str(getattr(fact, "semantic_type", "") or "")
+    return (semantic_type, source_field, placement) in _EXPLICIT_CROSS_FIELD_RELOCATIONS
 
 
 @dataclass(frozen=True)
@@ -82,9 +120,27 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             canonical = str(getattr(fact, "canonical_value", "") or getattr(fact, "value", "") or "").strip()
             if fact_type not in covered_types or not source_term or not canonical or canonical.casefold() == source_term.casefold():
                 continue
+            # Do not propagate a SKU-level fact to every requested target
+            # field.  Facts are field-scoped; only an explicit planner
+            # relocation contract can override the source-field mapping.
+            if not _fact_applies_to_field(fact, field_name):
+                continue
             aliases = _SEMANTIC_TARGET_ALIASES.get(source_term.casefold(), (canonical,))
-            if source_term.casefold() in source_text.casefold() and not any(alias.casefold() in target.casefold() for alias in aliases):
-                findings.append(QAFinding("SEMANTIC_FACT_DROPPED", "ERROR", field_name, {"semantic_type": fact_type, "source_term": source_term, "expected_target": canonical}, source=source_text, target=target, message="semantic product fact is not represented in target", blocking=True))
+            if _source_term_present(source_text, source_term) and not any(alias.casefold() in target.casefold() for alias in aliases):
+                findings.append(QAFinding(
+                    "SEMANTIC_FACT_DROPPED", "ERROR", field_name,
+                    {
+                        "semantic_type": fact_type,
+                        "source_term": source_term,
+                        "expected_target": canonical,
+                        "source_field": str(getattr(fact, "source_field", "") or ""),
+                        "target_scope": field_name,
+                        "placement": str(getattr(fact, "placement", "") or ""),
+                    },
+                    source=source_text, target=target,
+                    message="semantic product fact is not represented in target",
+                    blocking=True,
+                ))
         source_numbers, target_numbers = _numbers(source_text), _numbers(target)
         # A planner may legitimately move an official numeric fact from
         # description/details into the canonical spec field.  Keep dropped

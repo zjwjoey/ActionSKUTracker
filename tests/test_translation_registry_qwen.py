@@ -28,6 +28,7 @@ from action_tracker.localization.registry.migration import build_migration_previ
 from action_tracker.localization.resolver import TranslationResolver
 from action_tracker.localization.engine import LocalizationEngine
 from action_tracker.localization.contracts import SemanticFact
+from action_tracker.localization.semantic import parse_semantic_facts
 from action_tracker.localization.worker import TranslationQueueWorker
 from action_tracker.localization.runtime_builder import build_translation_runtime
 from action_tracker.database.schema import migrate_v2
@@ -471,13 +472,54 @@ def test_guard_blocks_dropped_reviewed_product_fact():
         "sku": "10280",
         "desc_es": "Envase ahorro de gomas para sujetar objetos.",
     })
-    fact = SemanticFact("PRODUCT_TYPE", "gomas", "橡皮筋", "橡皮筋", "name_es")
+    # The description evidence is field-scoped.  A fact observed in the
+    # title must not be used as a blanket SKU-level requirement, but the same
+    # source term observed in the description is a real description fact.
+    fact = SemanticFact("PRODUCT_TYPE", "gomas", "橡皮筋", "橡皮筋", "desc_es")
     result = guard_translation(
         source, {"description": "节省空间的包装，可快速固定物品。"},
         ("description",), semantic_facts=(fact,),
     )
     assert result["status"] == "FAIL"
     assert any(item["rule_id"] == "SEMANTIC_FACT_DROPPED" for item in result["findings"])
+
+
+def test_sku_10280_name_scope_does_not_require_detail_material():
+    source = SourceFacts.from_record({
+        "sku": "10280",
+        "name_es": "Gomas elásticas Office Essentials",
+        "spec_es": "100 gramos",
+        "desc_es": "Multiusos\nEnvase ahorro de gomas para sujetar o agrupar objetos o papeles con rapidez.",
+        "details_es": "Color: Beige; Material: Goma; Número del artículo: 10280",
+        "cat1_es": "Oficina y papelería",
+        "cat2_es": "Accesorios de oficina",
+    })
+    facts = parse_semantic_facts(source)
+    result = guard_translation(source, {"name": "橡皮筋"}, ("name",), semantic_facts=facts)
+    assert result["status"] == "PASS"
+    assert not any(item["rule_id"] == "SEMANTIC_FACT_DROPPED" for item in result["findings"])
+
+
+def test_sku_10280_description_source_fact_remains_a_real_failure():
+    source = SourceFacts.from_record({
+        "sku": "10280",
+        "name_es": "Gomas elásticas Office Essentials",
+        "spec_es": "100 gramos",
+        "desc_es": "Multiusos\nEnvase ahorro de gomas para sujetar o agrupar objetos o papeles con rapidez.",
+        "details_es": "Color: Beige; Material: Goma; Número del artículo: 10280",
+        "cat1_es": "Oficina y papelería",
+        "cat2_es": "Accesorios de oficina",
+    })
+    facts = parse_semantic_facts(source)
+    result = guard_translation(
+        source,
+        {"description": "多用途\n节省型包装，可快速固定或整理物品与文件。"},
+        ("description",),
+        semantic_facts=facts,
+    )
+    assert result["status"] == "FAIL"
+    dropped = [item for item in result["findings"] if item["rule_id"] == "SEMANTIC_FACT_DROPPED"]
+    assert dropped and all(item["evidence"]["source_term"] == "gomas" for item in dropped)
 
 
 def test_guard_accepts_known_semantic_synonyms():
