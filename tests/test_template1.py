@@ -54,7 +54,7 @@ def test_template1_builds_history_union_and_three_sheets(tmp_path):
         assert workbook.sheetnames == ["商品上下架明细", "今日西班牙语清单", "今日中文清单"]
         history = workbook["商品上下架明细"]
         headers = [cell.value for cell in history[1]]
-        assert headers[:5] == ["序号", "编号", "中文品名", "品牌", "一级类目（中文）"]
+        assert headers[:5] == ["序号", "编号", "中文品名", "图片链接", "商品链接"]
         assert headers[-2:] == ["26.08.24", "26.08.26"]
         values = {str(history.cell(row=row, column=2).value): history.cell(row=row, column=len(headers)).value for row in range(2, history.max_row + 1)}
         assert values == {"1001": 1, "9001": 0}

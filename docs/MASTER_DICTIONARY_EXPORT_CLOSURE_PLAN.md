@@ -141,8 +141,9 @@ normalized_fact: Material: Plástico
 - `A3`、`D3`、`USB-C`、`20D`、接口型号、剂量等属于商品事实，不能因去品牌规则丢失；
 - “行李牌”“扑克牌”等商品本体中的“牌”绝不能误删。
 
-`EXPORT_PROFILE.md`、`DICTIONARY_ARCHITECTURE.md` 中仍存在“品牌标准名＋牌＋商品”
-的旧规则；在启用任何正式 Apply 前必须统一更新，避免 Resolver 和人工规范互相覆盖。
+`EXPORT_PROFILE.md`、`DICTIONARY_ARCHITECTURE.md` 和 `DATA_MODEL.md` 已按本节规则统一：
+中文品名默认不主动加入品牌名或“牌”字，仅在品牌、IP、系列或型号是识别商品所必需的
+事实时，依据人工/可信证据保留官方写法。
 
 ## 5. 实施阶段
 

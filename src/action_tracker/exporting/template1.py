@@ -13,8 +13,11 @@ from .history import PresenceHistory
 
 
 HISTORY_HEADERS = (
-    "序号", "编号", "中文品名", "品牌", "一级类目（中文）", "二级类目（中文）",
-    "西班牙语品名", "规格（西语）", "图片链接", "商品链接", "首次出现日期", "最近出现日期", "当前状态",
+    # Historical delivery table is intentionally narrow: it is a Presence
+    # matrix, not a second Master.  Keep only the five fields agreed for the
+    # rolling up/down-detail export; catalog/category/brand fields belong to
+    # the two daily catalog sheets.
+    "序号", "编号", "中文品名", "图片链接", "商品链接",
 )
 CATALOG_HEADERS = (
     "图片", "编号", "标题", "分类1", "分类2", "规格", "折后价", "原价", "单价",
@@ -136,14 +139,14 @@ def _write_history_sheet(ws: Any, rows: list[dict[str, Any]], dates: tuple[str, 
         values = [number] + [row.get(header, "") for header in HISTORY_HEADERS[1:]]
         values += [row.get(date, "UNKNOWN") for date in dates]
         ws.append(values)
-    _format_sheet(ws, wrap_columns={"中文品名", "一级类目（中文）", "二级类目（中文）", "西班牙语品名", "规格（西语）"})
-    headers = list(HISTORY_HEADERS)
+    _format_sheet(ws, wrap_columns={"中文品名"})
+    all_headers = list(HISTORY_HEADERS) + [_compact_date(date) for date in dates]
     for header in ("图片链接", "商品链接"):
-        col = headers.index(header) + 1
+        col = all_headers.index(header) + 1
         for cell in ws.iter_cols(min_col=col, max_col=col, min_row=2):
             for item in cell:
                 _set_hyperlink(item)
-    for col in range(len(HISTORY_HEADERS) + 1, len(headers) + 1):
+    for col in range(len(HISTORY_HEADERS) + 1, len(all_headers) + 1):
         for row_no in range(2, ws.max_row + 1):
             ws.cell(row=row_no, column=col).number_format = "0"
 

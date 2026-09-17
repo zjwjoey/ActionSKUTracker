@@ -52,7 +52,19 @@ def build_history_only_rows(history: PresenceHistory) -> list[dict[str, Any]]:
 _DATE_HEADER_RE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{2})$")
 
 
-def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
+def _compact_date(value: str) -> str:
+    return f"{value[2:4]}.{value[5:7]}.{value[8:10]}"
+
+
+def load_presence_history(cfg: dict[str, Any], *, as_of_date: str | None = None) -> PresenceHistory:
+    """Load configured history plus validated local export archives.
+
+    ``as_of_date`` prevents an older export from accidentally seeing a future
+    Monday.  Archives are read-only evidence produced by the export module;
+    they extend the source registry but never override an already confirmed
+    date from the seed/configured source.
+    """
+    cutoff = _parse_iso_date(as_of_date) if as_of_date else None
     config_path = Path(cfg.get("history_sources_path") or Path(cfg["project_root"]) / "config" / "history_sources.yaml")
     if not config_path.exists():
         raise HistoryExportError(f"HISTORY_CONFIG_MISSING: {config_path}")
@@ -71,6 +83,7 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         path = _resolve_path(cfg, seed["path"])
         seed_path = str(path)
         seed_records, seed_dates = _read_seed(path, seed)
+        seed_dates = {date for date in seed_dates if cutoff is None or date <= cutoff}
         dates.update(seed_dates)
         seed_row_count = len(seed_records)
         seed_cfg = _capabilities(seed, source_name="seed")
@@ -82,12 +95,17 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         for record in seed_records:
             sku = record["sku"]
             seed_rows[sku] = record
-            presence.setdefault(sku, {}).update(record["presence"])
+            presence.setdefault(sku, {}).update({
+                date: value for date, value in record["presence"].items()
+                if date in seed_dates
+            })
             latest.setdefault(sku, {}).update(record.get("fields") or {})
 
     seen_dates = set(dates)
     for source in raw.get("sources") or []:
         date = _parse_iso_date(source.get("date"))
+        if cutoff is not None and date > cutoff:
+            continue
         if date in seen_dates:
             # The seed is an explicitly confirmed snapshot. Preserve its date
             # instead of silently letting a differently formatted source win.
@@ -99,7 +117,11 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         unique = set(sku_values)
         for record in records:
             sku = record["sku"]
-            presence.setdefault(sku, {})[date] = 1
+            # Matrix sources may carry an explicit 0/1 value for their date
+            # column.  Preserve that value; treating every listed row as 1
+            # turns a historical up/down sheet into an all-present snapshot.
+            value = (record.get("presence") or {}).get(date, 1)
+            presence.setdefault(sku, {})[date] = value
             fields = record.get("fields") or {}
             if fields:
                 latest.setdefault(sku, {}).update(fields)
@@ -110,6 +132,35 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         )
         stats.append(stat)
         source_by_date[date] = stat
+
+    # A successful export is also retained as a local, immutable history
+    # archive.  This lets a later export merge prior output with a newly
+    # registered Monday source instead of relying on only the latest file.
+    archive_dir = _history_archive_dir(cfg)
+    if archive_dir.exists():
+        for archive_path in sorted(archive_dir.glob("*.xlsx")):
+            archive_records, archive_dates = _read_archive(archive_path)
+            for date in sorted(archive_dates):
+                if cutoff is not None and date > cutoff:
+                    continue
+                if date in seen_dates:
+                    continue
+                unique = {record["sku"] for record in archive_records}
+                values = [record["presence"].get(date, PRESENCE_UNKNOWN) for record in archive_records]
+                complete = all(value in (0, 1) for value in values)
+                source_by_date[date] = HistorySourceStat(
+                    date, str(archive_path), len(archive_records), len(unique),
+                    len(archive_records) - len(unique), True, complete, complete,
+                    "A", "COMPLETE" if complete else "PARTIAL",
+                )
+                for record in archive_records:
+                    sku = record["sku"]
+                    presence.setdefault(sku, {})[date] = record["presence"].get(date, PRESENCE_UNKNOWN)
+                    fields = record.get("fields") or {}
+                    if fields:
+                        latest.setdefault(sku, {}).update(fields)
+                dates.add(date)
+                seen_dates.add(date)
 
     # Fill absence only when the source explicitly proves completeness and
     # absence capability. Partial sources remain UNKNOWN; not observed is not 0.
@@ -127,6 +178,98 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         source_stats=tuple(sorted(source_by_date.values(), key=lambda item: item.date)),
         seed_path=seed_path,
         seed_row_count=seed_row_count,
+    )
+
+
+def _history_archive_dir(cfg: dict[str, Any]) -> Path:
+    raw = cfg.get("history_archive_path") or (cfg.get("paths") or {}).get("history_archive")
+    path = Path(raw) if raw else Path((cfg.get("paths") or {}).get("exports") or "runtime/exports") / "history_archive"
+    if not path.is_absolute():
+        path = Path(cfg.get("project_root") or ".") / path
+    return path
+
+
+def _read_archive(path: Path) -> tuple[list[dict[str, Any]], set[str]]:
+    """Read one export-generated history workbook as immutable evidence."""
+    records = _read_workbook(path, "商品上下架明细", "编号")
+    if not records:
+        raise HistoryExportError(f"HISTORY_ARCHIVE_EMPTY: {path}")
+    headers = list(records[0].keys())
+    date_columns = {
+        header: f"20{match.group(1)}-{match.group(2)}-{match.group(3)}"
+        for header in headers
+        if (match := _DATE_HEADER_RE.match(str(header).strip()))
+    }
+    if not date_columns:
+        raise HistoryExportError(f"HISTORY_ARCHIVE_DATE_COLUMNS_MISSING: {path}")
+    output: list[dict[str, Any]] = []
+    for raw in records:
+        sku = str(raw.get("编号") or "").strip()
+        if not sku:
+            continue
+        values: dict[str, PresenceValue] = {}
+        for header, date in date_columns.items():
+            value = raw.get(header)
+            if value in (0, 1):
+                values[date] = int(value)
+            elif str(value).strip().upper() == PRESENCE_UNKNOWN:
+                values[date] = PRESENCE_UNKNOWN
+            else:
+                raise HistoryExportError(f"HISTORY_ARCHIVE_BAD_PRESENCE: {path}/{sku}/{header}")
+        output.append({
+            "sku": sku, "presence": values,
+            "fields": {
+                "name_zh": raw.get("中文品名"), "image_url": raw.get("图片链接"),
+                "product_url": raw.get("商品链接"),
+            },
+        })
+    return output, set(date_columns.values())
+
+
+def filter_history_for_export(
+    history: PresenceHistory, cfg: dict[str, Any], *, as_of_date: str,
+) -> PresenceHistory:
+    """Apply the export profile's approved date window and exclusions.
+
+    ``include_dates`` is the frozen historical column set.  Dates newer than
+    its latest entry are admitted automatically so a newly registered Monday
+    can be merged with the retained archive without re-adding retired source
+    batches from the middle of the year.
+    """
+    cutoff = _parse_iso_date(as_of_date)
+    export_cfg = cfg.get("export_history") or {}
+    excluded = {
+        str(value).strip() for value in export_cfg.get("exclude_dates", ["2026-04-05"])
+        if str(value).strip()
+    }
+    included = {
+        str(value).strip() for value in export_cfg.get("include_dates", [])
+        if str(value).strip()
+    }
+    future_floor = max(included) if included else None
+    dates = tuple(
+        date for date in history.dates
+        if date <= cutoff and date not in excluded
+        and (not included or date in included or (future_floor is not None and date > future_floor))
+    )
+    # Drop SKUs that occur only in a source outside the export profile.  The
+    # loader must retain those facts for other research, but they must not
+    # inflate this rolling delivery table after a date is excluded.
+    presence = {}
+    for sku, values in history.presence_by_sku.items():
+        filtered = {date: value for date, value in values.items() if date in dates}
+        # A zero can be filled in for every complete source after loading; it
+        # is not, by itself, evidence that a SKU belongs in the export union.
+        # Keep seed rows (the frozen baseline) and SKUs observed as present in
+        # at least one approved date, but drop products that exist only in an
+        # excluded/intermediate source.
+        if filtered and (sku in history.seed_by_sku or any(value == 1 for value in filtered.values())):
+            presence[sku] = filtered
+    stats = tuple(stat for stat in history.source_stats if stat.date in dates)
+    return PresenceHistory(
+        dates=dates, presence_by_sku=presence, latest_by_sku=history.latest_by_sku,
+        seed_by_sku=history.seed_by_sku, source_stats=stats,
+        seed_path=history.seed_path, seed_row_count=history.seed_row_count,
     )
 
 
@@ -151,6 +294,7 @@ def build_presence_rows(
         dates.append(export_date)
         dates.sort()
     rows: list[dict[str, Any]] = []
+    stat_by_date = {stat.date: stat for stat in history.source_stats}
     for sku in sorted(all_skus, key=_sku_key):
         current = current_by_sku.get(sku, {})
         old = history.latest_by_sku.get(sku, {})
@@ -180,7 +324,11 @@ def build_presence_rows(
         if export_date is not None:
             row["presence"][export_date] = 1 if sku in current_by_sku else 0
         for date in dates:
-            value = row["presence"].get(date, PRESENCE_UNKNOWN)
+            if date in row["presence"]:
+                value = row["presence"][date]
+            else:
+                stat = stat_by_date.get(date)
+                value = 0 if stat and stat.absence_capability and stat.observation_complete else PRESENCE_UNKNOWN
             if value not in (0, 1, PRESENCE_UNKNOWN):
                 raise HistoryExportError(f"HISTORY_BAD_PRESENCE: {sku}/{date}")
             row[date] = value
@@ -242,13 +390,33 @@ def _read_source(path: Path, source_cfg: dict[str, Any]) -> list[dict[str, Any]]
         raise HistoryExportError(f"HISTORY_SKU_HEADER_MISSING: {path}")
     records = _read_workbook(path, source_cfg.get("sheet"), sku_header)
     field_map = source_cfg.get("fields") or {}
+    source_date = str(source_cfg.get("date") or "").strip()
+    presence_header = str(source_cfg.get("presence_header") or "").strip()
+    if source_date and not presence_header:
+        presence_header = _compact_date(source_date)
     output: list[dict[str, Any]] = []
     for raw in records:
         sku = str(raw.get(sku_header) or "").strip()
         if not sku:
             continue
         fields = {key: raw.get(header) for key, header in field_map.items() if header in raw}
-        output.append({"sku": sku, "fields": fields})
+        presence: dict[str, PresenceValue] = {}
+        if source_date and presence_header in raw:
+            value = raw.get(presence_header)
+            if value in (0, 1):
+                presence[source_date] = int(value)
+            elif str(value).strip().upper() == PRESENCE_UNKNOWN:
+                presence[source_date] = PRESENCE_UNKNOWN
+            else:
+                raise HistoryExportError(
+                    f"HISTORY_SOURCE_BAD_PRESENCE: {path}/{sku}/{presence_header}"
+                )
+        elif source_date:
+            # A normal full-catalog source contains only the observed SKU
+            # set; absence is inferred only from the declared complete source
+            # capability during the fill pass below.
+            presence[source_date] = 1
+        output.append({"sku": sku, "presence": presence, "fields": fields})
     return output
 
 

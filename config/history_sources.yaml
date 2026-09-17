@@ -103,3 +103,33 @@ sources:
     observation_complete: true
     evidence_level: A
     fields: {name_es: "标题（西语）", cat1_es: "分类1（西语）", cat2_es: "分类2（西语）", spec_es: "规格（西语）", product_url: "商品链接"}
+  - date: "2026-08-31"
+    path: "F:/按日期整理/20260831/20260831_Action商品上下架明细.xlsx"
+    sheet: "商品上下架明细"
+    sku_header: "编号"
+    presence_header: "26.08.31"
+    presence_capability: true
+    absence_capability: true
+    observation_complete: true
+    evidence_level: A
+    fields: {name_zh: "中文品名", image_url: "图片链接", product_url: "商品链接"}
+  - date: "2026-09-07"
+    path: "F:/按日期整理/20260907/20260907_Action商品上下架明细.xlsx"
+    sheet: "商品上下架明细"
+    sku_header: "编号"
+    presence_header: "26.09.07"
+    presence_capability: true
+    absence_capability: true
+    observation_complete: true
+    evidence_level: A
+    fields: {name_zh: "中文品名", image_url: "图片链接", product_url: "商品链接"}
+  - date: "2026-09-14"
+    path: "F:/按日期整理/260914/20260914_Action商品上下架明细.xlsx"
+    sheet: "商品上下架明细"
+    sku_header: "编号"
+    presence_header: "26.09.14"
+    presence_capability: true
+    absence_capability: true
+    observation_complete: true
+    evidence_level: A
+    fields: {name_zh: "中文品名", image_url: "图片链接", product_url: "商品链接"}

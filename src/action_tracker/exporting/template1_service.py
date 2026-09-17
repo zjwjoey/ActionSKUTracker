@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from .dictionary_join import build_zh_rows, build_zh_rows_from_localized_source, load_dictionary_context
-from .history import HistoryExportError, build_presence_rows, load_presence_history
+from .history import HistoryExportError, build_presence_rows, filter_history_for_export, load_presence_history
+from .history_export import archive_history_table
 from .service import (
     ExportValidationError,
     build_es_rows,
@@ -53,7 +54,9 @@ def export_template1(
         validate_output_rows(zh_rows)
         es_release_gate = evaluate_release_gate(records, es_rows, language="es", strict=source.kind == "SQLITE_CURRENT")
         zh_release_gate = evaluate_release_gate(records, zh_rows, language="zh", strict=source.kind == "SQLITE_CURRENT")
-        history = load_presence_history(cfg)
+        history = filter_history_for_export(
+            load_presence_history(cfg, as_of_date=export_date), cfg, as_of_date=export_date,
+        )
         history_rows = build_presence_rows(
             history, export_date=export_date, current_records=records,
             zh_rows=zh_rows, dictionary=dictionary,
@@ -128,8 +131,15 @@ def export_template1(
         "release_gate": {"es": es_release_gate, "zh": zh_release_gate},
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    archive = archive_history_table(
+        cfg, export_date=export_date, history_rows=history_rows,
+        history_dates=history.dates + ((export_date,) if export_date not in history.dates else ()),
+        source_stats=history.source_stats,
+    )
+    manifest["history_archive"] = archive
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return {
-        "output": str(output), "manifest": str(manifest_path), "run_id": source.run_id,
+        "output": str(output), "manifest": str(manifest_path), "archive": archive, "run_id": source.run_id,
         "sku_count": len(current_skus), "history_sku_count": len(history_rows),
         "profile": "action_full_template_1", "with_images": with_images,
         "image_embedded_count": image_stats["embedded_count"],

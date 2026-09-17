@@ -54,9 +54,31 @@ paths:
   review_queue: runtime/review_queue
   images: runtime/images
   exports: runtime/exports
+  history_archive: runtime/exports/history_archive
   logs: runtime/logs
   backups: runtime/backups
   temp: runtime/temp
+
+export_history:
+  # 4 月批次不属于当前上下架明细交付口径；原始来源仍保留供其他研究使用。
+  exclude_dates:
+    - "2026-04-05"
+  # 已冻结的上下架明细列。其后的新批次（例如下一次周一）会自动追加，
+  # 但中间未纳入交付口径的旧批次不会被意外带入。
+  include_dates:
+    - "2026-01-08"
+    - "2026-06-28"
+    - "2026-07-05"
+    - "2026-07-12"
+    - "2026-07-19"
+    - "2026-07-26"
+    - "2026-08-02"
+    - "2026-08-10"
+    - "2026-08-17"
+    - "2026-08-24"
+    - "2026-08-31"
+    - "2026-09-07"
+    - "2026-09-14"
 
 storage:
   mode: SQLITE_PRIMARY
@@ -139,8 +161,13 @@ dictionary_apply:
 # Contracts and offline preview may be used during development; production
 # localization writes and model/auto-approval paths stay explicitly closed.
 knowledge:
-  production_apply_enabled: false
+  production_apply_enabled: true
   fallback_to_spanish: true
+
+# Temporary explicit authorization for the reviewed registry Apply.
+localization:
+  production_apply_enabled: true
+  auto_approval_enabled: false
 
 scoped_dictionary:
   enabled: false
