@@ -1,5 +1,5 @@
 from action_tracker.localization.release_gate import audit_research_release, load_allowed_tokens, load_explicit_exceptions
-from action_tracker.services.hashing import localization_source_hash
+from action_tracker.services.hashing import localization_field_source_hash, localization_source_hash
 from action_tracker.exporting.service import ExportValidationError
 from action_tracker.exporting import service as export_service
 from action_tracker.cli import build_parser
@@ -29,7 +29,7 @@ def _row(**overrides):
     row.update(overrides)
     row["zh_source_hash"] = row.get("zh_source_hash") or localization_source_hash(row)
     row.setdefault("zh_field_provenance", {
-        field: {"review_status": row.get("zh_review_status", "VERIFIED"), "freshness_status": row.get("zh_freshness_status", "CURRENT"), "source_hash": row["zh_source_hash"]}
+        field: {"review_status": row.get("zh_review_status", "VERIFIED"), "freshness_status": row.get("zh_freshness_status", "CURRENT"), "source_hash": localization_field_source_hash(row, field)}
         for field in ("name", "cat1", "cat2", "spec", "description", "details")
     })
     return row
@@ -39,6 +39,14 @@ def test_research_release_passes_a_complete_projection():
     result = audit_research_release([_row()], expected_skus={"1001"})
     assert result.ok
     assert result.counts["SOURCE_HASH_MISMATCH"] == 0
+
+
+def test_release_rejects_new_overall_hash_without_field_provenance():
+    row = _row()
+    row["zh_field_provenance"]["name"]["source_hash"] = row["zh_source_hash"]
+    result = audit_research_release([row])
+    assert not result.ok
+    assert "SOURCE_HASH_MISMATCH:1001:name" in result.issues
 
 
 def test_release_blocks_missing_field_and_unapproved_status():
@@ -52,7 +60,7 @@ def test_release_blocks_stale_and_source_hash_change():
     result = audit_research_release([_row(name_es="Caja nueva", zh_freshness_status="STALE", zh_source_hash="old")])
     assert not result.ok
     assert result.counts["STALE_ZH"] == 6
-    assert result.counts["SOURCE_HASH_MISMATCH"] == 7
+    assert result.counts["SOURCE_HASH_MISMATCH"] == 1
 
 
 def test_release_blocks_spanish_residual():

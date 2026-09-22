@@ -370,7 +370,21 @@ class ProductionWriter:
 
     @staticmethod
     def _upsert_localizations(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], commit_id: str, now: str) -> None:
-        for r in rows:
+        materialized = [dict(row) for row in rows]
+        same_batch_es: dict[str, dict[str, Any]] = {}
+        for item in materialized:
+            if str(item.get("language") or "zh") != "es":
+                continue
+            item_sku = str(item.get("official_sku") or item.get("sku") or "").strip()
+            if item_sku:
+                same_batch_es[item_sku] = {
+                    "name_es": item.get("name"), "cat1_es": item.get("cat1"),
+                    "cat2_es": item.get("cat2"),
+                    "spec_es": normalize_official_text(item.get("spec"), field="spec"),
+                    "desc_es": normalize_official_text(item.get("description"), field="description"),
+                    "details_es": normalize_official_text(item.get("details"), field="details"),
+                }
+        for r in materialized:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
             language = str(r.get("language") or "zh")
             incoming = dict(r)
@@ -431,7 +445,28 @@ class ProductionWriter:
                  incoming.get("approved_by"), incoming.get("approved_at"), incoming.get("applied_commit_id") or commit_id),
             )
             from .provenance import sync_localization_field_provenance
-            sync_localization_field_provenance(db, incoming, commit_id=commit_id, now=now)
+            provenance_row = dict(incoming)
+            if language == "es":
+                provenance_row.update({
+                    "name_es": incoming.get("name"), "cat1_es": incoming.get("cat1"),
+                    "cat2_es": incoming.get("cat2"), "spec_es": incoming.get("spec"),
+                    "desc_es": incoming.get("description"), "details_es": incoming.get("details"),
+                })
+            elif language == "zh":
+                source = same_batch_es.get(sku)
+                if source is None:
+                    es_row = db.execute(
+                        "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+                        "WHERE official_sku=? AND language='es'", (sku,),
+                    ).fetchone()
+                    if es_row is not None:
+                        source = {
+                            "name_es": es_row[0], "cat1_es": es_row[1], "cat2_es": es_row[2],
+                            "spec_es": es_row[3], "desc_es": es_row[4], "details_es": es_row[5],
+                        }
+                if source is not None:
+                    provenance_row.update(source)
+            sync_localization_field_provenance(db, provenance_row, commit_id=commit_id, now=now)
 
     @staticmethod
     def _insert_source_fact_versions(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], now: str) -> None:
@@ -1178,7 +1213,7 @@ def apply_localization_correction(
     if not expected_base_commit_id:
         raise ProductionDatabaseError("LOCALIZATION_CORRECTION_HEAD_MISSING")
     from .immutable_patches import create_localization_patch
-    from ..services.hashing import localization_source_hash
+    from ..services.hashing import localization_field_source_hash, localization_source_hash
     patch_ids: list[str] = []
     for sku, values in sorted(localizations_by_sku.items()):
         sku = str(sku).strip()
@@ -1233,7 +1268,7 @@ def apply_approved_localization_patches(
         raise ProductionDatabaseError("LOCALIZATION_APPLY_BASE_COMMIT_REQUIRED")
     path = Path(path); migrate_v2(path, role="PRIMARY")
     from .immutable_patches import ImmutablePatchError, _append_event, _columns, _validate_patch_apply_in_connection
-    from ..services.hashing import localization_source_hash
+    from ..services.hashing import localization_field_source_hash, localization_source_hash
     ids = list(dict.fromkeys(str(value).strip() for value in patch_ids if str(value).strip()))
     if not ids:
         raise ProductionDatabaseError("LOCALIZATION_APPLY_PATCHES_REQUIRED")
@@ -1299,9 +1334,13 @@ def apply_approved_localization_patches(
                     db.execute("INSERT INTO product_localizations(official_sku,language,updated_at,source_hash,last_commit_id,applied_commit_id) VALUES(?,?,?,?,?,?)", (sku, "zh", now, source_hash, commit_id, commit_id))
                 source_column = {"name": "name_source", "cat1": "cat1_source", "cat2": "cat2_source", "spec": "spec_source", "description": "description_source", "details": "details_source"}[field]
                 db.execute(f"UPDATE product_localizations SET {field}=?,{source_column}=?,updated_at=?,last_commit_id=?,applied_commit_id=?,source_hash=? WHERE official_sku=? AND language='zh'", (new_value, patch_source, now, commit_id, commit_id, source_hash, sku))
+                field_hash = localization_field_source_hash(
+                    {"name_es": es[0], "cat1_es": es[1], "cat2_es": es[2], "spec_es": es[3], "desc_es": es[4], "details_es": es[5]},
+                    field,
+                )
                 values = {"official_sku": sku, "language": "zh", field: new_value,
                           f"{field}_source": patch_source, f"{field}_review_status": "APPROVED",
-                          f"{field}_freshness_status": "CURRENT", f"{field}_source_hash": source_hash,
+                          f"{field}_freshness_status": "CURRENT", f"{field}_source_hash": field_hash,
                           f"{field}_approved_by": approval_actor or actor, f"{field}_approved_at": approval_at or now,
                           f"{field}_applied_commit_id": commit_id}
                 sync_localization_field_provenance(db, values, commit_id=commit_id, now=now)

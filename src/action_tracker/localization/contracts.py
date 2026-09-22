@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from ..services.hashing import localization_source_hash
+from ..services.hashing import localization_field_source_hash, localization_source_hash
 
 POLICY_VERSION = "CHINESE_LOCALIZATION_STANDARD_V1"
 LOCALIZATION_FIELDS = (
@@ -70,6 +70,11 @@ def source_hash(record: Mapping[str, Any]) -> str:
     every persisted localization appear stale and make Apply reject it.
     """
     return localization_source_hash(dict(record))
+
+
+def field_source_hash(record: Mapping[str, Any], canonical: str) -> str:
+    """Return the freshness hash for the one Spanish field being localized."""
+    return localization_field_source_hash(dict(record), canonical)
 
 
 @dataclass(frozen=True)

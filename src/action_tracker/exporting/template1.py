@@ -32,7 +32,7 @@ def write_template1_xlsx(
     image_root: Path | None = None,
     embed_zh_images: bool = False,
     image_eligibility: Mapping[str, bool] | None = None,
-) -> dict[str, int]:
+) -> dict[str, Any]:
     workbook = openpyxl.Workbook()
     first = workbook.active
     first.title = "商品上下架明细"
@@ -185,6 +185,7 @@ def _write_catalog_sheet(
             _set_hyperlink(ws.cell(row=row_no, column=col))
     embedded_count = 0
     missing_count = 0
+    missing_skus: list[str] = []
     for row_no in range(2, ws.max_row + 1):
         for header in ("折后价", "原价"):
             cell = ws.cell(row=row_no, column=headers.index(header) + 1)
@@ -203,7 +204,13 @@ def _write_catalog_sheet(
                 embedded_count += 1
             else:
                 missing_count += 1
-    return {"embedded_count": embedded_count, "missing_count": missing_count}
+                if sku:
+                    missing_skus.append(sku)
+    return {
+        "embedded_count": embedded_count,
+        "missing_count": missing_count,
+        "missing_skus": sorted(set(missing_skus)),
+    }
 
 
 def _format_sheet(ws: Any, *, wrap_columns: set[str]) -> None:

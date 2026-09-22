@@ -131,6 +131,7 @@ def export_template1(
         "es_zh_sku_set_equal": True,
         "zh_image_embedded_count": image_stats["embedded_count"],
         "zh_image_missing_count": image_stats["missing_count"],
+        "missing_image_skus": sorted(image_stats.get("missing_skus", [])),
         "with_images": with_images,
         "selection_id": selection_id,
         "selection_source_commit_id": selection_source_commit_id,

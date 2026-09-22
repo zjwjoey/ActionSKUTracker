@@ -21,7 +21,7 @@ def write_catalog_xlsx(
     image_root: Path | None = None,
     embed_images: bool = False,
     image_eligibility: Mapping[str, bool] | None = None,
-) -> dict[str, int]:
+) -> dict[str, Any]:
     """原子写入单工作表商品清单。调用方负责所有业务校验。"""
     materialized = list(rows)
     workbook = openpyxl.Workbook()
@@ -58,6 +58,7 @@ def write_catalog_xlsx(
     price_format = str((workbook_format.get("price") or {}).get("number_format") or "€#,##0.00")
     embedded_count = 0
     missing_count = 0
+    missing_skus: list[str] = []
     for row_no in range(2, len(materialized) + 2):
         image_embedded = False
         for header, col in index.items():
@@ -89,6 +90,8 @@ def write_catalog_xlsx(
                 embedded_count += 1
             elif image_column:
                 missing_count += 1
+                if sku:
+                    missing_skus.append(sku)
         description_lines = max(
             (_wrapped_line_count(ws.cell(row=row_no, column=index[header]).value, widths[header])
              for header in ("描述", "产品详情") if header in index),
@@ -114,7 +117,11 @@ def write_catalog_xlsx(
         workbook.close()
         if temp_path.exists():
             temp_path.unlink()
-    return {"embedded_count": embedded_count, "missing_count": missing_count}
+    return {
+        "embedded_count": embedded_count,
+        "missing_count": missing_count,
+        "missing_skus": sorted(set(missing_skus)),
+    }
 
 
 def _wrapped_line_count(value: Any, width: int) -> int:

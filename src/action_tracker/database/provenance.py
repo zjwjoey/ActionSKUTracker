@@ -4,6 +4,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any, Mapping
 
+from ..services.hashing import localization_field_source_hash
+
 
 LOCALIZATION_FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
 
@@ -52,12 +54,36 @@ def sync_localization_field_provenance(
         field_value = row.get(field_name) if explicit_value else (existing[0] if existing else None)
         field_source = row.get(f"{field_name}_source") if f"{field_name}_source" in row else (existing[1] if existing else row.get("source"))
         field_status = row.get(f"{field_name}_review_status") if f"{field_name}_review_status" in row else (existing[2] if existing else row.get("review_status"))
-        field_hash = row.get(f"{field_name}_source_hash") if f"{field_name}_source_hash" in row else (existing[3] if existing else row.get("source_hash"))
+        field_freshness = row.get(f"{field_name}_freshness_status") if f"{field_name}_freshness_status" in row else (existing[8] if existing else row.get("freshness_status"))
+        if f"{field_name}_source_hash" in row:
+            field_hash = row.get(f"{field_name}_source_hash")
+        elif existing is not None:
+            # Preserve legacy aggregate hashes when reading an existing row;
+            # new writes below use a field-scoped hash.
+            field_hash = existing[3]
+        else:
+            source_row = dict(row)
+            if language == "es":
+                # ES localization storage uses canonical column names, but
+                # those values are the official Spanish source for this row.
+                source_row.update({
+                    "name_es": row.get("name"), "cat1_es": row.get("cat1"),
+                    "cat2_es": row.get("cat2"), "spec_es": row.get("spec"),
+                    "desc_es": row.get("description"), "details_es": row.get("details"),
+                })
+            try:
+                field_hash = localization_field_source_hash(source_row, field_name)
+            except ValueError:
+                # A ZH-only caller without authoritative Spanish source must
+                # remain explicitly unbound; never hash the target value or
+                # silently manufacture a CURRENT provenance record.
+                field_hash = None
+                if str(field_freshness or "").upper() == "CURRENT":
+                    field_freshness = "UNBOUND"
         field_updated_at = row.get(f"{field_name}_updated_at") if f"{field_name}_updated_at" in row else (existing[4] if existing else now)
         field_commit = row.get(f"{field_name}_applied_commit_id") if f"{field_name}_applied_commit_id" in row else (existing[5] if existing else row.get("applied_commit_id") or commit_id)
         approved_by = row.get(f"{field_name}_approved_by") if f"{field_name}_approved_by" in row else (existing[6] if existing else row.get("approved_by"))
         approved_at = row.get(f"{field_name}_approved_at") if f"{field_name}_approved_at" in row else (existing[7] if existing else row.get("approved_at"))
-        field_freshness = row.get(f"{field_name}_freshness_status") if f"{field_name}_freshness_status" in row else (existing[8] if existing else row.get("freshness_status"))
         values = (
             sku, language, field_name, field_value, field_source, field_status,
             field_hash, field_updated_at or now, field_commit or commit_id,

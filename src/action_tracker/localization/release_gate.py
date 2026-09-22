@@ -12,7 +12,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-from ..services.hashing import localization_source_hash
+from ..services.hashing import localization_field_source_hash, localization_source_hash
 import re
 import json
 
@@ -187,7 +187,18 @@ def audit_research_release(
                 if status not in APPROVED_REVIEW_STATUSES:
                     continue
                 field_hash = str(metadata.get("source_hash") or "").strip()
-                if not field_hash or field_hash != expected_hash:
+                try:
+                    field_expected_hash = localization_field_source_hash(row, canonical)
+                except ValueError:
+                    # A projection without its authoritative Spanish field is
+                    # not a valid release record; report a gate failure rather
+                    # than crashing or hashing a target value.
+                    field_expected_hash = None
+                # Formal release accepts only field-scoped provenance. Legacy
+                # aggregate hashes remain readable for compatibility and can
+                # be inspected/migrated, but they cannot silently authorize a
+                # new formal release without an explicit field hash.
+                if not field_hash or field_expected_hash is None or field_hash != field_expected_hash:
                     counts["SOURCE_HASH_MISMATCH"] += 1
                     issues.append(f"SOURCE_HASH_MISMATCH:{sku}:{canonical}")
         elif str(row.get("zh_review_status") or row.get("review_status") or "").strip().upper() in APPROVED_REVIEW_STATUSES:
