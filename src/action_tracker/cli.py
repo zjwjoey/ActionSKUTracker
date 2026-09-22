@@ -18,8 +18,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command")
 
     d = sub.add_parser("daily-run", help="每日运行")
-    d.add_argument("--dry-run", action="store_true", default=None, help="只出证据不写 Master")
-    d.add_argument("--no-dry-run", dest="dry_run", action="store_false", help="允许正式写 Master")
+    d.add_argument("--dry-run", dest="dry_run", action="store_true", default=None, help="只出证据不写 Master（默认）")
+    d.add_argument("--apply", "--no-dry-run", dest="dry_run", action="store_false",
+                   help="显式允许正式写 Master；仅在 QA/Access 门禁通过时提交")
     d.add_argument("--fetch-details", action="store_true", default=None)
     d.add_argument("--no-fetch-details", dest="fetch_details", action="store_false")
     d.add_argument("--max-categories", type=int, default=None)
@@ -41,12 +42,38 @@ def build_parser() -> argparse.ArgumentParser:
     di.add_argument("--input", required=True, help="Edge 插件导出的 UTF-8 JSON 文件")
     di.add_argument("--commit", action="store_true", help="校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
 
+    cei = sub.add_parser(
+        "detail-edge-controlled-import",
+        help="将用户核验的有限 Edge 详情批次受控写入 PRIMARY/Master",
+    )
+    cei.add_argument("--run-id", required=True, help="QA PASS 且已正式提交的父 observation run_id")
+    cei.add_argument("--input", required=True, help="Edge 插件导出的、带 parent_run_id 的 UTF-8 JSON 文件")
+    cei.add_argument("--commit", action="store_true", help="校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
+
+    air = sub.add_parser(
+        "auxiliary-identity-reconcile",
+        help="仅为已验证的 AUXILIARY_ONLY SKU 受控回填空白身份字段",
+    )
+    air.add_argument("--run-id", required=True, help="QA PASS 且已正式提交的父 observation run_id")
+    air.add_argument("--input", required=True, help="带 parent_run_id 的 Edge 产品页证据 JSON")
+    air.add_argument("--commit", action="store_true", help="校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
+
     dcr = sub.add_parser("category-deferred-reconcile", help="将正式 run 延期的官网类目证据受控回填 PRIMARY/Master")
     dcr.add_argument("--run-id", required=True, help="QA PASS 且已正式提交的父 observation run_id")
     dcr.add_argument("--input", required=True, help="Edge 插件导出的包含官网面包屑的 UTF-8 JSON 文件")
     dcr.add_argument("--approve-conflict-sku", action="append", default=[],
                      help="逐 SKU 批准已由官方官网核验的类目冲突；可重复传入，默认不覆盖任何冲突")
     dcr.add_argument("--commit", action="store_true", help="无类目冲突且校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
+
+    ccr = sub.add_parser(
+        "category-edge-controlled-reconcile",
+        help="按在售官网面包屑受控回填有限类目证据",
+    )
+    ccr.add_argument("--run-id", required=True, help="QA PASS 且已正式提交的父 observation run_id")
+    ccr.add_argument("--input", required=True, help="Edge 插件导出的带 parent_run_id 的类目证据 JSON")
+    ccr.add_argument("--approve-conflict-sku", action="append", default=[],
+                     help="逐 SKU 批准官网类目覆盖；可重复传入，默认不覆盖非空冲突")
+    ccr.add_argument("--commit", action="store_true", help="校验通过后写入 SQLite PRIMARY 并重建兼容 Master")
 
     elr = sub.add_parser("edge-listing-reconcile", help="将已核验的 Edge 类目、新品和首次发现日期按字段权限回填 PRIMARY")
     elr.add_argument("--run-id", required=True, help="已正式提交且详情阶段 BLOCKED 的父 observation run_id")
@@ -74,6 +101,8 @@ def build_parser() -> argparse.ArgumentParser:
     image_group.add_argument("--with-images", dest="with_images", action="store_true", help="读取本地 250x250 图片并嵌入")
     e.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     e.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
+    e.add_argument("--release-mode", choices=("formal", "research"), default="formal",
+                   help="formal 需通过全部中文审核门禁；research 保留历史研究版兼容导出")
     t = sub.add_parser("export-template1", help="导出 Template 1 三表版本")
     t.add_argument("--with-images", action="store_true", help="仅在今日中文清单嵌入本地 250x250 图片")
     t.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
@@ -120,6 +149,11 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def resolve_daily_run_dry_run(value: bool | None) -> bool:
+    """Resolve the CLI tri-state with a safe, evidence-only default."""
+    return True if value is None else bool(value)
+
+
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     # Windows PowerShell commonly exposes a GBK stdout.  JSON responses from
@@ -140,7 +174,9 @@ def main(argv=None) -> int:
     if args.command in (None, "status"):
         return _status(cfg)
     if args.command == "daily-run":
-        dry_run = True if args.dry_run is None else args.dry_run
+        # Safe by default: a bare daily-run only creates evidence.  Production
+        # writes require an explicit --apply/--no-dry-run intent.
+        dry_run = resolve_daily_run_dry_run(args.dry_run)
         from .orchestrator.daily import run_daily
         res = run_daily(
             cfg,
@@ -181,6 +217,34 @@ def main(argv=None) -> int:
             return 2
         print(json.dumps(res, ensure_ascii=False))
         return 0
+    if args.command == "detail-edge-controlled-import":
+        from .orchestrator.detail_edge_import import (
+            EdgeDetailImportError, run_controlled_edge_detail_import,
+        )
+        from .database.production import ProductionDatabaseError
+        try:
+            res = run_controlled_edge_detail_import(
+                cfg, run_id=args.run_id, input_path=Path(args.input), commit=bool(args.commit),
+            )
+        except (EdgeDetailImportError, ProductionDatabaseError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if args.command == "auxiliary-identity-reconcile":
+        from .orchestrator.auxiliary_identity_reconcile import (
+            AuxiliaryIdentityReconcileError, preview_or_apply_auxiliary_identity_reconciliation,
+        )
+        from .database.production import ProductionDatabaseError
+        try:
+            res = preview_or_apply_auxiliary_identity_reconciliation(
+                cfg, run_id=args.run_id, input_path=Path(args.input), commit=bool(args.commit),
+            )
+        except (AuxiliaryIdentityReconcileError, ProductionDatabaseError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
     if args.command == "category-deferred-reconcile":
         from .orchestrator.edge_listing_reconcile import (
             EdgeListingReconcileError, preview_or_apply_deferred_category_reconciliation,
@@ -188,6 +252,21 @@ def main(argv=None) -> int:
         from .database.production import ProductionDatabaseError
         try:
             res = preview_or_apply_deferred_category_reconciliation(
+                cfg, run_id=args.run_id, input_path=Path(args.input), commit=bool(args.commit),
+                approved_conflict_skus=set(args.approve_conflict_sku or []),
+            )
+        except (EdgeListingReconcileError, ProductionDatabaseError, OSError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if args.command == "category-edge-controlled-reconcile":
+        from .orchestrator.edge_listing_reconcile import (
+            EdgeListingReconcileError, preview_or_apply_controlled_category_reconciliation,
+        )
+        from .database.production import ProductionDatabaseError
+        try:
+            res = preview_or_apply_controlled_category_reconciliation(
                 cfg, run_id=args.run_id, input_path=Path(args.input), commit=bool(args.commit),
                 approved_conflict_skus=set(args.approve_conflict_sku or []),
             )
@@ -241,7 +320,7 @@ def main(argv=None) -> int:
         try:
             result = export_catalog(
                 cfg, language=args.lang, export_date=args.date,
-                no_images=not args.with_images, run_id=args.run_id,
+                no_images=not args.with_images, run_id=args.run_id, release_mode=args.release_mode,
             )
         except ExportValidationError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)

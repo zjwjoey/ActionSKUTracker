@@ -31,6 +31,7 @@ def plan_updates(
     detail_refresh_days: int = 7,
     nuevo_skus: set[str] | None = None,
     promo_skus: set[str] | None = None,
+    category_primary_map: dict[str, str] | None = None,
 ) -> list[dict]:
     """返回需要更新的 SKU 计划列表。
 
@@ -52,20 +53,29 @@ def plan_updates(
 
         if status in ("NEW", "REAPPEARED"):
             reason = status
-            # Presence is authoritative for lifecycle decisions, but a
-            # listing-only observation is not sufficient evidence to spend a
-            # detail-page request.  In particular, sitemap/listing drift can
-            # otherwise turn every listing-only NEW SKU into a large detail
-            # batch and immediately trip the detail access controller.
-            # Only a SKU seen by both independent Presence sources is eligible
-            # for the initial detail fetch.  The SKU remains in the update
-            # plan so its listing facts and lifecycle state are still written.
-            need_detail = getattr(st, "source_flag", "") == "BOTH"
+            # Presence is frozen before Detail starts.  Once a SKU has been
+            # admitted to today's authoritative Presence set, NEW and
+            # REAPPEARED records must receive an initial Detail opportunity
+            # even when the independent sources disagree (LISTING_ONLY or
+            # SITEMAP_ONLY).  Source disagreement is retained as evidence and
+            # reviewed separately; it must not silently leave the new record
+            # without description/details/second-level category.  The bounded
+            # selector and access controller still enforce low-frequency,
+            # CF-safe execution and defer the remainder to a later run.
+            need_detail = True
         elif status == "ACTIVE" and base and light:
             # 轻量比较
             old_price = base.get("current_price")
             new_price = light.get("current_price")
-            if (old_price is None) or (new_price is not None and abs(new_price - (old_price or 0)) > 1e-9):
+            # A listing card may come from a secondary top-level category.
+            # Never let that low-authority value silently replace the official
+            # breadcrumb. Queue a bounded Detail refresh instead; the page
+            # parser is the only source allowed to repair cat1/cat2.
+            from ..services.category_consistency import category_mismatch
+            if category_mismatch(base, category_primary_map):
+                reason = "CATEGORY_MISMATCH"
+                need_detail = True
+            elif (old_price is None) or (new_price is not None and abs(new_price - (old_price or 0)) > 1e-9):
                 reason = "PRICE_CHANGE_CANDIDATE"
             elif _badge_changed(base, sku in nuevo_skus, sku in promo_skus):
                 # 成员集合权威，无需详情确认
@@ -75,11 +85,11 @@ def plan_updates(
             elif not _text(base.get("cat2_es")):
                 # Listing cards do not carry a reliable second-level category.
                 # Re-queue records missing it so a later Detail observation can
-                # fill it from the product page breadcrumb.  Keep the same
-                # Presence safety boundary as NEW/REAPPEARED: listing-only
-                # evidence is written but must not trigger a detail request.
+                # fill it from the product page breadcrumb.  Detail remains
+                # enrichment only and cannot change the already-frozen
+                # Presence/lifecycle result.
                 reason = "CATEGORY_MISSING"
-                need_detail = getattr(st, "source_flag", "") == "BOTH"
+                need_detail = True
             elif _missing_field(base):
                 reason = "MISSING_FIELD"
                 need_detail = True
@@ -211,6 +221,12 @@ def fetch_and_merge(
                     # 否则 build_badge_state：徽章状态 = 徽章页成员集合 + 基线徽章
                     if not has_detail:
                         rec[k] = build_badge_state(rec.get("raw_tags"), sku in nuevo_skus, sku in promo_skus)
+                elif k in {"cat1_es", "cat2_es"}:
+                    # The listing entry is not an official product
+                    # breadcrumb.  Preserve a category already obtained from
+                    # the detail page/baseline; only fill a blank identity.
+                    if not _text(rec.get(k)):
+                        rec[k] = v
                 elif v != "":
                     rec[k] = v
 
@@ -248,7 +264,10 @@ def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_
         # Let BrowserSession.before_navigation perform the configured wait and
         # exactly one cautious PROBE of the same SKU.  A second restriction
         # transitions PROBE -> BLOCKED and stops all remaining Detail work.
-        if access_controller and access_controller.state.value == "COOLDOWN":
+        # A detail challenge that exhausted its five-minute window is already
+        # terminal for this run; never add the old cooldown probe on top of it.
+        detail_timeout = bool(access_controller and "DETAIL_CHALLENGE_TIMEOUT" in access_controller.events)
+        if access_controller and access_controller.state.value == "COOLDOWN" and not detail_timeout:
             cooldown_probe_attempted = True
             log.warning("  #%s 详情访问受限；冷却 %.0f 秒后单次探测", sku,
                         access_controller.cooldown_seconds)
@@ -260,11 +279,12 @@ def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_
             events = access_controller.events if access_controller else []
             last_event = events[-1] if events else ""
             detail_evidence.append({**(evidence_context or {}), "sku": sku, "url": url, "stage": "PRODUCT_DETAIL",
-                                    "error_type": ("HTTP_429" if last_event == "RATE_LIMITED" else
+                                    "error_type": ("DETAIL_CHALLENGE_TIMEOUT" if last_event == "DETAIL_CHALLENGE_TIMEOUT" else
+                                                   "HTTP_429" if last_event == "RATE_LIMITED" else
                                                    "HTTP_403_OR_CHALLENGE" if last_event in {"CHALLENGE_OR_403", "PROBE_BLOCKED"} else
                                                    "DETAIL_INCOMPLETE"),
                                     "exception_type": type(e).__name__, "http_status": 429 if last_event == "RATE_LIMITED" else None,
-                                    "challenge_detected": last_event in {"CHALLENGE_OR_403", "PROBE_BLOCKED"},
+                                    "challenge_detected": last_event in {"CHALLENGE_OR_403", "PROBE_BLOCKED", "DETAIL_CHALLENGE_TIMEOUT"},
                                     "access_state_before": state_before,
                                     "access_state_after": access_controller.state.value if access_controller else "UNKNOWN",
                                     "cooldown_probe_attempted": cooldown_probe_attempted,

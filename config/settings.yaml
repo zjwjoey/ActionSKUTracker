@@ -36,13 +36,19 @@ browser:
   timeout_ms: 45000
   challenge_reloads: 3
   challenge_sleep_ms: 800
+  # 详情页遇到 Cloudflare challenge 时只做受控等待：第 2 分钟、第 4 分钟各刷新一次，
+  # 到第 5 分钟仍未恢复则停止详情阶段，不继续撞击页面。列表页仍使用上面的短重试策略。
+  detail_challenge_wait_seconds: 300
+  detail_challenge_reload_at_seconds: [120, 240]
   # CF/访问限制后的冷却时间；详情补抓按用户要求至少等待 2 分钟。
   cooldown_seconds: 120
   degraded_recovery_successes: 3
   # 温和并行节奏（复刻旧脚本经验，避免被限流）
   sleep_ms: 2500
   # 会话 cookies 文件（可选，存在则加载，用于保持 consent/locale）
-  cookies_path: F:\260809action_cc\cookies.json
+  # Optional run-local consent/session cookies.  Never point production config
+  # at a developer profile or an external absolute path.
+  cookies_path: runtime/browser_profile/cookies.json
 
 paths:
   master: runtime/master/Action_Master.xlsx
@@ -58,6 +64,9 @@ paths:
   logs: runtime/logs
   backups: runtime/backups
   temp: runtime/temp
+  # Review-derived cat2 -> primary cat1 hint. It only queues a Detail
+  # verification; it never overwrites official breadcrumb facts by itself.
+  category_primary_map: data/dictionary/category_primary_mapping.csv
 
 export_history:
   # 4 月批次不属于当前上下架明细交付口径；原始来源仍保留供其他研究使用。
@@ -106,8 +115,10 @@ dictionary_sources:
   standardized_seed: runtime/exports/Action_Today_On_Sale_2026-08-24_中文标准化全量.xlsx
   historical_spanish_reference: runtime/temp/longterm_master_20260813/numeric_reference.csv
   historical_spanish_repair_reference: runtime/temp/longterm_master_20260813/numeric_reference_repaired.csv
-  historical_spanish_raw_root: F:/按日期整理
-  brand_reference: D:/Users/Administrator/Downloads/Action_2026-08-24_品牌识别清单.xlsx
+  # Optional offline references are supplied explicitly by a caller; they are
+  # intentionally unset in the repository configuration.
+  historical_spanish_raw_root: null
+  brand_reference: null
   term_seed: config/dictionary_terms.yaml
 
 # ---- 生命周期（规范 §17）----
@@ -137,8 +148,8 @@ run:
   lock_stale_minutes: 180
   # 详情抓取后多久需要强制刷新（天）
   detail_refresh_days: 7
-  # 单轮详情页最大请求数。候选超过上限时记录为 PENDING，下一轮会自动重新规划，
-  # 避免季节性大批上新一次触发数百个详情请求。
+  # 单轮详情页最大请求数。生产默认保守限量；需要扩大范围时必须显式
+  # 通过配置/命令行授权，超额候选进入 detail_backlog.csv。
   max_detail_per_run: 20
   # 翻译：阶段一不做（中文列用西语 fallback 占位）。
   # 后续启用时走 AI API（见下方 ai 段），不用外部翻译服务。

@@ -1,6 +1,6 @@
 """Playwright 浏览器会话管理。
 
-复刻旧 Node 脚本（F:\\260809action_cc）在另一台电脑上跑通的 Cloudflare 处理经验：
+复刻旧版 Node 浏览器采集器在另一台机器上验证过的 Cloudflare 处理经验：
     - 真实 Chromium + --disable-blink-features=AutomationControlled
     - 加载可选的 cookies.json 保持 consent/locale 会话
     - goto 后检测挑战页标题，重载直至通过
@@ -104,8 +104,8 @@ class BrowserSession:
         }
 
     # ---- 导航 ----
-    def goto(self, url: str, timeout_ms: int | None = None) -> bool:
-        """访问 URL，尽力通过挑战页。返回最终是否未停留在挑战页。"""
+    def goto(self, url: str, timeout_ms: int | None = None, detail_mode: bool = False) -> bool:
+        """访问 URL，尽力通过挑战页。详情页使用受控的 5 分钟等待策略。"""
         page = self.page
         if self.access_controller:
             self.access_controller.before_navigation()
@@ -125,6 +125,12 @@ class BrowserSession:
                 title = page.title()
             except Exception:
                 title = ""
+            # Cloudflare may return a challenge page with HTTP 403.  For a
+            # Detail navigation it follows the same bounded 5-minute policy
+            # as a 200 challenge page; an ordinary 403 remains an immediate
+            # access restriction and is never reloaded.
+            if detail_mode and is_challenge(title):
+                return self.wait_detail_challenge()
             if self.access_controller:
                 # A 403 is never success.  Preserve whether it was a challenge
                 # page in the controller event, but do not retry either form.
@@ -132,7 +138,10 @@ class BrowserSession:
             return False
         if self.access_controller:
             self.access_controller.record(status=status)
-        for _ in range(self.cfg.get("challenge_reloads", 15)):
+        if detail_mode and is_challenge(self._page_title()):
+            return self.wait_detail_challenge()
+        # A missing config must fail closed to a small bounded retry count.
+        for _ in range(int(self.cfg.get("challenge_reloads", 3))):
             try:
                 title = page.title()
             except Exception:
@@ -146,7 +155,9 @@ class BrowserSession:
                 return False
             time.sleep((self.cfg.get("challenge_sleep_ms", 800) / 1000.0) * (2 ** _))
             try:
-                reload_response = page.reload(wait_until="domcontentloaded")
+                reload_response = page.reload(
+                    wait_until="domcontentloaded", timeout=self.cfg.get("timeout_ms", 45000)
+                )
                 reload_status = reload_response.status if reload_response else None
                 if reload_status == 429:
                     if self.access_controller:
@@ -160,6 +171,67 @@ class BrowserSession:
                 time.sleep(1.0)
         if self.access_controller:
             self.access_controller.record(challenge=True)
+        return False
+
+    def _page_title(self) -> str:
+        try:
+            return self.page.title()
+        except Exception:
+            return ""
+
+    def wait_detail_challenge(self) -> bool:
+        """Wait at most five minutes for a detail challenge to clear.
+
+        The only retries are the two scheduled page reloads at two and four
+        minutes.  This is a bounded recovery attempt, not a challenge bypass.
+        """
+        total = max(0.0, float(self.cfg.get("detail_challenge_wait_seconds", 300)))
+        checkpoints = sorted({
+            max(0.0, float(value))
+            for value in self.cfg.get("detail_challenge_reload_at_seconds", [120, 240])
+            if float(value) < total
+        })
+        elapsed = 0.0
+        for checkpoint in checkpoints:
+            time.sleep(max(0.0, checkpoint - elapsed))
+            elapsed = checkpoint
+            if self.access_controller and not self.access_controller.allow_challenge_retry():
+                if not self.access_controller.blocked:
+                    self.access_controller.record(challenge=True)
+                return False
+            try:
+                response = self.page.reload(
+                    wait_until="domcontentloaded", timeout=self.cfg.get("timeout_ms", 45000)
+                )
+                status = response.status if response else None
+            except Exception:
+                # Keep the five-minute window; a transient reload error is not
+                # permission to issue an unbounded retry loop.
+                continue
+            if status == 429:
+                if self.access_controller:
+                    self.access_controller.record(status=429)
+                return False
+            if status in (401, 403):
+                title = self._page_title()
+                if self.access_controller:
+                    self.access_controller.record(
+                        challenge=is_challenge(title),
+                        status=None if is_challenge(title) else status,
+                    )
+                return False
+            if not is_challenge(self._page_title()):
+                if self.access_controller:
+                    self.access_controller.record()
+                return True
+
+        time.sleep(max(0.0, total - elapsed))
+        if not is_challenge(self._page_title()):
+            if self.access_controller:
+                self.access_controller.record()
+            return True
+        if self.access_controller:
+            self.access_controller.block("DETAIL_CHALLENGE_TIMEOUT")
         return False
 
     def sleep(self):

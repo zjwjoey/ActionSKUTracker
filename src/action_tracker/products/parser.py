@@ -14,6 +14,11 @@ from ..services.normalization import normalize_official_text, parse_discount_per
 log = logging.getLogger(__name__)
 
 _BAD_TITLE_RE = re.compile(r"^action españa: pequeños precios", re.I)
+_DETAIL_LABEL_RE = re.compile(
+    r"(?:^|;\s*)(?:color|material|contenido|cantidad|n[uú]mero del art[ií]culo|"
+    r"tipo de alimentaci[oó]n|n[uú]mero de pilas necesarias|potencia|voltaje)\s*:",
+    re.IGNORECASE,
+)
 
 _EXTRACT_JS = r"""
 (url) => {
@@ -149,11 +154,17 @@ def fetch_product_detail(browser, url: str, sku_hint: str | None = None, max_ret
     last_err = ""
     for attempt in range(max_retries):
         try:
-            if not browser.goto(url):
+            if not browser.goto(url, detail_mode=True):
                 raise CollectionBlocked("detail navigation blocked or rate limited")
             t = page.title()
             if is_challenge(t):
-                raise CollectionBlocked("detail challenge detected")
+                # A challenge can appear just after goto returns (for example
+                # after a delayed Cloudflare redirect).  Route this late
+                # observation through the same bounded 2/4/5-minute policy
+                # instead of treating it as an immediate parse failure.
+                wait_detail_challenge = getattr(browser, "wait_detail_challenge", None)
+                if wait_detail_challenge is None or not wait_detail_challenge():
+                    raise CollectionBlocked("detail challenge detected")
             try:
                 page.wait_for_selector('[data-testid="product-card-price"], h1', timeout=15000)
             except Exception:
@@ -177,18 +188,44 @@ def _normalize_detail(raw: dict, url: str) -> dict:
     orig = parse_price(raw.get("original_price") or "")
     if cur is None and orig is not None:
         cur = orig
+    # Keep the page's original field payload alongside any display-safe value.
+    # A suspected field displacement is an anomaly to be reviewed, not a
+    # licence to destroy the official source fact.
+    raw_spec = str(raw.get("spec_es") or "").strip()
+    raw_desc = str(raw.get("desc_es") or "").strip()
+    spec = normalize_official_text(raw_spec, field="spec") or ""
+    desc = normalize_official_text(raw_desc, field="description") or ""
+    details = normalize_official_text(raw.get("details_es"), field="details") or ""
+    source_anomalies: list[str] = []
+    # Description and spec are independent page sections.  Older Action DOM
+    # variants occasionally returned the specifications table in one of those
+    # slots.  Do not allow a fallback or a duplicated details payload to be
+    # persisted as if it were an independent field.
+    if desc and details and desc.strip() == details.strip():
+        source_anomalies.append("DESCRIPTION_DUPLICATES_DETAILS")
+        desc = ""
+    if desc and len(_DETAIL_LABEL_RE.findall(desc)) >= 2:
+        source_anomalies.append("DESCRIPTION_LOOKS_LIKE_DETAILS_TABLE")
+        desc = ""
+    if spec and len(_DETAIL_LABEL_RE.findall(spec)) >= 2:
+        source_anomalies.append("SPEC_LOOKS_LIKE_DETAILS_TABLE")
+        spec = ""
     return {
         "sku": str(raw.get("sku") or ""),
         "name_es": raw.get("name_es") or "",
         "cat1_es": raw.get("cat1_es") or "",
         "cat2_es": raw.get("cat2_es") or "",
-        "spec_es": normalize_official_text(raw.get("spec_es"), field="spec") or "",
+        "spec_es": spec,
+        "spec_es_raw": raw_spec,
         "current_price": cur,
         "original_price": orig,
         "unit_price": raw.get("unit_price") or "",
         "discount": parse_discount_percent(raw.get("discount") or ""),
-        "desc_es": normalize_official_text(raw.get("desc_es"), field="description") or "",
-        "details_es": normalize_official_text(raw.get("details_es"), field="details") or "",
+        "desc_es": desc,
+        "desc_es_raw": raw_desc,
+        "details_es": details,
+        "source_anomalies": source_anomalies,
+        "source_quality": "SOURCE_SUSPECT" if source_anomalies else "OK",
         "product_url": url,
         "image_url": raw.get("image_url") or "",
         "raw_tags": raw.get("raw_tags") or "",

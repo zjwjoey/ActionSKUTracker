@@ -45,6 +45,12 @@ class AccessController:
         """Page-scoped permission for one bounded challenge-page reload."""
         return self.state in (AccessState.NORMAL, AccessState.DEGRADED)
 
+    def block(self, reason: str = "BLOCKED") -> None:
+        """Stop the current collection circuit with an explicit evidence reason."""
+        self.success_streak = 0
+        self.state = AccessState.BLOCKED
+        self.events.append(reason)
+
     def record(self, *, status: int | None = None, challenge: bool = False, error: bool = False) -> None:
         if status in (403, 401) or challenge:
             self.success_streak = 0

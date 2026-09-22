@@ -28,11 +28,128 @@ from .detail_edge_import import (
     _validate_parent,
     _validate_records,
     _validate_url,
+    _validate_controlled_parent_report,
 )
 
 
 class EdgeListingReconcileError(ValueError):
     """Raised when a category/badge/lifecycle recovery input is not evidence-safe."""
+
+
+def _validate_controlled_category_records(
+    *, run_id: str, payload: Mapping[str, Any], raw_rows: list[dict[str, Any]],
+    current: Mapping[str, Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Validate a small, explicitly supplied category evidence batch."""
+    if str(payload.get("parent_run_id") or "").strip() != run_id:
+        raise EdgeListingReconcileError("CONTROLLED_CATEGORY_PARENT_ID_REQUIRED")
+    if str(payload.get("source") or "").strip().upper() not in {"EDGE_PLUGIN", "EDGE_BROWSER"}:
+        raise EdgeListingReconcileError("CONTROLLED_CATEGORY_SOURCE_REQUIRED")
+    if not raw_rows:
+        raise EdgeListingReconcileError("CONTROLLED_CATEGORY_EMPTY")
+    if len(raw_rows) > 100:
+        raise EdgeListingReconcileError(f"CONTROLLED_CATEGORY_TOO_MANY_ROWS:{len(raw_rows)}")
+    seen: set[str] = set()
+    valid: list[dict[str, Any]] = []
+    for raw in raw_rows:
+        sku = str(raw.get("sku") or "").strip()
+        if not _SKU_RE.fullmatch(sku) or sku in seen:
+            raise EdgeListingReconcileError(f"CONTROLLED_CATEGORY_SKU_INVALID:{sku}")
+        seen.add(sku)
+        if sku not in current:
+            raise EdgeListingReconcileError(f"CONTROLLED_CATEGORY_SKU_NOT_CURRENT:{sku}")
+        status = str(raw.get("page_status") or raw.get("status") or "").strip().upper()
+        title = str(raw.get("page_title") or raw.get("title") or "")
+        body_sample = str(raw.get("body_sample") or "")
+        if status not in _OK_STATUSES or _is_challenge_page(title, body_sample):
+            raise EdgeListingReconcileError(f"CONTROLLED_CATEGORY_PAGE_NOT_VERIFIED:{sku}")
+        product_url = _validate_url(raw.get("product_url") or raw.get("url"), sku)
+        cat1 = _clean_text(raw.get("cat1_es"), field="cat1_es", sku=sku)
+        cat2 = _clean_text(raw.get("cat2_es"), field="cat2_es", sku=sku)
+        if not cat1 or not cat2:
+            raise EdgeListingReconcileError(f"CONTROLLED_CATEGORY_INCOMPLETE:{sku}")
+        valid.append({"sku": sku, "product_url": product_url, "cat1_es": cat1, "cat2_es": cat2})
+    return valid
+
+
+def preview_or_apply_controlled_category_reconciliation(
+    cfg: dict[str, Any], *, run_id: str, input_path: Path, commit: bool = False,
+    approved_conflict_skus: set[str] | None = None,
+) -> dict[str, Any]:
+    """Preview/apply a finite on-sale-page category correction batch.
+
+    This route is intentionally independent of the deferred queue.  It is
+    used when the committed run already passed QA but its listing projection
+    has stale/blank breadcrumbs.  Conflicting non-blank categories require
+    explicit per-SKU approval; the writer remains the narrow
+    ``apply_verified_listing_reconciliation`` function.
+    """
+    parent, _ = _validate_parent(cfg, run_id, for_staging=True, require_product_updates=False)
+    try:
+        report = json.loads((parent / "run_report.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise EdgeListingReconcileError("CONTROLLED_CATEGORY_PARENT_REPORT_INVALID") from exc
+    try:
+        _validate_controlled_parent_report(report)
+    except EdgeDetailImportError as exc:
+        raise EdgeListingReconcileError(str(exc)) from exc
+    payload, raw_rows = _read_payload(Path(input_path))
+    repo = ProductionRepository(database_path(cfg))
+    current = {str(row["sku"]): row for row in repo.load_current_export_records()}
+    valid = _validate_controlled_category_records(
+        run_id=run_id, payload=payload, raw_rows=raw_rows, current=current,
+    )
+    lifecycle = repo.load_known_skus()
+    approved = {str(sku).strip() for sku in (approved_conflict_skus or set()) if str(sku).strip()}
+    plan, conflicts = _build_deferred_category_plan(
+        current=current, lifecycle=lifecycle, detail_records=valid,
+        approved_conflict_skus=approved,
+    )
+    approved_in_plan = {str(row["sku"]) for row in plan if row.get("official_conflict_approved")}
+    unused = sorted(approved - approved_in_plan)
+    if unused:
+        raise EdgeListingReconcileError(f"CONTROLLED_CATEGORY_APPROVAL_UNUSED:{','.join(unused)}")
+    result: dict[str, Any] = {
+        "status": "REVIEW_REQUIRED" if conflicts else "PREVIEW",
+        "entry": "CONTROLLED_EDGE_CATEGORY", "parent_run_id": run_id,
+        "input_rows": len(raw_rows), "valid_rows": len(valid), "ready_rows": len(plan),
+        "conflict_count": len(conflicts), "conflicts": conflicts,
+        "approved_conflict_skus": sorted(approved), "commit": bool(commit),
+    }
+    if conflicts:
+        if commit:
+            raise EdgeListingReconcileError(
+                f"CONTROLLED_CATEGORY_CONFLICTS:{[item['sku'] for item in conflicts]}"
+            )
+        return result
+    if not commit:
+        return result
+    import_id = (
+        f"controlled-category-reconcile_"
+        f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{len(plan)}"
+    )
+    evidence_dir = parent / "listing_edge_reconciliations" / import_id
+    evidence_dir.mkdir(parents=True, exist_ok=False)
+    (evidence_dir / "input.json").write_bytes(Path(input_path).read_bytes())
+    (evidence_dir / "plan.json").write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+    apply_result = apply_verified_listing_reconciliation(
+        database_path(cfg), plan, import_id=import_id,
+        evidence={
+            "parent_run_id": run_id, "source": str(payload.get("source")).upper(),
+            "authority": "on_sale_page_breadcrumb", "entry": "controlled-edge-category",
+            "approved_conflict_skus": sorted(approved_in_plan),
+        },
+    )
+    head = repo.current_head()
+    sync = regenerate_compatibility_exports(cfg, head) if head else None
+    final = {
+        **result, **apply_result, "status": "APPLIED", "import_id": import_id,
+        "master_sync": sync, "finished_at": datetime.now(timezone.utc).isoformat(),
+    }
+    (evidence_dir / "reconciliation_report.json").write_text(
+        json.dumps(final, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+    return final
 
 
 def _category_map(*, run_id: str, candidates: set[str], detail_records: list[dict[str, Any]],

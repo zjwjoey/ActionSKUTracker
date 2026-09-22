@@ -33,6 +33,7 @@ from ..services.runtime import RunLock, madrid_now, observation_date
 from ..services.gitutil import git_commit_info
 from ..services.hashing import content_hash
 from ..services.review import add_review_item
+from ..services.category_consistency import load_primary_category_map
 from ..snapshot import write_snapshot, write_staging
 from ..translation.service import apply_zh
 
@@ -49,6 +50,7 @@ _DETAIL_REASON_PRIORITY = {
     # category.  Drain this backlog before ordinary refreshes so category
     # completeness improves deterministically across runs.
     "CATEGORY_MISSING": 0,
+    "CATEGORY_MISMATCH": 0,
     "NEW": 1,
     "REAPPEARED": 1,
     "DETAIL_REFRESH": 2,
@@ -56,7 +58,7 @@ _DETAIL_REASON_PRIORITY = {
 
 
 def _select_detail_plans(plans: list[dict], max_per_run: int) -> tuple[list[dict], list[dict]]:
-    """Select a bounded deterministic Detail batch and retain the remainder.
+    """Select a deterministic Detail batch and retain any explicit backlog.
 
     Presence and Listing facts are already frozen before this point.  A
     deferred candidate keeps its blank Detail fields, so it is automatically
@@ -68,8 +70,13 @@ def _select_detail_plans(plans: list[dict], max_per_run: int) -> tuple[list[dict
         _DETAIL_REASON_PRIORITY.get(str(plan.get("reason") or ""), 9),
         str(plan.get("sku") or ""),
     ))
-    if max_per_run <= 0:
+    # Zero has an explicit safe meaning: disable detail navigation for this
+    # run and keep every candidate in the backlog.  It must never mean
+    # unlimited.  Negative values are configuration errors.
+    if max_per_run == 0:
         return [], candidates
+    if max_per_run < 0:
+        raise ValueError("max_detail_per_run must be non-negative")
     return candidates[:max_per_run], candidates[max_per_run:]
 
 
@@ -91,6 +98,12 @@ def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
             if skip_raw_tags:
                 continue
             rec[k] = build_badge_state(rec.get("raw_tags"), in_nuevo, in_promo)
+        elif k in {"cat1_es", "cat2_es"}:
+            # Listing entry/category is not an official product breadcrumb.
+            # It may fill a blank identity for a new SKU, but never overwrite
+            # a category already sourced from a product page.
+            if not str(rec.get(k) or "").strip():
+                rec[k] = v
         elif v != "":
             rec[k] = v
 
@@ -284,21 +297,26 @@ def run_daily(
                                    {"NEW", "ACTIVE", "REAPPEARED", "MISSING_FIRST", "MISSING_CONTINUED", "OFFLINE", "UNKNOWN", "ABSENT"}})
 
     # ---- 计划更新 ----
+    primary_category_map = load_primary_category_map(
+        cfg.get("paths", {}).get("category_primary_map")
+    )
     plans = updater_mod.plan_updates(
         statuses, baseline, today_light, cfg["run"]["detail_refresh_days"],
-        nuevo_skus=nuevo_skus, promo_skus=promo_skus)
+        nuevo_skus=nuevo_skus, promo_skus=promo_skus,
+        category_primary_map=primary_category_map)
     log.info("需要更新的 SKU: %d (原因: %s)",
              len(plans), {r: sum(1 for p in plans if p["reason"] == r) for r in {p["reason"] for p in plans}})
     detail_candidates = [plan for plan in plans if plan["need_detail"]]
     detail_selected, detail_deferred = _select_detail_plans(
-        plans, int(cfg["run"].get("max_detail_per_run", 20) or 0))
+        plans, int(cfg["run"].get("max_detail_per_run", 0) or 0))
     detail_candidate_skus = {plan["sku"] for plan in detail_candidates}
     detail_selected_skus = {plan["sku"] for plan in detail_selected}
     detail_deferred_skus = {plan["sku"] for plan in detail_deferred}
     if detail_deferred:
-        log.info("详情候选=%d，本轮计划=%d，延后=%d（max_detail_per_run=%d）",
+        max_detail = int(cfg["run"].get("max_detail_per_run", 0) or 0)
+        log.info("详情候选=%d，本轮计划=%d，延后=%d（max_detail_per_run=%s）",
                  len(detail_candidates), len(detail_selected), len(detail_deferred),
-                 int(cfg["run"].get("max_detail_per_run", 20) or 0))
+                 "unlimited" if max_detail <= 0 else str(max_detail))
 
     # ---- 合并今日记录 ----
     updated: dict[str, dict] = {}

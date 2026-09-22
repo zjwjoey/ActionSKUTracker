@@ -119,15 +119,15 @@ def test_detail_batch_selection_defers_excess_candidates_without_dropping_them()
     assert [plan["sku"] for plan in deferred] == ["3000"]
 
 
-def test_detail_batch_selection_zero_means_unlimited():
+def test_detail_batch_selection_zero_disables_detail_without_dropping_candidates():
     plans = [
         {"sku": "3000", "reason": "DETAIL_REFRESH", "need_detail": True},
         {"sku": "2000", "reason": "NEW", "need_detail": True},
         {"sku": "1000", "reason": "MISSING_FIELD", "need_detail": True},
     ]
     selected, deferred = daily._select_detail_plans(plans, max_per_run=0)
-    assert [plan["sku"] for plan in selected] == ["1000", "2000", "3000"]
-    assert deferred == []
+    assert selected == []
+    assert [plan["sku"] for plan in deferred] == ["1000", "2000", "3000"]
 
 
 def test_run_report_marks_deferred_detail_candidates_pending(tmp_path):
