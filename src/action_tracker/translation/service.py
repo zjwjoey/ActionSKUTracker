@@ -36,11 +36,19 @@ class DisabledTranslationProvider(TranslationProvider):
 
 
 def apply_zh(rec: dict[str, Any]) -> dict[str, Any]:
-    """确保中文字段存在；缺失则 fallback 西语，并标注翻译状态。"""
+    """Apply the legacy projection without violating the source-empty contract.
+
+    Non-empty fields retain the historical same-field fallback marker for
+    compatibility.  An empty official field is explicitly cleared and never
+    filled from another field; formal export paths should prefer the gated
+    dictionary/database resolver instead of this compatibility helper.
+    """
     rec = dict(rec)
     missing = [z for z, e in zip(_ZH_FIELDS, _ES_FIELDS) if not rec.get(z) and rec.get(e)]
     for z, e in zip(_ZH_FIELDS, _ES_FIELDS):
-        if not rec.get(z) and rec.get(e):
+        if not rec.get(e):
+            rec[z] = None
+        elif not rec.get(z):
             rec[z] = rec[e]
     rec["translation_status"] = "FALLBACK_ES" if missing else (rec.get("translation_status") or "NOT_CONFIGURED")
     return rec

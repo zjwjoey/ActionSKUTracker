@@ -21,7 +21,9 @@ from .connection import connect
 from .schema import migrate_v2
 from .patches import append_patch_event, create_patch
 from .provenance import sync_localization_field_provenance
-from ..services.hashing import content_hash, localization_source_hash, normalize_hash
+from ..services.hashing import (
+    content_hash, localization_field_source_hash, localization_source_hash, normalize_hash,
+)
 from ..services.normalization import normalize_official_text
 
 
@@ -341,7 +343,25 @@ class ProductionWriter:
                     )
                 source = row.get(f"{field_name}_source") or row.get("source")
                 review_status = row.get(f"{field_name}_review_status") or row.get("review_status")
-                field_hash = normalize_hash(row.get(f"{field_name}_source_hash")) or row_hash
+                explicit_field_hash = normalize_hash(row.get(f"{field_name}_source_hash"))
+                if explicit_field_hash:
+                    field_hash = explicit_field_hash
+                elif language == "es" or any(
+                    key in row for key in ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")
+                ):
+                    source_record = {
+                        "name_es": row.get("name_es", row.get("name")),
+                        "cat1_es": row.get("cat1_es", row.get("cat1")),
+                        "cat2_es": row.get("cat2_es", row.get("cat2")),
+                        "spec_es": row.get("spec_es", row.get("spec")),
+                        "desc_es": row.get("desc_es", row.get("description")),
+                        "details_es": row.get("details_es", row.get("details")),
+                    }
+                    field_hash = localization_field_source_hash(
+                        source_record, {"description": "description", "details": "details"}.get(field_name, field_name)
+                    )
+                else:
+                    field_hash = row_hash
                 db.execute(
                     """
                     INSERT INTO localization_fields(
@@ -769,6 +789,183 @@ def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
                     ("edge_detail_import", "DETAIL_FIELDS_APPLIED", sku,
                      json.dumps({"import_id": import_id, "resolution_status": resolution_status,
                                  "followups": followups, **(dict(evidence or {}))}, ensure_ascii=False, sort_keys=True)),
+                )
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+    return {"status": "APPLIED", "import_id": import_id, "rows": len(payload),
+            "changed_skus": changed_skus, "changed_fields": changed_fields}
+
+
+def apply_verified_auxiliary_identity_updates(
+    path: Path, rows: Iterable[Mapping[str, Any]], *,
+    import_id: str, evidence: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Fill blank identity facts for explicitly verified auxiliary-only SKUs.
+
+    This is deliberately separate from :func:`apply_detail_only_updates`.
+    The normal Edge detail bridge must remain detail-only, while a product
+    found only through Nuevo/promotional auxiliary evidence has no Listing
+    row from which to obtain its URL, name or specification.  The caller must
+    provide an official Edge page record and the parent run id; this writer
+    additionally checks that the parent observation is ``AUXILIARY_ONLY``.
+    Existing non-blank identity values are immutable: conflicting evidence
+    fails closed rather than silently replacing a Listing fact.
+    Prices, Presence, lifecycle and Chinese fields are never changed here.
+    """
+    from ..services.hashing import content_hash, localization_source_hash
+
+    payload = [dict(row) for row in rows]
+    if not payload:
+        raise ProductionDatabaseError("AUXILIARY_IDENTITY_EMPTY")
+    parent_run_id = str((evidence or {}).get("parent_run_id") or "").strip()
+    if not parent_run_id:
+        raise ProductionDatabaseError("AUXILIARY_IDENTITY_PARENT_RUN_ID_MISSING")
+    now = datetime.now(timezone.utc).isoformat()
+    changed_skus = 0
+    changed_fields = 0
+    with connect(Path(path)) as db:
+        metadata = {row[0]: row[1] for row in db.execute("SELECT key,value FROM schema_metadata")}
+        if metadata.get("schema_family") != "ACTION_SQLITE_DATA" or metadata.get("database_role") != "PRIMARY":
+            raise ProductionDatabaseError("PRIMARY_V2_DATABASE_REQUIRED")
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            for row in payload:
+                sku = str(row.get("sku") or "").strip()
+                if not sku:
+                    raise ProductionDatabaseError("AUXILIARY_IDENTITY_SKU_MISSING")
+                product = db.execute(
+                    "SELECT canonical_id,status,name_es,product_url,image_url,raw_badges,action_new_badge,first_seen_at "
+                    "FROM products WHERE official_sku=?", (sku,)
+                ).fetchone()
+                if product is None:
+                    raise ProductionDatabaseError(f"AUXILIARY_IDENTITY_SKU_NOT_FOUND:{sku}")
+                if str(product[1] or "") != "CURRENT":
+                    raise ProductionDatabaseError(f"AUXILIARY_IDENTITY_SKU_NOT_CURRENT:{sku}")
+                observation = db.execute(
+                    "SELECT presence_state,sitemap_present,listing_present,nuevo_present,promotion_present,observation_complete "
+                    "FROM observations WHERE run_id=? AND official_sku=?",
+                    (parent_run_id, sku),
+                ).fetchone()
+                if observation is None:
+                    raise ProductionDatabaseError(f"AUXILIARY_IDENTITY_OBSERVATION_MISSING:{sku}")
+                if str((evidence or {}).get("source_flag") or "AUXILIARY_ONLY").upper() != "AUXILIARY_ONLY":
+                    raise ProductionDatabaseError("AUXILIARY_IDENTITY_SOURCE_FLAG_INVALID")
+                if not (bool(observation[3]) or bool(observation[4])) or bool(observation[1]) or bool(observation[2]):
+                    raise ProductionDatabaseError(f"AUXILIARY_IDENTITY_NOT_AUXILIARY_ONLY:{sku}")
+                if not bool(observation[5]) or str(observation[0] or "") != "PRESENT":
+                    raise ProductionDatabaseError(f"AUXILIARY_IDENTITY_OBSERVATION_INVALID:{sku}")
+
+                loc = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+                    "WHERE official_sku=? AND language='es'", (sku,)
+                ).fetchone()
+                if loc is None:
+                    raise ProductionDatabaseError(f"AUXILIARY_IDENTITY_ES_LOCALIZATION_MISSING:{sku}")
+                old = dict(zip(("name", "cat1", "cat2", "spec", "description", "details"), loc))
+
+                incoming = {
+                    "name": str(row.get("name_es") or "").strip(),
+                    "cat1": str(row.get("cat1_es") or "").strip(),
+                    "cat2": str(row.get("cat2_es") or "").strip(),
+                    "spec": str(row.get("spec_es") or "").strip(),
+                    "product_url": str(row.get("product_url") or "").strip(),
+                    "image_url": str(row.get("image_url") or "").strip(),
+                }
+                required = ("name", "cat1", "cat2", "spec", "product_url")
+                if any(not incoming[field] for field in required):
+                    raise ProductionDatabaseError(f"AUXILIARY_IDENTITY_INCOMPLETE:{sku}")
+
+                existing_product = {"name": str(product[2] or "").strip(),
+                                    "product_url": str(product[3] or "").strip(),
+                                    "image_url": str(product[4] or "").strip()}
+                for field in ("name", "product_url", "image_url"):
+                    if existing_product[field] and incoming[field] and existing_product[field] != incoming[field]:
+                        raise ProductionDatabaseError(f"AUXILIARY_IDENTITY_CONFLICT:{sku}:{field}")
+                for field in ("name", "cat1", "cat2", "spec"):
+                    if old[field] and incoming[field] and old[field] != incoming[field]:
+                        raise ProductionDatabaseError(f"AUXILIARY_IDENTITY_LOCALIZATION_CONFLICT:{sku}:{field}")
+
+                merged = dict(old)
+                for field in ("name", "cat1", "cat2", "spec"):
+                    merged[field] = old[field] or incoming[field]
+                product_name = existing_product["name"] or incoming["name"]
+                product_url = existing_product["product_url"] or incoming["product_url"]
+                image_url = existing_product["image_url"] or incoming["image_url"]
+                fact = {"name_es": merged["name"], "cat1_es": merged["cat1"], "cat2_es": merged["cat2"],
+                        "spec_es": merged["spec"], "desc_es": merged["description"],
+                        "details_es": merged["details"]}
+                source_hash = localization_source_hash(fact)
+                db.execute(
+                    "UPDATE products SET name_es=?,product_url=?,image_url=?,source_hash=?,content_hash=?,updated_at=? "
+                    "WHERE official_sku=?",
+                    (product_name, product_url, image_url or None, source_hash,
+                     content_hash({**fact, "product_url": product_url, "image_url": image_url or None}), now, sku),
+                )
+                db.execute(
+                    "UPDATE product_localizations SET name=?,cat1=?,cat2=?,spec=?,source=?,review_status=?,source_hash=?,"
+                    "resolution_status=?,freshness_status=?,updated_at=?,last_commit_id=? "
+                    "WHERE official_sku=? AND language='es'",
+                    (merged["name"], merged["cat1"], merged["cat2"], merged["spec"],
+                     "EDGE_AUXILIARY_IDENTITY", "VERIFIED", source_hash, "AUXILIARY_IDENTITY_RECONCILED",
+                     "CURRENT", now, import_id, sku),
+                )
+                db.execute(
+                    "UPDATE product_localizations SET source_hash=?,updated_at=? WHERE official_sku=? AND language='zh'",
+                    (source_hash, now, sku),
+                )
+                sync_localization_field_provenance(
+                    db,
+                    {"sku": sku, "language": "es", **merged, "source": "EDGE_AUXILIARY_IDENTITY",
+                     "review_status": "VERIFIED", "source_hash": source_hash,
+                     "applied_commit_id": import_id, "name_source": "edge_auxiliary_page",
+                     "spec_source": "edge_auxiliary_page", "freshness_status": "CURRENT"},
+                    commit_id=import_id, now=now,
+                )
+                zh_row = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details,source,review_status,"
+                    "name_source,cat1_source,cat2_source,spec_source,description_source,details_source,freshness_status "
+                    "FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)
+                ).fetchone()
+                if zh_row:
+                    zh_fields = dict(zip(("name", "cat1", "cat2", "spec", "description", "details",
+                                          "source", "review_status", "name_source", "cat1_source", "cat2_source",
+                                          "spec_source", "description_source", "details_source", "freshness_status"), zh_row))
+                    zh_fields.update({"sku": sku, "language": "zh", "source_hash": source_hash,
+                                      "applied_commit_id": import_id})
+                    sync_localization_field_provenance(db, zh_fields, commit_id=import_id, now=now)
+
+                product_after = list(product)
+                product_after[2] = product_name
+                product_after[3] = product_url
+                product_after[4] = image_url or None
+                fact_run_id = _ensure_import_run(db, import_id, evidence)
+                _record_import_fact_version(
+                    db, sku=sku, run_id=fact_run_id, merged=merged, product=product_after,
+                    evidence=evidence, now=now,
+                )
+                for field in ("name", "cat1", "cat2", "spec"):
+                    if old[field] == merged[field]:
+                        continue
+                    patch_id = create_patch(
+                        db, official_sku=sku, language="es", field_name=field,
+                        old_value=old[field], new_value=merged[field], source_hash=source_hash,
+                        reason="verified_auxiliary_identity_reconciliation", created_by="auxiliary-reconcile",
+                    )
+                    append_patch_event(db, patch_id, "PATCH_APPROVED", actor="auxiliary-reconcile", reason="official Edge page evidence")
+                    append_patch_event(db, patch_id, "PATCH_APPLIED", actor="auxiliary-reconcile", reason="PRIMARY identity recovery")
+                changed = sum(old[field] != merged[field] for field in ("name", "cat1", "cat2", "spec"))
+                changed += int(existing_product["name"] != product_name)
+                changed += int(existing_product["product_url"] != product_url)
+                changed += int(existing_product["image_url"] != image_url)
+                if changed:
+                    changed_skus += 1
+                    changed_fields += changed
+                db.execute(
+                    "INSERT INTO migration_source_issues(source_name,issue_type,entity_id,details) VALUES(?,?,?,?)",
+                    ("edge_auxiliary_identity", "AUXILIARY_IDENTITY_APPLIED", sku,
+                     json.dumps({"import_id": import_id, **dict(evidence or {})}, ensure_ascii=False, sort_keys=True)),
                 )
             db.commit()
         except Exception:

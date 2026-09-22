@@ -415,7 +415,12 @@ def _localization(record: Mapping[str, Any], language: str) -> dict[str, Any]:
             "freshness_status": "CURRENT", "name_source": "dictionary_or_fallback",
             "cat1_source": "dictionary_or_fallback", "cat2_source": "dictionary_or_fallback",
             "spec_source": "dictionary_or_fallback", "description_source": "dictionary_or_fallback",
-            "details_source": "dictionary_or_fallback"}
+            "details_source": "dictionary_or_fallback",
+            # Carry the Spanish source alongside the compatibility update so
+            # field-level provenance can compute independent hashes for ZH.
+            "name_es": record.get("name_es"), "cat1_es": record.get("cat1_es"),
+            "cat2_es": record.get("cat2_es"), "spec_es": record.get("spec_es"),
+            "desc_es": record.get("desc_es"), "details_es": record.get("details_es")}
 
 
 def _price_event(row: Mapping[str, Any], run_id: str) -> dict[str, Any]:

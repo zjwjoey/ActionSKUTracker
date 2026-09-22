@@ -120,6 +120,7 @@ def export_template1(
         "es_zh_sku_set_equal": True,
         "zh_image_embedded_count": image_stats["embedded_count"],
         "zh_image_missing_count": image_stats["missing_count"],
+        "missing_image_skus": sorted(image_stats.get("missing_skus", [])),
         "with_images": with_images,
         "image_profile": "excel_250_white_v1" if with_images else None,
         "dictionary_fallback_counts": fallback_counts,
@@ -144,6 +145,7 @@ def export_template1(
         "profile": "action_full_template_1", "with_images": with_images,
         "image_embedded_count": image_stats["embedded_count"],
         "image_missing_count": image_stats["missing_count"],
+        "missing_image_skus": sorted(image_stats.get("missing_skus", [])),
     }
 
 

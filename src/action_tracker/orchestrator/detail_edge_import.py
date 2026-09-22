@@ -23,6 +23,7 @@ from ..database.repository import ProductionRepository
 from ..exporting.excel_writer import write_catalog_xlsx
 from ..excel.reader import ES_MAP, load_current
 from ..products.badges import parse_badges
+from ..products.details_parser import conflicting_keys, parse_details
 from ..services.normalization import normalize_official_text
 
 
@@ -54,6 +55,10 @@ def _is_challenge_page(title: str, body_sample: str) -> bool:
 _SKU_RE = re.compile(r"^\d+$")
 _OK_STATUSES = {"OK", "SUCCESS", "COMPLETE", "COMPLETED"}
 _DETAIL_FIELDS = ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")
+# A controlled import is intentionally bounded.  A large batch must go
+# through the normal detail queue or a separately reviewed staging workbook;
+# this route is for a finite, user-verified recovery batch only.
+CONTROLLED_IMPORT_MAX_ROWS = 500
 # The staging data sheet is deliberately schema-identical to the Spanish
 # Master CURRENT sheet.  Audit metadata stays in the JSON sidecar/evidence,
 # never in a column that could be mistaken for a Master fact.
@@ -290,6 +295,16 @@ def _validate_records(payload: dict[str, Any], records: list[dict[str, Any]], ca
             value = _clean_text(raw.get(field), field=field, sku=sku)
             if value is not None:
                 row[field] = value
+        if row.get("details_es"):
+            conflicts = list(conflicting_keys(parse_details(row["details_es"])))
+            if conflicts:
+                # Keep the source evidence available to staging, but never
+                # allow a formal import to guess which official value wins.
+                row["_source_conflicts"] = conflicts
+                if not skip_unverified:
+                    raise EdgeDetailImportError(
+                        f"EDGE_IMPORT_SOURCE_CONFLICT:{sku}:{','.join(conflicts)}"
+                    )
         if not allow_incomplete and (not row.get("desc_es") or not row.get("details_es")):
             raise EdgeDetailImportError(f"EDGE_IMPORT_DETAIL_CONTENT_INCOMPLETE:{sku}")
         if raw.get("image_url") is not None:
@@ -308,7 +323,16 @@ def export_edge_detail_table(cfg: dict[str, Any], *, run_id: str, input_path: Pa
     or regenerate Master.  It is the safe hand-off while a batch is still
     under review.
     """
-    _parent, candidates = _validate_parent(cfg, run_id, for_staging=True)
+    # Staging is an evidence hand-off and may legitimately repair a stale
+    # parent queue (for example, a run created before the NEW/REAPPEARED
+    # detail selector was corrected).  Do not require the historical
+    # ``product_updates.csv`` queue here; the submitted records are still
+    # constrained to CURRENT SKUs and are fully validated below.  The actual
+    # import path remains strict and continues to require a BLOCKED parent
+    # plus its authoritative deferred queue.
+    _parent, candidates = _validate_parent(
+        cfg, run_id, for_staging=True, require_product_updates=False
+    )
     paths = input_path if isinstance(input_path, list) else [input_path]
     payload: dict[str, Any] = {}
     records: list[dict[str, Any]] = []
@@ -331,9 +355,12 @@ def export_edge_detail_table(cfg: dict[str, Any], *, run_id: str, input_path: Pa
     lifecycle_records = repo.load_known_skus()
     rows = []
     missing_fields: dict[str, list[str]] = {}
+    source_conflicts_by_sku: dict[str, list[str]] = {}
     detail_merge_ready: list[str] = []
     for row in valid:
         sku = row["sku"]
+        if row.get("_source_conflicts"):
+            source_conflicts_by_sku[sku] = list(row["_source_conflicts"])
         base = master_records.get(sku)
         if not base:
             raise EdgeDetailImportError(f"EDGE_STAGING_MASTER_BASE_MISSING:{sku}")
@@ -409,6 +436,7 @@ def export_edge_detail_table(cfg: dict[str, Any], *, run_id: str, input_path: Pa
             "output": str(output_path), "master_aligned": True,
             "master_schema_headers": EDGE_STAGING_HEADERS,
             "missing_fields_by_sku": missing_fields,
+            "source_conflicts_by_sku": source_conflicts_by_sku,
             "rows_ready_for_master": ready_count,
             "rows_ready_for_detail_merge": len(detail_merge_ready),
             "detail_merge_ready_skus": detail_merge_ready,
@@ -475,6 +503,110 @@ def run_deferred_detail_import(cfg: dict[str, Any], *, run_id: str, input_path: 
     final = {**result, **apply_result, "status": "APPLIED", "import_id": import_id,
              "master_sync": sync, "finished_at": datetime.now(timezone.utc).isoformat()}
     (evidence_dir / "import_report.json").write_text(json.dumps(final, ensure_ascii=False, indent=2), encoding="utf-8")
+    return final
+
+
+def _validate_controlled_parent_report(report: dict[str, Any]) -> None:
+    """Require a committed, QA-passing parent with an allowed access state.
+
+    Unlike the legacy ``detail-edge-import`` route this entry point is not
+    limited to a BLOCKED parent: a user may have captured a finite batch in
+    Edge after a normal run completed without creating a deferred queue.  The
+    write authority is still narrow: only a non-dry-run FULL_COMMIT with a
+    non-blocked final/detail state is accepted.
+    """
+    if report.get("qa_state") != "PASS" or report.get("commit_status") != "FULL_COMMIT":
+        raise EdgeDetailImportError("CONTROLLED_IMPORT_PARENT_NOT_COMMITTED")
+    if bool(report.get("dry_run")):
+        raise EdgeDetailImportError("CONTROLLED_IMPORT_PARENT_DRY_RUN")
+    access_states = {
+        str(report.get("final_access_state") or "").strip().upper(),
+        str(report.get("detail_access_state") or "").strip().upper(),
+    }
+    if not access_states.intersection({"NORMAL", "DEGRADED"}):
+        raise EdgeDetailImportError("CONTROLLED_IMPORT_PARENT_ACCESS_NOT_ALLOWED")
+    if "BLOCKED" in access_states:
+        raise EdgeDetailImportError("CONTROLLED_IMPORT_PARENT_BLOCKED")
+
+
+def run_controlled_edge_detail_import(
+    cfg: dict[str, Any], *, run_id: str, input_path: Path, commit: bool = False,
+) -> dict[str, Any]:
+    """Preview/apply an explicitly controlled Edge detail recovery batch.
+
+    This is the safe bridge for evidence captured after a normal committed
+    run.  It requires the exact parent run id in the payload, a strict Edge
+    source marker, complete verified pages, CURRENT SKUs, and empty existing
+    detail fields.  The database writer remains ``apply_detail_only_updates``
+    so name/category/spec/price/lifecycle/Chinese fields cannot be changed.
+    """
+    parent, _ = _validate_parent(
+        cfg, run_id, for_staging=True, require_product_updates=False,
+    )
+    try:
+        report = json.loads((parent / "run_report.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise EdgeDetailImportError("CONTROLLED_IMPORT_PARENT_REPORT_INVALID") from exc
+    _validate_controlled_parent_report(report)
+    payload, records = _read_payload(Path(input_path))
+    if str(payload.get("parent_run_id") or "").strip() != run_id:
+        raise EdgeDetailImportError("CONTROLLED_IMPORT_PARENT_ID_REQUIRED")
+    if str(payload.get("source") or "").strip().upper() not in {"EDGE_PLUGIN", "EDGE_BROWSER"}:
+        raise EdgeDetailImportError("CONTROLLED_IMPORT_SOURCE_REQUIRED")
+    if not records:
+        raise EdgeDetailImportError("CONTROLLED_IMPORT_EMPTY")
+    if len(records) > CONTROLLED_IMPORT_MAX_ROWS:
+        raise EdgeDetailImportError(f"CONTROLLED_IMPORT_TOO_MANY_ROWS:{len(records)}")
+
+    repo = ProductionRepository(database_path(cfg))
+    current = {str(row["sku"]): row for row in repo.load_current_export_records()}
+    supplied = {str(row.get("sku") or "").strip() for row in records}
+    already_enriched = _already_enriched_skus(supplied, current)
+    if already_enriched:
+        raise EdgeDetailImportError(
+            f"CONTROLLED_IMPORT_SKU_ALREADY_ENRICHED:{already_enriched[:10]}"
+        )
+    valid = _validate_records(
+        payload, records, set(), current,
+        allow_already_enriched=False, allow_incomplete=False, skip_unverified=False,
+    )
+    result: dict[str, Any] = {
+        "status": "PREVIEW", "parent_run_id": run_id,
+        "input_rows": len(records), "valid_rows": len(valid),
+        "candidate_count": len(valid), "commit": bool(commit),
+        "entry": "CONTROLLED_EDGE_DETAIL",
+    }
+    if not commit:
+        return result
+    import_id = (
+        f"controlled-edge-import_"
+        f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{len(valid)}"
+    )
+    evidence_dir = parent / "detail_edge_imports" / import_id
+    evidence_dir.mkdir(parents=True, exist_ok=False)
+    (evidence_dir / "input.json").write_text(
+        json.dumps(payload or {"records": records}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (evidence_dir / "records.json").write_text(
+        json.dumps(valid, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+    apply_result = apply_detail_only_updates(
+        database_path(cfg), valid, import_id=import_id,
+        evidence={
+            "parent_run_id": run_id, "source": str(payload.get("source")).upper(),
+            "kind": "CONTROLLED_EDGE_DETAIL", "entry": "controlled-edge-import",
+        },
+    )
+    head = repo.current_head()
+    sync = regenerate_compatibility_exports(cfg, head) if head else None
+    final = {
+        **result, **apply_result, "status": "APPLIED", "import_id": import_id,
+        "master_sync": sync, "finished_at": datetime.now(timezone.utc).isoformat(),
+    }
+    (evidence_dir / "import_report.json").write_text(
+        json.dumps(final, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
     return final
 
 

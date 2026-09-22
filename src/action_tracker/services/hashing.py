@@ -64,6 +64,36 @@ def localization_source_hash(rec: dict[str, Any]) -> str:
     )
 
 
+_LOCALIZATION_FIELD_TO_SOURCE = {
+    "name": "name_es",
+    "cat1": "cat1_es",
+    "cat2": "cat2_es",
+    "spec": "spec_es",
+    "description": "desc_es",
+    "details": "details_es",
+}
+
+
+def localization_field_source_hash(rec: dict[str, Any], field: str) -> str:
+    """Return the freshness identity for one localized field.
+
+    The six-field localization hash remains available for compatibility, but
+    new provenance writes must bind each target independently.  Empty source
+    text is still hashed (rather than treated as missing) so a field becoming
+    empty invalidates its previous translation just like any other change.
+    """
+    try:
+        source_key = _LOCALIZATION_FIELD_TO_SOURCE[field]
+    except KeyError as exc:
+        raise ValueError(f"UNKNOWN_LOCALIZATION_FIELD:{field}") from exc
+    return _h(rec.get(source_key))
+
+
+def localization_field_source_hashes(rec: dict[str, Any]) -> dict[str, str]:
+    """Return independent source hashes for all six localization fields."""
+    return {field: localization_field_source_hash(rec, field) for field in _LOCALIZATION_FIELD_TO_SOURCE}
+
+
 def price_hash(rec: dict[str, Any]) -> str:
     """价格+促销+折扣哈希。不变则不生成价格任务。"""
     return _h(

@@ -9,6 +9,7 @@ from .dictionary import format_confirmed_brand_title, is_confirmed_brand_record
 from .services.hashing import normalize_hash
 from .exporting.dictionary_join import (
     DictionaryContext,
+    _dictionary_field_hash_matches,
     _fact_source_hash,
     _normalize_unit_price,
     _resolve_category_field,
@@ -171,10 +172,11 @@ def _product_field(field: str, record: dict[str, Any], product: dict[str, str], 
         return FieldResolution(manual_value, "manual_override", "READY")
     product_value = str(product.get(field) or "").strip()
     confirmed = str(product.get("translation_status") or "").strip() not in {"", "UNTRANSLATED", "NEEDS_REVIEW", "LEGACY_UNVERIFIED"}
-    if product_value and normalize_hash(product.get("source_hash")) == source_hash and confirmed:
+    if product_value and _dictionary_field_hash_matches(record, product, field, source_hash) and confirmed:
         return FieldResolution(product_value, "product_dictionary", "READY")
     model_value = str(model.get(field) or "").strip()
-    if model_value and normalize_hash(model.get("source_hash")) == source_hash and str(model.get("quality_status") or "").upper() == "OK":
+    if (model_value and _dictionary_field_hash_matches(record, model, field, source_hash)
+            and str(model.get("quality_status") or "").upper() == "OK"):
         return FieldResolution(model_value, "model_cache", "READY")
     # Source-damaged facts must fail closed.  In particular, a UI button copied
     # into spec_es must never leak back into the Chinese export as a Spanish
@@ -194,7 +196,7 @@ def _category_field(field: str, record: dict[str, Any], product: dict[str, str],
     if (
         product_value
         and is_valid_chinese_category_value(product_value)
-        and normalize_hash(product.get("source_hash")) == source_hash
+        and _dictionary_field_hash_matches(record, product, field, source_hash)
     ):
         return FieldResolution(product_value, "product_dictionary", "READY")
     value, fallback = _resolve_category_field(field, record, product, manual, context, source_hash)

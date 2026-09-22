@@ -21,7 +21,7 @@ def write_catalog_xlsx(
     image_root: Path | None = None,
     embed_images: bool = False,
     allowed_image_skus: set[str] | None = None,
-) -> dict[str, int]:
+) -> dict[str, Any]:
     """原子写入单工作表商品清单。调用方负责所有业务校验。"""
     materialized = list(rows)
     workbook = openpyxl.Workbook()
@@ -61,6 +61,7 @@ def write_catalog_xlsx(
     date_format = str(workbook_format.get("date_number_format") or "yyyy-mm-dd")
     embedded_count = 0
     missing_count = 0
+    missing_skus: list[str] = []
     for row_no in range(2, len(materialized) + 2):
         for header, col in index.items():
             cell = ws.cell(row=row_no, column=col)
@@ -83,8 +84,9 @@ def write_catalog_xlsx(
                 cell.value = target
                 cell.hyperlink = target
                 cell.style = "Hyperlink"
+        row_has_image = False
+        sku = str(materialized[row_no - 2].get("编号") or "").strip()
         if embed_images:
-            sku = str(materialized[row_no - 2].get("编号") or "").strip()
             image_path = image_root / f"{sku}.png" if image_root and sku else None
             image_column = index.get("图片")
             if image_column and image_path and image_path.exists() and (
@@ -96,14 +98,18 @@ def write_catalog_xlsx(
                 ws.add_image(image, f"{get_column_letter(image_column)}{row_no}")
                 ws.row_dimensions[row_no].height = max(ws.row_dimensions[row_no].height or 20, 190)
                 embedded_count += 1
+                row_has_image = True
             elif image_column:
                 missing_count += 1
+                if sku:
+                    missing_skus.append(sku)
         description_lines = max(
             (_wrapped_line_count(ws.cell(row=row_no, column=index[header]).value, widths[header])
              for header in ("描述", "产品详情") if header in index),
             default=1,
         )
-        ws.row_dimensions[row_no].height = min(max_row_height, max(20, 15 * description_lines + 4))
+        text_height = min(max_row_height, max(20, 15 * description_lines + 4))
+        ws.row_dimensions[row_no].height = max(190 if row_has_image else 20, text_height)
 
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(prefix=f".{path.stem}.", suffix=".xlsx", dir=path.parent)
@@ -116,7 +122,11 @@ def write_catalog_xlsx(
         workbook.close()
         if temp_path.exists():
             temp_path.unlink()
-    return {"embedded_count": embedded_count, "missing_count": missing_count}
+    return {
+        "embedded_count": embedded_count,
+        "missing_count": missing_count,
+        "missing_skus": missing_skus,
+    }
 
 
 def _wrapped_line_count(value: Any, width: int) -> int:

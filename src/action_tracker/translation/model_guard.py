@@ -27,6 +27,7 @@ FIXED_CAT1 = frozenset({
 # would be false units.  Conversions (1 L -> 1000 ml) are intentionally not
 # attempted by this reject-only guard.
 _MEASURE_NUMBER = r"[-+]?\d+(?:[.,]\d+)?"
+_SPANISH_NUMBER_WORD = r"(?:un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)"
 _UNIT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("percent", re.compile(rf"{_MEASURE_NUMBER}\s*(?:%|por\s+ciento|百分之)", re.IGNORECASE)),
     ("kg", re.compile(rf"{_MEASURE_NUMBER}\s*(?:kg|kilogramos?|千克|公斤)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
@@ -43,7 +44,7 @@ _UNIT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("a", re.compile(rf"{_MEASURE_NUMBER}\s*(?:A|[Aa]mperios?|安培|安)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])")),
     ("mah", re.compile(rf"{_MEASURE_NUMBER}\s*(?:ma?h|毫安时)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
     ("lm", re.compile(rf"{_MEASURE_NUMBER}\s*(?:lm|l[uú]menes?|lumen|流明)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
-    ("celsius", re.compile(rf"{_MEASURE_NUMBER}\s*(?:°\s*c|grados?\s+celsius|摄氏度)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
+    ("celsius", re.compile(rf"{_MEASURE_NUMBER}\s*(?:[°º]\s*c|grados?\s+celsius|摄氏度)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
     ("kcal", re.compile(rf"{_MEASURE_NUMBER}\s*(?:kcal|kilocalor[ií]as?|千卡)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
     ("kj", re.compile(rf"{_MEASURE_NUMBER}\s*(?:kj|kilojulios?|千焦)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
     ("hour", re.compile(rf"{_MEASURE_NUMBER}\s*(?:h|horas?|小时)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
@@ -52,11 +53,19 @@ _UNIT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("serving", re.compile(rf"{_MEASURE_NUMBER}\s*(?:raciones?|份)(?![A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", re.IGNORECASE)),
 )
 
+_SPANISH_WORD_UNIT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("m", re.compile(rf"\b{_SPANISH_NUMBER_WORD}\s+metros?\b", re.IGNORECASE)),
+    ("percent", re.compile(rf"\b{_SPANISH_NUMBER_WORD}\s+por\s+ciento\b", re.IGNORECASE)),
+    ("kg", re.compile(rf"\b{_SPANISH_NUMBER_WORD}\s+kilogramos?\b", re.IGNORECASE)),
+    ("g", re.compile(rf"\b{_SPANISH_NUMBER_WORD}\s+gramos?\b", re.IGNORECASE)),
+    ("l", re.compile(rf"\b{_SPANISH_NUMBER_WORD}\s+litros?\b", re.IGNORECASE)),
+)
+
 # Product codes and standards are immutable facts, not translation style.
 # Avoid matching ordinary title-case words or measurement symbols here.
 _TECH_TOKEN = re.compile(
     r"(?<![A-Za-z0-9])(?:"
-    r"USB(?:[\s-]?[A-Z])?|LED|PEFC|FSC|HDMI|NFC|RFID|"
+    r"USB(?:[\s-]?[A-Z])?|LEDs?|PEFC|FSC|HDMI|NFC|RFID|ENC|"
     r"WI[\s-]?FI|BLUETOOTH|AAA|AA|PD|QC(?:\d+(?:\.\d+)?)?|"
     r"IP\d{2,3}|[A-Z]{1,5}[/-]?[A-Z]*\d+[A-Z0-9./-]*"
     r")(?![A-Za-z0-9])",
@@ -70,7 +79,7 @@ _TECH_EXCLUDED = frozenset({"G", "KG", "ML", "CL", "L", "MM", "CM", "M", "KM", "
 # container rendering such as ``一罐`` or ``1罐`` without weakening ordinary
 # same-field numeric checks.
 SPANISH_SINGLE_QUANTITY = re.compile(
-    r"\b(?:un|una)\s+(?P<noun>bote|lata|botella|caja|bolsa|tubo|rollo|paquete|pack|pieza|unidad|par|juego|set|frasco|tarro|cápsula|capsula|pastilla)\b",
+    r"\b(?:un|una)\s+(?P<noun>bote|lata|botella|caja|bolsa|tubo|rollo|paquete|pack|pieza|unidad|par|juego|set|frasco|tarro|cápsula|capsula|pastilla|cinta|calcet[ií]n)\b",
     re.IGNORECASE,
 )
 SPANISH_QUANTITY_TO_CHINESE_MEASURES = {
@@ -80,8 +89,77 @@ SPANISH_QUANTITY_TO_CHINESE_MEASURES = {
     "pieza": ("件", "个"), "unidad": ("件", "个"), "par": ("双", "对"),
     "juego": ("套",), "set": ("套",), "frasco": ("罐", "瓶"),
     "tarro": ("罐", "瓶"), "cápsula": ("粒", "颗"), "capsula": ("粒", "颗"),
-    "pastilla": ("片", "粒"),
+    "pastilla": ("片", "粒"), "cinta": ("条",), "calcetín": ("只", "双"), "calcetin": ("只", "双"),
 }
+SPANISH_CARDINAL_VALUES = {
+    "un": 1, "uno": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4,
+    "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
+}
+SPANISH_NUMBER_QUANTITY = re.compile(
+    rf"\b(?P<num>{_SPANISH_NUMBER_WORD})\s+(?:solo\s+)?(?P<noun>"
+    r"piezas?|unidades?|accesorios?|niveles?|metros?|kilogramos?|gramos?|litros?|"
+    r"botones?|farolillos?|lámparas?|posiciones?|camisetas?|tipos?|"
+    r"animal(?:es)?|muñeca(?:s)?|dispositivo(?:s)?|puntas?|lados?|"
+    r"intensidades?|zoo|bolsillos?)\b",
+    re.IGNORECASE,
+)
+SPANISH_OTHER_QUANTITY = re.compile(r"\botro\s+(?:lateral|bolsillo)\b", re.IGNORECASE)
+SPANISH_SPECIAL_NUMBER_QUANTITY = re.compile(
+    rf"\b(?P<num>{_SPANISH_NUMBER_WORD})\s+(?:solo\s+juego|cómoda\s+camiseta)\b",
+    re.IGNORECASE,
+)
+CHINESE_NUMBER_QUANTITY = re.compile(
+    r"(?P<num>[一二两三四五六七八九十])\s*(?:个|件|套|档|米|千克|克|升|颗|粒|片|盏|只|级|种|罐|瓶|盒|袋|卷|管|包)",
+)
+CHINESE_CARDINAL_VALUES = {
+    "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5,
+    "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
+}
+
+# Chinese translations often render an explicit Spanish digit with a Chinese
+# numeral rather than an Arabic digit (``3 en 1`` -> ``三合一``, ``2 unidades``
+# -> ``两件`` and ``1 hoja`` -> ``一张``).  Keep this deliberately narrow:
+# only numerals next to a quantity/function marker are interpreted, so generic
+# prose such as ``一款商品`` or ``一杯饮料`` is not silently treated as a hard
+# numeric fact.
+CHINESE_NUMERIC_CONTEXT = re.compile(
+    r"(?P<num>[零〇一二两三四五六七八九十百千万]+)"
+    r"(?=\s*(?:合|倍|包装|装|层|芯|条|瓶|张|件|套|包|只|页|环|端口|位|片|粒|颗|双|对|米|克|千克|毫升|升|小时|分钟|秒|度|伏|瓦|毫安时))"
+    # Only the functional ``数字合数字`` form is numeric.  A bare
+    # ``合+数字`` would misread ordinary prose such as ``适合一顿早餐``.
+    r"|(?<=[0-9零〇一二两三四五六七八九十百千万])合(?P<after>[零〇一二两三四五六七八九十百千万]+)"
+)
+
+
+def _chinese_cardinal_value(token: str) -> int | None:
+    """Parse the small Chinese cardinal forms used in product quantities."""
+
+    if token in CHINESE_CARDINAL_VALUES:
+        return CHINESE_CARDINAL_VALUES[token]
+    digits = {"零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3,
+              "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+    if token == "十":
+        return 10
+    if token.startswith("十") and len(token) == 2 and token[1] in digits:
+        return 10 + digits[token[1]]
+    if token.endswith("十") and len(token) == 2 and token[0] in digits:
+        return digits[token[0]] * 10
+    if len(token) == 2 and token[0] in digits and token[1] in digits:
+        return digits[token[0]] * 10 + digits[token[1]]
+    return None
+
+
+def chinese_context_numeric_tokens(value: object) -> list[str]:
+    """Return numeric values represented by bounded Chinese quantity phrases."""
+
+    text = str(value or "")
+    output: list[str] = []
+    for match in CHINESE_NUMERIC_CONTEXT.finditer(text):
+        token = match.group("num") or match.group("after")
+        parsed = _chinese_cardinal_value(token)
+        if parsed is not None:
+            output.append(str(parsed))
+    return output
 
 # These are ordinary Spanish words that should not survive in a Chinese
 # field.  Brand/model phrases are removed by ``allowed_brand_phrases`` first;
@@ -138,7 +216,18 @@ class ModelOutputCheck:
 def numeric_tokens(value: object) -> list[str]:
     """Return normalized numeric tokens, retaining duplicate occurrences."""
 
-    return sorted(token.replace(",", ".") for token in NUMBER.findall(str(value or "")))
+    # Spanish sources use both comma decimals (``1,5``) and dot thousands
+    # separators (``3.680``).  Normalize those locale forms before comparing
+    # them with Chinese output, and accept the common OCR apostrophe decimal
+    # form (``9'5``) without changing the original fact text.
+    text = re.sub(r"(?<=\d)['’](?=\d)", ".", str(value or ""))
+    tokens: list[str] = []
+    for raw in NUMBER.findall(text):
+        token = raw.replace(",", ".")
+        if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", token):
+            token = token.replace(".", "")
+        tokens.append(token)
+    return sorted(tokens)
 
 
 def unit_tokens(value: object) -> list[str]:
@@ -148,15 +237,22 @@ def unit_tokens(value: object) -> list[str]:
     tokens: list[str] = []
     for canonical, pattern in _UNIT_PATTERNS:
         tokens.extend(canonical for _ in pattern.finditer(text))
+    for canonical, pattern in _SPANISH_WORD_UNIT_PATTERNS:
+        tokens.extend(canonical for _ in pattern.finditer(text))
     return sorted(tokens)
 
 
 def technical_tokens(value: object) -> list[str]:
     """Return normalized technical/model tokens, retaining duplicates."""
 
+    # These are fixed, unambiguous Chinese renderings of a technical token;
+    # translating Bluetooth to 蓝牙 must not be reported as token loss.
+    text = re.sub(r"蓝牙", "BLUETOOTH ", str(value or ""))
     output: list[str] = []
-    for match in _TECH_TOKEN.finditer(str(value or "")):
+    for match in _TECH_TOKEN.finditer(text):
         token = re.sub(r"[\s-]+", "-", match.group().upper())
+        if token == "LEDS":
+            token = "LED"
         if token not in _TECH_EXCLUDED:
             output.append(token)
     return sorted(output)
@@ -176,6 +272,38 @@ def numeric_fact_counters(source: object, prediction: object) -> tuple[Counter[s
     output_text = str(prediction or "")
     expected = Counter(numeric_tokens(source_text))
     actual = Counter(numeric_tokens(output_text))
+    for pattern in (SPANISH_NUMBER_QUANTITY, SPANISH_SPECIAL_NUMBER_QUANTITY):
+        for match in pattern.finditer(source_text):
+            noun = match.groupdict().get("noun", "")
+            # In ordinary product prose these singular forms are articles
+            # (``una punta fina`` / ``un lado``), not a counted package.
+            # Their plural/cardinal forms (``dos puntas`` / ``dos lados``)
+            # remain protected as explicit facts.
+            if noun.casefold().rstrip("s") in {"punta", "lado", "intensidade"} and match.group("num").casefold() in {"un", "uno", "una"}:
+                continue
+            # An indefinite singular accessory is an article-like phrase in
+            # product prose (``un accesorio``), not a hard count.  Plural and
+            # explicit numeric forms remain protected by this guard.
+            if noun.casefold() == "accesorio" and match.group("num").casefold() in {"un", "uno", "una"}:
+                continue
+            expected[str(SPANISH_CARDINAL_VALUES[match.group("num").casefold()])] += 1
+    # ``otro bolsillo/lateral`` is an explicit second item in product prose;
+    # faithful Chinese often renders it as ``一个...``.
+    expected["1"] += sum(1 for _ in SPANISH_OTHER_QUANTITY.finditer(source_text))
+    for match in CHINESE_NUMBER_QUANTITY.finditer(output_text):
+        actual[str(CHINESE_CARDINAL_VALUES[match.group("num")])] += 1
+    # Reconcile Chinese numeral forms for quantity/function phrases, but only
+    # up to the number of explicit source facts.  This prevents a generic
+    # Chinese article from becoming an accepted numeric hallucination while
+    # allowing faithful forms such as ``三合一`` and ``两条装``.
+    quantity_spans = [match.span() for match in CHINESE_NUMBER_QUANTITY.finditer(output_text)]
+    for match in CHINESE_NUMERIC_CONTEXT.finditer(output_text):
+        if any(match.start() < end and start < match.end() for start, end in quantity_spans):
+            continue
+        token = match.group("num") or match.group("after")
+        parsed = _chinese_cardinal_value(token)
+        if parsed is not None:
+            actual[str(parsed)] += 1
     source_nouns = Counter(match.group("noun").casefold() for match in SPANISH_SINGLE_QUANTITY.finditer(source_text))
     for noun, source_count in source_nouns.items():
         measures = SPANISH_QUANTITY_TO_CHINESE_MEASURES[noun]
@@ -185,8 +313,10 @@ def numeric_fact_counters(source: object, prediction: object) -> tuple[Counter[s
         aligned_arabic = min(source_count, arabic)
         aligned_chinese = min(source_count - aligned_arabic, chinese)
         expected["1"] += aligned_arabic + aligned_chinese
-        # Arabic ``1`` is already in ``actual``. Add only Chinese one.
-        actual["1"] += aligned_chinese
+        # Both Arabic ``1`` and Chinese ``一`` are already counted by
+        # ``numeric_tokens`` / ``CHINESE_NUMBER_QUANTITY`` above.  Do not add
+        # the Chinese form a second time here; this mapping only aligns the
+        # source article with the existing output count.
     return expected, actual
 
 
@@ -241,7 +371,12 @@ def validate_model_output(
         reasons: list[str] = []
         source_value = str(source.get(field, "") or "")
         predicted_value = str(prediction.get(field, "") or "")
-        if source_value.strip() and not predicted_value.strip():
+        if not source_value.strip() and predicted_value.strip():
+            # An empty official field is a real NO_SOURCE state.  A value
+            # produced from another field is cross-field fact injection, not
+            # a harmless completion.
+            reasons.append("SOURCE_EMPTY_NONEMPTY")
+        elif source_value.strip() and not predicted_value.strip():
             reasons.append("EMPTY_REQUIRED_FIELD")
         expected, actual = numeric_fact_counters(source_value, predicted_value)
         if list((expected - actual).elements()):

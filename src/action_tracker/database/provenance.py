@@ -13,6 +13,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any, Mapping
 
+from ..services.hashing import localization_field_source_hash
+
 
 LOCALIZATION_FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
 
@@ -71,7 +73,22 @@ def sync_localization_field_provenance(
         value = row.get(field_name) if explicit_value else old_value
         source = row.get(f"{field_name}_source") if f"{field_name}_source" in row else (existing[1] if existing else row.get("source"))
         status = row.get(f"{field_name}_review_status") if f"{field_name}_review_status" in row else (existing[2] if existing else row.get("review_status"))
-        field_hash = row.get(f"{field_name}_source_hash") if f"{field_name}_source_hash" in row else (existing[3] if existing else row.get("source_hash"))
+        if f"{field_name}_source_hash" in row:
+            field_hash = row.get(f"{field_name}_source_hash")
+        elif (language == "es" or any(
+            key in row for key in ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")
+        )):
+            source_record = {
+                "name_es": row.get("name_es", row.get("name")),
+                "cat1_es": row.get("cat1_es", row.get("cat1")),
+                "cat2_es": row.get("cat2_es", row.get("cat2")),
+                "spec_es": row.get("spec_es", row.get("spec")),
+                "desc_es": row.get("desc_es", row.get("description")),
+                "details_es": row.get("details_es", row.get("details")),
+            }
+            field_hash = localization_field_source_hash(source_record, field_name)
+        else:
+            field_hash = existing[3] if existing else row.get("source_hash")
         updated_at = row.get(f"{field_name}_updated_at") if f"{field_name}_updated_at" in row else (existing[4] if existing else now)
         applied_commit = row.get(f"{field_name}_applied_commit_id") if f"{field_name}_applied_commit_id" in row else (existing[5] if existing else row.get("applied_commit_id") or commit_id)
         extras = {}

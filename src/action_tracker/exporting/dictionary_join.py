@@ -25,6 +25,7 @@ from ..dictionary import (
     normalize_category_key,
 )
 from ..services.normalization import parse_bool_zh, parse_price
+from ..services.hashing import localization_field_source_hash
 
 
 class DictionaryJoinError(ValueError):
@@ -212,12 +213,19 @@ def build_zh_rows_from_localized_source(records: Iterable[dict[str, Any]]) -> tu
         )
         resolved: dict[str, Any] = {}
         for target, fallback_key, label in values:
-            value = _none_or_text(record.get(target))
+            # A missing official source is a real NO_SOURCE state.  Never
+            # retain a stale Chinese value or synthesize one from another
+            # field merely because this SQLite projection already has text.
+            source_value = _none_or_text(record.get(fallback_key))
+            value = _none_or_text(record.get(target)) if source_value else None
             if target in {"name_zh", "cat1_zh", "cat2_zh", "spec_zh"} and value and not _CJK_RE.search(value):
                 value = None
             if not value:
-                value = _none_or_text(record.get(fallback_key))
-                fallbacks.append(label + "待审核")
+                if source_value:
+                    value = source_value
+                    fallbacks.append(label + "待审核")
+                else:
+                    fallbacks.append(label + "无来源")
             resolved[target] = value
         for item in fallbacks:
             fallback_counts[item] = fallback_counts.get(item, 0) + 1
@@ -352,13 +360,15 @@ def _resolve_product_field(
     if manual_value:
         return manual_value, False
     product_value = _text(product.get(field))
-    product_hash_matches = _text(product.get("source_hash")) == source_hash
+    product_hash_matches = _dictionary_field_hash_matches(
+        record, product, field, source_hash,
+    )
     product_status = _text(product.get("translation_status"))
     if product_value and product_hash_matches and product_status not in _UNUSABLE_TRANSLATION_STATUSES:
         return product_value, False
     model = context.model_by_sku.get(_text(record.get("sku")), {})
     model_value = _text(model.get(field))
-    if (model_value and _text(model.get("source_hash")) == source_hash
+    if (model_value and _dictionary_field_hash_matches(record, model, field, source_hash)
             and _text(model.get("quality_status")).upper() == "OK"):
         return model_value, False
     # Do not expose a known-polluted Spanish fact as a Chinese fallback.  A
@@ -386,7 +396,7 @@ def _resolve_category_field(
     if (
         product_value
         and is_valid_chinese_category_value(product_value)
-        and _text(product.get("source_hash")) == source_hash
+        and _dictionary_field_hash_matches(record, product, field, source_hash)
     ):
         return product_value, False
     cat1_key = normalize_category_key(record.get("cat1_es"))
@@ -397,6 +407,27 @@ def _resolve_category_field(
         return mapped_value, False
     fallback = _text(record.get("cat1_es" if field == "cat1_zh" else "cat2_es"))
     return fallback, True
+
+
+def _dictionary_field_hash_matches(
+    record: dict[str, Any], row: dict[str, str], field: str, legacy_hash: str,
+) -> bool:
+    """Use an explicit field hash when available, otherwise legacy hash.
+
+    Existing CSV dictionaries only have the four-field product hash.  The
+    optional ``<field>_source_hash`` columns allow new Apply artifacts to
+    become independently fresh without invalidating old baselines.
+    """
+    field_name = {
+        "name_zh_standard": "name", "cat1_zh": "cat1", "cat2_zh": "cat2",
+        "spec_zh_standard": "spec", "name": "name", "cat1": "cat1",
+        "cat2": "cat2", "spec": "spec", "description": "description",
+        "details": "details",
+    }.get(field)
+    declared = _text(row.get(f"{field_name}_source_hash")) if field_name else ""
+    if declared:
+        return declared == localization_field_source_hash(record, field_name)
+    return _text(row.get("source_hash")) == legacy_hash
 
 
 def _normalize_unit_price(value: str, terms: tuple[dict[str, str], ...]) -> tuple[str, bool]:
@@ -419,6 +450,11 @@ def _resolve_existing_chinese_field(
     damaged_fields: set[str],
     damage_key: str,
 ) -> tuple[str | None, bool]:
+    # Source-empty is authoritative.  A previous Chinese value must not
+    # survive after the official field disappears, and no other field may be
+    # used as a fallback.
+    if not _none_or_text(record.get(es_field)):
+        return None, True
     current = _none_or_text(record.get(zh_field))
     if current and _CJK_RE.search(current):
         return current, False

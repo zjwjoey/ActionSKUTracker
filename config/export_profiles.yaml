@@ -117,15 +117,15 @@ profiles:
       - valid_product_dictionary_value
       - formal_brand_category_term_dictionary
       - source_hash_valid_model_translation
-      - spanish_fallback_with_review_marker
+      - explicit_review_queue_for_unresolved_field
     field_sources:
       title: dictionary.name_zh_standard
       category_1: dictionary.cat1_zh
       category_2: dictionary.cat2_zh
       specification: dictionary.spec_zh_standard
       unit_price: term_dictionary_normalized_master.unit_price
-      description: master.desc_zh_or_spanish_fallback
-      product_details: master.details_zh_or_spanish_fallback
+      description: approved_localization.description_zh
+      product_details: approved_localization.details_zh
       remarks: lifecycle_status_official_tags_zh_and_fallback_markers
 
   full_es_with_images:

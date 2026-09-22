@@ -376,7 +376,9 @@ def normalize_spec(value: Any) -> str:
     for old, new in SAFE_TEXT_REPLACEMENTS:
         x = re.sub(re.escape(old), new, x, flags=re.I)
     x = x.replace("|", "｜")
-    x = re.sub(r"\s*[xX]\s*", "×", x)
+    # Dimension separator only: never rewrite the ``x`` in XL/XXL/USB-C or
+    # other model tokens.  The lookarounds require a digit on both sides.
+    x = re.sub(r"(?<=\d)\s*[xX]\s*(?=\d)", "×", x)
     x = re.sub(r"(?<=\d),(?=\d)", ".", x)
     x = re.sub(r"(\d+(?:\.\d+)?)\s*(毫升|ml)\b", r"\1ml", x, flags=re.I)
     x = re.sub(r"(\d+(?:\.\d+)?)\s*(厘米|cm)\b", r"\1cm", x, flags=re.I)
@@ -754,7 +756,17 @@ def main() -> None:
     for sku in sorted(es, key=lambda value: (int(value) if value.isdigit() else 10**18, value)):
         src, base = es[sku], zh[sku]
         row = dict(base)
-        source_all = " ".join(text(src.get(h)) for h in ("标题", "规格", "描述", "产品详情"))
+        # Each localized field owns its own Spanish source.  Other fields are
+        # context only; using a concatenated source here would let a number or
+        # certification from spec/details incorrectly bless a description.
+        source_by_header = {
+            "标题": text(src.get("标题")),
+            "分类1": text(src.get("分类1")),
+            "分类2": text(src.get("分类2")),
+            "规格": text(src.get("规格")),
+            "描述": text(src.get("描述")),
+            "产品详情": text(src.get("产品详情")),
+        }
 
         def set_field(header: str, value: Any, reason: str, rule: str, confidence: str = "high") -> None:
             before = text(row.get(header)); after = text(value)
@@ -804,11 +816,16 @@ def main() -> None:
         # Safe token cleanup in non-protected Chinese fields.
         for header in ("标题", "规格", "描述", "产品详情"):
             cleaned = translate_safe_tokens(row.get(header))
-            cleaned, pollution_reasons = remove_unsupported(source_all, cleaned)
+            field_source = source_by_header.get(header, "")
+            # Empty source is authoritative: do not preserve or synthesize a
+            # translated value from another field.
+            if not field_source:
+                cleaned = ""
+            cleaned, pollution_reasons = remove_unsupported(field_source, cleaned)
             # If the deterministic cleanup removed the issue completely, it
             # is a resolved change.  Only a still-present fact discrepancy
             # remains a review blocker.
-            residual_reasons = fact_issue_codes(source_all, cleaned)
+            residual_reasons = fact_issue_codes(field_source, cleaned)
             for reason in pollution_reasons:
                 if reason in residual_reasons:
                     reviews[sku].add(reason)

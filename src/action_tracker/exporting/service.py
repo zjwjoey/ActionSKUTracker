@@ -63,9 +63,12 @@ def export_catalog(
     export_date: str,
     no_images: bool,
     run_id: str | None = None,
+    release_mode: str = "formal",
 ) -> dict[str, Any]:
     """导出一个正式全量清单；整个过程只读取来源并写入 exports 目录。"""
     _validate_date(export_date)
+    if release_mode not in {"formal", "research"}:
+        raise ExportValidationError(f"EXPORT_RELEASE_MODE_UNSUPPORTED: {release_mode}")
     try:
         profile = load_profile(cfg, language=language, no_images=no_images)
     except ExportProfileError as exc:
@@ -101,7 +104,7 @@ def export_catalog(
         # A PRIMARY SQLite projection is the formal production path.  Legacy
         # snapshot/master fixtures remain preview-compatible while they are
         # migrated to field-level provenance.
-        strict=source.kind == "SQLITE_CURRENT",
+        strict=source.kind == "SQLITE_CURRENT" and release_mode == "formal",
     )
     # Keep history provenance in every formal manifest, not only Template 1.
     # Fixture projects without a history config record that explicitly.
@@ -135,6 +138,7 @@ def export_catalog(
             "source_master_hash": source_hash,
             "source_master_file_hash": source.source_master_file_hash,
             "source_kind": source.kind,
+            "release_mode": release_mode,
             "profile_id": profile.profile_id,
             "profile_version": profile.version,
             "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -151,6 +155,7 @@ def export_catalog(
             "image_profile": "excel_250_white_v1" if not no_images else None,
             "image_embedded_count": image_stats["embedded_count"],
             "image_missing_count": image_stats["missing_count"],
+            "missing_image_skus": sorted(image_stats.get("missing_skus", [])),
         }
         if language == "zh":
             manifest["dictionary_hash"] = dictionary_hash
@@ -170,6 +175,7 @@ def export_catalog(
         "profile": profile.profile_id,
         "image_embedded_count": image_stats["embedded_count"],
         "image_missing_count": image_stats["missing_count"],
+        "missing_image_skus": sorted(image_stats.get("missing_skus", [])),
     }
 
 

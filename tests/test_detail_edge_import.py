@@ -7,7 +7,7 @@ import pytest
 from action_tracker.database.connection import connect
 from action_tracker.database.production import (
     CommitBundle, ProductionWriter, ProductionDatabaseError, apply_detail_only_updates,
-    apply_verified_listing_reconciliation,
+    apply_verified_listing_reconciliation, apply_verified_auxiliary_identity_updates,
 )
 from action_tracker.excel.reader import ES_MAP
 from action_tracker.orchestrator.detail_edge_import import (
@@ -18,10 +18,14 @@ from action_tracker.orchestrator.detail_edge_import import (
     _load_deferred_detail_queue,
     _normalize_detail_delimiters,
     _normalize_description,
+    _validate_controlled_parent_report,
     _validate_master_es_schema,
     _validate_records,
 )
-from action_tracker.orchestrator.edge_listing_reconcile import _build_deferred_category_plan
+from action_tracker.orchestrator.edge_listing_reconcile import (
+    EdgeListingReconcileError, _build_deferred_category_plan,
+    _validate_controlled_category_records,
+)
 from action_tracker.services.normalization import normalize_official_text
 
 
@@ -91,6 +95,58 @@ def test_detail_writer_canonicalizes_only_existing_legacy_action_host(tmp_path: 
     assert url == "https://www.action.com/es-es/p/2571395/old/"
 
 
+def test_auxiliary_identity_writer_fills_only_blank_identity_fields(tmp_path: Path):
+    db = tmp_path / "action.db"
+    _primary_db(db)
+    with connect(db) as conn:
+        conn.execute(
+            "UPDATE products SET name_es=NULL,product_url=NULL,image_url=NULL WHERE official_sku='2571395'"
+        )
+        conn.execute(
+            "UPDATE product_localizations SET name=NULL,spec=NULL WHERE official_sku='2571395' AND language='es'"
+        )
+        conn.execute(
+            "UPDATE observations SET presence_state='PRESENT',sitemap_present=0,listing_present=0,nuevo_present=1,"
+            "promotion_present=0,observation_complete=1 WHERE run_id='2026-09-03_000001' AND official_sku='2571395'"
+        )
+    result = apply_verified_auxiliary_identity_updates(db, [{
+        "sku": "2571395", "name_es": "Producto auxiliar", "cat1_es": "Vivienda",
+        "cat2_es": "Limpieza", "spec_es": "1 unidad",
+        "product_url": "https://www.action.com/es-es/p/2571395/producto-auxiliar/",
+        "image_url": "https://asset.action.com/2571395.webp",
+    }], import_id="auxiliary-identity-test", evidence={
+        "parent_run_id": "2026-09-03_000001", "source_flag": "AUXILIARY_ONLY",
+    })
+    assert result["changed_skus"] == 1
+    with connect(db) as conn:
+        product = conn.execute(
+            "SELECT name_es,product_url,image_url,current_price,status FROM products WHERE official_sku='2571395'"
+        ).fetchone()
+        loc = conn.execute(
+            "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+            "WHERE official_sku='2571395' AND language='es'"
+        ).fetchone()
+    assert tuple(product) == (
+        "Producto auxiliar", "https://www.action.com/es-es/p/2571395/producto-auxiliar/",
+        "https://asset.action.com/2571395.webp", 6.95, "CURRENT",
+    )
+    assert tuple(loc[:4]) == ("Producto auxiliar", "Vivienda", "Limpieza", "1 unidad")
+    assert loc[4:] == (None, None)
+
+
+def test_auxiliary_identity_writer_rejects_non_auxiliary_observation(tmp_path: Path):
+    db = tmp_path / "action.db"
+    _primary_db(db)
+    with pytest.raises(ProductionDatabaseError, match="NOT_AUXILIARY_ONLY"):
+        apply_verified_auxiliary_identity_updates(db, [{
+            "sku": "2571395", "name_es": "Producto auxiliar", "cat1_es": "Vivienda",
+            "cat2_es": "Limpieza", "spec_es": "1 unidad",
+            "product_url": "https://www.action.com/es-es/p/2571395/producto-auxiliar/",
+        }], import_id="auxiliary-identity-test", evidence={
+            "parent_run_id": "2026-09-03_000001", "source_flag": "AUXILIARY_ONLY",
+        })
+
+
 def test_verified_listing_reconciliation_only_updates_categories_badge_and_blank_first_seen(tmp_path: Path):
     db = tmp_path / "action.db"
     _primary_db(db)
@@ -143,6 +199,52 @@ def test_edge_import_rejects_challenge_and_mojibake():
         _validate_records({}, [{**base, "page_title": "请稍候…"}], {"2571395"}, current)
     with pytest.raises(EdgeDetailImportError, match="ENCODING_ERROR"):
         _validate_records({}, [{**base, "details_es": "坏�数据"}], {"2571395"}, current)
+
+
+def test_controlled_parent_accepts_committed_normal_run_and_rejects_dry_or_blocked():
+    _validate_controlled_parent_report({
+        "qa_state": "PASS", "commit_status": "FULL_COMMIT", "dry_run": False,
+        "final_access_state": "NORMAL", "detail_access_state": "NORMAL",
+    })
+    with pytest.raises(EdgeDetailImportError, match="PARENT_DRY_RUN"):
+        _validate_controlled_parent_report({
+            "qa_state": "PASS", "commit_status": "FULL_COMMIT", "dry_run": True,
+            "final_access_state": "NORMAL",
+        })
+    with pytest.raises(EdgeDetailImportError, match="PARENT_BLOCKED"):
+        _validate_controlled_parent_report({
+            "qa_state": "PASS", "commit_status": "FULL_COMMIT", "dry_run": False,
+            "final_access_state": "BLOCKED", "detail_access_state": "NORMAL",
+        })
+
+
+def test_controlled_parent_rejects_non_committed_or_unknown_access_state():
+    with pytest.raises(EdgeDetailImportError, match="PARENT_NOT_COMMITTED"):
+        _validate_controlled_parent_report({
+            "qa_state": "FAIL", "commit_status": "FULL_COMMIT", "dry_run": False,
+            "final_access_state": "NORMAL",
+        })
+    with pytest.raises(EdgeDetailImportError, match="ACCESS_NOT_ALLOWED"):
+        _validate_controlled_parent_report({
+            "qa_state": "PASS", "commit_status": "FULL_COMMIT", "dry_run": False,
+            "final_access_state": "UNKNOWN", "detail_access_state": "UNKNOWN",
+        })
+
+
+def test_controlled_category_validation_requires_exact_parent_and_complete_on_sale_breadcrumb():
+    current = {"2571395": {"sku": "2571395"}}
+    payload = {"source": "EDGE_PLUGIN", "parent_run_id": "run-1"}
+    rows = [{
+        "sku": "2571395", "product_url": "https://www.action.com/es-es/p/2571395/x/",
+        "page_status": "OK", "cat1_es": "Hogar", "cat2_es": "Limpieza",
+    }]
+    assert _validate_controlled_category_records(
+        run_id="run-1", payload=payload, raw_rows=rows, current=current,
+    )[0]["cat2_es"] == "Limpieza"
+    with pytest.raises(EdgeListingReconcileError, match="PARENT_ID_REQUIRED"):
+        _validate_controlled_category_records(
+            run_id="run-2", payload=payload, raw_rows=rows, current=current,
+        )
 
 
 def test_edge_import_does_not_treat_ordinary_un_momento_as_challenge():

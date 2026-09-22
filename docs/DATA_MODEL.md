@@ -192,3 +192,10 @@ presence[sku, date] = 0  否则
 ## 11. CI 中的数据使用边界
 
 CI 测试只使用仓库中的 schema/配置和临时生成的最小 fixture，不把 `runtime/`、正式 Master、State、字典运行区或历史源文件作为云端写入目标。CI 可以验证实体结构和对账规则，但不能替代真实来源的覆盖率、QA 或 Presence 证据。
+## Localization freshness contract (2026-09-21)
+
+In addition to the compatibility SKU-level localization hash, production
+provenance may store independent hashes for `name`, `cat1`, `cat2`, `spec`,
+`description`, and `details`. A change to one Spanish source field must stale
+only its corresponding Chinese field. Empty source is represented as
+`NO_SOURCE`, not as a Spanish fallback value.

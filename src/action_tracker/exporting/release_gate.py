@@ -11,6 +11,8 @@ import re
 from collections import Counter
 from typing import Any, Iterable
 
+from ..services.hashing import localization_field_source_hash
+
 
 APPROVED_ZH_STATUSES = frozenset({
     "APPROVED", "HUMAN_APPROVED", "CONFIRMED", "LOCKED", "HUMAN_REVIEWED",
@@ -115,9 +117,17 @@ def _check_zh_provenance(issues: list[dict[str, Any]], sku: str, source: dict[st
         if status not in APPROVED_ZH_STATUSES:
             _issue(issues, "UNAPPROVED_ZH", sku, field_name, status=status or "MISSING")
         field_hash = _text(meta.get("source_hash"))
-        if not field_hash or (source_hash and field_hash != source_hash):
-            _issue(issues, "STALE_ZH", sku, field_name, source_hash=source_hash, field_hash=field_hash)
-            _issue(issues, "SOURCE_HASH_MISMATCH", sku, field_name, source_hash=source_hash, field_hash=field_hash)
+        expected_field_hash = ""
+        source_fields_present = any(
+            key in source for key in ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")
+        )
+        try:
+            expected_field_hash = localization_field_source_hash(source, field_name) if source_fields_present else source_hash
+        except (KeyError, ValueError):
+            expected_field_hash = source_hash
+        if not field_hash or (expected_field_hash and field_hash != expected_field_hash):
+            _issue(issues, "STALE_ZH", sku, field_name, source_hash=expected_field_hash, field_hash=field_hash)
+            _issue(issues, "SOURCE_HASH_MISMATCH", sku, field_name, source_hash=expected_field_hash, field_hash=field_hash)
         if value and _SPANISH_RESIDUAL_RE.search(value):
             _issue(issues, "SPANISH_RESIDUAL", sku, field_name, actual=value[:160])
 
