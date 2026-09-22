@@ -32,8 +32,11 @@ empty and decision `NO_SOURCE`; never use another field as fallback.
 
 ## Policy
 
-- Name is `NO_BRAND` by default unless the active naming policy proves the
-  brand/IP/model is required to identify the product.
+- Name is `NO_BRAND` by default for ordinary brand names. Do not treat
+  model, series, standard, interface, size, capacity, technical tokens, or
+  identity-bearing IP/product-identity terms as removable brand text; keep
+  them when they are product facts. A brand name may remain only when the
+  active naming policy explicitly requires it.
 - Description and details are `SOURCE_FAITHFUL`; preserve source brands, IP,
   series, models, standards, and certifications.
 - Never run generic brand deletion after natural-language translation.

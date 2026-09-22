@@ -29,6 +29,9 @@ def test_shared_field_and_review_contracts_are_present():
         assert needle in details
     for needle in ("no-brand", "fixed 15-category mapping", "USB-C", "CORRECTED"):
         assert needle in short
+    for skill in (qwen, short):
+        for needle in ("ordinary brand names", "model", "series", "technical tokens", "identity-bearing IP"):
+            assert needle in skill
 
 
 def test_regression_fixtures_include_guard_boundary_and_source_conflict():

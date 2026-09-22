@@ -13,8 +13,10 @@ belong to `action-cn-description-details-review`.
 - Each target field uses its own Spanish field as `PRIMARY SOURCE`; other
   fields are context only and cannot add facts.
 - Empty source is `NO_SOURCE`, never a fallback translation.
-- Name is no-brand by default under the active naming policy; preserve product
-  identity, model, interface, standard, size, capacity, dose and color facts.
+- Name is `NO_BRAND` by default for ordinary brand names. Do not blanket-delete
+  model, series, standard, interface, size, capacity, technical tokens, or
+  identity-bearing IP/product-identity terms; preserve those product facts.
+  Preserve dose and color facts as well.
 - cat1 must use the fixed 15-category mapping and cat2 must use approved
   breadcrumb/category evidence.
 - Preserve every number, unit, quantity and technical token in spec.

@@ -4,6 +4,7 @@ import pytest
 
 from action_tracker.database.production import CommitBundle, ProductionDatabaseError, ProductionWriter, import_legacy_baseline_v2
 from action_tracker.database.connection import connect
+from action_tracker.services.hashing import localization_field_source_hash
 
 
 def test_legacy_baseline_writer_is_blocked_in_sqlite_primary(tmp_path: Path):
@@ -37,6 +38,36 @@ def test_v2_commit_is_atomic_and_idempotent(tmp_path: Path):
         assert conn.execute("select count(*) from products").fetchone()[0] == 1
         assert conn.execute("select count(*) from observations").fetchone()[0] == 1
         assert conn.execute("select value from schema_metadata where key='schema_version'").fetchone()[0] == "2.0.0"
+
+
+def test_writer_binds_zh_field_provenance_to_spanish_source_not_target(tmp_path: Path):
+    db = tmp_path / "action.db"
+    bundle = CommitBundle(
+        run_id="source-bound-localization",
+        observation_date="2026-09-22",
+        qa_state="PASS",
+        current_products=({"sku": "1001", "name_es": "Producto", "current_price": 2.5},),
+        localization_updates=(
+            {"sku": "1001", "language": "es", "name": "Producto", "cat1": "Hogar",
+             "cat2": "Cajas", "spec": "2 unidades", "description": "Caja útil",
+             "details": "Número del artículo: 1001"},
+            {"sku": "1001", "language": "zh", "name": "商品", "review_status": "APPROVED",
+             "freshness_status": "CURRENT"},
+        ),
+        lifecycle_updates=({"sku": "1001", "current_status": "ACTIVE", "last_run_id": "source-bound-localization"},),
+        observations=({"run_id": "source-bound-localization", "sku": "1001", "observation_date": "2026-09-22",
+                       "presence_state": "PRESENT", "observation_complete": True, "absence_capable": True},),
+    )
+    ProductionWriter(db).commit(bundle)
+    expected = localization_field_source_hash({"name_es": "Producto"}, "name")
+    target_hash = localization_field_source_hash({"name_es": "商品"}, "name")
+    with connect(db) as conn:
+        actual = conn.execute(
+            "SELECT source_hash FROM localization_field_provenance "
+            "WHERE official_sku='1001' AND language='zh' AND field_name='name'"
+        ).fetchone()[0]
+    assert actual == expected
+    assert actual != target_hash
 
 
 def test_base_commit_gate_rejects_stale_writer(tmp_path: Path):

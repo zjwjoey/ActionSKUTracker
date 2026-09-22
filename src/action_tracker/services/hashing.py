@@ -76,7 +76,10 @@ def _field_source_value(rec: dict[str, Any], field: str) -> Any:
         return rec.get(source_key)
     if field == "description" and "description_es" in rec:
         return rec.get("description_es")
-    return rec.get(field)
+    # Never fall back to a canonical/target field.  A missing official
+    # Spanish source is a provenance error, not an invitation to hash the
+    # Chinese reviewed value (or an arbitrary context field).
+    raise ValueError(f"MISSING_LOCALIZATION_SOURCE:{field}:{source_key}")
 
 
 def localization_field_source_hash(rec: dict[str, Any], field: str) -> str:

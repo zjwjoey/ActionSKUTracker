@@ -13,7 +13,7 @@ from action_tracker.database.production import ProductionDatabaseError, apply_ap
 from action_tracker.database.schema import migrate_v2
 from action_tracker.knowledge.storage import KnowledgeStore
 from action_tracker.localization.release_gate import audit_research_release
-from action_tracker.services.hashing import localization_source_hash
+from action_tracker.services.hashing import localization_field_source_hash, localization_source_hash
 
 
 FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
@@ -195,7 +195,7 @@ def _release_row(**overrides):
     }
     row.update(overrides)
     row["zh_source_hash"] = localization_source_hash(row)
-    row.setdefault("zh_field_provenance", {field: {"review_status": "VERIFIED", "freshness_status": "CURRENT", "source_hash": row["zh_source_hash"]} for field in FIELDS})
+    row.setdefault("zh_field_provenance", {field: {"review_status": "VERIFIED", "freshness_status": "CURRENT", "source_hash": localization_field_source_hash(row, field)} for field in FIELDS})
     return row
 
 

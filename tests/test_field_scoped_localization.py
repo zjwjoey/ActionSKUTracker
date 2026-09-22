@@ -3,6 +3,7 @@ from action_tracker.services.hashing import (
     localization_field_source_hashes,
     localization_source_hash,
 )
+import pytest
 
 
 def _source():
@@ -47,3 +48,8 @@ def test_empty_source_hash_is_deterministic_and_unknown_field_fails():
 def test_legacy_overall_hash_remains_distinct_from_new_field_hash():
     row = _source()
     assert localization_source_hash(row) != field_source_hash(row, "description")
+
+
+def test_field_hash_never_falls_back_to_target_value():
+    with pytest.raises(ValueError, match="MISSING_LOCALIZATION_SOURCE:name:name_es"):
+        field_source_hash({"name": "中文商品"}, "name")

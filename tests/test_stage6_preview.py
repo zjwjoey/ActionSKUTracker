@@ -76,3 +76,17 @@ def test_stage6_source_field_mismatch_is_blocked():
     result = preview_one(_owner(), candidate, source, {"desc_zh": "旧"}, policy_hash="p1", source_snapshot_path="snapshot.json")
     assert result["apply_action"] == "BLOCKED_CONFLICT"
     assert "SOURCE_FIELD_MISMATCH" in result["conflict_reason"]
+
+
+def test_stage6_partial_provenance_missing_target_fails_closed():
+    source = {"name": "Producto", "description": "Para casa", "details": "Material: Plástico"}
+    result = preview_one(_owner(), _candidate(source), source, None, policy_hash="p1", source_snapshot_path="snapshot.json")
+    assert result["apply_action"] == "BLOCKED_CONFLICT"
+    assert "MISSING_PROVENANCE" in result["conflict_reason"]
+
+
+def test_stage6_partial_provenance_missing_snapshot_fails_closed():
+    source = {"name": "Producto", "description": "Para casa", "details": "Material: Plástico"}
+    result = preview_one(_owner(), _candidate(source), source, {"desc_zh": "旧"}, policy_hash="p1", source_snapshot_path=None)
+    assert result["apply_action"] == "BLOCKED_CONFLICT"
+    assert "MISSING_PROVENANCE" in result["conflict_reason"]

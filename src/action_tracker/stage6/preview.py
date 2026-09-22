@@ -56,6 +56,7 @@ def preview_one(
     # the unsafe aggregate-hash behavior.
     hash_scope = str(candidate.get("hash_scope") or "") if candidate else ""
     conflicts: set[str] = set()
+    current_source_hash = None
     source_value = None
     source_is_empty = False
     if source is not None and field in _SOURCE_FIELDS:

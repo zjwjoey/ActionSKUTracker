@@ -370,7 +370,21 @@ class ProductionWriter:
 
     @staticmethod
     def _upsert_localizations(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], commit_id: str, now: str) -> None:
-        for r in rows:
+        materialized = [dict(row) for row in rows]
+        same_batch_es: dict[str, dict[str, Any]] = {}
+        for item in materialized:
+            if str(item.get("language") or "zh") != "es":
+                continue
+            item_sku = str(item.get("official_sku") or item.get("sku") or "").strip()
+            if item_sku:
+                same_batch_es[item_sku] = {
+                    "name_es": item.get("name"), "cat1_es": item.get("cat1"),
+                    "cat2_es": item.get("cat2"),
+                    "spec_es": normalize_official_text(item.get("spec"), field="spec"),
+                    "desc_es": normalize_official_text(item.get("description"), field="description"),
+                    "details_es": normalize_official_text(item.get("details"), field="details"),
+                }
+        for r in materialized:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
             language = str(r.get("language") or "zh")
             incoming = dict(r)
@@ -431,7 +445,28 @@ class ProductionWriter:
                  incoming.get("approved_by"), incoming.get("approved_at"), incoming.get("applied_commit_id") or commit_id),
             )
             from .provenance import sync_localization_field_provenance
-            sync_localization_field_provenance(db, incoming, commit_id=commit_id, now=now)
+            provenance_row = dict(incoming)
+            if language == "es":
+                provenance_row.update({
+                    "name_es": incoming.get("name"), "cat1_es": incoming.get("cat1"),
+                    "cat2_es": incoming.get("cat2"), "spec_es": incoming.get("spec"),
+                    "desc_es": incoming.get("description"), "details_es": incoming.get("details"),
+                })
+            elif language == "zh":
+                source = same_batch_es.get(sku)
+                if source is None:
+                    es_row = db.execute(
+                        "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+                        "WHERE official_sku=? AND language='es'", (sku,),
+                    ).fetchone()
+                    if es_row is not None:
+                        source = {
+                            "name_es": es_row[0], "cat1_es": es_row[1], "cat2_es": es_row[2],
+                            "spec_es": es_row[3], "desc_es": es_row[4], "details_es": es_row[5],
+                        }
+                if source is not None:
+                    provenance_row.update(source)
+            sync_localization_field_provenance(db, provenance_row, commit_id=commit_id, now=now)
 
     @staticmethod
     def _insert_source_fact_versions(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], now: str) -> None:
