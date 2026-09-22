@@ -1,0 +1,31 @@
+from action_tracker.stage5.source_candidate_v2 import (
+    consistency_status,
+    family_key,
+    source_consistency_flags,
+    source_quality_issues,
+)
+
+
+def test_source_candidate_is_read_only_and_detects_sku_mismatch():
+    source = {
+        "name": "Cesta",
+        "cat1": "Hogar",
+        "cat2": "Almacenamiento",
+        "spec": "2 piezas",
+        "description": "Cesta",
+        "details": "Número del artículo: 9999",
+    }
+    assert "DETAIL_SKU_MISMATCH" in source_quality_issues(source, "1001")
+    assert family_key(source) == "cesta"
+
+
+def test_source_conflict_is_review_signal_not_repair():
+    source = {
+        "name": "Producto",
+        "spec": "2 piezas",
+        "description": "3 piezas",
+        "details": "Número del artículo: 1001",
+    }
+    flags = source_consistency_flags(source)
+    assert "NUMERIC_CONFLICT" in flags
+    assert consistency_status(flags) == "SOURCE_CONFLICT_REVIEW"
