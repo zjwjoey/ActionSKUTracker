@@ -12,7 +12,7 @@ def _status(sku: str, lifecycle: str, source_flag: str):
     )
 
 
-def test_listing_only_new_sku_stays_out_of_detail_plan():
+def test_listing_only_new_sku_is_eligible_for_detail_plan():
     plans = plan_updates(
         {"1001": _status("1001", "NEW", "LISTING_ONLY")},
         baseline={},
@@ -23,7 +23,7 @@ def test_listing_only_new_sku_stays_out_of_detail_plan():
         "sku": "1001",
         "canonical_id": "ACT0001001",
         "reason": "NEW",
-        "need_detail": False,
+        "need_detail": True,
         "light": {"current_price": 1.0, "product_url": "https://example/1001"},
     }]
 
@@ -38,7 +38,7 @@ def test_both_source_new_sku_is_eligible_for_detail():
     assert plans[0]["need_detail"] is True
 
 
-def test_listing_only_reappeared_sku_stays_out_of_detail_plan():
+def test_listing_only_reappeared_sku_is_eligible_for_detail_plan():
     plans = plan_updates(
         {"1001": _status("1001", "REAPPEARED", "LISTING_ONLY")},
         baseline={"1001": {"current_price": 1.0}},
@@ -46,7 +46,7 @@ def test_listing_only_reappeared_sku_stays_out_of_detail_plan():
     )
 
     assert plans[0]["reason"] == "REAPPEARED"
-    assert plans[0]["need_detail"] is False
+    assert plans[0]["need_detail"] is True
 
 
 def test_both_source_reappeared_sku_is_eligible_for_detail():
@@ -108,7 +108,7 @@ def test_active_product_with_missing_cat2_is_requeued_for_detail():
     assert plans[0]["need_detail"] is True
 
 
-def test_listing_only_product_with_missing_cat2_is_not_detail_requested():
+def test_listing_only_product_with_missing_cat2_is_detail_requested():
     plans = plan_updates(
         {"1001": _status("1001", "ACTIVE", "LISTING_ONLY")},
         baseline={"1001": {
@@ -121,4 +121,22 @@ def test_listing_only_product_with_missing_cat2_is_not_detail_requested():
     )
 
     assert plans[0]["reason"] == "CATEGORY_MISSING"
-    assert plans[0]["need_detail"] is False
+    assert plans[0]["need_detail"] is True
+
+
+def test_known_cat2_cat1_mismatch_is_requeued_for_official_breadcrumb():
+    plans = plan_updates(
+        {"1001": _status("1001", "ACTIVE", "BOTH")},
+        baseline={"1001": {
+            "current_price": 1.0,
+            "cat1_es": "Juguetes",
+            "cat2_es": "Accesorios de oficina",
+            "desc_es": "Descripción oficial",
+            "details_es": "Número del artículo: 1001",
+        }},
+        today_light={"1001": {"current_price": 1.0, "cat1_es": "Juguetes"}},
+        category_primary_map={"accesorios de oficina": "Oficina y papelería"},
+    )
+
+    assert plans[0]["reason"] == "CATEGORY_MISMATCH"
+    assert plans[0]["need_detail"] is True

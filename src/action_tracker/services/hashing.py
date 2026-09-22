@@ -74,6 +74,16 @@ _LOCALIZATION_FIELD_TO_SOURCE = {
 }
 
 
+def _field_source_value(rec: dict[str, Any], field: str) -> Any:
+    """Read one source field from either canonical or normalized row keys."""
+    source_key = _LOCALIZATION_FIELD_TO_SOURCE[field]
+    if source_key in rec:
+        return rec.get(source_key)
+    if field == "description" and "description_es" in rec:
+        return rec.get("description_es")
+    return rec.get(field)
+
+
 def localization_field_source_hash(rec: dict[str, Any], field: str) -> str:
     """Return the freshness identity for one localized field.
 
@@ -86,12 +96,17 @@ def localization_field_source_hash(rec: dict[str, Any], field: str) -> str:
         source_key = _LOCALIZATION_FIELD_TO_SOURCE[field]
     except KeyError as exc:
         raise ValueError(f"UNKNOWN_LOCALIZATION_FIELD:{field}") from exc
-    return _h(rec.get(source_key))
+    return _h(_field_source_value(rec, field))
 
 
 def localization_field_source_hashes(rec: dict[str, Any]) -> dict[str, str]:
     """Return independent source hashes for all six localization fields."""
     return {field: localization_field_source_hash(rec, field) for field in _LOCALIZATION_FIELD_TO_SOURCE}
+
+
+def field_source_hash(rec: dict[str, Any], field: str) -> str:
+    """Public short name for the field-level localization hash contract."""
+    return localization_field_source_hash(rec, field)
 
 
 def price_hash(rec: dict[str, Any]) -> str:

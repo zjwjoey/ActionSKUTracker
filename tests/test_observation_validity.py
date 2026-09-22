@@ -1,7 +1,7 @@
 """Presence evidence protects lifecycle state from incomplete collection runs."""
 from action_tracker.monitor.sku_monitor import run_sku_monitor
 from action_tracker import state as st
-from action_tracker.orchestrator.daily import _should_commit
+from action_tracker.orchestrator.daily import _merge_light, _should_commit
 
 
 def _known(sku: str, category: str, missing: str = "0") -> dict:
@@ -38,3 +38,9 @@ def test_auxiliary_badge_is_presence_evidence_not_reappearance():
 def test_presence_only_qa_can_commit_after_listing_access_restriction():
     assert _should_commit(False, True, access_state="BLOCKED", qa_state="PASS_PRESENCE_ONLY")
     assert not _should_commit(False, True, access_state="BLOCKED", qa_state="PASS")
+
+
+def test_listing_category_cannot_overwrite_existing_official_category():
+    record = {"cat1_es": "Oficina y papelería", "cat2_es": "Accesorios de oficina"}
+    _merge_light(record, {"cat1_es": "Juguetes", "cat2_es": ""})
+    assert record["cat1_es"] == "Oficina y papelería"

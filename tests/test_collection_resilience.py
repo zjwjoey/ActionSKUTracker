@@ -152,6 +152,24 @@ def test_detail_category_is_carried_into_updated_product(tmp_path: Path, monkeyp
     assert updated["1001"]["cat2_es"] == "Limpieza"
 
 
+def test_listing_category_does_not_overwrite_detail_breadcrumb(tmp_path: Path, monkeypatch):
+    ctl = AccessController(cooldown_seconds=0)
+
+    def fake_fetch(_browser, _url, _sku, max_retries=5):
+        return {"sku": "1001", "name_es": "Producto", "cat1_es": "Oficina y papelería",
+                "cat2_es": "Accesorios de oficina", "desc_es": "Descripción",
+                "details_es": "Número del artículo: 1001"}
+
+    monkeypatch.setattr("action_tracker.products.parser.fetch_product_detail", fake_fetch)
+    _changes, updated = updater.fetch_and_merge(
+        _SleepOnlyBrowser(),
+        [{"sku": "1001", "canonical_id": "ACT0001001", "reason": "NEW", "need_detail": True,
+          "light": {"product_url": "https://x/p/1001/", "cat1_es": "Juguetes"}}],
+        {}, tmp_path, access_controller=ctl,
+    )
+    assert updated["1001"]["cat1_es"] == "Oficina y papelería"
+
+
 def test_successful_probe_allows_one_probe_in_a_later_cooldown_cycle():
     ctl = AccessController(cooldown_seconds=0)
     ctl.record(status=403)
@@ -271,6 +289,13 @@ def _challenge_session(page, controller):
     return browser_mod.BrowserSession({"challenge_reloads": 3, "challenge_sleep_ms": 0}, page=page, access_controller=controller)
 
 
+def _detail_challenge_session(page, controller):
+    return browser_mod.BrowserSession({
+        "detail_challenge_wait_seconds": 5,
+        "detail_challenge_reload_at_seconds": [2, 4],
+    }, page=page, access_controller=controller)
+
+
 def test_429_never_reloads():
     page, ctl = _ChallengePage(["normal"], [429]), AccessController(cooldown_seconds=0)
     assert _challenge_session(page, ctl).goto("https://x") is False
@@ -313,3 +338,31 @@ def test_challenge_reload_stops_when_controller_state_changes_mid_page():
 def test_challenge_retry_permission_denies_non_normal_states(state):
     ctl = AccessController(cooldown_seconds=0, state=state)
     assert ctl.allow_challenge_retry() is False
+
+
+def test_detail_challenge_waits_and_reloads_at_two_minutes_then_recovers(monkeypatch):
+    page, ctl = _ChallengePage(["Un momento", "normal product page"]), AccessController(cooldown_seconds=0)
+    sleeps = []
+    monkeypatch.setattr(browser_mod.time, "sleep", lambda seconds: sleeps.append(seconds))
+    assert _detail_challenge_session(page, ctl).goto("https://x", detail_mode=True) is True
+    assert page.reloads == 1 and sleeps == [2.0]
+    assert ctl.state == AccessState.NORMAL
+
+
+def test_detail_403_challenge_uses_bounded_wait_policy(monkeypatch):
+    page, ctl = _ChallengePage(["Un momento", "normal product page"], [403, 200]), AccessController(cooldown_seconds=0)
+    sleeps = []
+    monkeypatch.setattr(browser_mod.time, "sleep", lambda seconds: sleeps.append(seconds))
+    assert _detail_challenge_session(page, ctl).goto("https://x", detail_mode=True) is True
+    assert page.reloads == 1 and sleeps == [2.0]
+    assert ctl.state == AccessState.NORMAL
+
+
+def test_detail_challenge_timeout_waits_five_minutes_then_blocks(monkeypatch):
+    page, ctl = _ChallengePage(["Un momento"]), AccessController(cooldown_seconds=0)
+    sleeps = []
+    monkeypatch.setattr(browser_mod.time, "sleep", lambda seconds: sleeps.append(seconds))
+    assert _detail_challenge_session(page, ctl).goto("https://x", detail_mode=True) is False
+    assert page.reloads == 2 and sleeps == [2.0, 2.0, 1.0]
+    assert ctl.state == AccessState.BLOCKED
+    assert ctl.events[-1] == "DETAIL_CHALLENGE_TIMEOUT"
