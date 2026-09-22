@@ -117,9 +117,13 @@ Detail 不是主 Presence 链的一部分：
 详情补充必须保持父 observation 的 SKU 身份和来源证据，不得创建新的生命周期观察。
 待补 Detail 的判定不以 Listing 规格为准：仅有 `spec_es`、但没有官网描述和产品详情的
 SKU 仍属于待补，进入受控详情计划；规格卡片本身不能证明详情页已完整采集。
-Detail 计划受 `run.max_detail_per_run` 限制。超额候选会在 Snapshot 中记录为
-`detail_backlog.csv`，商品行标记 `PENDING/BACKLOG`，而非丢弃；由于详情字段仍为空，后续
-正式 run 会将其重新规划，`detail-retry` 只重试父 run 当时获授权的批次，不会绕过该上限。
+Detail 计划默认不设单轮上限（`run.max_detail_per_run: 0`）；只有显式设置正数时才会在
+Snapshot 中记录 `detail_backlog.csv`，商品行标记 `PENDING/BACKLOG`，而非丢弃。由于详情字段
+仍为空，后续正式 run 会将其重新规划，`detail-retry` 只重试父 run 当时获授权的批次。
+
+详情页若出现 Cloudflare challenge，不绕过验证：最多等待 5 分钟，在第 2、4 分钟各受控刷新
+一次，5 分钟仍未恢复则写入 `DETAIL_CHALLENGE_TIMEOUT` 并停止详情阶段。该限制只作用于 Detail，
+Presence 已冻结且为 NORMAL 时不否决已完成的在售观测。
 
 延期批次若同时带有官网面包屑，可先运行 `category-deferred-reconcile` 回填空的西语
 一级/二级类目。该入口接受 QA PASS/FULL_COMMIT 的正常父 run，以 `detail_backlog.csv`

@@ -1,8 +1,11 @@
 # Action SKU Tracker 当前状态
 
-更新日期：2026-09-12
-项目目录：`F:\ActionSKUTracker`
-当前分支：`feat/export-foundation-v1`
+更新日期：2026-09-22
+项目目录：仓库根目录
+当前分支：`fix/naming-history-export-20260917`
+
+当前生产安全收口提交为 `3826be0`，长期工具隔离提交为 `3ec134a`。
+本文其余 Stage 4/5/6 数量是历史运行快照，不代表当前字典已获得新的 Owner/官网证据批准。
 
 ## 2026-09-12 Stage 4 Closure 最新状态
 
@@ -36,14 +39,14 @@
 
 以下是当前 PRIMARY 的最新状态，覆盖本文件后面的历史快照；后面的旧数量只作为当时验收记录：
 
-- SQLite PRIMARY：`F:\\ActionSKUTracker\\runtime\\db\\action_tracker.db`
+- SQLite PRIMARY：`runtime/db/action_tracker.db`
 - products：9,033；CURRENT：5,547；MISSING：26；OFFLINE：23；HISTORICAL：2,610；ABSENT：827
 - 最新 committed head：`LOCALIZATION_PROVENANCE_REPAIR_20260908_localization_LOCALIZATION_PROVENANCE_REPAIR_20260908_bc9c848a_b35ca62aa1ef`
 - 最新 Apply run：QA `PASS`、`dry_run=0`，5,547 个 CURRENT SKU 已写入字段级本地化和 canonical provenance
 - SQLite integrity、foreign keys、presence states：`PASS`
 - Master/known_skus/offline_skus 兼容投影：`export_sync=SUCCESS`
 - 2026-09-08 中文/西语无图导出：各 5,547 条，SKU、价格、图片链接、商品链接逐条一致
-- 最新闭环代码在独立 worktree 分支 `feat/master-dictionary-export-closure-v1`，HEAD `b29e2b1`；尚未 push/merge main
+- 当前分支的生产代码仍未合并 main，需按最小逻辑进行集成审查
 
 当前保留两类非阻断告警：部分官网详情/二级类目源字段本身为空（导出备注已显式标记），
 以及 51 个历史 SKU 没有可追溯的 `source_first_seen`、部分字典条目仍处于人工复核队列。
@@ -56,6 +59,11 @@ QA 通过且非 dry-run 才能提交 SQLite PRIMARY，再生成兼容 Master/Sta
 `storage.mode=SQLITE_PRIMARY`，SQLite 是生产主链，Excel/CSV 是兼容投影。本轮没有修改
 `monitor/listing.py`、`monitor/sitemap.py`、`monitor/sku_monitor.py`、`services/lifecycle.py`
 或 Presence/Cloudflare/QA 核心语义。
+
+详情运行策略：`run.max_detail_per_run=20` 是生产默认上限；值 `0` 只表示本轮禁用详情导航，
+超额候选进入 backlog，绝不表示无限抓取。详情页遇到 Cloudflare challenge 时最多等待 5 分钟，在第
+2、4 分钟各刷新一次，仍未恢复则写入 `DETAIL_CHALLENGE_TIMEOUT` 并停止详情阶段；不绕过
+验证，也不影响已经冻结的 Presence 事实。
 
 ## 2. 字典真实基线
 

@@ -49,7 +49,7 @@ Master / State
 
 ## 快速使用
 
-在 `F:\ActionSKUTracker` 中运行：
+在仓库根目录中运行：
 
 ```powershell
 $env:PYTHONPATH = "src"
@@ -60,11 +60,14 @@ python -m action_tracker status
 # 从正式 Master 建立初始状态
 python -m action_tracker init-baseline
 
-# 默认 dry-run：采集并生成证据，不写正式 Master
-python -m action_tracker daily-run --dry-run
+# 默认安全运行：只生成 Snapshot/Staging，不写正式 Master
+python -m action_tracker daily-run
 
-# 正式运行：只有 QA 允许时才提交
-python -m action_tracker daily-run --no-dry-run
+# 显式请求正式运行：仍必须通过 QA/Access 门禁
+python -m action_tracker daily-run --apply
+
+# 显式只采集并生成证据
+python -m action_tracker daily-run --dry-run
 
 # 基于最近 snapshot 重跑 QA
 python -m action_tracker qa
@@ -161,8 +164,8 @@ python -m action_tracker export-history --date YYYY-MM-DD
 
 ## 安全边界
 
-- `F:\按日期整理` 永远只读；
-- `F:\Action_Master\Action_Master.xlsx` 只允许读取或复制；
+- 历史导出目录永远只读；
+- 兼容 Master 只允许由受控提交流程更新；
 - QA FAIL 和 dry-run 不得覆盖正式 Master/State；
 - 不绕过 CAPTCHA、Cloudflare 或其他网站安全机制；
 - 不每天全量抓详情、全量翻译或全量下载图片；
