@@ -720,3 +720,4 @@ def test_export_does_not_embed_stale_asset_after_source_url_change_failure(tmp_p
         workbook.close()
     assert result["image_embedded_count"] == 0
     assert result["image_missing_count"] == 1
+    assert result["missing_image_skus"] == ["1001"]

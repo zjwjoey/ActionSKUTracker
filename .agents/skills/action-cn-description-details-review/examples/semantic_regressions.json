@@ -1,0 +1,12 @@
+{
+  "version": "2026-09-21",
+  "cases": [
+    {"id": "description_cross_field_fact", "expected_decision": "CORRECTED"},
+    {"id": "source_empty_no_source", "expected_decision": "NO_SOURCE"},
+    {"id": "details_key_semantic_mismatch", "expected_decision": "CORRECTED"},
+    {"id": "negation_reversed", "expected_decision": "CORRECTED"},
+    {"id": "brand_ip_removed_from_details", "expected_decision": "CORRECTED"},
+    {"id": "source_conflict", "expected_decision": "REVIEW_REQUIRED"},
+    {"id": "guard_pass_is_not_keep", "keep": 1999, "corrected": 0}
+  ]
+}
