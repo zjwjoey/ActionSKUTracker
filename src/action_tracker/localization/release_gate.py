@@ -12,7 +12,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-from ..services.hashing import localization_source_hash
+from ..services.hashing import localization_field_source_hash, localization_source_hash
 import re
 import json
 
@@ -187,7 +187,11 @@ def audit_research_release(
                 if status not in APPROVED_REVIEW_STATUSES:
                     continue
                 field_hash = str(metadata.get("source_hash") or "").strip()
-                if not field_hash or field_hash != expected_hash:
+                field_expected_hash = localization_field_source_hash(row, canonical)
+                # Legacy provenance stored the aggregate six-field hash. It
+                # remains readable, while new field-level records must bind to
+                # their own Spanish source only.
+                if not field_hash or field_hash not in {field_expected_hash, expected_hash}:
                     counts["SOURCE_HASH_MISMATCH"] += 1
                     issues.append(f"SOURCE_HASH_MISMATCH:{sku}:{canonical}")
         elif str(row.get("zh_review_status") or row.get("review_status") or "").strip().upper() in APPROVED_REVIEW_STATUSES:

@@ -5,6 +5,16 @@ import hashlib
 from typing import Any
 
 
+def normalize_hash(value: Any) -> str | None:
+    """Normalize optional persisted hashes without treating blank as a digest."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.casefold() in {"none", "null", "nan", "n/a"}:
+        return None
+    return text
+
+
 def _h(*parts: Any) -> str:
     h = hashlib.sha256()
     for p in parts:
@@ -45,6 +55,45 @@ def localization_source_hash(rec: dict[str, Any]) -> str:
         rec.get("name_es"), rec.get("cat1_es"), rec.get("cat2_es"),
         rec.get("spec_es"), rec.get("desc_es"), rec.get("details_es"),
     )
+
+
+_LOCALIZATION_FIELD_TO_SOURCE = {
+    "name": "name_es",
+    "cat1": "cat1_es",
+    "cat2": "cat2_es",
+    "spec": "spec_es",
+    "description": "desc_es",
+    "details": "details_es",
+}
+
+
+def _field_source_value(rec: dict[str, Any], field: str) -> Any:
+    try:
+        source_key = _LOCALIZATION_FIELD_TO_SOURCE[field]
+    except KeyError as exc:
+        raise ValueError(f"UNKNOWN_LOCALIZATION_FIELD:{field}") from exc
+    if source_key in rec:
+        return rec.get(source_key)
+    if field == "description" and "description_es" in rec:
+        return rec.get("description_es")
+    return rec.get(field)
+
+
+def localization_field_source_hash(rec: dict[str, Any], field: str) -> str:
+    """Hash only the Spanish source owned by one localized field.
+
+    The legacy six-field hash remains available for old records and patch
+    identity. New field provenance must use this narrower hash.
+    """
+    return _h(_field_source_value(rec, field))
+
+
+def localization_field_source_hashes(rec: dict[str, Any]) -> dict[str, str]:
+    return {field: localization_field_source_hash(rec, field) for field in _LOCALIZATION_FIELD_TO_SOURCE}
+
+
+def field_source_hash(rec: dict[str, Any], field: str) -> str:
+    return localization_field_source_hash(rec, field)
 
 
 def price_hash(rec: dict[str, Any]) -> str:

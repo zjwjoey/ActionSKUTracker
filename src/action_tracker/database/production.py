@@ -1178,7 +1178,7 @@ def apply_localization_correction(
     if not expected_base_commit_id:
         raise ProductionDatabaseError("LOCALIZATION_CORRECTION_HEAD_MISSING")
     from .immutable_patches import create_localization_patch
-    from ..services.hashing import localization_source_hash
+    from ..services.hashing import localization_field_source_hash, localization_source_hash
     patch_ids: list[str] = []
     for sku, values in sorted(localizations_by_sku.items()):
         sku = str(sku).strip()
@@ -1233,7 +1233,7 @@ def apply_approved_localization_patches(
         raise ProductionDatabaseError("LOCALIZATION_APPLY_BASE_COMMIT_REQUIRED")
     path = Path(path); migrate_v2(path, role="PRIMARY")
     from .immutable_patches import ImmutablePatchError, _append_event, _columns, _validate_patch_apply_in_connection
-    from ..services.hashing import localization_source_hash
+    from ..services.hashing import localization_field_source_hash, localization_source_hash
     ids = list(dict.fromkeys(str(value).strip() for value in patch_ids if str(value).strip()))
     if not ids:
         raise ProductionDatabaseError("LOCALIZATION_APPLY_PATCHES_REQUIRED")
@@ -1299,9 +1299,13 @@ def apply_approved_localization_patches(
                     db.execute("INSERT INTO product_localizations(official_sku,language,updated_at,source_hash,last_commit_id,applied_commit_id) VALUES(?,?,?,?,?,?)", (sku, "zh", now, source_hash, commit_id, commit_id))
                 source_column = {"name": "name_source", "cat1": "cat1_source", "cat2": "cat2_source", "spec": "spec_source", "description": "description_source", "details": "details_source"}[field]
                 db.execute(f"UPDATE product_localizations SET {field}=?,{source_column}=?,updated_at=?,last_commit_id=?,applied_commit_id=?,source_hash=? WHERE official_sku=? AND language='zh'", (new_value, patch_source, now, commit_id, commit_id, source_hash, sku))
+                field_hash = localization_field_source_hash(
+                    {"name_es": es[0], "cat1_es": es[1], "cat2_es": es[2], "spec_es": es[3], "desc_es": es[4], "details_es": es[5]},
+                    field,
+                )
                 values = {"official_sku": sku, "language": "zh", field: new_value,
                           f"{field}_source": patch_source, f"{field}_review_status": "APPROVED",
-                          f"{field}_freshness_status": "CURRENT", f"{field}_source_hash": source_hash,
+                          f"{field}_freshness_status": "CURRENT", f"{field}_source_hash": field_hash,
                           f"{field}_approved_by": approval_actor or actor, f"{field}_approved_at": approval_at or now,
                           f"{field}_applied_commit_id": commit_id}
                 sync_localization_field_provenance(db, values, commit_id=commit_id, now=now)
