@@ -47,6 +47,25 @@ def field_source_hash(source: Mapping[str, Any], field: str) -> str:
     return localization_field_source_hash({SOURCE_FIELD_KEYS[key]: normalized[key] for key in SOURCE_FIELDS}, field)
 
 
+def candidate_source_provenance(source: Mapping[str, Any], field: str) -> dict[str, str]:
+    """Return the mandatory provenance envelope for a new field candidate.
+
+    ``source_hash()`` remains available for legacy six-field records and
+    patch identity. New Stage5/Stage6 candidates must use this helper (or the
+    equivalent field hash) so unrelated Spanish fields cannot invalidate or
+    refresh the candidate.
+    """
+    if field not in SOURCE_FIELDS:
+        raise ValueError(f"UNKNOWN_SOURCE_FIELD:{field}")
+    normalized = source_from_mapping(source)
+    return {
+        "hash_scope": "field",
+        "source_field": field,
+        "source_spanish_value": normalized[field],
+        "source_hash": field_source_hash(normalized, field),
+    }
+
+
 def source_quality_issues(source: Mapping[str, Any], sku: str) -> list[str]:
     normalized = source_from_mapping(source)
     issues = [f"EMPTY_{field.upper()}" for field in SOURCE_FIELDS if not normalized[field]]
