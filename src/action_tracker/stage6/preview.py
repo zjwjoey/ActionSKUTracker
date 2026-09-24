@@ -12,6 +12,7 @@ from typing import Any, Mapping
 from ..dictionary_apply import ALLOWLIST
 from ..services.hashing import field_source_hash, localization_source_hash
 from ..stage5.source_candidate_v2 import source_consistency_flags
+from .legacy_provenance import LEGACY_PROVENANCE_TYPE, legacy_conflicts
 
 
 CONFLICT_CLASSES = frozenset({
@@ -19,6 +20,13 @@ CONFLICT_CLASSES = frozenset({
     "CANDIDATE_STALE", "MISSING_PROVENANCE", "NOT_OWNER_APPROVED",
     "FIELD_NOT_APPLYABLE", "SOURCE_CONFLICT", "NO_SOURCE",
     "FIELD_HASH_REQUIRED", "UNSUPPORTED_HASH_SCOPE", "SOURCE_FIELD_MISMATCH",
+    "UNSUPPORTED_PROVENANCE_TYPE", "FIELD_MISMATCH", "MISSING_HISTORICAL_SOURCE",
+    "SOURCE_NOT_REVALIDATED", "ARTIFACT_CONFLICT", "MISSING_CRITICAL_EVIDENCE",
+    "REVIEW_REQUIRED", "OWNER_REJECTED", "OWNER_HOLD", "OWNER_NOT_APPROVED",
+    "MASTER_BASELINE_CHANGED", "CANDIDATE_VALUE_MISMATCH",
+    "SOURCE_SNAPSHOT_MISMATCH",
+    "SOURCE_HASH_MISMATCH",
+    "SQLITE_BASELINE_CHANGED",
 })
 
 _SOURCE_FIELDS = {
@@ -47,6 +55,7 @@ def preview_one(
     field = str(owner.get("field") or "").strip()
     disposition = str(owner.get("owner_disposition") or "").strip()
     reviewed_value = owner.get("owner_final_candidate")
+    provenance_type = str(candidate.get("provenance_type") or "NATIVE") if candidate else "NATIVE"
     current_target_value = target.get(ALLOWLIST[field]) if target is not None and field in ALLOWLIST else None
     current_target_hash = _digest(current_target_value)
     reviewed_hash = _digest(reviewed_value)
@@ -66,11 +75,23 @@ def preview_one(
             # Empty official fields are terminal NO_SOURCE, regardless of
             # whether a candidate happens to have been supplied.
             conflicts.add("NO_SOURCE")
-    if disposition not in {"ACCEPT_AS_IS", "ACCEPT_WITH_MINOR_EDIT"} or not owner.get("owner_reviewer") or not owner.get("owner_reviewed_at"):
-        conflicts.add("NOT_OWNER_APPROVED")
+    if provenance_type == LEGACY_PROVENANCE_TYPE:
+        legacy_record = candidate.get("legacy_provenance") if candidate else None
+        if not isinstance(legacy_record, Mapping):
+            conflicts.add("MISSING_CRITICAL_EVIDENCE")
+        else:
+            conflicts.update(legacy_conflicts(
+                legacy_record, owner, candidate or {}, source, target,
+                field_target=ALLOWLIST.get(field, ""),
+            ))
+    elif provenance_type == "NATIVE":
+        if disposition not in {"ACCEPT_AS_IS", "ACCEPT_WITH_MINOR_EDIT"} or not owner.get("owner_reviewer") or not owner.get("owner_reviewed_at"):
+            conflicts.add("NOT_OWNER_APPROVED")
+    else:
+        conflicts.add("UNSUPPORTED_PROVENANCE_TYPE")
     if field not in ALLOWLIST:
         conflicts.add("FIELD_NOT_APPLYABLE")
-    if candidate is None or source is None or target is None or not source_snapshot_path:
+    if candidate is None or source is None or target is None or (provenance_type == "NATIVE" and not source_snapshot_path):
         conflicts.add("MISSING_PROVENANCE")
     else:
         source_key = _SOURCE_FIELDS.get(field)
@@ -79,9 +100,36 @@ def preview_one(
         else:
             if candidate.get("source_spanish_value") is not None and str(candidate.get("source_spanish_value") or "").strip() != source_value:
                 conflicts.add("SOURCE_FIELD_MISMATCH")
-        required = ("candidate_id", "source_hash", "source_spanish_value", "parsed_candidate")
+        if provenance_type == "NATIVE":
+            required = (
+                "candidate_id", "sku", "source_field", "source_hash", "hash_scope",
+                "source_spanish_value", "contract_hash", "guard_policy_hash",
+                "resolver_result", "raw_model_output", "parsed_candidate",
+                "review_evidence_id", "review_decision", "reviewed_at", "review_model_version",
+                "review_policy_version", "source_snapshot_path",
+                "source_snapshot_run_id", "source_snapshot_sha256",
+            )
+        elif provenance_type == LEGACY_PROVENANCE_TYPE:
+            required = (
+                "candidate_id", "sku", "source_field", "source_hash", "hash_scope",
+                "source_spanish_value", "parsed_candidate", "provenance_type",
+                "legacy_provenance",
+            )
+        else:
+            required = ("candidate_id", "sku", "source_field", "source_hash", "parsed_candidate")
+            conflicts.add("UNSUPPORTED_PROVENANCE_TYPE")
         if any(key not in candidate for key in required) or candidate.get("candidate_id") != owner.get("candidate_id") or candidate.get("sku") != sku or candidate.get("source_field") != field:
             conflicts.add("MISSING_PROVENANCE")
+        if provenance_type == "NATIVE":
+            nonempty_native = (
+                "contract_hash", "guard_policy_hash", "raw_model_output", "review_evidence_id",
+                "review_decision", "reviewed_at", "review_model_version", "review_policy_version", "source_snapshot_path",
+                "source_snapshot_run_id", "source_snapshot_sha256",
+            )
+            if any(not str(candidate.get(key) or "").strip() for key in nonempty_native) or not candidate.get("resolver_result"):
+                conflicts.add("MISSING_PROVENANCE")
+            if candidate.get("source_snapshot_path") != source_snapshot_path:
+                conflicts.add("SOURCE_SNAPSHOT_MISMATCH")
         source_hash_record = {
             "name_es": source.get("name", ""), "cat1_es": source.get("cat1", ""),
             "cat2_es": source.get("cat2", ""), "spec_es": source.get("spec", ""),
@@ -92,8 +140,9 @@ def preview_one(
             conflicts.add("FIELD_NOT_APPLYABLE")
         elif hash_scope == "field":
             expected_source_hash = field_source_hash(source_hash_record, field)
-        elif hash_scope == "legacy_overall" and candidate.get("legacy_compatibility") is True:
+        elif hash_scope == "legacy_overall":
             expected_source_hash = localization_source_hash(source_hash_record)
+            conflicts.add("FIELD_HASH_REQUIRED")
         elif not hash_scope:
             expected_source_hash = field_source_hash(source_hash_record, field)
             conflicts.add("FIELD_HASH_REQUIRED")
@@ -125,6 +174,7 @@ def preview_one(
         action = "BLOCKED_CONFLICT" if conflicts else ("NO_CHANGE" if current_target_value == reviewed_value else "WOULD_UPDATE")
     return {
         "sku": sku, "field": field, "candidate_id": owner.get("candidate_id"),
+        "provenance_type": provenance_type,
         "hash_scope": hash_scope or None, "current_source_hash": current_source_hash if candidate and source else None,
         "reviewed_source_hash": candidate.get("source_hash") if candidate else "",
         "current_target_value": current_target_value, "current_target_hash": current_target_hash,

@@ -60,4 +60,5 @@ tests/test_field_scoped_localization.py
 tests/test_source_fact_repair.py
 tests/test_stage5_source_candidate_v2.py
 tests/test_stage6_preview.py
+tests/test_stage6_legacy_provenance.py
 tests/test_localization_semantic_regressions.py
