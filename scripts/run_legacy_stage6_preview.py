@@ -82,6 +82,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dictionary-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--stamp", default=dt.datetime.now().strftime("%Y%m%d_%H%M%S"))
+    parser.add_argument("--targeted-tests-result", default="NOT_RECORDED")
+    parser.add_argument("--full-pytest-result", default="NOT_RECORDED")
+    parser.add_argument("--tests-failed", type=int, default=0)
     return parser.parse_args()
 
 
@@ -374,7 +377,14 @@ def main() -> int:
             handle.write(f"- {key} missing: {absent.get(key, 0)}\n")
         handle.write(f"- Allowed as expected legacy absence: {status_counts.get('LEGACY_PROVENANCE_SUFFICIENT_FOR_PREVIEW', 0)} candidate rows, with explicit absence reasons.\n\n")
         handle.write("## CRITICAL EVIDENCE BLOCKERS\n\n")
-        for key in ("MISSING_HISTORICAL_SOURCE", "SOURCE_CHANGED", "ARTIFACT_CONFLICT", "OWNER_NOT_APPROVED", "OWNER_REJECTED", "OWNER_HOLD", "MASTER_BASELINE_CHANGED", "SQLITE_BASELINE_CHANGED", "CANDIDATE_VALUE_MISMATCH", "SOURCE_HASH_MISMATCH"):
+        for key in (
+            "MISSING_HISTORICAL_SOURCE", "SOURCE_CHANGED", "SOURCE_NOT_REVALIDATED",
+            "ARTIFACT_CONFLICT", "SOURCE_CONFLICT", "FIELD_MISMATCH",
+            "MISSING_FINAL_REVIEWED_VALUE", "REVIEW_REQUIRED", "MISSING_CRITICAL_EVIDENCE",
+            "OWNER_NOT_APPROVED", "OWNER_REJECTED", "OWNER_HOLD",
+            "MASTER_BASELINE_CHANGED", "SQLITE_BASELINE_CHANGED",
+            "CANDIDATE_VALUE_MISMATCH", "SOURCE_HASH_MISMATCH",
+        ):
             handle.write(f"- {key}: {conflict_counts.get(key, 0)}\n")
         handle.write("\n## STAGE6\n\n")
         handle.write(f"- Previewed: {len(preview_output)}\n- NO_CHANGE: {action_counts.get('NO_CHANGE', 0)}\n- WOULD_UPDATE: {action_counts.get('WOULD_UPDATE', 0)}\n- BLOCKED_CONFLICT: {action_counts.get('BLOCKED_CONFLICT', 0)}\n- NO_SOURCE: {action_counts.get('NO_SOURCE', 0)}\n")
@@ -382,6 +392,10 @@ def main() -> int:
         handle.write("## APPLY READINESS\n\n")
         handle.write(f"- READY_FOR_APPLY_PLAN: {readiness_counts.get('READY_FOR_APPLY_PLAN', 0)}\n- BLOCKED: {readiness_counts.get('BLOCKED', 0)}\n\n")
         handle.write("## SAFETY\n\n- Master writes: 0\n- SQLite production writes: 0\n- Dictionary writes: 0\n- Qwen calls: 0\n- Model review calls: 0\n- Production Apply: 0\n- Daily-run: 0\n- Main modified: NO\n- Master/SQLite/dictionary hashes unchanged: YES\n\n")
+        handle.write("## TESTS\n\n")
+        handle.write(f"- Targeted: {args.targeted_tests_result}\n")
+        handle.write(f"- Full pytest: {args.full_pytest_result}\n")
+        handle.write(f"- Failed: {args.tests_failed}\n\n")
         handle.write("## OUTPUTS\n\n")
         for path in [*output_paths.values(), report_path]:
             handle.write(f"- `{path.name}`\n")
