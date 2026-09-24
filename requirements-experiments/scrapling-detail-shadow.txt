@@ -1,0 +1,2 @@
+# Experimental-only parser dependency. Production requirements remain unchanged.
+scrapling==0.4.15
