@@ -9,8 +9,18 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from collections import Counter
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from action_tracker.translation.model_guard import (  # noqa: E402
+    numeric_fact_counters,
+)
 
 NUM = re.compile(r"\d+(?:[.,]\d+)?")
 SPANISH = re.compile(
@@ -56,7 +66,7 @@ def main() -> int:
     ap.add_argument("--max-new-tokens", type=int, default=256)
     ap.add_argument("--output", default="runtime/training/qwen3_8b/20260908/evaluation.json")
     args = ap.parse_args()
-    root = Path(__file__).resolve().parents[1]
+    root = ROOT
     model = Path(args.model_path); model = model if model.is_absolute() else root / model
     test = Path(args.test_file); test = test if test.is_absolute() else root / test
 
@@ -100,7 +110,7 @@ def main() -> int:
                 value = prediction[name].strip()
                 if value:
                     nonempty_count += 1
-                source_nums, output_nums = Counter(nums(source.get(name))), Counter(nums(value))
+                source_nums, output_nums = numeric_fact_counters(source.get(name), value)
                 if not (source_nums - output_nums):
                     numeric_ok += 1
                 if output_nums - source_nums:

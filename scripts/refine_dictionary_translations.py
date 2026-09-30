@@ -33,7 +33,7 @@ SPANISH_MARKERS = re.compile(
 )
 ALLOWED_LATIN = re.compile(
     r"(?:USB(?:-C)?|HDMI|RGB|Wi-?Fi|NFC|GPS|OLED|LCD|ANC|SPF|FPS|FM|OK|pH|FSC|BPA|"
-    r"micro-USB|microSD|MagSafe|Qi\d*|iPhone|iOS|QHD|Pro|Polo|Nintendo\s+Switch|Switch|PS\d+|PC|Epson|EcoTank|"
+    r"micro-USB|microSD|MagSafe|Qi\d*|NAD\+?|iPhone|iOS|QHD|Pro|Polo|Nintendo\s+Switch|Switch|PS\d+|PC|Epson|EcoTank|"
     r"Hello\s+Kitty|DUPLO|VDE|Torx|FTP|PTZ|DPI|PPP|RH\s*\d+|UV|RJ\d+|Cat\s?\d+|LED|AAA?|A[345]|"
     r"IP\d+|E\d+|GU\d+|XXS|XS|XL|XXL|XXXL|[A-Z]\s?\d+\s?[A-Z](?:-[A-Z])?|[A-Z]{2,5}-?\d+[A-Z]?|"
     r"\d+(?:[.,]\d+)?(?:mah|ghz|mm|cm|ml|mg|kg|hz|gb|tb|ah|db|[mlgwvadp])(?![A-Za-z]))", re.I,

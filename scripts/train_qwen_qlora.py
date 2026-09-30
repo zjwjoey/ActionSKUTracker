@@ -133,6 +133,12 @@ def main() -> int:
     model.config.use_cache = False
     lora = LoraConfig(r=16, lora_alpha=32, lora_dropout=0.05, bias="none", task_type="CAUSAL_LM", target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"])
     model = get_peft_model(model, lora)
+    # Gradient checkpointing needs the embedding output to participate in the
+    # autograd graph.  Without this explicit opt-in, recent Transformers /
+    # PEFT combinations can fail on the first backward pass with
+    # ``element 0 of tensors does not require grad``.
+    if hasattr(model, "enable_input_require_grads"):
+        model.enable_input_require_grads()
     steps = effective_steps(args.max_steps, smoke=args.smoke, short_run=args.short_run)
     output.mkdir(parents=True, exist_ok=True)
     eval_steps = max(1, min(10, steps))

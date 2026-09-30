@@ -16,6 +16,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 import urllib.request
@@ -30,10 +31,11 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from action_tracker.config import load_settings
-from action_tracker.dictionary import format_confirmed_brand_title, is_confirmed_brand_record
+from action_tracker.dictionary import is_confirmed_brand_record
 from action_tracker.exporting.dictionary_join import load_dictionary_context
 from action_tracker.services.hashing import localization_source_hash
 from action_tracker.translation.model_guard import numeric_tokens, validate_model_output
+from action_tracker.translation.title_policy import has_unresolved_chinese_brand_marker
 
 
 FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
@@ -43,16 +45,17 @@ VALID_CAT1 = {
     "兴趣手作", "园艺户外", "运动用品",
 }
 _PROPER_NAME = __import__("re").compile(
-    r"(?<![A-Za-z])[A-Z][A-Za-z]*(?:\s+(?:[A-Z][A-Za-z]*|the|of|and)){1,4}(?![A-Za-z])"
+    r"(?<![A-Za-z])[A-Z][A-Za-z]*(?:\s+(?:[A-Z][A-Za-z]*|the|of|and|en)){1,4}(?![A-Za-z])"
 )
+_ARTIFACT_LABEL = __import__("re").compile(r"[a-z0-9][a-z0-9_]{0,47}")
 
 FIRST_SYSTEM = """你是 Action 西班牙站中文训练集的严格审校员。
 逐条对照 source 西语事实和 target 中文候选，只审核六字段：name、cat1、cat2、spec、description、details。
 要求：
-1. 数字、单位、尺寸、数量、颜色、材质、适用对象、是/否、品牌和型号必须与 source 一致；
+1. 数字、单位、尺寸、数量、颜色、材质、适用对象、是/否和型号必须与 source 一致；标题删除已确认商业品牌，description/details 中品牌按 source 保留；
 2. source 没有的信息不得补充，不得用常识猜参数；
-3. 普通西语必须翻译成简体中文，真实品牌、系列和型号可以保留；
-4. 中文品名采用简洁商品名。真实品牌出现在品名时写成“品牌名 牌商品”，不得把普通词当品牌；
+3. 普通西语必须翻译成简体中文；已确认的商业品牌不得出现在中文品名中，但描述和详情中的品牌、系列、型号必须按源文保留；
+4. 中文品名采用简洁商品名，删除品牌时必须保留产品对象以及型号、系列代号、接口、兼容平台、尺寸、颜色、数量和功能事实；不得把普通词当品牌；
 5. cat1 只能是：DIY五金、办公文具、宠物用品、厨房餐具、服饰鞋包、个人美容、家居布置、家务清洁、旅行用品、食品饮料、数码影音、玩具、兴趣手作、园艺户外、运动用品；
 6. source 自身冲突、损坏或不足以判断时必须 REJECT。
 全部正确为 PASS；存在可依据 source 明确修正的错误为 REVISE，并返回完整六字段 corrected；无法可靠修正为 REJECT。
@@ -60,7 +63,7 @@ FIRST_SYSTEM = """你是 Action 西班牙站中文训练集的严格审校员。
 
 SECOND_SYSTEM = """你是 Action 西班牙站中文训练集的第二位独立审校员。
 逐条核对 source、西语对应的 original_target，以及第一位审校员给出的 revised_target。
-重点检查数字、单位、尺寸、数量、是/否、品牌、型号、源中不存在的臆造信息、普通西语残留和15个固定一级类目。
+重点检查数字、单位、尺寸、数量、是/否、型号、源中不存在的臆造信息、普通西语残留和15个固定一级类目；标题不得保留已确认商业品牌，description/details 中品牌必须保留。
 若 revised_target 完全忠实，verdict=CONFIRMED；若仍有明确错误且能仅依据 source 修复，verdict=REVISED 并返回完整六字段 corrected；若 source 冲突、信息不足或无法可靠判断，verdict=REJECT。
 只返回 JSON：{"items":[{"sku":"","verdict":"CONFIRMED|REVISED|REJECT","corrected":{},"reason":""}]}。必须返回全部 SKU，不得增加或遗漏。"""
 
@@ -86,6 +89,15 @@ def _source_hash(source: dict[str, str]) -> str:
 
 def _file_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _artifact_prefix(label: str) -> str:
+    """Return a deterministic filename prefix while keeping legacy names."""
+    if not label:
+        return "qwen_incremental_"
+    if not _ARTIFACT_LABEL.fullmatch(label):
+        raise ValueError("INVALID_ARTIFACT_LABEL")
+    return f"qwen_incremental_{label}_"
 
 
 def _full_target(value: object) -> dict[str, str] | None:
@@ -152,20 +164,65 @@ def _append_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> None:
         handle.flush()
 
 
-def _brand_phrases(context: Any, sku: str) -> tuple[str, ...]:
+def _brand_values(brand: dict[str, str], fallback: str) -> tuple[str, ...]:
+    values = [str(brand.get("canonical_name") or fallback).strip()]
+    values.extend(value.strip() for value in str(brand.get("aliases_es") or "").split("|") if value.strip())
+    return tuple(dict.fromkeys(value for value in values if value))
+
+
+def _source_has_brand(source_name: str, brand_values: tuple[str, ...]) -> bool:
+    """Match a known brand as a standalone source-title phrase."""
+    for value in brand_values:
+        if re.search(
+            r"(?<!\w)" + re.escape(value) + r"(?!\w)", source_name, re.IGNORECASE,
+        ):
+            return True
+    return False
+
+
+def _confirmed_source_brands(context: Any, sku: str, source_name: str) -> tuple[str, ...]:
+    """Return confirmed brands explicitly present in this official title.
+
+    New SKUs can appear in SQLite before the product dictionary has a row.  In
+    that case a product-level ``brand_id`` is unavailable, but a human-reviewed
+    brand dictionary entry may still be matched verbatim in the official title.
+    Multiple confirmed matches are intentionally returned rather than guessed:
+    a co-branded title needs an explicit primary-brand decision before it can
+    become training supervision.
+    """
+    source = source_name.replace("’", "'").strip()
+    product = context.product_by_sku.get(sku, {}) or {}
+    product_brand_id = str(product.get("brand_id") or "").strip()
+    ordered_ids = [product_brand_id] if product_brand_id else []
+    ordered_ids.extend(brand_id for brand_id in context.brand_by_id if brand_id != product_brand_id)
+    matched: list[str] = []
+    for brand_id in ordered_ids:
+        brand = context.brand_by_id.get(brand_id, {}) or {}
+        if not brand or not is_confirmed_brand_record(brand):
+            continue
+        canonical = str(brand.get("canonical_name") or brand_id).strip().replace("’", "'")
+        if canonical and _source_has_brand(source, _brand_values(brand, brand_id)):
+            matched.append(canonical)
+    return tuple(dict.fromkeys(matched))
+
+
+def _brand_phrases(context: Any, sku: str, source_name: str = "") -> tuple[str, ...]:
+    if source_name:
+        return _confirmed_source_brands(context, sku, source_name)
     product = context.product_by_sku.get(sku, {})
     brand_id = str(product.get("brand_id") or "").strip()
     brand = context.brand_by_id.get(brand_id, {}) if brand_id else {}
-    values = [str(brand.get("canonical_name") or brand_id).strip()]
-    values.extend(value.strip() for value in str(brand.get("aliases_es") or "").split("|") if value.strip())
-    return tuple(dict.fromkeys(value for value in values if value))
+    return _brand_values(brand, brand_id)
 
 
 def _source_proper_phrases(source: dict[str, str], target: dict[str, str]) -> tuple[str, ...]:
     """Allow unchanged proper names such as ``Winnie the Pooh``.
 
     Only title-cased multi-word spans that occur verbatim in the same source
-    field are eligible.  Ordinary untranslated Spanish prose is not removed.
+    field are eligible.  The narrow ``Title en Title`` form is also accepted
+    for source-provided variant/IP names such as ``Angel en Stitch``; it does
+    not allow ordinary lower-case Spanish prose.  Ordinary untranslated
+    Spanish prose is not removed.
     """
     values: list[str] = []
     for field in FIELDS:
@@ -180,42 +237,50 @@ def _source_proper_phrases(source: dict[str, str], target: dict[str, str]) -> tu
 def _normalize_confirmed_brand_name(
     context: Any, sku: str, name: str, source_name: str,
 ) -> tuple[str, bool]:
-    """Apply the production brand-title rule while preserving manual titles."""
+    """Remove an exact confirmed source brand from a title when safely identifiable.
+
+    The brand dictionary stores Spanish canonical names, not approved Chinese
+    aliases. Therefore this function only removes an exact brand phrase found
+    in the candidate; it never guesses a Chinese transliteration. An empty
+    product name and manual overrides are left unchanged for the downstream
+    guard/reviewer to resolve.
+    """
     manual_name = str((context.manual_by_sku.get(sku, {}) or {}).get("name_zh_standard") or "").strip()
     if manual_name:
         return manual_name, manual_name != name
-    product = context.product_by_sku.get(sku, {}) or {}
-    brand_id = str(product.get("brand_id") or "").strip()
-    brand = context.brand_by_id.get(brand_id, {}) if brand_id else {}
-    if not brand or not is_confirmed_brand_record(brand):
+    matched_brands = _confirmed_source_brands(context, sku, source_name)
+    if len(matched_brands) != 1:
         return name, False
-    canonical = str(brand.get("canonical_name") or brand_id).strip()
-    if not canonical:
-        return name, False
+    canonical = matched_brands[0]
 
-    # The business rule only prefixes a brand when the official Spanish
-    # product title itself contains that confirmed brand.  A brand/IP inferred
-    # from description variants must not be promoted into the Chinese title.
-    source_normalized = source_name.replace("’", "'").casefold()
-    source_brand_values = [canonical, *str(brand.get("aliases_es") or "").split("|")]
-    if not any(
-        value.strip().replace("’", "'").casefold() in source_normalized
-        for value in source_brand_values if value.strip()
-    ):
-        return name, False
-
-    # Normalize curly apostrophes before matching a canonical brand such as
-    # Fresh 'n Rebel.  This is spelling normalization, not a source inference.
     display = name.replace("’", "'").strip()
     canonical = canonical.replace("’", "'")
-    if canonical.casefold() not in display.casefold() and "牌" in display:
-        # A legacy translated brand prefix (e.g. 迪士尼牌) is replaced with
-        # the confirmed canonical spelling.  The product noun after 牌 is kept.
-        generic = display.split("牌", 1)[1].strip()
-        if generic:
-            display = f"{canonical}牌{generic}"
-    normalized = format_confirmed_brand_title(display.replace(" 牌", "牌"), canonical)
+    # Only exact, stand-alone source-language brand text is deterministic.
+    # A Chinese rendering of the brand has no approved alias in the current
+    # schema and must not be guessed or deleted by this rule.
+    pattern = re.compile(
+        r"(?<![A-Za-z0-9])(?:牌\s*)?" + re.escape(canonical)
+        + r"(?:\s*牌(?![A-Za-z])|(?![A-Za-z0-9]))",
+        re.IGNORECASE,
+    )
+    normalized = pattern.sub(" ", display)
+    normalized = re.sub(r"^[\s,，、:：|｜-]+|[\s,，、:：|｜-]+$", "", normalized).strip()
+    normalized = re.sub(r"\s+", " ", normalized)
+    if not normalized:
+        return name, False
     return normalized, normalized != name
+
+
+def _has_unresolved_chinese_brand_marker(confirmed_brands: tuple[str, ...], title: str) -> bool:
+    """Fail closed on likely localized ``品牌牌商品`` forms without an alias map.
+
+    Chinese brand aliases are not represented in the current dictionary
+    schema. When the source confirms a brand and a CJK ``…牌 + product`` marker
+    remains after exact source-name removal, send it to review instead of
+    silently treating an unknown transliteration as a clean no-brand title.
+    This is intentionally review-only; it never deletes CJK text.
+    """
+    return has_unresolved_chinese_brand_marker(title, confirmed_brands)
 
 
 def _guard_with_safe_normalizations(
@@ -272,14 +337,22 @@ def _first_pass(
             verdict = str(answer["verdict"]).upper()
             corrected = _full_target(answer.get("corrected")) if verdict == "REVISE" else None
             if verdict == "REVISE" and corrected is None:
-                raise ValueError(f"FIRST_PASS_CORRECTION_INCOMPLETE:{row['metadata']['sku']}")
+                # An incomplete correction cannot be safely reconstructed.
+                # Keep the original API evidence out of training and let the
+                # final review CSV expose this row instead of aborting every
+                # remaining independent candidate.
+                verdict = "REJECT"
+                corrected = None
+                reason = "FIRST_PASS_CORRECTION_INCOMPLETE"
+            else:
+                reason = str(answer.get("reason") or "").strip()
             output.append({
                 "sku": str(row["metadata"]["sku"]),
                 "source": _message_object(row, "user"),
                 "original_target": _message_object(row, "assistant"),
                 "verdict": verdict,
                 "corrected": corrected or {},
-                "reason": str(answer.get("reason") or "").strip(),
+                "reason": reason,
                 "source_hash": str(row["metadata"].get("source_hash") or ""),
                 "label_tier": str(row["metadata"].get("label_tier") or ""),
                 "reviewer": "deepseek-chat-first-pass",
@@ -319,10 +392,14 @@ def _second_pass(
             verdict = str(answer["verdict"]).upper()
             corrected = _full_target(answer.get("corrected")) if verdict == "REVISED" else None
             if verdict == "REVISED" and corrected is None:
-                raise ValueError(f"SECOND_PASS_CORRECTION_INCOMPLETE:{row['sku']}")
+                verdict = "REJECT"
+                corrected = None
+                reason = "SECOND_PASS_CORRECTION_INCOMPLETE"
+            else:
+                reason = str(answer.get("reason") or "").strip()
             output.append({
                 "sku": str(row["sku"]), "verdict": verdict,
-                "corrected": corrected or {}, "reason": str(answer.get("reason") or "").strip(),
+                "corrected": corrected or {}, "reason": reason,
                 "reviewer": "deepseek-chat-second-pass",
             })
         _append_jsonl(out_path, output)
@@ -348,10 +425,17 @@ def _finalize(
     candidate_by_sku = {str(row["metadata"]["sku"]): row for row in candidates}
     first_by_sku = {str(row["sku"]): row for row in first_rows}
     second_by_sku = {str(row["sku"]): row for row in second_rows}
-    resolution_document = (
-        json.loads(resolution_path.read_text(encoding="utf-8"))
-        if resolution_path.exists() else {"decisions": []}
-    )
+    if resolution_path.exists():
+        resolution_document = json.loads(resolution_path.read_text(encoding="utf-8"))
+    else:
+        # Source-conflict decisions are optional. Persist an explicit empty
+        # document so the manifest can bind the absence of manual overrides
+        # without failing after the expensive two-pass review has completed.
+        resolution_document = {"decisions": []}
+        resolution_path.write_text(
+            json.dumps(resolution_document, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
     resolutions = {
         str(row.get("sku") or ""): row
         for row in resolution_document.get("decisions", [])
@@ -411,6 +495,9 @@ def _finalize(
         if expected_hash != str(candidate["metadata"].get("source_hash") or ""):
             guard_reasons.append("SOURCE_HASH_MISMATCH")
         if final_target is not None:
+            matched_brands = _confirmed_source_brands(context, sku, source["name"])
+            if len(matched_brands) > 1:
+                guard_reasons.append("AMBIGUOUS_CONFIRMED_BRANDS_IN_NAME")
             normalized_name, brand_changed = _normalize_confirmed_brand_name(
                 context, sku, final_target["name"], source["name"]
             )
@@ -418,10 +505,12 @@ def _finalize(
                 final_target = {**final_target, "name": normalized_name}
                 normalization_notes.append("CONFIRMED_BRAND_TITLE")
                 normalization_counts["confirmed_brand_title"] += 1
+            if _has_unresolved_chinese_brand_marker(matched_brands, final_target["name"]):
+                guard_reasons.append("UNRESOLVED_CHINESE_BRAND_MARKER")
             if final_target.get("cat1") not in VALID_CAT1:
                 guard_reasons.append("CAT1_INVALID")
             guarded, guard_exceptions = _guard_with_safe_normalizations(
-                source, final_target, _brand_phrases(context, sku),
+                source, final_target, _brand_phrases(context, sku, source["name"]),
             )
             guard_reasons.extend(guarded)
             for exception in guard_exceptions:
@@ -495,7 +584,8 @@ def _finalize(
         "guard_exception_counts": dict(sorted(guard_exception_counts.items())),
         "audit_resolution_counts": dict(sorted(resolution_counts.items())),
         "blocked_skus": [row["sku"] for row in review_rows if not row["final_status"].startswith("APPROVED")],
-        "entire_500_training_eligible": len(approved) == len(candidates),
+        "candidate_count": len(candidates),
+        "entire_candidate_set_training_eligible": len(approved) == len(candidates),
         "approved_subset_training_eligible": bool(approved),
         "policy": "Only approved JSONL rows may enter a newly split incremental dataset; blocked rows remain excluded.",
         "artifacts": {
@@ -516,6 +606,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Review incremental Qwen candidates with two guarded passes")
     parser.add_argument("--date", required=True, help="Artifact date, YYYY-MM-DD")
     parser.add_argument("--limit", type=int, default=500)
+    parser.add_argument(
+        "--artifact-label", default="",
+        help="Optional lowercase label matching the candidate collection artifact",
+    )
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--sleep", type=float, default=0.5)
     args = parser.parse_args()
@@ -526,16 +620,17 @@ def main() -> int:
         raise SystemExit("DEEPSEEK_API_KEY_MISSING")
 
     base = ROOT / "runtime" / "training" / "qwen3_8b" / args.date.replace("-", "")
-    source_path = base / f"qwen_incremental_candidate_{args.limit}.jsonl"
+    prefix = _artifact_prefix(args.artifact_label)
+    source_path = base / f"{prefix}candidate_{args.limit}.jsonl"
     candidates = _read_jsonl(source_path)
     if len(candidates) != args.limit:
         raise SystemExit(f"CANDIDATE_COUNT_MISMATCH:{len(candidates)}")
-    first_path = base / f"qwen_incremental_review_first_pass_{args.limit}.jsonl"
-    second_path = base / f"qwen_incremental_review_second_pass_{args.limit}.jsonl"
-    approved_path = base / f"qwen_incremental_approved_{args.limit}.jsonl"
-    review_path = base / f"qwen_incremental_candidate_{args.limit}_audited.csv"
-    manifest_path = base / f"qwen_incremental_review_{args.limit}.manifest.json"
-    resolution_path = base / f"qwen_incremental_audit_resolutions_{args.limit}.json"
+    first_path = base / f"{prefix}review_first_pass_{args.limit}.jsonl"
+    second_path = base / f"{prefix}review_second_pass_{args.limit}.jsonl"
+    approved_path = base / f"{prefix}approved_{args.limit}.jsonl"
+    review_path = base / f"{prefix}candidate_{args.limit}_audited.csv"
+    manifest_path = base / f"{prefix}review_{args.limit}.manifest.json"
+    resolution_path = base / f"{prefix}audit_resolutions_{args.limit}.json"
 
     first_rows = _first_pass(candidates, first_path, api_key, args.batch_size, args.sleep)
     second_rows = _second_pass(first_rows, second_path, api_key, args.batch_size, args.sleep)

@@ -2,8 +2,8 @@
 
 The collector intentionally creates *candidate gold*, not training data.  It
 uses current PRIMARY facts and Chinese labels only as review material, excludes
-every SKU used by the baseline gold run and the existing field validation/test
-sets, and never writes Master, SQLite, or any dictionary.
+every SKU already used in a training, validation, test, or reviewed-incremental
+artifact, and never writes Master, SQLite, or any dictionary.
 """
 from __future__ import annotations
 
@@ -40,6 +40,7 @@ _CJK = re.compile(r"[\u3400-\u9fff]")
 _HTML = re.compile(r"<[^>]+>")
 _NULL_PREFIX = re.compile(r"^\s*null\.", re.IGNORECASE)
 _UI_COPY = re.compile(r"añadir a tus favoritos|加入收藏", re.IGNORECASE)
+_ARTIFACT_LABEL = re.compile(r"[a-z0-9][a-z0-9_]{0,47}")
 
 
 def _hash(path: Path) -> str:
@@ -57,12 +58,41 @@ def _sku_set(paths: Iterable[Path]) -> set[str]:
     return {str(row["metadata"]["sku"]) for path in paths for row in _rows(path)}
 
 
-def _field_train_metadata(path: Path) -> dict[str, set[str]]:
-    result: dict[str, set[str]] = defaultdict(set)
-    for row in _rows(path):
-        metadata = row.get("metadata") or {}
-        result[str(metadata.get("sku") or "")].add(str(metadata.get("label_tier") or ""))
-    return result
+def _historical_training_or_reviewed_skus(training_root: Path) -> set[str]:
+    """Return SKUs already consumed by any frozen split or reviewed batch.
+
+    A later incremental cohort must never be selected from a previous
+    train/validation/test split, nor from a prior approved incremental batch.
+    This prevents both evaluation leakage and accidentally presenting recycled
+    records as newly collected evidence.
+    """
+    paths = [
+        path for path in training_root.rglob("*.jsonl")
+        if path.name.endswith(("_train.jsonl", "_validation.jsonl", "_test.jsonl"))
+        or path.name.startswith("qwen_incremental_approved_")
+    ]
+    return _sku_set(paths)
+
+
+def _artifact_prefix(label: str) -> str:
+    """Return a deterministic filename prefix while keeping legacy names."""
+    if not label:
+        return "qwen_incremental_"
+    if not _ARTIFACT_LABEL.fullmatch(label):
+        raise ValueError("INVALID_ARTIFACT_LABEL")
+    return f"qwen_incremental_{label}_"
+
+
+def _current_field_holdout_skus(out_dir: Path) -> set[str]:
+    """Return SKUs in the current run's field validation/test holdout."""
+
+    field_dir = out_dir / "field_conditioned_v1"
+    paths = [
+        field_dir / "field_conditioned_validation.jsonl",
+        field_dir / "field_conditioned_test.jsonl",
+    ]
+    existing = [path for path in paths if path.exists()]
+    return _sku_set(existing) if existing else set()
 
 
 def _unsafe_source(value: str) -> bool:
@@ -111,6 +141,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Collect review-required incremental Qwen candidates")
     parser.add_argument("--date", required=True, help="Artifact date, YYYY-MM-DD")
     parser.add_argument("--limit", type=int, default=500)
+    parser.add_argument(
+        "--artifact-label", default="",
+        help="Optional lowercase label that preserves older artifacts, for example fresh_v2",
+    )
     args = parser.parse_args()
     if args.limit <= 0:
         raise SystemExit("LIMIT_MUST_BE_POSITIVE")
@@ -123,9 +157,15 @@ def main() -> int:
     if any(not path.exists() for path in [*gold_paths, *field_paths.values()]):
         raise SystemExit("BASELINE_SPLIT_ARTIFACT_MISSING")
     baseline_gold = _sku_set(gold_paths)
-    field_train = _sku_set([field_paths["train"]])
-    field_holdout = _sku_set([field_paths["validation"], field_paths["test"]])
-    field_tiers = _field_train_metadata(field_paths["train"])
+    legacy_field_holdout = _sku_set([field_paths["validation"], field_paths["test"]])
+    # Also exclude the current run's field-conditioned validation/test sets.
+    # The 2026-09-11 merged experiment is a separate split from the legacy
+    # 2026-09-08 field files above; using its holdout rows as new candidates
+    # would leak the frozen evaluation set into a later training round.
+    current_field_holdout = _current_field_holdout_skus(out_dir)
+    field_holdout = legacy_field_holdout | current_field_holdout
+    consumed_skus = _historical_training_or_reviewed_skus(ROOT / "runtime" / "training" / "qwen3_8b")
+    prefix = _artifact_prefix(args.artifact_label)
 
     blocked_path = ROOT / "data" / "dictionary" / "source_damage_report.csv"
     blocked = {
@@ -157,14 +197,9 @@ def main() -> int:
         if sku in blocked:
             rejected["source_blocked"] += 1
             continue
-        if sku in baseline_gold:
-            rejected["baseline_gold_excluded"] += 1
+        if sku in consumed_skus:
+            rejected["historical_train_or_reviewed_excluded"] += 1
             continue
-        if sku not in field_train:
-            rejected["not_in_untrained_field_train_pool"] += 1
-            continue
-        if sku in field_holdout:
-            raise RuntimeError(f"FIELD_SPLIT_LEAK:{sku}")
         source = {field: str(raw[f"es_{field}"] or "").strip() for field in FIELDS}
         target = {field: str(raw[f"zh_{field}"] or "").strip() for field in FIELDS}
         if any(not source[field] for field in FIELDS):
@@ -185,8 +220,10 @@ def main() -> int:
             for reason in guard.reasons:
                 rejected[f"target_guard_{reason.lower()}"] += 1
             continue
-        tiers = field_tiers.get(sku, set())
-        label_tier = "HUMAN_REVIEWED" if tiers == {"HUMAN_REVIEWED"} else "DICTIONARY_OR_MODEL"
+        # New candidates have not themselves been field-level human reviewed.
+        # Their existing Chinese fields are evidence for audit only, therefore
+        # their initial tier must never imply gold-label status.
+        label_tier = "DICTIONARY_OR_MODEL"
         candidates.append({"sku": sku, "source": source, "target": target,
                            "source_hash": _source_hash(source), "label_tier": label_tier})
 
@@ -194,13 +231,13 @@ def main() -> int:
     if len(selected) != args.limit:
         raise SystemExit(f"INSUFFICIENT_ELIGIBLE_CANDIDATES:{len(selected)}")
     selected_skus = {row["sku"] for row in selected}
-    if selected_skus & baseline_gold or selected_skus & field_holdout:
+    if selected_skus & consumed_skus:
         raise RuntimeError("POST_SELECTION_SPLIT_LEAK")
 
     system = ("将 Action 西语商品六字段忠实标准化为简体中文；保持数字、单位、数量、尺寸和品牌/型号，"
               "不臆造。该记录为候选金标，须人工复核后才能用于训练。")
-    data_path = out_dir / f"qwen_incremental_candidate_{args.limit}.jsonl"
-    review_path = out_dir / f"qwen_incremental_candidate_{args.limit}_review.csv"
+    data_path = out_dir / f"{prefix}candidate_{args.limit}.jsonl"
+    review_path = out_dir / f"{prefix}candidate_{args.limit}_review.csv"
     with data_path.open("w", encoding="utf-8", newline="") as handle:
         for item in selected:
             record = {
@@ -228,12 +265,13 @@ def main() -> int:
                 **{f"zh_{field}": item["target"][field] for field in FIELDS},
             })
     manifest = {
-        "date": args.date, "status": "CANDIDATES_COLLECTED_NOT_TRAINING_READY", "requested_skus": args.limit,
+        "date": args.date, "artifact_label": args.artifact_label or "legacy", "status": "CANDIDATES_COLLECTED_NOT_TRAINING_READY", "requested_skus": args.limit,
         "selected_skus": len(selected), "candidate_pool": len(candidates), "rejected": dict(sorted(rejected.items())),
         "category_counts": dict(sorted(Counter(item["target"]["cat1"] for item in selected).items())),
         "label_tier_counts": dict(sorted(Counter(item["label_tier"] for item in selected).items())),
         "baseline_gold_overlap": sorted(selected_skus & baseline_gold),
         "baseline_field_holdout_overlap": sorted(selected_skus & field_holdout),
+        "historical_training_or_reviewed_overlap": sorted(selected_skus & consumed_skus),
         "training_eligible": False,
         "required_next_step": "Review every SKU; only approved, source-hash-stable rows may enter a newly split training set.",
         "artifacts": {
@@ -241,7 +279,7 @@ def main() -> int:
             "review_csv": str(review_path), "review_csv_sha256": _hash(review_path),
         },
     }
-    manifest_path = out_dir / f"qwen_incremental_candidate_{args.limit}.manifest.json"
+    manifest_path = out_dir / f"{prefix}candidate_{args.limit}.manifest.json"
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(manifest, ensure_ascii=False))
     return 0

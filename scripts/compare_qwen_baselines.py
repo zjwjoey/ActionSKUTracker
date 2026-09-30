@@ -26,7 +26,10 @@ if str(SRC) not in sys.path:
 from action_tracker.config import load_settings
 from action_tracker.dictionary_resolver import resolve_record
 from action_tracker.exporting.dictionary_join import load_dictionary_context
-from action_tracker.translation.model_guard import validate_model_output
+from action_tracker.translation.model_guard import (
+    numeric_fact_counters,
+    validate_model_output,
+)
 
 NUM = re.compile(r"\d+(?:[.,]\d+)?")
 SPANISH = re.compile(
@@ -134,7 +137,7 @@ def score_prediction(
         nonempty += bool(value)
         required_total += bool(expected_value)
         required_nonempty += bool(expected_value and value)
-        source_nums, output_nums = Counter(nums(source.get(name))), Counter(nums(value))
+        source_nums, output_nums = numeric_fact_counters(source.get(name), value)
         missing = list((source_nums - output_nums).elements())
         extra = list((output_nums - source_nums).elements())
         numeric_ok += not missing
@@ -228,7 +231,16 @@ def automated_safety_pass(metrics: dict[str, Any]) -> bool:
     )
 
 
-def run_model(model_path: Path, rows: list[dict[str, Any]], batch_size: int, max_input_length: int, max_new_tokens: int, adapter_path: Path | None = None, strict_prompt: bool = False) -> list[dict[str, Any] | None]:
+def run_model(
+    model_path: Path,
+    rows: list[dict[str, Any]],
+    batch_size: int,
+    max_input_length: int,
+    max_new_tokens: int,
+    adapter_path: Path | None = None,
+    strict_prompt: bool = False,
+    prompt_text: str | None = None,
+) -> list[dict[str, Any] | None]:
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
@@ -247,7 +259,9 @@ def run_model(model_path: Path, rows: list[dict[str, Any]], batch_size: int, max
         prompts = []
         for row in chunk:
             messages = row["messages"][:2]
-            if strict_prompt:
+            if prompt_text:
+                messages = [{"role": "system", "content": prompt_text}, messages[1]]
+            elif strict_prompt:
                 messages = [{"role": "system", "content": STRICT_SYSTEM}, messages[1]]
             prompts.append(tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, enable_thinking=False))
         inputs = tok(prompts, return_tensors="pt", padding=True, truncation=True, max_length=max_input_length).to(net.device)
@@ -421,7 +435,7 @@ def main() -> int:
     tuned_safety_pass = automated_safety_pass(tuned_metrics)
     resolver_safety_pass = automated_safety_pass(resolver_metrics)
     report = {
-        "evaluation_policy_version": "stage4_safety_first_v2_2026-09-11",
+        "evaluation_policy_version": "stage4_safety_first_v3_2026-09-11",
         "test_file": str(test), "rows": len(rows), "batch_size": args.batch_size,
         "max_input_length": args.max_input_length, "max_new_tokens": args.max_new_tokens,
         "strict_prompt": args.strict_prompt,

@@ -19,6 +19,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from compare_qwen_baselines import (  # noqa: E402
+    FIELDWISE_SYSTEM,
     aggregate,
     allowed_brands_by_sku,
     load_rows,
@@ -72,6 +73,11 @@ def main() -> int:
     ap.add_argument("--batch-size", type=int, default=4)
     ap.add_argument("--max-input-length", type=int, default=512)
     ap.add_argument("--max-new-tokens", type=int, default=160)
+    ap.add_argument(
+        "--production-prompt",
+        action="store_true",
+        help="Use the same FIELDWISE_SYSTEM prompt as the production-like offline stage.",
+    )
     args = ap.parse_args()
 
     model = Path(args.model_path)
@@ -88,8 +94,9 @@ def main() -> int:
         rows = rows[: args.limit]
     validate_field_rows(rows)
 
-    raw = run_model(model, rows, args.batch_size, args.max_input_length, args.max_new_tokens)
-    tuned = run_model(model, rows, args.batch_size, args.max_input_length, args.max_new_tokens, adapter)
+    prompt_text = FIELDWISE_SYSTEM if args.production_prompt else None
+    raw = run_model(model, rows, args.batch_size, args.max_input_length, args.max_new_tokens, prompt_text=prompt_text)
+    tuned = run_model(model, rows, args.batch_size, args.max_input_length, args.max_new_tokens, adapter, prompt_text=prompt_text)
     cfg = load_settings(ROOT / "config" / "settings.yaml")
     context = load_dictionary_context(cfg)
     allowed = allowed_brands_by_sku(rows, context)
@@ -109,6 +116,7 @@ def main() -> int:
         "batch_size": args.batch_size,
         "max_input_length": args.max_input_length,
         "max_new_tokens": args.max_new_tokens,
+        "prompt_mode": "FIELDWISE_SYSTEM" if args.production_prompt else "dataset_system",
         "models": reports,
         "field_counts": {
             field: sum(1 for row in rows if row["metadata"]["field"] == field)
