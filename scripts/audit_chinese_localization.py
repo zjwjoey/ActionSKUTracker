@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 APPROVED_TERM_CHECKER_PATH = ROOT / "src/action_tracker/translation/approved_terms.py"
+APPROVED_TERM_REVIEW_POLICY_PATH = ROOT / "config/stage5/approved_term_review_policy.json"
 APPROVED_CATEGORY_STATUSES = frozenset({
     "APPROVED", "CONFIRMED", "HUMAN_APPROVED", "HUMAN_REVIEWED", "LOCKED",
 })
@@ -42,6 +43,7 @@ from action_tracker.translation.description_fidelity import (  # noqa: E402
 )
 from action_tracker.translation.approved_terms import (  # noqa: E402
     inspect_approved_term_candidate, inspect_approved_term_cross_field_movement,
+    load_approved_term_review_policy,
 )
 from action_tracker.translation.model_guard import validate_model_output  # noqa: E402
 from action_tracker.translation.source_fact_repair import repair_model_output as inspect_source_facts  # noqa: E402
@@ -101,6 +103,55 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _stable_issue_value(value: Any) -> str:
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return _norm(value)
+
+
+def _dedupe_issues(issues: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Collapse repeated findings without discarding variant evidence.
+
+    A finding identity is the SKU, field, code and normalized source fact. A
+    different candidate or evidence payload is retained as a bounded variant
+    list on the surviving finding instead of inflating the issue count.
+    """
+    grouped: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    duplicate_count = 0
+    for issue in issues:
+        source = _stable_issue_value(issue.get("source"))
+        identity_payload = "|".join((
+            str(issue.get("sku") or "").strip(),
+            str(issue.get("field") or "").strip(),
+            str(issue.get("code") or "").strip(),
+            source,
+        ))
+        finding_id = "finding-" + hashlib.sha256(identity_payload.encode("utf-8")).hexdigest()[:24]
+        if finding_id not in grouped:
+            kept = dict(issue)
+            kept["finding_id"] = finding_id
+            kept["duplicate_count"] = 0
+            grouped[finding_id] = kept
+            order.append(finding_id)
+            continue
+        duplicate_count += 1
+        kept = grouped[finding_id]
+        kept["duplicate_count"] = int(kept.get("duplicate_count") or 0) + 1
+        for key in ("candidate", "evidence", "proposed"):
+            value = issue.get(key)
+            if value in (None, "") or value == kept.get(key):
+                continue
+            variants = kept.setdefault(f"{key}_variants", [])
+            if value not in variants and len(variants) < 20:
+                variants.append(value)
+    return [grouped[key] for key in order], {
+        "raw_issue_count": len(issues),
+        "unique_issue_count": len(grouped),
+        "duplicate_issue_count": duplicate_count,
+    }
 
 
 def _read_sheet(path: Path, sheet_name: str) -> tuple[list[str], dict[str, dict[str, Any]]]:
@@ -457,6 +508,7 @@ def _audit_term_dictionary(
             continue
         unique_terms.append(rows[0])
     terms = unique_terms
+    review_policy = load_approved_term_review_policy(APPROVED_TERM_REVIEW_POLICY_PATH)
     fields = ("name", "spec", "description", "details")
     unit_types = {"unit", "quantity"}
     counts: dict[tuple[str, str], Counter[str]] = defaultdict(Counter)
@@ -480,6 +532,7 @@ def _audit_term_dictionary(
                     examples[(row["term_es"], field)].add(sku)
                 findings = inspect_approved_term_candidate(
                     field, source_rows[sku].get(field), target_rows[sku].get(field), (row,),
+                    review_policy=review_policy,
                 )
                 for finding in findings:
                     issues.append({"sku": sku, **finding})
@@ -488,7 +541,9 @@ def _audit_term_dictionary(
     for sku in sorted(set(source_rows) & set(target_rows)):
         source_fields = {field: source_rows[sku].get(field, "") for field in fields}
         target_fields = {field: target_rows[sku].get(field, "") for field in fields}
-        for finding in inspect_approved_term_cross_field_movement(source_fields, target_fields, terms):
+        for finding in inspect_approved_term_cross_field_movement(
+            source_fields, target_fields, terms, review_policy=review_policy,
+        ):
             issues.append({"sku": sku, **finding})
             if finding.get("review_only"):
                 review_only_suggestions += 1
@@ -508,6 +563,8 @@ def _audit_term_dictionary(
         "source_term_field_pairs_observed": len(coverage),
         "review_only_suggestions": review_only_suggestions,
         "canonical_presence_is_not_semantic_acceptance": True,
+        "review_policy_id": review_policy.get("policy_id"),
+        "review_policy_sha256": _sha256_file(APPROVED_TERM_REVIEW_POLICY_PATH),
         "coverage": coverage[:500],
     }
 
@@ -1372,6 +1429,8 @@ def audit_workbooks(
                                "heuristic_only": True,
                            }, ensure_ascii=False)})
 
+    raw_issue_count = len(issues)
+    issues, issue_dedupe = _dedupe_issues(issues)
     counts = Counter(issue["code"] for issue in issues)
     title_policy = load_title_display_policy(ROOT / "config/stage5/title_display_policy.json")
     qa_policy_path = qa_policy_path or ROOT / "config/stage5/chinese_gold_qa_policy.json"
@@ -1404,6 +1463,9 @@ def audit_workbooks(
         "source_headers": source_headers, "target_headers": target_headers,
         "source_sku_count": len(source_rows), "target_sku_count": len(target_rows),
         "matched_sku_count": len(shared), "issue_count": len(issues), "issue_counts": dict(sorted(counts.items())),
+        "raw_issue_count": raw_issue_count,
+        "duplicate_issue_count": issue_dedupe["duplicate_issue_count"],
+        "unique_issue_count": issue_dedupe["unique_issue_count"],
         "l1_fact_field_coverage": fact_field_coverage,
         "category_mapping_audit": category_mapping_report,
         "confirmed_brand_dictionary_audit": {

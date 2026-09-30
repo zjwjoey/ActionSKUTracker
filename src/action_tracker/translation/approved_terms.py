@@ -7,6 +7,9 @@ signal because an accepted synonym may be correct.
 from __future__ import annotations
 
 import re
+import json
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Iterable
 
 from ..dictionary import normalize_category_key
@@ -16,6 +19,51 @@ from .term_resolver import APPROVED_TERM_STATUSES
 _LOCALIZED_FIELDS = frozenset({"name", "spec", "description", "details"})
 _REVIEW_TERM_TYPES = frozenset({"material", "attribute", "apparel", "spec"})
 _UNIT_TERM_TYPES = frozenset({"unit", "quantity"})
+_DEFAULT_REVIEW_POLICY_PATH = Path(__file__).resolve().parents[3] / "config/stage5/approved_term_review_policy.json"
+_FALLBACK_REVIEW_POLICY = {
+    "canonical_absence_types_by_field": {
+        "name": sorted({"material", "apparel"}),
+        "spec": sorted({"material", "apparel"}),
+        "description": sorted({"material", "apparel"}),
+        "details": sorted(_REVIEW_TERM_TYPES),
+    },
+    "cross_field_types": sorted({"material", "apparel"}),
+    "unsupported_target_types": sorted({"material", "apparel"}),
+}
+
+
+@lru_cache(maxsize=8)
+def load_approved_term_review_policy(path: str | Path | None = None) -> dict[str, Any]:
+    """Load the versioned scope for review-only glossary signals.
+
+    A malformed policy falls back to the conservative material/apparel scope;
+    it never widens review or authorizes a translation automatically.
+    """
+    policy_path = Path(path) if path is not None else _DEFAULT_REVIEW_POLICY_PATH
+    try:
+        payload = json.loads(policy_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or not str(payload.get("policy_id") or ""):
+            raise ValueError("APPROVED_TERM_REVIEW_POLICY_INVALID")
+        by_field = payload.get("canonical_absence_types_by_field")
+        if not isinstance(by_field, dict) or any(
+            field not in _LOCALIZED_FIELDS or not isinstance(values, list)
+            for field, values in by_field.items()
+        ):
+            raise ValueError("APPROVED_TERM_REVIEW_POLICY_SCOPE_INVALID")
+        for key in ("cross_field_types", "unsupported_target_types"):
+            if not isinstance(payload.get(key), list):
+                raise ValueError("APPROVED_TERM_REVIEW_POLICY_TYPES_INVALID")
+        return payload
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError, TypeError):
+        return {"policy_id": "FALLBACK_CONSERVATIVE", **_FALLBACK_REVIEW_POLICY}
+
+
+def _review_types(policy: dict[str, Any], key: str, field: str | None = None) -> frozenset[str]:
+    if key == "canonical_absence_types_by_field":
+        values = (policy.get(key) or {}).get(field or "", ())
+    else:
+        values = policy.get(key) or ()
+    return frozenset(str(value).strip().casefold() for value in values if str(value).strip())
 
 
 def approved_source_term_ledger(
@@ -70,6 +118,7 @@ def approved_source_term_ledger(
 
 def inspect_approved_term_candidate(
     field: str, source: object, target: object, terms: Iterable[dict[str, Any]],
+    *, review_policy: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Return approved-term findings for one source/target field pair."""
     if field not in _LOCALIZED_FIELDS:
@@ -77,6 +126,7 @@ def inspect_approved_term_candidate(
     source_norm = normalize_category_key(source)
     target_norm = normalize_category_key(target)
     findings: list[dict[str, Any]] = []
+    policy = review_policy or load_approved_term_review_policy()
     for row in terms:
         if str(row.get("review_status") or "").strip().upper() not in APPROVED_TERM_STATUSES:
             continue
@@ -104,7 +154,7 @@ def inspect_approved_term_candidate(
                     "approved_translation": row.get("term_zh", ""),
                     "review_only": False,
                 })
-        if term_type in _REVIEW_TERM_TYPES and canonical and canonical not in target_norm:
+        if term_type in _review_types(policy, "canonical_absence_types_by_field", field) and canonical and canonical not in target_norm:
             findings.append({
                 "code": "APPROVED_TERM_CANONICAL_ABSENT_REVIEW", "field": field,
                 "source_term": row.get("term_es", ""), "term_type": term_type,
@@ -117,7 +167,7 @@ def inspect_approved_term_candidate(
 
 def inspect_approved_term_cross_field_movement(
     source_fields: dict[str, object], target_fields: dict[str, object],
-    terms: Iterable[dict[str, Any]],
+    terms: Iterable[dict[str, Any]], *, review_policy: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Flag likely movement of a glossary-backed fact between localized fields.
 
@@ -127,6 +177,9 @@ def inspect_approved_term_cross_field_movement(
     the target phrase is false.
     """
     findings: list[dict[str, Any]] = []
+    policy = review_policy or load_approved_term_review_policy()
+    cross_field_types = _review_types(policy, "cross_field_types")
+    unsupported_target_types = _review_types(policy, "unsupported_target_types")
     seen: set[tuple[str, str, str, str]] = set()
     for row in terms:
         if str(row.get("review_status") or "").strip().upper() not in APPROVED_TERM_STATUSES:
@@ -144,7 +197,7 @@ def inspect_approved_term_cross_field_movement(
             if source_pattern.search(normalize_category_key(source_fields.get(field)))
         }
         if not source_fields_with_term:
-            if term_type in _REVIEW_TERM_TYPES:
+            if term_type in unsupported_target_types:
                 for target_field in _LOCALIZED_FIELDS:
                     if canonical not in normalize_category_key(target_fields.get(target_field)):
                         continue
@@ -165,6 +218,8 @@ def inspect_approved_term_cross_field_movement(
                         "source_term_absent_from_all_localized_fields": True,
                         "unsupported_target_is_not_proof_of_hallucination": True,
                     })
+            continue
+        if term_type not in cross_field_types:
             continue
         for source_field in source_fields_with_term:
             for target_field in _LOCALIZED_FIELDS:
@@ -193,5 +248,5 @@ def inspect_approved_term_cross_field_movement(
 
 __all__ = [
     "approved_source_term_ledger", "inspect_approved_term_candidate",
-    "inspect_approved_term_cross_field_movement",
+    "inspect_approved_term_cross_field_movement", "load_approved_term_review_policy",
 ]

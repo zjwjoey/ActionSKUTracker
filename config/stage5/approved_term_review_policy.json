@@ -1,0 +1,12 @@
+{
+  "policy_id": "ACTION_APPROVED_TERM_REVIEW_V1",
+  "description": "Field- and term-type scope for glossary review signals. This policy never auto-approves or rewrites a candidate.",
+  "canonical_absence_types_by_field": {
+    "name": ["material", "apparel"],
+    "spec": ["material", "apparel"],
+    "description": ["material", "apparel"],
+    "details": ["material", "attribute", "apparel", "spec"]
+  },
+  "cross_field_types": ["material", "apparel"],
+  "unsupported_target_types": ["material", "apparel"]
+}

@@ -406,6 +406,50 @@ def test_approved_material_term_without_canonical_phrase_routes_to_review(tmp_pa
     assert AUDIT._issue_layer("APPROVED_TERM_CANONICAL_ABSENT_REVIEW", policy) == "L4"
 
 
+def test_generic_glossary_terms_are_scoped_outside_structured_details(tmp_path: Path):
+    term_path = tmp_path / "terms.csv"
+    fields = ["term_es", "term_zh", "term_type", "forbidden_zh", "review_status"]
+    with term_path.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows([
+            {"term_es": "diferentes", "term_zh": "不同款式", "term_type": "spec", "review_status": "APPROVED"},
+            {"term_es": "madera", "term_zh": "木质", "term_type": "material", "review_status": "APPROVED"},
+        ])
+    source = {
+        "1001": {"spec": "diferentes colores", "description": "Cuchara de madera", "details": ""},
+    }
+    target = {
+        "1001": {"spec": "多种颜色", "description": "木材勺子", "details": ""},
+    }
+    issues = []
+    report = AUDIT._audit_term_dictionary(source, target, term_path, issues)
+    assert report["review_policy_id"] == "ACTION_APPROVED_TERM_REVIEW_V1"
+    assert not any(
+        item.get("source_term") == "diferentes"
+        and item.get("code") == "APPROVED_TERM_CANONICAL_ABSENT_REVIEW"
+        for item in issues
+    )
+    assert any(
+        item.get("source_term") == "madera"
+        and item.get("code") == "APPROVED_TERM_CANONICAL_ABSENT_REVIEW"
+        for item in issues
+    )
+
+
+def test_issue_deduplication_keeps_candidate_variants_and_source_identity():
+    issues = [
+        {"sku": "1001", "field": "details", "code": "X", "source": "Material: madera", "candidate": "木材"},
+        {"sku": "1001", "field": "details", "code": "X", "source": "Material: madera", "candidate": "木质"},
+        {"sku": "1001", "field": "details", "code": "X", "source": "Color: azul", "candidate": "蓝色"},
+    ]
+    rows, stats = AUDIT._dedupe_issues(issues)
+    assert stats == {"raw_issue_count": 3, "unique_issue_count": 2, "duplicate_issue_count": 1}
+    material = next(row for row in rows if row["source"] == "Material: madera")
+    assert material["duplicate_count"] == 1
+    assert material["candidate_variants"] == ["木质"]
+
+
 def test_approved_term_cross_field_finding_is_classified_as_l5():
     policy = AUDIT._load_qa_policy(ROOT / "config/stage5/chinese_gold_qa_policy.json")
 
