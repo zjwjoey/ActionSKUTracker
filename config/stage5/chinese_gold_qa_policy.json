@@ -1,0 +1,113 @@
+{
+  "policy_id": "ACTION_CHINESE_GOLD_QA_V2",
+  "scope": "READ_ONLY_SPANISH_CHINESE_WORKBOOK_AUDIT",
+  "gold_claim_allowed": false,
+  "unknown_issue_layer": "UNCLASSIFIED",
+  "layers": [
+    {
+      "id": "L1",
+      "name": "主键、价格、链接与空值",
+      "coverage": "PARTIAL",
+      "covered_checks": ["SKU集合一致", "SKU顺序一致", "源字段空值与译文空值边界", "两表均提供时逐 SKU 核对当前价/显示原价/商品链接/图片链接；当前价和商品链接非空"],
+      "not_covered": ["正式来源及字段级审批状态；两表未提供价格或链接列时该项无法对账"]
+    },
+    {
+      "id": "L2",
+      "name": "分类与标签结构",
+      "coverage": "PARTIAL",
+      "covered_checks": ["一级分类允许值", "二级分类中文形式", "用显式批准状态的 category_dictionary 对西语/中文一级及二级分类逐 SKU 核验", "源工作簿提供结构化新品/促销/可持续布尔列时优先按独立字段逐 SKU 对账；旧工作簿才回退备注文本", "逐 SKU 核验官网官方标签是否保留"],
+      "not_covered": ["源工作簿没有结构化布尔列时，无法独立于备注证明标签来源正确", "没有批准映射的分类仍需审核，不能由频次推断补齐"]
+    },
+    {
+      "id": "L3",
+      "name": "数字、单位、型号与技术事实",
+      "coverage": "PARTIAL",
+      "covered_checks": ["数字", "单位", "技术 token", "型号/接口", "兼容平台（Nintendo Switch、PlayStation、Xbox、Windows、iOS、Android、macOS、ChromeOS）", "认证", "否定表达"],
+      "not_covered": ["未结构化自由文本的全部语义事实"]
+    },
+    {
+      "id": "L4",
+      "name": "固定字段词典与枚举翻译",
+      "coverage": "PARTIAL",
+      "covered_checks": ["结构化产品详情键值规则", "完整命中字段和值规则的详情由 Stage 5 确定性生成且不调用模型；任一条目未覆盖则整格回退，不拼接猜测片段", "detail_terminology_rules.json 中 closed_enum_keys 指定的源枚举值必须命中版本化规则，否则 Stage 5 在模型请求前转人工复核，正式 Export Gate/全量审计也拦截或记录 L4 finding；均不改写", "已收录枚举的目标译值白名单核验", "同源字段多译法", "详情对齐与语境提示", "已批准材质/属性/服饰/规格术语若同字段未出现标准译词则生成非自动改写的语义复核项（允许同义表达）", "显式禁用译词拦截"],
+      "not_covered": ["标题、规格、分类和描述的完整术语词典覆盖"]
+    },
+    {
+      "id": "L5",
+      "name": "描述事实边界",
+      "coverage": "PARTIAL",
+      "covered_checks": ["内部 QA 文案泄漏", "描述长度压缩风险提示", "数字、单位、token、认证与否定等同字段事实 Guard", "型号/2合1功能/单只袜子等窄范围语义事实提示；命中项须人工审查", "同字段明确无源依据的无硫酸盐声明硬拦截", "已批准术语疑似跨字段迁移提示；仅复核信号，不证明错误", "已批准属性译词在全部西语字段均无源词依据时提示复核；仅复核信号，不证明幻觉"],
+      "not_covered": ["自由文本新增、遗漏及跨句语义的完整证明"]
+    },
+    {
+      "id": "L6",
+      "name": "源异常与 QA 追溯",
+      "coverage": "PARTIAL",
+      "covered_checks": ["已配置官网源异常和跨字段冲突规则", "策略版本与哈希"],
+      "not_covered": ["未配置异常规则的发现", "正式生产 run 全链路 provenance 与持久化核验"]
+    }
+  ],
+  "issue_code_layers": {
+    "SKU_SET_MISMATCH": "L1",
+    "SKU_ORDER_MISMATCH": "L1",
+    "SOURCE_WORKBOOK_EMPTY": "L1",
+    "TARGET_WORKBOOK_EMPTY": "L1",
+    "SOURCE_EMPTY_NONEMPTY": "L1",
+    "EMPTY_REQUIRED_FIELD": "L1",
+    "FACT_MISMATCH": "L1",
+    "FACT_COLUMN_SCOPE_MISMATCH": "L1",
+    "FACT_VALUE_UNPARSEABLE": "L1",
+    "FACT_VALUE_MISSING": "L1",
+    "FACT_VALUE_INVALID": "L1",
+    "UNAPPROVED_ZH": "L6",
+    "APPROVAL_PROVENANCE_MISSING": "L6",
+    "ZH_FRESHNESS_INVALID": "L6",
+    "STALE_ZH": "L6",
+    "SOURCE_HASH_MISMATCH": "L6",
+    "INVALID_CATEGORY": "L2",
+    "CATEGORY_DICTIONARY_MISSING": "L2",
+    "CATEGORY_DICTIONARY_INVALID": "L2",
+    "CATEGORY_MAPPING_UNAVAILABLE": "L2",
+    "CATEGORY_MAPPING_AMBIGUOUS": "L2",
+    "CATEGORY_MAPPING_MISMATCH": "L2",
+    "OFFICIAL_LABEL_DROPPED": "L2",
+    "OFFICIAL_LABEL_HALLUCINATED": "L2",
+    "OFFICIAL_LABEL_MISMATCH": "L2",
+    "BUSINESS_TAG_DROPPED": "L2",
+    "BUSINESS_TAG_HALLUCINATED": "L2",
+    "BUSINESS_TAG_SOURCE_INVALID": "L2",
+    "BUSINESS_TAG_TARGET_INVALID": "L2",
+    "TERM_FORBIDDEN_TRANSLATION": "L4",
+    "TERM_DICTIONARY_MISSING": "L4",
+    "TERM_DICTIONARY_INVALID": "L4",
+    "TERM_DICTIONARY_NO_APPROVED_ROWS": "L4",
+    "TERM_DICTIONARY_AMBIGUOUS": "L4",
+    "TERM_DICTIONARY_INVALID_ROW": "L4",
+    "APPROVED_TERM_CANONICAL_ABSENT_REVIEW": "L4",
+    "APPROVED_TERM_CROSS_FIELD_REVIEW": "L5",
+    "APPROVED_TERM_UNSUPPORTED_TARGET_REVIEW": "L5",
+    "NUMERIC_DROPPED": "L3",
+    "NUMERIC_HALLUCINATED": "L3",
+    "UNIT_DROPPED": "L3",
+    "UNIT_HALLUCINATED": "L3",
+    "TECH_TOKEN_DROPPED": "L3",
+    "TECH_TOKEN_HALLUCINATED": "L3",
+    "CERTIFICATION_DROPPED": "L3",
+    "CERTIFICATION_HALLUCINATED": "L3",
+    "NEGATION_DROPPED": "L3",
+    "NEGATION_HALLUCINATED": "L3",
+    "UNSUPPORTED_NEGATIVE_ATTRIBUTE": "L5",
+    "INTERNAL_QA_NOTE_LEAKED": "L5",
+    "DESCRIPTION_COMPRESSION_REVIEW": "L5",
+    "SOURCE_FACT_REVIEW_REQUIRED": "L5"
+  },
+  "issue_code_prefix_layers": {
+    "DETAIL_": "L4",
+    "SOURCE_KEY_TRANSLATION_": "L4",
+    "SOURCE_VALUE_TRANSLATION_": "L4",
+    "SOURCE_ANOMALY_": "L6"
+  },
+  "issue_code_suffix_layers": {
+    "_CONFLICT": "L6"
+  }
+}

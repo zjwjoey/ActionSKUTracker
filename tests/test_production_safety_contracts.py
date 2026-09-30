@@ -11,12 +11,12 @@ def test_daily_run_is_dry_run_until_explicit_apply():
     assert resolve_daily_run_dry_run(parser.parse_args(["daily-run", "--apply"]).dry_run) is False
 
 
-def test_zero_detail_limit_is_disable_not_unlimited():
+def test_zero_detail_limit_means_unlimited_detail_candidates():
     from action_tracker.orchestrator.daily import _select_detail_plans
 
     plans = [{"sku": "1", "need_detail": True, "reason": "NEW"}]
     selected, deferred = _select_detail_plans(plans, 0)
-    assert selected == [] and deferred == plans
+    assert selected == plans and deferred == []
 
 
 def test_repository_config_has_no_developer_absolute_cookie_or_reference_path():

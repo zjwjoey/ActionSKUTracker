@@ -18,8 +18,71 @@ from action_tracker.dictionary import (
 )
 from action_tracker.excel.reader import ES_MAP, ZH_MAP
 from action_tracker.excel.writer import RUN_LOG_HEADERS
-from action_tracker.exporting.service import ExportValidationError, export_catalog
+from action_tracker.exporting.service import ExportValidationError, _publish_export_pair, export_catalog
 from action_tracker.exporting.excel_writer import write_catalog_xlsx
+from action_tracker.exporting.qa_log import build_export_qa_log
+from action_tracker.exporting.dictionary_join import _zh_remarks
+
+
+def test_export_qa_log_preserves_duplicate_findings_with_stable_unique_ids():
+    duplicate = {
+        "sku": "1001", "field": "description", "code": "DESCRIPTION_REVIEW",
+        "review_only": True, "evidence": {"source": "same", "target": "same"},
+    }
+    distinct = {
+        "sku": "1001", "field": "details", "code": "DETAIL_REVIEW",
+        "review_only": True, "evidence": {"source": "other", "target": "other"},
+    }
+    first = build_export_qa_log({"zh": {"issues": [duplicate, distinct, duplicate]}})
+    reversed_order = build_export_qa_log({"zh": {"issues": [distinct, dict(duplicate), dict(duplicate)]}})
+
+    assert len(first) == 3
+    assert [row["qa_id"] for row in first] == [row["qa_id"] for row in reversed_order]
+    assert len({row["qa_id"] for row in first}) == 3
+    assert [row["occurrence"] for row in first] == ["1", "2", "1"]
+
+
+def test_chinese_remarks_preserve_unrecognized_raw_official_labels():
+    remarks = _zh_remarks({"raw_tags": "Nuevo | Etiqueta piloto | -21%"})
+
+    assert "Nuevo（官网新品标签）" in remarks
+    assert "Etiqueta piloto" in remarks
+    assert "-21%" not in remarks
+
+
+def test_export_bundle_rolls_back_workbook_qa_log_and_manifest_on_publish_failure(tmp_path, monkeypatch):
+    output = tmp_path / "catalog.xlsx"
+    manifest = tmp_path / "catalog.manifest.json"
+    qa_log = tmp_path / "catalog_QA_LOG.csv"
+    preview = tmp_path / ".catalog.preview.xlsx"
+    qa_preview = tmp_path / ".catalog.preview.csv"
+    old_payloads = {
+        output: b"old workbook", manifest: b"old manifest", qa_log: b"old qa log",
+    }
+    new_payloads = {preview: b"new workbook", qa_preview: b"new qa log"}
+    for path, payload in {**old_payloads, **new_payloads}.items():
+        path.write_bytes(payload)
+
+    original_replace = Path.replace
+    should_fail = True
+
+    def fail_first_manifest_replace(self, target):
+        nonlocal should_fail
+        target_path = Path(target)
+        if target_path == manifest and should_fail:
+            should_fail = False
+            raise OSError("simulated manifest publish failure")
+        return original_replace(self, target_path)
+
+    monkeypatch.setattr(Path, "replace", fail_first_manifest_replace)
+    with pytest.raises(OSError, match="simulated manifest publish failure"):
+        _publish_export_pair(
+            preview, output, manifest, {"new": True},
+            qa_log_preview_path=qa_preview, qa_log_path=qa_log,
+        )
+
+    assert {path: path.read_bytes() for path in old_payloads} == old_payloads
+    assert not list(tmp_path.glob("*.old.*"))
 
 
 def _cfg(tmp_path: Path) -> dict:
@@ -132,6 +195,11 @@ def test_es_export_reads_latest_formal_master_and_keeps_sources_read_only(tmp_pa
 
     assert result["source_kind"] == "MASTER_CURRENT"
     assert result["sku_count"] == 2
+    assert result["release_gate_passed"] is True
+    assert result["quality_status"] == "RELEASE_PASS_NOT_GOLD"
+    assert result["gold_status"] == "NOT_CERTIFIED"
+    assert result["gold_eligible"] is False
+    assert result["localization_review_finding_count"] == 0
     assert hashlib.sha256(cfg["paths"]["master"].read_bytes()).hexdigest() == before
     workbook = openpyxl.load_workbook(result["output"], data_only=True)
     try:
@@ -152,6 +220,9 @@ def test_es_export_reads_latest_formal_master_and_keeps_sources_read_only(tmp_pa
     assert manifest["source_master_file_hash"] == before
     assert len(manifest["source_master_hash"]) == 64
     assert manifest["history_stats"]["status"] == "NOT_CONFIGURED"
+    assert manifest["validation_results"]["gold_status"] == "NOT_CERTIFIED"
+    assert manifest["release_gate"]["gold_eligible"] is False
+    assert manifest["release_gate"]["quality_status"] == "RELEASE_PASS_NOT_GOLD"
 
 
 def test_image_export_writer_requires_manifest_eligible_sku_when_provided(tmp_path):
@@ -263,26 +334,76 @@ def test_zh_export_uses_field_priority_and_preserves_fact_columns(tmp_path):
         zh_row = [cell.value for cell in zh_wb["商品全量"][2]]
         assert zh_row[2] == "人工品名"
         assert zh_row[3:5] == ["家务清洁", "清洁用品"]
-        assert zh_row[5] == "模型规格"
+        assert zh_row[5] == record["spec_es"]
         assert zh_row[8] == "1,25 €/件"
         assert zh_row[9] == "Descripción española"
-        assert "中文描述待审核" in zh_row[13]
+        assert "中文描述待审核" not in zh_row[13]
         assert "CURRENT" not in zh_row[13]
         assert [zh_row[index] for index in (1, 6, 7, 11, 12)] == [es_row[index] for index in (1, 6, 7, 11, 12)]
     finally:
         es_wb.close()
         zh_wb.close()
     manifest = json.loads(Path(zh["manifest"]).read_text(encoding="utf-8"))
-    assert manifest["dictionary_fallback_counts"] == {"中文描述待审核": 1}
+    assert manifest["dictionary_fallback_counts"] == {
+        "中文描述待审核": 1, "中文规格待审核": 1,
+    }
+    qa_log_path = Path(zh["qa_log"])
+    with qa_log_path.open(encoding="utf-8-sig", newline="") as handle:
+        qa_rows = list(csv.DictReader(handle))
+    assert any(row["sku"] == "1001" and row["field"] == "description" for row in qa_rows)
+    assert any(row["sku"] == "1001" and row["field"] == "spec" for row in qa_rows)
+    assert manifest["qa_log"]["artifact"] == qa_log_path.name
+    assert manifest["qa_log"]["row_count"] == len(qa_rows)
+    assert manifest["qa_log"]["sha256"] == hashlib.sha256(qa_log_path.read_bytes()).hexdigest()
 
 
-def test_zh_export_adds_confirmed_brand_marker_but_keeps_manual_title(tmp_path):
+def test_formal_export_wires_approved_terms_into_release_gate(tmp_path):
+    cfg = _cfg(tmp_path)
+    run_id = "2026-08-24_010000"
+    record = _record("1001")
+    record.update({"desc_es": "Caja de plástico", "desc_zh": "木质收纳盒"})
+    _write_master(cfg["paths"]["master"], [_run_log(run_id, "2026-08-24")], [record])
+    _write_snapshot(cfg["paths"]["snapshots"], run_id, "2026-08-24", [record])
+    _write_dictionary(
+        cfg["paths"]["dictionary_baseline"], record,
+        terms=[{
+            "term_es": "madera", "term_zh": "木质", "term_type": "material",
+            "forbidden_zh": "", "review_status": "APPROVED",
+        }],
+    )
+
+    result = export_catalog(cfg, language="zh", export_date="2026-08-24", no_images=True)
+    assert result["release_gate_passed"] is False
+    assert result["quality_status"] == "BLOCKED"
+    assert result["gold_status"] == "NOT_CERTIFIED"
+    assert result["gold_eligible"] is False
+
+    manifest = json.loads(Path(result["manifest"]).read_text(encoding="utf-8"))
+    gate = manifest["release_gate"]
+    assert gate["passed"] is False
+    assert gate["quality_status"] == "BLOCKED"
+    assert gate["gold_status"] == "NOT_CERTIFIED"
+    assert manifest["validation_results"]["gold_status"] == "NOT_CERTIFIED"
+    assert manifest["validation_results"]["localization_review_finding_count"] == len(gate["review_findings"])
+    assert result["localization_review_finding_count"] == len(gate["review_findings"])
+    assert gate["counts"]["APPROVED_TERM_UNSUPPORTED_TARGET_REVIEW"] == 1
+    finding = next(
+        item for item in gate["review_findings"]
+        if item["code"] == "APPROVED_TERM_UNSUPPORTED_TARGET_REVIEW"
+    )
+    assert finding["field"] == "description"
+
+
+def test_zh_export_keeps_confirmed_brand_separate_but_preserves_manual_title(tmp_path):
     cfg = _cfg(tmp_path)
     run_id = "2026-08-24_010000"
     record = _record("1001")
     _write_master(cfg["paths"]["master"], [_run_log(run_id, "2026-08-24")], [record])
     _write_snapshot(cfg["paths"]["snapshots"], run_id, "2026-08-24", [record])
-    _write_dictionary(cfg["paths"]["dictionary_baseline"], record)
+    _write_dictionary(
+        cfg["paths"]["dictionary_baseline"], record,
+        manual=[{"scope": "product", "key": "1001", "field": "name_zh_standard", "value": "字典品名"}],
+    )
     _write_csv(cfg["paths"]["dictionary_baseline"] / "brand_dictionary.csv", BRAND_DICTIONARY_HEADERS, [{
         "brand_id": "BrandX", "canonical_name": "BrandX", "confidence": "REFERENCE",
     }])
@@ -290,7 +411,7 @@ def test_zh_export_adds_confirmed_brand_marker_but_keeps_manual_title(tmp_path):
     result = export_catalog(cfg, language="zh", export_date="2026-08-24", no_images=True)
     workbook = openpyxl.load_workbook(result["output"], data_only=True)
     try:
-        assert workbook["商品全量"].cell(2, 3).value == "BrandX牌字典品名"
+        assert workbook["商品全量"].cell(2, 3).value == "字典品名"
     finally:
         workbook.close()
 
@@ -360,8 +481,8 @@ def test_zh_export_stale_dictionary_value_falls_back_without_dropping_sku(tmp_pa
         assert row[1] == "1001"
         assert row[2] == "Producto español"
         assert row[5] == "2 unidades"
-        assert "中文品名待审核" in row[13]
-        assert "中文规格待审核" in row[13]
+        assert "中文品名待审核" not in row[13]
+        assert "中文规格待审核" not in row[13]
     finally:
         workbook.close()
 
@@ -553,14 +674,14 @@ def test_zh_export_marks_empty_derived_fields_for_review(tmp_path):
         assert row[4] is None
         assert row[9] is None
         assert row[10] is None
-        assert "中文分类2待审核" in row[13]
-        assert "中文描述待审核" in row[13]
-        assert "中文产品详情待审核" in row[13]
+        assert "中文分类2待审核" not in row[13]
+        assert "中文描述待审核" not in row[13]
+        assert "中文产品详情待审核" not in row[13]
     finally:
         workbook.close()
 
 
-def test_zh_export_does_not_use_low_quality_model_result(tmp_path):
+def test_zh_export_does_not_auto_use_unreviewed_model_candidate(tmp_path):
     cfg = _cfg(tmp_path)
     run_id = "2026-08-24_010000"
     record = _record("1001")
@@ -579,7 +700,7 @@ def test_zh_export_does_not_use_low_quality_model_result(tmp_path):
         "spec_zh_standard": "", "source_hash": "stale", "translation_status": "NEEDS_REVIEW",
     }, model=[{
         "sku": "1001", "source_hash": source_hash, "name_zh_standard": "低质量模型名",
-        "spec_zh_standard": "低质量规格", "quality_status": "NEEDS_REVIEW",
+        "spec_zh_standard": "低质量规格", "quality_status": "OK",
     }])
 
     result = export_catalog(cfg, language="zh", export_date="2026-08-24", no_images=True)
@@ -588,8 +709,8 @@ def test_zh_export_does_not_use_low_quality_model_result(tmp_path):
         row = [cell.value for cell in workbook["商品全量"][2]]
         assert row[2] == record["name_es"]
         assert row[5] == record["spec_es"]
-        assert "中文品名待审核" in row[13]
-        assert "中文规格待审核" in row[13]
+        assert "中文品名待审核" not in row[13]
+        assert "中文规格待审核" not in row[13]
     finally:
         workbook.close()
 

@@ -63,6 +63,34 @@ def test_apply_detail_retry_updates_only_detail_fields(tmp_path, monkeypatch):
     assert captured["price_events"] == [] and captured["event_events"] == []
 
 
+def test_apply_retry_ignores_unplanned_parent_details_only_when_master_matches(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    parent = _parent(cfg)
+    (parent / "product_updates.csv").write_text(
+        "sku,canonical_id,reason,need_detail\n1001,ACT0001001,NEW,true\n",
+        encoding="utf-8",
+    )
+    (parent / "detail_fetch.jsonl").write_text(json.dumps({"sku": "1002", "detail": {
+        "sku": "1002", "desc_es": "Existing description", "details_es": "Existing details",
+    }}) + "\n", encoding="utf-8")
+    current = {
+        "1001": {"sku": "1001", "canonical_id": "ACT0001001", "name_es": "Old",
+                 "current_price": 1.99, "status": "CURRENT"},
+        "1002": {"sku": "1002", "canonical_id": "ACT0001002",
+                 "desc_es": "Existing description", "details_es": "Existing details",
+                 "current_price": 2.99, "status": "CURRENT"},
+    }
+    captured = {}
+    monkeypatch.setattr(detail_retry.reader, "load_current", lambda path: current)
+    monkeypatch.setattr(detail_retry.writer, "write_master", lambda cfg, **kwargs: captured.update(kwargs))
+
+    result = detail_retry.apply_detail_retry(cfg, "run-1")
+
+    assert result["applied_skus"] == 1
+    assert current["1002"]["desc_es"] == "Existing description"
+    assert set(captured["updated_records"]) == {"1001", "1002"}
+
+
 def test_retry_plans_filter_listing_only_new_rows_when_presence_evidence_exists(tmp_path):
     cfg = _cfg(tmp_path)
     parent = _parent(cfg)
@@ -82,7 +110,7 @@ def test_retry_plans_filter_listing_only_new_rows_when_presence_evidence_exists(
     assert [plan["sku"] for plan in plans] == ["1001"]
 
 
-def test_retry_plans_do_not_expand_deferred_daily_backlog_rows(tmp_path):
+def test_retry_plans_include_deferred_candidates_from_parent_observation(tmp_path):
     cfg = _cfg(tmp_path)
     parent = _parent(cfg)
     (parent / "product_updates.csv").write_text(
@@ -98,7 +126,7 @@ def test_retry_plans_do_not_expand_deferred_daily_backlog_rows(tmp_path):
 
     plans = detail_retry._plans(parent)
 
-    assert [plan["sku"] for plan in plans] == ["1001"]
+    assert [plan["sku"] for plan in plans] == ["1001", "1002"]
 
 
 def test_apply_detail_retry_requires_committed_qa_observation(tmp_path, monkeypatch):

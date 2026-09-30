@@ -95,7 +95,11 @@ def dictionary_apply(cfg: dict[str, Any], *, run_id: str, dry_run: bool = True) 
     diff_headers = ["sku", "field", "old_value", "new_value", "source", "resolver_status", "reason"]
     _write_csv(output_dir / "apply_preview.csv", diff_headers, preview_rows)
     _write_csv(output_dir / "field_diff.csv", diff_headers, preview_rows)
-    _write_csv(output_dir / "review_required.csv", ["sku", "readiness", "field", "status", "source", "reason"], review_rows)
+    _write_csv(
+        output_dir / "review_required.csv",
+        ["sku", "readiness", "field", "status", "source", "candidate_value", "reason"],
+        review_rows,
+    )
     auto_count = sum(item.readiness == "AUTO_READY" for item in resolutions)
     review_count = sum(item.readiness == "REVIEW_REQUIRED" for item in resolutions)
     blocked_count = sum(item.readiness == "SOURCE_BLOCKED" for item in resolutions)
@@ -186,7 +190,8 @@ def _review_rows(resolutions: list[RecordResolution]) -> list[dict[str, str]]:
             field = _field_for_reason(reason)
             result = item.fields.get(field)
             rows.append({"sku": item.sku, "readiness": item.readiness, "field": field,
-                         "status": result.status if result else "BLOCKED", "source": result.source if result else "source_quality", "reason": reason})
+                         "status": result.status if result else "BLOCKED", "source": result.source if result else "source_quality",
+                         "candidate_value": result.value if result else "", "reason": reason})
     return rows
 
 

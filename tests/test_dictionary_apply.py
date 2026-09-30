@@ -32,6 +32,9 @@ def test_dictionary_apply_dry_run_writes_preview_without_changing_master(tmp_pat
     assert result["dry_run"] is True
     assert (output_dir / "apply_preview.csv").exists()
     assert (output_dir / "review_required.csv").exists()
+    with (output_dir / "review_required.csv").open(encoding="utf-8-sig", newline="") as handle:
+        review_rows = list(csv.DictReader(handle))
+    assert any(row["field"] == "name" and row["candidate_value"] == "字典品名" for row in review_rows)
     manifest = json.loads((output_dir / "apply_manifest.json").read_text(encoding="utf-8"))
     assert manifest["master_hash_before"] == before
     assert manifest["formal_write"] is False

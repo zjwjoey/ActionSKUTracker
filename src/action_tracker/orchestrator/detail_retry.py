@@ -91,12 +91,11 @@ def _plans(parent: Path) -> list[dict]:
         needs = str(row.get("need_detail", "")).lower() in {"1", "true", "yes"}
         if "need_detail" not in row:
             needs = row.get("reason") in _DETAIL_REASONS
-        # A daily run may retain excess candidates as a recorded backlog.  A
-        # retry reproduces only the batch that was actually authorized for
-        # that parent observation; it must not bypass the per-run access
-        # budget by expanding deferred rows into a one-off bulk request.
-        if "detail_selected" in row:
-            needs = needs and str(row.get("detail_selected", "")).lower() in {"1", "true", "yes"}
+        # A committed observation may have deferred candidates under an older
+        # configured cap. The explicit detail-retry command drains those rows
+        # from this frozen parent observation without re-running Presence or
+        # lifecycle decisions; the global access controller still governs the
+        # retry session.
         if not needs:
             continue
         sku = str(row.get("sku") or "")
@@ -182,8 +181,10 @@ def apply_detail_retry(cfg: dict[str, Any], parent_run_id: str) -> dict:
         raise ValueError("PARENT_DETAIL_CANDIDATES_MISSING")
     completed = _completed_details(parent)
     unexpected = set(completed) - planned
-    if unexpected:
-        raise ValueError(f"DETAIL_CHECKPOINT_NOT_PLANNED: {sorted(unexpected)[:5]}")
+    parent_completed = set(updater._read_ckpt(parent / "detail_fetch.jsonl"))
+    retry_unexpected = unexpected - parent_completed
+    if retry_unexpected:
+        raise ValueError(f"DETAIL_RETRY_CHECKPOINT_NOT_PLANNED: {sorted(retry_unexpected)[:5]}")
     pending = planned - set(completed)
     if pending:
         raise ValueError(f"DETAIL_RETRY_INCOMPLETE: {len(pending)} SKU(s) still pending")
@@ -194,9 +195,87 @@ def apply_detail_retry(cfg: dict[str, Any], parent_run_id: str) -> dict:
         raise ValueError(
             f"MASTER_CURRENT_COUNT_CHANGED: expected={expected_current} actual={len(current)}"
         )
+    # The parent daily run may already have committed detail records for
+    # candidates that the retry eligibility filter excludes (for example,
+    # listing-only NEW rows). Ignore those checkpoint rows only after proving
+    # their detail facts already match the current Master projection.
+    for sku in sorted(unexpected):
+        record = current.get(sku)
+        if record is None:
+            raise ValueError(f"PARENT_DETAIL_SKU_NOT_CURRENT: {sku}")
+        detail = completed[sku]
+        mismatched = [
+            field for field in _DETAIL_MASTER_FIELDS
+            if detail.get(field) not in (None, "") and record.get(field) != detail.get(field)
+        ]
+        if mismatched:
+            raise ValueError(f"PARENT_DETAIL_NOT_ALREADY_COMMITTED: {sku}:{','.join(mismatched)}")
     absent = planned - set(current)
     if absent:
         raise ValueError(f"DETAIL_SKU_NOT_CURRENT: {sorted(absent)[:5]}")
+
+    # In SQLite PRIMARY mode, do not route through the legacy Excel writer.
+    # Apply only the newly fetched Spanish description/details from retry
+    # checkpoints; the parent run already committed its original Detail batch.
+    from ..database.integration import database_path, regenerate_compatibility_exports, storage_mode
+    if storage_mode(cfg) == "SQLITE_PRIMARY":
+        from ..database.production import apply_detail_only_updates
+        from ..database.repository import ProductionRepository
+
+        retry_rows: dict[str, dict] = {}
+        for retry_dir in sorted(parent.glob("detail_retries/*")):
+            checkpoint = retry_dir / "detail_fetch.jsonl"
+            for sku, entry in updater._read_ckpt(checkpoint).items():
+                if sku not in planned:
+                    raise ValueError(f"DETAIL_RETRY_CHECKPOINT_NOT_PLANNED: {sku}")
+                detail = entry.get("detail") if isinstance(entry, dict) else None
+                if not isinstance(detail, dict) or str(detail.get("sku") or sku) != str(sku):
+                    raise ValueError(f"DETAIL_RETRY_CHECKPOINT_INVALID: {sku}")
+                if detail.get("source_quality") not in (None, "OK"):
+                    raise ValueError(f"DETAIL_RETRY_SOURCE_QUALITY_NOT_OK: {sku}")
+                if not detail.get("desc_es") or not detail.get("details_es"):
+                    raise ValueError(f"DETAIL_RETRY_CONTENT_INCOMPLETE: {sku}")
+                retry_rows[str(sku)] = detail
+        if not retry_rows:
+            return {"status": "NO_RETRY_DETAILS", "parent_run_id": parent_run_id,
+                    "applied_skus": 0, "applied_fields": 0, "master": str(paths["master"])}
+
+        repo = ProductionRepository(database_path(cfg))
+        primary_current = {str(row["sku"]): row for row in repo.load_current_export_records()}
+        payload: list[dict[str, Any]] = []
+        for sku, detail in sorted(retry_rows.items()):
+            row = primary_current.get(sku)
+            if row is None or str(row.get("status") or "") != "CURRENT":
+                raise ValueError(f"DETAIL_RETRY_SKU_NOT_CURRENT: {sku}")
+            fetched_url = str(detail.get("product_url") or "").strip()
+            current_url = str(row.get("product_url") or "").strip()
+            if not fetched_url or fetched_url != current_url:
+                raise ValueError(f"DETAIL_RETRY_URL_MISMATCH: {sku}")
+            for source_field, target_field in (("desc_es", "desc_es"), ("details_es", "details_es")):
+                old_value = row.get(target_field)
+                new_value = str(detail.get(source_field) or "").strip()
+                if old_value not in (None, "") and old_value != new_value:
+                    raise ValueError(f"DETAIL_RETRY_TARGET_CONFLICT: {sku}:{target_field}")
+            payload.append({"sku": sku, "desc_es": detail["desc_es"], "details_es": detail["details_es"]})
+
+        import_id = f"programmatic-detail-retry-{madrid_now().strftime('%Y%m%d_%H%M%S')}-{len(payload)}"
+        retry_dirs = sorted(parent.glob("detail_retries/*"))
+        audit_dir = retry_dirs[-1]
+        apply_result = apply_detail_only_updates(
+            database_path(cfg), payload, import_id=import_id,
+            evidence={"parent_run_id": parent_run_id, "source": "PROGRAMMATIC_DETAIL_RETRY",
+                      "retry_id": audit_dir.name, "kind": "DEFERRED_DETAIL_BACKLOG"},
+        )
+        head = repo.current_head()
+        sync = regenerate_compatibility_exports(cfg, head) if head else None
+        result = {"status": "APPLIED", "parent_run_id": parent_run_id,
+                  "retry_id": audit_dir.name, "retry_rows": len(payload),
+                  **apply_result, "master_sync": sync,
+                  "master": str(paths["master"]), "import_id": import_id}
+        (audit_dir / "detail_apply_report.json").write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        return result
 
     changed_skus = 0
     changed_fields = 0

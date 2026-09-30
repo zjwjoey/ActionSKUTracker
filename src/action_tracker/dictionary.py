@@ -19,6 +19,9 @@ DICTIONARY_STATUSES = (
     "UNTRANSLATED", "LEGACY_UNVERIFIED", "MODEL_TRANSLATED",
     "RULE_NORMALIZED", "NEEDS_REVIEW", "HUMAN_REVIEWED", "LOCKED",
 )
+PRODUCT_TRANSLATION_APPROVAL_STATUSES = frozenset({
+    "APPROVED", "HUMAN_APPROVED", "CONFIRMED", "HUMAN_REVIEWED", "LOCKED",
+})
 _LEGACY_TRANSLATION_STATUS = {
     "OK": "LEGACY_UNVERIFIED", "FALLBACK_ES": "UNTRANSLATED",
     "NOT_CONFIGURED": "UNTRANSLATED", "STALE": "NEEDS_REVIEW",
@@ -75,6 +78,28 @@ def _text(value: object) -> str:
 
 def _is_locked(value: object) -> bool:
     return _text(value).lower() in {"1", "true", "yes", "locked"}
+
+
+def is_approved_product_translation(row: Mapping[str, object]) -> bool:
+    """Require explicit review evidence before derived free-text is usable.
+
+    A source-hash match or a model quality score proves freshness/basic checks,
+    not semantic Owner approval. Legacy rows with no separate review column
+    remain usable only when their translation status itself explicitly records
+    human review/lock.
+    """
+    review_status = _text(row.get("review_status")).upper()
+    translation_status = _text(row.get("translation_status")).upper()
+    if (
+        review_status in {"NEEDS_REVIEW", "UNREVIEWED", "PENDING", "REJECTED"}
+        or translation_status in {"NEEDS_REVIEW", "UNTRANSLATED", "LEGACY_UNVERIFIED"}
+    ):
+        return False
+    if review_status in PRODUCT_TRANSLATION_APPROVAL_STATUSES:
+        return True
+    if not review_status and translation_status in {"HUMAN_REVIEWED", "LOCKED"}:
+        return True
+    return _is_locked(row.get("locked")) and review_status not in {"NEEDS_REVIEW", "REJECTED"}
 
 
 def is_confirmed_brand_record(row: Mapping[str, object]) -> bool:

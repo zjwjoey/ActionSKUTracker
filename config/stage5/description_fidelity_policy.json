@@ -1,0 +1,10 @@
+{
+  "policy_id": "ACTION_DESCRIPTION_FIDELITY_V1",
+  "compression_review": {
+    "minimum_source_characters": 120,
+    "minimum_target_characters": 16,
+    "minimum_target_source_ratio": 0.1,
+    "heuristic_only": true
+  },
+  "automatic_rewrite": false
+}

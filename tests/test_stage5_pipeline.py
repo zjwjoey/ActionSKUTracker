@@ -3,10 +3,12 @@ from __future__ import annotations
 import importlib.util
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from action_tracker.stage5 import pipeline as stage5_pipeline
 from action_tracker.exporting.dictionary_join import DictionaryContext
 from action_tracker.services.hashing import localization_source_hash
 from action_tracker.stage5.pipeline import (
@@ -18,6 +20,7 @@ from action_tracker.stage5.pipeline import (
     environment_manifest,
     load_owner_correction_manifest,
     load_contracts,
+    model_input_payload,
     model_requests,
     plan_batch,
     sha256_file,
@@ -106,6 +109,37 @@ def test_stage5_input_rejects_reference_target_and_source_hash_change():
         validate_input_rows([row], contracts)
 
 
+def test_shared_term_resolver_implementation_is_bound_to_stage5_identity(monkeypatch):
+    before = load_contracts(ROOT)
+    term_resolver_path = ROOT / "src/action_tracker/translation/term_resolver.py"
+    original_sha256_file = stage5_pipeline.sha256_file
+
+    def changed_term_resolver_hash(path):
+        if Path(path) == term_resolver_path:
+            return "0" * 64
+        return original_sha256_file(path)
+
+    monkeypatch.setattr(stage5_pipeline, "sha256_file", changed_term_resolver_hash)
+    after = load_contracts(ROOT)
+
+    assert before.hashes["pipeline"] != after.hashes["pipeline"]
+
+
+def test_approved_term_qa_implementation_is_bound_to_stage5_identity(monkeypatch):
+    before = load_contracts(ROOT)
+    checker_path = ROOT / "src/action_tracker/translation/approved_terms.py"
+    original_sha256_file = stage5_pipeline.sha256_file
+
+    def changed_checker_hash(path):
+        if Path(path) == checker_path:
+            return "f" * 64
+        return original_sha256_file(path)
+
+    monkeypatch.setattr(stage5_pipeline, "sha256_file", changed_checker_hash)
+    after = load_contracts(ROOT)
+    assert before.hashes["pipeline"] != after.hashes["pipeline"]
+
+
 def test_stage5_input_rejects_non_incremental_scope_and_duplicates():
     contracts = load_contracts(ROOT)
     row = _row()
@@ -125,6 +159,203 @@ def test_rule_first_plan_never_sends_categories_to_model():
     requests = model_requests(plans)
     assert [request["field"] for request in requests] == ["description", "details"]
     assert {plan.field for plan in plans if plan.resolution_path == "RULE"} == {"name", "cat1", "cat2", "spec"}
+
+
+def test_rule_covered_detail_cell_bypasses_model_and_preserves_pair_order():
+    contracts = load_contracts(ROOT)
+    source = _source(details=(
+        "Número de turnos de limpieza: 42; A color: No; "
+        "Material: Polipropileno (PP); Tipo de plato: No desechable"
+    ))
+    plans = plan_batch(validate_input_rows([_row(source)], contracts), _context(source), contracts)
+    detail_plan = next(plan for plan in plans if plan.field == "details")
+
+    assert detail_plan.resolution_path == "RULE"
+    assert detail_plan.reason == "DETAIL_TERMINOLOGY_RULE"
+    assert detail_plan.resolver is not None
+    assert detail_plan.resolver.source == "detail_terminology"
+    assert detail_plan.resolver.value == "洗涤次数: 42次; 是否彩色: 否; 材质: 聚丙烯（PP）; 餐具类型: 非一次性"
+    assert all(request["field"] != "details" for request in model_requests(plans))
+
+    candidates, failures, _, _ = build_batch(
+        [detail_plan], {}, contracts, _identity(), dictionary_hash="dictionary-v1",
+    )
+    detail_candidate = candidates[0]
+    assert detail_candidate["model_invoked"] is False
+    assert detail_candidate["status"] == "RULE_RESOLVED"
+    assert detail_candidate["final_candidate"] == detail_plan.resolver.value
+    assert failures == []
+
+
+def test_unmapped_closed_enum_details_route_to_review_without_model_request():
+    contracts = load_contracts(ROOT)
+    source = _source(details="Tipo de batería: Alcalina")
+    rows = validate_input_rows([_row(source)], contracts)
+
+    plans = plan_batch(rows, _context(source), contracts)
+    detail_plan = next(plan for plan in plans if plan.field == "details")
+
+    assert detail_plan.resolution_path == "RESOLVER"
+    assert detail_plan.reason == "DETAIL_ENUM_UNMAPPED"
+    assert detail_plan.resolver is not None
+    assert detail_plan.resolver.status == "REVIEW"
+    assert "Alcalina" in detail_plan.resolver.value
+    assert all(request["field"] != "details" for request in model_requests(plans))
+
+    candidates, failures, reviews, _ = build_batch(
+        plans, {}, contracts, _identity(), dictionary_hash="dictionary",
+    )
+    detail_candidate = next(item for item in candidates if item["source_field"] == "details")
+    detail_review = next(item for item in reviews if item["field"] == "details")
+    detail_failure = next(item for item in failures if item["field"] == "details")
+    assert detail_candidate["model_invoked"] is False
+    assert detail_candidate["final_candidate"] is None
+    assert detail_review["review_status"] == "PENDING"
+    assert "DETAIL_ENUM_UNMAPPED" in detail_review["guard_findings"]
+    assert detail_failure["action"] == "HUMAN_REVIEW_REQUIRED"
+    assert detail_failure["failure_type"] == "SEMANTIC_REVIEW_REQUIRED"
+    assert detail_failure["severity"] == "P2"
+
+    unknown_route = replace(detail_plan, reason="UNCLASSIFIED_INTERNAL_ROUTE")
+    _, unknown_failures, _, _ = build_batch(
+        [unknown_route], {}, contracts, _identity(), dictionary_hash="dictionary",
+    )
+    assert unknown_failures[0]["failure_type"] == "SEMANTIC_REVIEW_REQUIRED"
+    assert unknown_failures[0]["failure_type"] != "UNCLASSIFIED_INTERNAL_ROUTE"
+
+
+def test_compressed_model_description_is_held_for_manual_review():
+    contracts = load_contracts(ROOT)
+    source = _source(description=("Este producto ofrece comodidad y facilidad de uso para el hogar. " * 5))
+    plans = plan_batch(validate_input_rows([_row(source)], contracts), _context(source), contracts)
+    raw = {
+        plan.request_id: json.dumps({plan.field: (
+            "耐用，适合日常使用。" if plan.field == "description" else "防护等级IP44；功率18.5瓦"
+        )}, ensure_ascii=False)
+        for plan in plans if plan.resolution_path == "MODEL"
+    }
+
+    candidates, failures, reviews, _ = build_batch(
+        plans, raw, contracts, _identity(), dictionary_hash="dictionary-v1",
+    )
+
+    description = next(item for item in candidates if item["source_field"] == "description")
+    failure = next(item for item in failures if item["field"] == "description")
+    review = next(item for item in reviews if item["field"] == "description")
+    assert description["final_candidate"] is None
+    assert description["status"] == "GUARD_REJECT"
+    assert "DESCRIPTION_COMPRESSION_REVIEW" in description["guard_result"]["reasons"]
+    assert any(
+        finding["code"] == "DESCRIPTION_COMPRESSION_REVIEW"
+        for finding in description["semantic_fact_findings"]
+    )
+    assert failure["failure_type"] == "SEMANTIC_REVIEW_REQUIRED"
+    assert failure["severity"] == "P2"
+    assert review["review_status"] == "PENDING"
+
+
+def test_guard_passed_model_description_still_requires_owner_review():
+    """A machine Guard pass is not semantic approval for free-text descriptions."""
+    contracts = load_contracts(ROOT)
+    source = _source(description="Madera natural para uso diario.")
+    plans = plan_batch(validate_input_rows([_row(source)], contracts), _context(source), contracts)
+    raw = {
+        plan.request_id: json.dumps({plan.field: (
+            "天然木材，适合日常使用。" if plan.field == "description"
+            else "防护等级IP44；功率18.5瓦"
+        )}, ensure_ascii=False)
+        for plan in plans if plan.resolution_path == "MODEL"
+    }
+
+    candidates, failures, reviews, _ = build_batch(
+        plans, raw, contracts, _identity(), dictionary_hash="dictionary-v1",
+    )
+
+    description = next(item for item in candidates if item["source_field"] == "description")
+    review = next(item for item in reviews if item["field"] == "description")
+    assert description["guard_result"]["accepted"] is True
+    assert description["status"] == "GUARD_PASS_PENDING_REVIEW"
+    assert description["review_status"] == "PENDING"
+    assert description["final_candidate"] == "天然木材，适合日常使用。"
+    assert review["review_status"] == "PENDING"
+    assert review["guard_findings"] == ""
+    assert not any(item["field"] == "description" for item in failures)
+
+
+def test_model_requests_carry_numeric_and_approved_fact_ledgers():
+    contracts = load_contracts(ROOT)
+    source = _source(description="Incluye 2 piezas de 10,5 cm en madera FSC®", details="Protección IP44; potencia 18,5 vatios")
+    rows = validate_input_rows([_row(source)], contracts)
+    terms = ({
+        "term_es": "piezas", "term_zh": "件", "term_type": "quantity",
+        "review_status": "APPROVED",
+    }, {
+        "term_es": "piezas", "term_zh": "组件", "term_type": "quantity",
+        "review_status": "PENDING",
+    })
+    requests = model_requests(plan_batch(rows, _context(source), contracts), approved_terms=terms)
+    by_field = {request["field"]: request for request in requests}
+    assert set(by_field) == {"description", "details"}
+    assert by_field["description"]["numeric_ledger"] == ["10.5", "2"]
+    assert by_field["description"]["unit_ledger"] == ["cm"]
+    assert by_field["description"]["certification_ledger"] == ["FSC"]
+    assert by_field["description"]["approved_fact_ledger"] == [{
+        "source_term": "piezas", "approved_translation": "件", "term_type": "quantity",
+        "translation_candidates": ["件"], "ambiguous_mapping": False,
+    }]
+    assert by_field["details"]["numeric_ledger"] == ["18.5", "44"]
+    assert by_field["details"]["unit_ledger"] == ["w"]
+    assert by_field["details"]["technical_token_ledger"] == ["IP44"]
+    assert all(request["rule_first"] is True for request in requests)
+
+
+def test_model_request_identity_changes_when_selected_dictionary_changes():
+    contracts = load_contracts(ROOT)
+    source = _source(description="Incluye madera FSC")
+    rows = validate_input_rows([_row(source)], contracts)
+    context = _context(source)
+
+    original = plan_batch(rows, context, contracts)
+    changed_dictionary = plan_batch(rows, replace(context, content_hash="different-dictionary-hash"), contracts)
+    original_id = next(plan.request_id for plan in original if plan.field == "description")
+    changed_id = next(plan.request_id for plan in changed_dictionary if plan.field == "description")
+
+    assert original_id != changed_id
+
+
+def test_approved_fact_ledger_does_not_hide_conflicting_approved_translations():
+    from action_tracker.translation.approved_terms import approved_source_term_ledger
+
+    ledger = approved_source_term_ledger("Incluye madera", (
+        {"term_es": "madera", "term_zh": "木质", "term_type": "material", "review_status": "APPROVED"},
+        {"term_es": "madera", "term_zh": "木材", "term_type": "material", "review_status": "HUMAN_REVIEWED"},
+    ))
+
+    assert ledger == [{
+        "source_term": "madera", "term_type": "material", "approved_translation": "",
+        "translation_candidates": ["木材", "木质"], "ambiguous_mapping": True,
+    }]
+
+
+def test_model_input_payload_passes_all_protected_fact_ledgers():
+    payload = model_input_payload({
+        "field": "description", "source": "Incluye 2 piezas de madera FSC",
+        "numeric_ledger": ["2"], "unit_ledger": [], "technical_token_ledger": [],
+        "certification_ledger": ["FSC"],
+        "approved_fact_ledger": [{
+            "source_term": "madera", "term_type": "material", "approved_translation": "木质",
+            "translation_candidates": ["木质"], "ambiguous_mapping": False,
+        }],
+    })
+
+    assert payload["description"] == "Incluye 2 piezas de madera FSC"
+    assert payload["__protected_fact_ledger__"] == {
+        "numbers": ["2"], "units": [], "technical_tokens": [],
+        "certifications": ["FSC"], "approved_terms": [{
+            "source_term": "madera", "term_type": "material", "approved_translation": "木质",
+            "translation_candidates": ["木质"], "ambiguous_mapping": False,
+        }],
+    }
 
 
 def test_guard_rejects_unit_or_technical_corruption_before_candidate_acceptance():
@@ -151,6 +382,173 @@ def test_guard_rejects_unit_or_technical_corruption_before_candidate_acceptance(
     assert evaluation["tech_token_corruption_escaped"] == 0
     assert len(failures) == 2
     assert len(reviews) == 2
+
+
+def test_stage5_rejects_certification_and_negation_loss_or_invention():
+    contracts = load_contracts(ROOT)
+    cases = (
+        (
+            "Papel FSC® certificado, sin BPA",
+            "纸张",
+            {"CERTIFICATION_DROPPED", "NEGATION_DROPPED"},
+        ),
+        (
+            "Papel para manualidades",
+            "纸张，FSC认证，不含BPA",
+            {"CERTIFICATION_HALLUCINATED", "NEGATION_HALLUCINATED"},
+        ),
+        (
+            "Fórmula vegana",
+            "纯素配方，无硫酸盐基底",
+            {"UNSUPPORTED_NEGATIVE_ATTRIBUTE"},
+        ),
+    )
+
+    for source_description, target_description, expected in cases:
+        source = _source(description=source_description)
+        plans = plan_batch(validate_input_rows([_row(source)], contracts), _context(source), contracts)
+        raw = {
+            plan.request_id: json.dumps({plan.field: (
+                target_description if plan.field == "description" else "防护等级IP44；功率18.5瓦"
+            )}, ensure_ascii=False)
+            for plan in plans if plan.resolution_path == "MODEL"
+        }
+        candidates, _, reviews, _ = build_batch(
+            plans, raw, contracts, _identity(), dictionary_hash="dictionary-v1",
+        )
+
+        description = next(item for item in candidates if item["source_field"] == "description")
+        assert description["status"] == "GUARD_REJECT"
+        assert expected.issubset(set(description["guard_result"]["reasons"]))
+        assert any(item["field"] == "description" for item in reviews)
+
+
+def test_stage5_blocks_approved_forbidden_term_in_same_source_field():
+    contracts = load_contracts(ROOT)
+    source = _source(description="Incluye 2 piezas de madera")
+    plans = plan_batch(validate_input_rows([_row(source)], contracts), _context(source), contracts)
+    raw = {
+        plan.request_id: json.dumps({plan.field: (
+            "包含2件木材" if plan.field == "description" else "防护等级IP44；功率18.5瓦"
+        )}, ensure_ascii=False)
+        for plan in plans if plan.resolution_path == "MODEL"
+    }
+    candidates, failures, reviews, evaluation = build_batch(
+        plans, raw, contracts, _identity(), dictionary_hash="dictionary-v1",
+        approved_terms=({
+            "term_es": "madera", "term_zh": "木质", "term_type": "material",
+            "forbidden_zh": "木材", "review_status": "APPROVED",
+        },),
+    )
+    description = next(item for item in candidates if item["source_field"] == "description")
+    assert description["status"] == "GUARD_REJECT"
+    assert "TERM_FORBIDDEN_TRANSLATION" in description["guard_result"]["reasons"]
+    assert description["final_candidate"] is None
+    assert any(item["field"] == "description" for item in failures)
+    assert any(item["field"] == "description" for item in reviews)
+    assert evaluation["term_forbidden_reject"] == 1
+    assert evaluation["forbidden_term_escaped"] == 0
+
+
+def test_stage5_routes_unapproved_canonical_synonym_to_human_review():
+    contracts = load_contracts(ROOT)
+    source = _source(description="Incluye 2 piezas de madera")
+    plans = plan_batch(validate_input_rows([_row(source)], contracts), _context(source), contracts)
+    raw = {
+        plan.request_id: json.dumps({plan.field: (
+            "包含2件木头" if plan.field == "description" else "防护等级IP44；功率18.5瓦"
+        )}, ensure_ascii=False)
+        for plan in plans if plan.resolution_path == "MODEL"
+    }
+    candidates, _, reviews, evaluation = build_batch(
+        plans, raw, contracts, _identity(), dictionary_hash="dictionary-v1",
+        approved_terms=({
+            "term_es": "madera", "term_zh": "木质", "term_type": "material",
+            "forbidden_zh": "", "review_status": "APPROVED",
+        },),
+    )
+    description = next(item for item in candidates if item["source_field"] == "description")
+    assert description["status"] == "GUARD_REJECT"
+    assert "APPROVED_TERM_CANONICAL_ABSENT_REVIEW" in description["guard_result"]["reasons"]
+    finding = next(item for item in description["semantic_fact_findings"] if item["code"] == "APPROVED_TERM_CANONICAL_ABSENT_REVIEW")
+    assert finding["canonical_absence_is_not_proof_of_error"] is True
+    assert any(item["field"] == "description" for item in reviews)
+    assert evaluation["approved_term_review"] == 1
+
+
+def test_stage5_routes_glossary_backed_cross_field_movement_to_review():
+    contracts = load_contracts(ROOT)
+    source = _source(details="Material: madera; Protección IP44; potencia 18,5 vatios")
+    plans = plan_batch(validate_input_rows([_row(source)], contracts), _context(source), contracts)
+    raw = {
+        plan.request_id: json.dumps({plan.field: (
+            "包含2件木质产品，尺寸10.5厘米" if plan.field == "description"
+            else "材质：木质；防护等级IP44；功率18.5瓦"
+        )}, ensure_ascii=False)
+        for plan in plans if plan.resolution_path == "MODEL"
+    }
+
+    candidates, failures, reviews, evaluation = build_batch(
+        plans, raw, contracts, _identity(), dictionary_hash="dictionary-v1",
+        approved_terms=({
+            "term_es": "madera", "term_zh": "木质", "term_type": "material",
+            "forbidden_zh": "", "review_status": "APPROVED",
+        },),
+    )
+
+    description = next(item for item in candidates if item["source_field"] == "description")
+    assert description["status"] == "GUARD_REJECT"
+    assert description["final_candidate"] is None
+    assert "APPROVED_TERM_CROSS_FIELD_REVIEW" in description["guard_result"]["reasons"]
+    finding = next(
+        item for item in description["semantic_fact_findings"]
+        if item["code"] == "APPROVED_TERM_CROSS_FIELD_REVIEW"
+    )
+    assert finding["source_field"] == "details"
+    assert finding["field"] == "description"
+    review = next(item for item in reviews if item["field"] == "description")
+    assert review["review_id"] == hashlib.sha256(
+        f"stage5-review-v1|{description['candidate_id']}".encode("utf-8")
+    ).hexdigest()
+    assert any(item["field"] == "description" for item in failures)
+    assert evaluation["approved_term_cross_field_review"] == 1
+
+
+def test_stage5_routes_glossary_term_without_any_source_field_support_to_review():
+    contracts = load_contracts(ROOT)
+    source = _source()
+    plans = plan_batch(validate_input_rows([_row(source)], contracts), _context(source), contracts)
+    raw = {
+        plan.request_id: json.dumps({plan.field: (
+            "包含2件木质产品，尺寸10.5厘米" if plan.field == "description"
+            else "防护等级IP44；功率18.5瓦"
+        )}, ensure_ascii=False)
+        for plan in plans if plan.resolution_path == "MODEL"
+    }
+
+    candidates, failures, reviews, evaluation = build_batch(
+        plans, raw, contracts, _identity(), dictionary_hash="dictionary-v1",
+        approved_terms=({
+            "term_es": "madera", "term_zh": "木质", "term_type": "material",
+            "forbidden_zh": "", "review_status": "APPROVED",
+        },),
+    )
+
+    description = next(item for item in candidates if item["source_field"] == "description")
+    assert description["status"] == "GUARD_REJECT"
+    assert description["final_candidate"] is None
+    assert "APPROVED_TERM_UNSUPPORTED_TARGET_REVIEW" in description["guard_result"]["reasons"]
+    finding = next(
+        item for item in description["semantic_fact_findings"]
+        if item["code"] == "APPROVED_TERM_UNSUPPORTED_TARGET_REVIEW"
+    )
+    assert finding["source_term_absent_from_all_localized_fields"] is True
+    assert finding["unsupported_target_is_not_proof_of_hallucination"] is True
+    assert any(item["field"] == "description" for item in failures)
+    assert next(item for item in failures if item["field"] == "description")["failure_type"] == "SEMANTIC_REVIEW_REQUIRED"
+    assert any(item["field"] == "description" for item in reviews)
+    assert evaluation["approved_term_unsupported_target_review"] == 1
+    assert "APPROVED_TERM_UNSUPPORTED_TARGET_REVIEW" not in contracts.guard["hard_reasons"]
 
 
 def test_strict_parser_routes_code_fence_or_wrong_schema_to_model_failure():

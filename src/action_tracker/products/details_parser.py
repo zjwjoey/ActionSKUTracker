@@ -48,8 +48,10 @@ def parse_details(value: Any) -> tuple[DetailPair, ...]:
         raw = segment.strip()
         if not raw:
             continue
-        if ":" in raw:
-            key, item = raw.split(":", 1)
+        separator = re.search(r"[:：]", raw)
+        if separator is not None:
+            key = raw[:separator.start()]
+            item = raw[separator.end():]
             key = key.strip()
             item = item.strip()
         else:
@@ -72,20 +74,27 @@ def conflicting_keys(pairs: tuple[DetailPair, ...] | list[DetailPair]) -> tuple[
     return tuple(display[key] for key in sorted(values) if len(values[key]) > 1)
 
 
-def render_details(pairs: tuple[DetailPair, ...] | list[DetailPair]) -> str:
-    """Render the parsed source in original order, including duplicates."""
+def render_details(
+    pairs: tuple[DetailPair, ...] | list[DetailPair],
+    *, separators: tuple[str, ...] | list[str] | None = None,
+) -> str:
+    """Render detail pairs in order, optionally using original delimiters."""
     rendered = []
     for pair in pairs:
         rendered.append(f"{pair.key_es}: {pair.value_es}" if pair.value_es else pair.key_es)
+    if separators is not None and len(separators) == max(0, len(rendered) - 1):
+        output = rendered[0] if rendered else ""
+        for separator, segment in zip(separators, rendered[1:], strict=True):
+            output += separator + segment
+        return output
     return "; ".join(rendered)
 
 
 def _segments(text: str) -> list[str]:
     segments: list[str] = []
     for line in re.split(r"\r?\n", text):
-        for part in line.split("|"):
-            for item in part.split(";"):
-                item = item.strip()
-                if item:
-                    segments.append(item)
+        for item in re.split(r"[;；|｜]", line):
+            item = item.strip()
+            if item:
+                segments.append(item)
     return segments

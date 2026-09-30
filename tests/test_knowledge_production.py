@@ -39,8 +39,42 @@ def test_resolver_is_field_level_and_manual_wins():
     assert result.fields["name"].value == "人工名称"
     assert result.fields["name"].source == "manual_override"
     assert result.fields["spec"].source == "product_dictionary"
+    assert result.fields["spec"].status == "REVIEW"
     assert result.fields["cat1"].source == "scoped_dictionary"
-    assert result.readiness == "AI_PENDING"
+    assert result.fields["cat1"].status == "REVIEW"
+    assert result.fields["cat2"].source == "term_dictionary"
+    assert result.fields["cat2"].status == "REVIEW"
+    assert result.readiness == "REVIEW_REQUIRED"
+
+
+def test_dictionary_values_need_explicit_owner_approval_to_be_ready():
+    record = _record()
+    plain = resolve(record, product={"name": "未审核名称"})
+    assert plain.fields["name"].value == "未审核名称"
+    assert plain.fields["name"].status == "REVIEW"
+    assert plain.readiness == "REVIEW_REQUIRED"
+
+    approved = resolve(
+        record,
+        product={"name": {"value": "人工确认名称", "review_status": "HUMAN_APPROVED"}},
+        scoped={"cat1": {"value": "家居布置", "approval_status": "APPROVED"}},
+        dictionaries={"cat2": {"value": "收纳用品", "review_status": "SEED_REVIEWED"}},
+    )
+    assert approved.fields["name"].status == "READY"
+    assert approved.fields["cat1"].status == "READY"
+    assert approved.fields["cat2"].status == "READY"
+    assert approved.readiness == "AI_PENDING"
+
+
+def test_rejected_dictionary_value_cannot_become_ready():
+    result = resolve(
+        _record(),
+        product={"name": {"value": "已拒绝名称", "review_status": "REJECTED"}},
+    )
+    assert result.fields["name"].value == "已拒绝名称"
+    assert result.fields["name"].status == "REVIEW"
+    assert result.readiness == "REVIEW_REQUIRED"
+    assert "NAME_PRODUCT_DICTIONARY_OWNER_REVIEW_REQUIRED" in result.reasons
 
 
 def test_source_blocked_never_falls_back_to_spanish_or_ai():
@@ -49,12 +83,28 @@ def test_source_blocked_never_falls_back_to_spanish_or_ai():
     assert all(field.source == "source_blocked" for field in result.fields.values())
 
 
-def test_valid_model_cache_is_reused_only_for_matching_source_hash():
+def test_valid_model_cache_is_review_candidate_only_and_requires_matching_source_hash():
     record = _record()
     result = resolve(record, model_cache={"name": "模型名", "source_hash": source_hash(record), "validation_status": "PASS"})
     assert result.fields["name"].source == "model_cache"
+    assert result.fields["name"].value == "模型名"
+    assert result.fields["name"].status == "REVIEW"
+    assert result.readiness == "REVIEW_REQUIRED"
+    assert "NAME_OWNER_REVIEW_REQUIRED" in result.reasons
     stale = resolve(record, model_cache={"name": "旧模型名", "source_hash": "old", "validation_status": "PASS"})
     assert stale.fields["name"].source == "spanish_fallback"
+
+
+def test_owner_reviewed_dictionary_value_takes_priority_over_model_cache():
+    record = _record()
+    result = resolve(
+        record,
+        product={"name": {"value": "人工确认名称", "review_status": "HUMAN_APPROVED"}},
+        model_cache={"name": "模型名称", "source_hash": source_hash(record), "validation_status": "PASS"},
+    )
+    assert result.fields["name"].value == "人工确认名称"
+    assert result.fields["name"].source == "product_dictionary"
+    assert result.fields["name"].status == "READY"
 
 
 def test_queue_is_incremental_and_deduplicated():

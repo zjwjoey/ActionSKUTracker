@@ -9,7 +9,9 @@ an Apply step.
 from __future__ import annotations
 
 import re
-from typing import Mapping, Any
+from typing import Mapping, Any, Iterable
+
+from .model_guard import technical_tokens
 
 
 _MODEL_TOKEN = re.compile(
@@ -25,6 +27,7 @@ def _model_tokens(value: object) -> list[str]:
 
 def repair_model_output(
     source: Mapping[str, object], prediction: Mapping[str, object] | None,
+    *, confirmed_brand_phrases: Iterable[str] = (),
 ) -> tuple[dict[str, Any] | None, list[dict[str, str]]]:
     """Return ``(unchanged_candidate, review_suggestions)``.
 
@@ -44,8 +47,15 @@ def repair_model_output(
     if isinstance(name, str):
         output_name = name
         output_tokens = set(_model_tokens(output_name))
+        source_brand_tokens: set[str] = set()
+        for phrase in confirmed_brand_phrases:
+            brand_phrase = str(phrase or "").strip()
+            if not brand_phrase:
+                continue
+            if re.search(rf"(?<![A-Za-z0-9]){re.escape(brand_phrase)}(?![A-Za-z0-9])", source_name, re.IGNORECASE):
+                source_brand_tokens.update(_model_tokens(brand_phrase))
         for token in _model_tokens(source_name):
-            if token not in output_tokens:
+            if token not in output_tokens and token not in source_brand_tokens:
                 suggested = f"{token}{output_name}" if output_name else token
                 suggestions.append({
                     "field": "name", "issue_type": "MODEL_TOKEN_MISSING",
@@ -60,7 +70,11 @@ def repair_model_output(
         two_in_one = _TWO_IN_ONE.search(source_description)
         if two_in_one:
             canonical = f"{two_in_one.group('a')}合{two_in_one.group('b')}"
-            if canonical not in output_description:
+            source_function_tokens = set(technical_tokens(
+                f"{two_in_one.group('a')} en {two_in_one.group('b')}"
+            ))
+            output_function_tokens = set(technical_tokens(output_description))
+            if not source_function_tokens.issubset(output_function_tokens):
                 if "双面" in output_description:
                     suggested = output_description.replace("双面", canonical)
                 else:

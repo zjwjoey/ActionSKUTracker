@@ -247,6 +247,27 @@ def test_controlled_category_validation_requires_exact_parent_and_complete_on_sa
         )
 
 
+def test_controlled_category_validation_accepts_verifiable_official_web_breadcrumb():
+    current = {"3218264": {"sku": "3218264"}}
+    title = "Guirnalda de luz navideña Luxuriance Lights"
+    payload = {"source": "OFFICIAL_WEB", "parent_run_id": "run-1"}
+    rows = [{
+        "sku": "3218264",
+        "product_url": "https://www.action.com/es-es/p/3218264/guirnalda-de-luz-navidena-luxuriance-lights/",
+        "page_status": "OK", "page_title": title,
+        "body_sample": "Vivienda Decoración Guirnalda de luz navideña Luxuriance Lights",
+        "cat1_es": "Vivienda", "cat2_es": "Decoración",
+    }]
+    assert _validate_controlled_category_records(
+        run_id="run-1", payload=payload, raw_rows=rows, current=current,
+    )[0]["cat2_es"] == "Decoración"
+    rows[0]["body_sample"] = "Vivienda Guirnalda de luz navideña Luxuriance Lights"
+    with pytest.raises(EdgeListingReconcileError, match="WEB_EVIDENCE_INCOMPLETE"):
+        _validate_controlled_category_records(
+            run_id="run-1", payload=payload, raw_rows=rows, current=current,
+        )
+
+
 def test_edge_import_does_not_treat_ordinary_un_momento_as_challenge():
     current = {"2571395": {"sku": "2571395"}}
     row = {

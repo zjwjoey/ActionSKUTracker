@@ -17,15 +17,16 @@ from ..dictionary import (
     PRODUCT_DICTIONARY_HEADERS,
     SOURCE_DAMAGE_HEADERS,
     TERM_DICTIONARY_HEADERS,
-    format_confirmed_brand_title,
     index_model_translations,
     index_product_overrides,
+    is_approved_product_translation,
     is_confirmed_brand_record,
     load_dictionary_rows,
     normalize_category_key,
 )
 from ..services.normalization import parse_bool_zh, parse_price
 from ..services.hashing import localization_field_source_hash
+from ..translation.term_resolver import resolve_exact_spec_term
 
 
 class DictionaryJoinError(ValueError):
@@ -33,6 +34,9 @@ class DictionaryJoinError(ValueError):
 
 
 _UNUSABLE_TRANSLATION_STATUSES = {"", "UNTRANSLATED", "NEEDS_REVIEW"}
+_APPROVED_CATEGORY_STATUSES = frozenset({
+    "APPROVED", "HUMAN_APPROVED", "CONFIRMED", "HUMAN_REVIEWED", "LOCKED",
+})
 _LATIN_RE = re.compile(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]")
 _CJK_RE = re.compile(r"[\u3400-\u9fff]")
 
@@ -136,17 +140,6 @@ def build_zh_rows(records: Iterable[dict[str, Any]], context: DictionaryContext)
         )
         if used_fallback:
             fallbacks.append("中文品名待审核")
-        brand_id = _text(product.get("brand_id"))
-        brand_row = lookup_brand_row(context.brand_by_id, brand_id)
-        if (
-            not used_fallback
-            and not _text(manual.get("name_zh_standard"))
-            and brand_row
-            and is_confirmed_brand_record(brand_row)
-        ):
-            title = format_confirmed_brand_title(
-                title, _text(brand_row.get("canonical_name")) or brand_id,
-            )
         cat1, cat1_fallback = _resolve_category_field("cat1_zh", record, product, manual, context, source_hash)
         if cat1_fallback:
             fallbacks.append("中文分类1待审核")
@@ -188,7 +181,7 @@ def build_zh_rows(records: Iterable[dict[str, Any]], context: DictionaryContext)
             "产品详情": details,
             "图片链接": _none_or_text(record.get("image_url")),
             "商品链接": _text(record.get("product_url")),
-            "备注": _zh_remarks(record, fallbacks),
+            "备注": _zh_remarks(record),
         })
     return rows, fallback_counts
 
@@ -236,7 +229,7 @@ def build_zh_rows_from_localized_source(records: Iterable[dict[str, Any]]) -> tu
             "原价": _display_original_price(record, sku=sku), "单价": _none_or_text(record.get("unit_price")),
             "描述": resolved["desc_zh"], "产品详情": resolved["details_zh"],
             "图片链接": _none_or_text(record.get("image_url")), "商品链接": _text(record.get("product_url")),
-            "备注": _zh_remarks(record, fallbacks),
+            "备注": _zh_remarks(record),
         })
     return rows, fallback_counts
 
@@ -314,6 +307,36 @@ def unresolved_brand_ids_for_records(records: Iterable[dict[str, Any]], context:
     return sorted(brand_id for brand_id in used if brand_id and brand_id in context.unresolved_brand_ids)
 
 
+def confirmed_brand_phrases_by_sku(
+    records: Iterable[dict[str, Any]], context: DictionaryContext,
+) -> dict[str, tuple[str, ...]]:
+    """Return source-fresh confirmed brands for no-brand export validation only.
+
+    This does not join or alter exported localization values. Stale product
+    dictionary brand assignments are ignored rather than applied to a changed
+    source record.
+    """
+    output: dict[str, tuple[str, ...]] = {}
+    for record in records:
+        sku = _text(record.get("sku"))
+        product = context.product_by_sku.get(sku, {})
+        brand_id = _text(product.get("brand_id"))
+        if not sku or not brand_id or _text(product.get("source_hash")) != _fact_source_hash(record):
+            continue
+        brand_row = lookup_brand_row(context.brand_by_id, brand_id)
+        if not brand_row or not is_confirmed_brand_record(brand_row):
+            continue
+        phrases = tuple(dict.fromkeys(
+            value for value in (
+                _text(brand_row.get("canonical_name")), brand_id,
+                *(part.strip() for part in _text(brand_row.get("aliases_es")).split("|") if part.strip()),
+            ) if value
+        ))
+        if phrases:
+            output[sku] = phrases
+    return output
+
+
 def _brand_reference_keys(rows: Iterable[dict[str, str]]) -> set[str]:
     keys: set[str] = set()
     for row in rows:
@@ -364,20 +387,25 @@ def _resolve_product_field(
         record, product, field, source_hash,
     )
     product_status = _text(product.get("translation_status"))
-    if product_value and product_hash_matches and product_status not in _UNUSABLE_TRANSLATION_STATUSES:
+    if (
+        product_value and product_hash_matches
+        and product_status not in _UNUSABLE_TRANSLATION_STATUSES
+        and is_approved_product_translation(product)
+    ):
         return product_value, False
-    model = context.model_by_sku.get(_text(record.get("sku")), {})
-    model_value = _text(model.get(field))
-    if (model_value and _dictionary_field_hash_matches(record, model, field, source_hash)
-            and _text(model.get("quality_status")).upper() == "OK"):
-        return model_value, False
-    # Do not expose a known-polluted Spanish fact as a Chinese fallback.  A
-    # manual/model value above may still be used, but absent trusted evidence
-    # the field remains blank and is marked for review.
+    # model_translation_overrides has freshness/quality metadata but no Owner
+    # disposition; a high-quality model candidate must not become export-ready.
+    # Do not expose a known-polluted Spanish fact as a Chinese fallback.
+    # Unreviewed model candidates are withheld; the field remains visibly
+    # source-language text and is marked for review in the sidecar.
     sku = _text(record.get("sku"))
     damage_key = "spec_es_raw" if field == "spec_zh_standard" else ("name_es_raw" if field == "name_zh_standard" else "")
     if damage_key and damage_key in context.damage_by_sku.get(sku, set()):
         return "", True
+    if field == "spec_zh_standard":
+        term_resolution = resolve_exact_spec_term(fallback, context.terms)
+        if term_resolution is not None:
+            return term_resolution[0], False
     return fallback, True
 
 
@@ -397,13 +425,18 @@ def _resolve_category_field(
         product_value
         and is_valid_chinese_category_value(product_value)
         and _dictionary_field_hash_matches(record, product, field, source_hash)
+        and is_approved_product_translation(product)
     ):
         return product_value, False
     cat1_key = normalize_category_key(record.get("cat1_es"))
     cat2_key = normalize_category_key(record.get("cat2_es"))
     mapped = context.category_by_pair.get((cat1_key, cat2_key)) or context.category_by_cat1.get(cat1_key) or {}
     mapped_value = _text(mapped.get(field))
-    if mapped_value and is_valid_chinese_category_value(mapped_value):
+    mapped_status = _text(mapped.get("review_status")).upper()
+    mapping_approved = mapped_status in _APPROVED_CATEGORY_STATUSES or (
+        field == "cat1_zh" and mapped_status == "CAT1_CONFIRMED"
+    )
+    if mapped_value and mapping_approved and is_valid_chinese_category_value(mapped_value):
         return mapped_value, False
     fallback = _text(record.get("cat1_es" if field == "cat1_zh" else "cat2_es"))
     return fallback, True
@@ -466,7 +499,7 @@ def _resolve_existing_chinese_field(
     return fallback, True
 
 
-def _zh_remarks(record: dict[str, Any], fallbacks: list[str]) -> str:
+def _zh_remarks(record: dict[str, Any]) -> str:
     values = ["在售状态：在售"]
     if parse_bool_zh(record.get("is_new_badge")):
         values.append("新品")
@@ -474,11 +507,37 @@ def _zh_remarks(record: dict[str, Any], fallbacks: list[str]) -> str:
         values.append("促销")
     if parse_bool_zh(record.get("sustainable")):
         values.append("可持续")
+    official_labels = _zh_official_label_evidence(_none_or_text(record.get("raw_tags")) or "")
+    if official_labels:
+        values.append(f"官网官方标签：{' | '.join(official_labels)}")
     discount = parse_price(record.get("discount"))
     if discount is not None:
         values.append(f"折扣：{float(discount):g}")
-    values.extend(fallbacks)
     return "；".join(values)
+
+
+def _zh_official_label_evidence(raw_tags: str) -> list[str]:
+    """Retain every non-discount raw label; gloss only recognized label types."""
+    labels: list[str] = []
+    for raw in (part.strip() for part in raw_tags.split("|")):
+        if not raw:
+            continue
+        if re.fullmatch(r"[−–-]?\s*\d+(?:[.,]\d+)?\s*%", raw):
+            # The same fact is rendered as the structured business discount
+            # value below; it is not a separate official identity label.
+            continue
+        normalized = raw.casefold()
+        if re.match(r"^nuevo$", normalized):
+            labels.append(f"{raw}（官网新品标签）")
+        elif normalized.startswith("promoción semanal") or normalized.startswith("promocion semanal"):
+            labels.append(f"{raw}（官网每周促销标签）")
+        elif normalized.startswith("una opción más sostenible") or normalized.startswith("una opcion mas sostenible"):
+            labels.append(f"{raw}（官网可持续选择标签）")
+        else:
+            # Unknown future labels are source facts too. Preserve them
+            # verbatim instead of silently dropping them from the Chinese view.
+            labels.append(raw)
+    return labels
 
 
 def _fact_source_hash(record: dict[str, Any]) -> str:

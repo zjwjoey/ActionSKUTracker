@@ -1,5 +1,5 @@
 {
-  "contract_id": "stage5-rule-first-offline-v1",
+  "contract_id": "stage5-rule-first-offline-v3",
   "stage4_reference": {
     "recovery_state_required_for_shadow": "READY_FOR_STAGE5_OFFLINE_SHADOW",
     "full_release_required_for_acceptance": true,
@@ -12,15 +12,22 @@
     "stage4_inference_contract_sha256": "a8d1328be1855e86e0461430911da6beedcdb3081a5dfc1e46b8b8793920720c"
   },
   "resolver": {
-    "version": "dictionary-resolver-stage5-v1",
+    "version": "dictionary-resolver-stage5-v2",
     "priority": "DETERMINISTIC_FIRST",
     "model_for_ready_field": false,
+    "exact_term_resolution": {
+      "fields": ["spec"],
+      "term_types": ["spec", "material", "attribute", "apparel", "quantity", "unit"],
+      "approval_statuses": ["SEED_REVIEWED", "HUMAN_REVIEWED", "HUMAN_APPROVED", "LOCKED", "APPROVED", "CONFIRMED"],
+      "matching": "WHOLE_CELL_NORMALIZED_UNIQUE",
+      "ambiguous_mapping_action": "FALL_THROUGH"
+    },
     "model_allowed_fields": ["name", "spec", "description", "details"],
     "model_forbidden_fields": ["cat1", "cat2", "unit_price", "unit", "brand", "numeric_facts", "technical_tokens"]
   },
   "inference": {
-    "task_id": "stage5-single-field-localization-v1",
-    "system_prompt": "只翻译指定的一个字段为简体中文，不要查看或推断其他字段。输出必须是 JSON，且只能有指定字段。不得输出英文或西班牙语句子；普通西语必须翻译。忠实翻译输入文字，严格保留该字段原文的每一个数字、百分比、尺寸、数量和单位，不能新增、删除或从其他字段补入事实。输出前先核对该字段的数字清单，源中每个数字都必须在同一字段出现。已确认品牌可以保留原文，但普通颜色词必须翻译。",
+    "task_id": "stage5-single-field-localization-v3",
+    "system_prompt": "只翻译指定的一个字段为简体中文，不要查看或推断其他字段。输出必须是 JSON，且只能有指定字段。不得输出英文或西班牙语句子；普通西语必须翻译。忠实翻译输入文字，不得摘要或省略客观产品事实；可以压缩营销修辞，但材质、颜色、套装数量、功能、兼容性、认证、警告和使用限制等客观属性必须完整保留。严格保留该字段原文的每一个数字、百分比、尺寸、数量、型号和单位；不能新增事实、从其他字段补入事实，或把其他字段的事实搬入当前字段。用户消息中的 __protected_fact_ledger__ 是同一源字段的审核清单：numbers、units、technical_tokens、certifications、approved_terms 中每项都必须在目标字段对应表达；如果 approved_terms 标注 ambiguous_mapping=true，不得自行选择其译法，必须按西语源文自然翻译并由程序送审；清单仅覆盖程序已识别事实，不代表未列出的事实可以省略。输出前先核对该字段全部事实，源中每项客观事实都必须在同一字段有对应表达。{{TITLE_DISPLAY_POLICY}} 普通颜色词必须翻译。",
     "chat_template": {
       "add_generation_prompt": true,
       "enable_thinking": false
@@ -44,7 +51,9 @@
     "RESOLVER_GAP",
     "FROZEN_QWEN_ADAPTER",
     "OUTPUT_PARSER",
+    "SOURCE_BOUND_DETAIL_TERMINOLOGY",
     "HARD_FACT_GUARD",
+    "SOURCE_BOUND_SEMANTIC_FACT_REVIEW",
     "NUMERIC_GUARD",
     "UNIT_GUARD",
     "TECHNICAL_TOKEN_GUARD",

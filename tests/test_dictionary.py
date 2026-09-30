@@ -9,6 +9,7 @@ from action_tracker.dictionary import (
     category_rows_from_products,
     format_confirmed_brand_title,
     index_product_overrides,
+    is_approved_product_translation,
     is_confirmed_brand_record,
     load_dictionary_csv,
     normalize_category_key,
@@ -16,6 +17,18 @@ from action_tracker.dictionary import (
     product_source_hash,
     write_dictionary_csv,
 )
+
+
+def test_product_translation_approval_rejects_conflicting_review_and_translation_status():
+    assert not is_approved_product_translation({
+        "review_status": "HUMAN_REVIEWED", "translation_status": "NEEDS_REVIEW",
+    })
+    assert not is_approved_product_translation({
+        "review_status": "UNREVIEWED", "translation_status": "HUMAN_REVIEWED",
+    })
+    assert is_approved_product_translation({
+        "review_status": "HUMAN_REVIEWED", "translation_status": "HUMAN_REVIEWED",
+    })
 from action_tracker.dictionary_enrichment import processable_candidate_skus, select_candidates
 from action_tracker.dictionary_enrichment import DictionaryEnrichmentError, _validate_formal_snapshot
 from action_tracker.dictionary_sources import (

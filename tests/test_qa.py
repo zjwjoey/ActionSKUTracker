@@ -185,3 +185,176 @@ def test_pending_detail_content_is_reported_later_not_a_presence_gate():
                 products=products)
     assert qa.passed is True
     assert qa.checks["field_content_legality"][0] is True
+
+
+def test_source_anomaly_is_review_only_and_persisted_with_full_provenance(tmp_path):
+    import csv
+    import hashlib
+    import json
+
+    from action_tracker.snapshot import write_snapshot
+    from action_tracker.stage5.source_candidate_v2 import source_hash
+
+    product = {
+        "sku": "2513777",
+        "canonical_id": "ACT2513777",
+        "product_url": "https://example.invalid/2513777",
+        "current_price": 1.0,
+        "cat1_es": "Hogar",
+        "raw_tags": "",
+        "name_es": "Producto de limpieza",
+        "cat2_es": "Limpieza",
+        "spec_es": "500 ml",
+        "desc_es": "Producto para el hogar.",
+        "details_es": "Sustancia: Válido; Sustancia: Válido; Número del artículo: 2513777",
+    }
+    qa = run_qa(
+        _cfg(), yesterday_total=1, today_total=1, sitemap_count=1, listing_count=1,
+        new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+        products=[product],
+    )
+
+    # A source-field anomaly is retained for research but must not rewrite the
+    # source value or independently fail otherwise valid Presence QA.
+    assert qa.passed is True
+    assert qa.state == "PASS"
+    assert qa.counts["source_consistency_findings"] == 1
+    finding = qa.findings[0]
+    assert finding["sku"] == "2513777"
+    assert finding["flags"] == ["SOURCE_ANOMALY_SUSTANCIA_VALIDO"]
+    assert finding["source_hash"] == source_hash({
+        "name": product["name_es"], "cat1": product["cat1_es"],
+        "cat2": product["cat2_es"], "spec": product["spec_es"],
+        "description": product["desc_es"], "details": product["details_es"],
+    })
+    assert finding["source_fields"] == {
+        key: product[key] for key in
+        ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")
+    }
+    assert finding["evidence"][0]["source_key"] == "Sustancia"
+    assert finding["evidence"][0]["source_value"] == "Válido"
+    assert finding["source_consistency_rules"]["sha256"]
+    assert finding["status"] == "OPEN_REVIEW"
+    assert finding["action"] == "REVIEW_ONLY_SOURCE_UNCHANGED"
+
+    snapshot = write_snapshot(
+        {"paths": {"snapshots": tmp_path / "snapshots"}},
+        "2026-09-29",
+        {"run_report": {"run_id": "source-anomaly-test"}, "qa_report": qa.to_dict()},
+    )
+    persisted = json.loads((snapshot / "qa_report.json").read_text(encoding="utf-8"))
+    assert persisted["findings"] == qa.findings
+    assert persisted["counts"]["source_consistency_findings"] == 1
+    with (snapshot / "SOURCE_ANOMALY.csv").open(encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        assert reader.fieldnames == [
+            "qa_id", "sku", "evidence_index", "anomaly_code", "source_hash", "source_field", "source_key",
+            "source_value", "source_fields_json", "rules_manifest_json", "status", "action",
+        ]
+        anomaly_rows = list(reader)
+    assert len(anomaly_rows) == 2
+    assert {row["evidence_index"] for row in anomaly_rows} == {"1", "2"}
+    assert len({row["qa_id"] for row in anomaly_rows}) == 2
+    anomaly = anomaly_rows[0]
+    assert anomaly["sku"] == "2513777"
+    assert anomaly["evidence_index"] == "1"
+    assert anomaly["anomaly_code"] == "SOURCE_ANOMALY_SUSTANCIA_VALIDO"
+    assert anomaly["source_field"] == "details"
+    assert anomaly["source_key"] == "Sustancia"
+    assert anomaly["source_value"] == "Válido"
+    assert anomaly["source_hash"] == finding["source_hash"]
+    assert json.loads(anomaly["source_fields_json"]) == finding["source_fields"]
+    assert anomaly["status"] == "OPEN_REVIEW"
+    assert anomaly["action"] == "REVIEW_ONLY_SOURCE_UNCHANGED"
+    manifest = json.loads((snapshot / "SOURCE_ANOMALY.manifest.json").read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == "source-anomaly-v1"
+    assert manifest["artifact"] == "SOURCE_ANOMALY.csv"
+    assert manifest["row_count"] == 2
+    assert manifest["sha256"] == hashlib.sha256((snapshot / "SOURCE_ANOMALY.csv").read_bytes()).hexdigest()
+    assert manifest["qa_report_sha256"] == hashlib.sha256(
+        (snapshot / "qa_report.json").read_bytes()
+    ).hexdigest()
+
+
+def test_snapshot_writes_empty_source_anomaly_ledger_when_no_findings(tmp_path):
+    import csv
+    import json
+
+    from action_tracker.snapshot import verify_source_anomaly_manifest, write_snapshot
+
+    qa = run_qa(
+        _cfg(), yesterday_total=1, today_total=1, sitemap_count=1, listing_count=1,
+        new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+        products=_products(1),
+    )
+    snapshot = write_snapshot(
+        {"paths": {"snapshots": tmp_path / "snapshots"}},
+        "2026-09-29",
+        {"run_report": {"run_id": "no-source-anomaly-test"}, "qa_report": qa.to_dict()},
+    )
+
+    with (snapshot / "SOURCE_ANOMALY.csv").open(encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        assert reader.fieldnames == [
+            "qa_id", "sku", "evidence_index", "anomaly_code", "source_hash", "source_field", "source_key",
+            "source_value", "source_fields_json", "rules_manifest_json", "status", "action",
+        ]
+        assert list(reader) == []
+    manifest = json.loads((snapshot / "SOURCE_ANOMALY.manifest.json").read_text(encoding="utf-8"))
+    assert manifest["row_count"] == 0
+    assert manifest["sha256"]
+    assert verify_source_anomaly_manifest(snapshot)["passed"] is True
+
+
+def test_source_anomaly_manifest_verifier_rejects_artifact_tampering(tmp_path):
+    from action_tracker.snapshot import verify_source_anomaly_manifest, write_snapshot
+
+    qa = run_qa(
+        _cfg(), yesterday_total=1, today_total=1, sitemap_count=1, listing_count=1,
+        new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+        products=_products(1),
+    )
+    snapshot = write_snapshot(
+        {"paths": {"snapshots": tmp_path / "snapshots"}},
+        "2026-09-29",
+        {"run_report": {"run_id": "source-anomaly-integrity-test"}, "qa_report": qa.to_dict()},
+    )
+    anomaly_path = snapshot / "SOURCE_ANOMALY.csv"
+    qa_report_path = snapshot / "qa_report.json"
+    original_anomaly = anomaly_path.read_bytes()
+    original_qa = qa_report_path.read_bytes()
+
+    anomaly_path.write_bytes(original_anomaly + b"tampered")
+    report = verify_source_anomaly_manifest(snapshot)
+    assert report["passed"] is False
+    assert "SOURCE_ANOMALY_HASH_MISMATCH" in report["issues"]
+
+    anomaly_path.write_bytes(original_anomaly)
+    qa_report_path.write_bytes(original_qa + b" ")
+    report = verify_source_anomaly_manifest(snapshot)
+    assert report["passed"] is False
+    assert "SOURCE_ANOMALY_QA_REPORT_HASH_MISMATCH" in report["issues"]
+
+
+@pytest.mark.parametrize(
+    ("blocked", "observation_valid", "expected_state"),
+    [(True, True, "BLOCKED"), (False, False, "FAIL")],
+)
+def test_source_anomaly_summary_survives_early_qa_failure(blocked, observation_valid, expected_state):
+    product = _products(1)[0]
+    product.update({
+        "sku": "2513777",
+        "details_es": "Sustancia: Válido; Número del artículo: 2513777",
+    })
+    qa = run_qa(
+        _cfg(), yesterday_total=1, today_total=1, sitemap_count=1, listing_count=1,
+        new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+        products=[product], blocked=blocked, observation_valid=observation_valid,
+    )
+
+    assert qa.state == expected_state
+    assert qa.passed is False
+    assert qa.counts["source_consistency_findings"] == 1
+    assert qa.checks["source_consistency_review"][0] is True
+    assert "待审核=1" in qa.checks["source_consistency_review"][1]
+    assert qa.findings[0]["flags"] == ["SOURCE_ANOMALY_SUSTANCIA_VALIDO"]

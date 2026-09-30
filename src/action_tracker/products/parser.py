@@ -34,17 +34,34 @@ _EXTRACT_JS = r"""
     const title = txt(document.querySelector('h1')) ||
         document.title.replace(/\s*\|\s*Action.*$/i, '').trim();
 
-    // Product pages have used more than one breadcrumb markup over time.
-    // Prefer the explicit test id, then fall back to the semantic breadcrumb
-    // nav.  Deduplicate adjacent/identical labels without inventing a
-    // category from the listing card.
-    const crumbNodes = [
-        ...document.querySelectorAll('[data-testid="breadcrumb-label"]'),
-        ...document.querySelectorAll('nav[aria-label*="breadcrumb" i] a, nav[aria-label*="breadcrumb" i] span'),
-    ];
-    const crumbs = [...new Set(crumbNodes.map(e => txt(e)).filter(Boolean))];
-    const cat1 = crumbs.length > 1 ? (crumbs[crumbs.length - 3] || crumbs[0]) : (crumbs[0] || '');
-    const cat2 = crumbs.length > 1 ? crumbs[crumbs.length - 2] : '';
+    // Read one authoritative breadcrumb source. Combining the test-id labels
+    // with the semantic nav duplicated the path and let the product title or
+    // navigation controls (for example "Atrás") leak into category fields.
+    const semanticNodes = [...document.querySelectorAll(
+        'nav[aria-label*="breadcrumb" i] a, nav[aria-label*="breadcrumb" i] span'
+    )];
+    const testIdNodes = [...document.querySelectorAll('[data-testid="breadcrumb-label"]')];
+    const crumbNodes = semanticNodes.length ? semanticNodes : testIdNodes;
+    const normalizeCrumb = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+    const navLabels = new Set([
+        'atras', 'volver', 'back', 'home', 'inicio', 'productos',
+        'cerrar', 'ir al contenido principal'
+    ]);
+    const crumbs = [];
+    const seenCrumbs = new Set();
+    for (const node of crumbNodes) {
+        const label = txt(node);
+        const key = normalizeCrumb(label);
+        // A leaf breadcrumb may legitimately have the same label as the H1
+        // (e.g. product "Galletas" in category "Galletas"). These nodes are
+        // scoped to the breadcrumb itself, so do not discard that valid leaf.
+        if (!label || !key || navLabels.has(key) || seenCrumbs.has(key)) continue;
+        seenCrumbs.add(key);
+        crumbs.push(label);
+    }
+    const cat1 = crumbs[0] || '';
+    const cat2 = crumbs.length > 1 ? crumbs[crumbs.length - 1] : '';
 
     let subtitle = '';
     const h1 = document.querySelector('h1');
@@ -197,6 +214,19 @@ def _normalize_detail(raw: dict, url: str) -> dict:
     desc = normalize_official_text(raw_desc, field="description") or ""
     details = normalize_official_text(raw.get("details_es"), field="details") or ""
     source_anomalies: list[str] = []
+    cat1 = str(raw.get("cat1_es") or "").strip()
+    cat2 = str(raw.get("cat2_es") or "").strip()
+    # Categories are not free-form prose: primary categories must remain in
+    # the site's fixed 15-category taxonomy, and UI controls are never facts.
+    from ..services.category_consistency import (
+        is_navigation_category, is_valid_primary_category,
+    )
+    if cat1 and not is_valid_primary_category(cat1):
+        source_anomalies.append("CATEGORY_PRIMARY_INVALID")
+        cat1 = ""
+    if cat2 and is_navigation_category(cat2):
+        source_anomalies.append("CATEGORY_SECONDARY_INVALID")
+        cat2 = ""
     # Description and spec are independent page sections.  Older Action DOM
     # variants occasionally returned the specifications table in one of those
     # slots.  Do not allow a fallback or a duplicated details payload to be
@@ -213,8 +243,8 @@ def _normalize_detail(raw: dict, url: str) -> dict:
     return {
         "sku": str(raw.get("sku") or ""),
         "name_es": raw.get("name_es") or "",
-        "cat1_es": raw.get("cat1_es") or "",
-        "cat2_es": raw.get("cat2_es") or "",
+        "cat1_es": cat1,
+        "cat2_es": cat2,
         "spec_es": spec,
         "spec_es_raw": raw_spec,
         "current_price": cur,

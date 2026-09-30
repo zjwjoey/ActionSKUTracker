@@ -153,6 +153,160 @@ def test_primary_repository_projection_is_read_only_and_current_only(tmp_path: P
     assert rows[0]["match_status"] == "OFFICIAL_IDENTITY"
 
 
+def test_primary_repository_exports_canonical_field_approval_provenance(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
+    with connect(cfg["storage"]["db_path"]) as db:
+        from action_tracker.database.provenance import sync_localization_field_provenance
+        sync_localization_field_provenance(
+            db, {"sku": "1001", "language": "zh", "review_status": "HUMAN_REVIEWED",
+                 "approved_by": "owner@example.test", "approved_at": "2026-09-29T10:00:00+00:00",
+                 "freshness_status": "CURRENT"},
+            commit_id="approved-update", now="2026-09-29T10:00:00+00:00",
+        )
+    rows = ProductionRepository(cfg["storage"]["db_path"]).load_current_export_records()
+
+    provenance = rows[0]["_localization_provenance"]["name"]
+    assert provenance["approved_by"] == "owner@example.test"
+    assert provenance["approved_at"] == "2026-09-29T10:00:00+00:00"
+    assert provenance["freshness_status"] == "CURRENT"
+
+
+def test_provenance_sync_does_not_erase_canonical_approval_metadata(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
+    with connect(cfg["storage"]["db_path"]) as db:
+        db.execute(
+            "UPDATE localization_field_provenance SET approved_by=?,approved_at=?,freshness_status=? "
+            "WHERE official_sku=? AND language='zh' AND field_name='name'",
+            ("owner@example.test", "2026-09-29T10:00:00+00:00", "CURRENT", "1001"),
+        )
+        from action_tracker.database.provenance import sync_localization_field_provenance
+        sync_localization_field_provenance(
+            db, {"sku": "1001", "language": "zh", "name": "已复核品名",
+                 "name_review_status": "HUMAN_REVIEWED"},
+            commit_id="follow-up", now="2026-09-29T11:00:00+00:00",
+        )
+        approval = db.execute(
+            "SELECT approved_by,approved_at,freshness_status FROM localization_field_provenance "
+            "WHERE official_sku=? AND language='zh' AND field_name='name'", ("1001",),
+        ).fetchone()
+
+    assert tuple(approval) == (
+        "owner@example.test", "2026-09-29T10:00:00+00:00", "CURRENT",
+    )
+
+
+def test_primary_repository_recovers_matching_applied_patch_approval_event(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
+    with connect(cfg["storage"]["db_path"]) as db:
+        product_hash = db.execute(
+            "SELECT source_hash FROM products WHERE official_sku=?", ("1001",),
+        ).fetchone()[0]
+        current_name = db.execute(
+            "SELECT value FROM localization_field_provenance "
+            "WHERE official_sku=? AND language='zh' AND field_name='name'", ("1001",),
+        ).fetchone()[0]
+        current_name = current_name or "已审核商品名"
+        db.execute(
+            "UPDATE localization_field_provenance SET value=?,review_status='HUMAN_APPROVED' "
+            "WHERE official_sku=? AND language='zh' AND field_name='name'", (current_name, "1001"),
+        )
+        from action_tracker.database.patches import append_patch_event, create_patch
+        patch_id = create_patch(
+            db, official_sku="1001", language="zh", field_name="name",
+            old_value="旧品名", new_value=current_name, source_hash=product_hash,
+            reason="owner-approved test repair", created_by="human:test-owner",
+            patch_id="approved-name-patch", occurred_at="2026-09-29T09:00:00+00:00",
+        )
+        append_patch_event(
+            db, patch_id, "PATCH_APPROVED", actor="human:test-owner",
+            occurred_at="2026-09-29T09:01:00+00:00",
+        )
+        append_patch_event(
+            db, patch_id, "PATCH_APPLIED", actor="human:test-owner",
+            occurred_at="2026-09-29T09:02:00+00:00",
+        )
+
+    rows = ProductionRepository(cfg["storage"]["db_path"]).load_current_export_records()
+    provenance = rows[0]["_localization_provenance"]["name"]
+    assert provenance["approved_by"] == "human:test-owner"
+    assert provenance["approved_at"] == "2026-09-29T09:01:00+00:00"
+    assert provenance["freshness_status"] == "CURRENT"
+    assert provenance["approval_evidence_source"] == "APPLIED_PATCH_EVENT"
+    assert provenance["approval_patch_id"] == "approved-name-patch"
+
+
+def test_primary_repository_does_not_treat_model_authorization_as_owner_review(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
+    with connect(cfg["storage"]["db_path"]) as db:
+        product_hash = db.execute(
+            "SELECT source_hash FROM products WHERE official_sku=?", ("1001",),
+        ).fetchone()[0]
+        value = "1 unit"
+        db.execute(
+            "UPDATE localization_field_provenance SET value=?,review_status='HUMAN_APPROVED' "
+            "WHERE official_sku=? AND language='zh' AND field_name='spec'", (value, "1001"),
+        )
+        from action_tracker.database.patches import append_patch_event, create_patch
+        patch_id = create_patch(
+            db, official_sku="1001", language="zh", field_name="spec",
+            old_value="old", new_value=value, source_hash=product_hash,
+            reason="model translation was requested", created_by="user-requested-model-translation",
+            patch_id="model-authorization-patch", occurred_at="2026-09-29T09:00:00+00:00",
+        )
+        append_patch_event(
+            db, patch_id, "PATCH_APPROVED", actor="user-requested-model-translation",
+            occurred_at="2026-09-29T09:01:00+00:00",
+        )
+        append_patch_event(
+            db, patch_id, "PATCH_APPLIED", actor="user-requested-model-translation",
+            occurred_at="2026-09-29T09:02:00+00:00",
+        )
+
+    rows = ProductionRepository(cfg["storage"]["db_path"]).load_current_export_records()
+    provenance = rows[0]["_localization_provenance"]["spec"]
+    assert provenance.get("approved_by") in (None, "")
+    assert provenance.get("approval_evidence_source") is None
+
+
+def test_primary_repository_accepts_explicit_stage6_owner_authorization_event(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    commit_daily_bundle(cfg, _bundle(cfg), mode="SQLITE_PRIMARY")
+    with connect(cfg["storage"]["db_path"]) as db:
+        product_hash = db.execute(
+            "SELECT source_hash FROM products WHERE official_sku=?", ("1001",),
+        ).fetchone()[0]
+        value = "1 unit"
+        db.execute(
+            "UPDATE localization_field_provenance SET value=?,review_status='HUMAN_APPROVED' "
+            "WHERE official_sku=? AND language='zh' AND field_name='spec'", (value, "1001"),
+        )
+        from action_tracker.database.patches import append_patch_event, create_patch
+        patch_id = create_patch(
+            db, official_sku="1001", language="zh", field_name="spec",
+            old_value="old", new_value=value, source_hash=product_hash,
+            reason="frozen Stage 6 owner-authorized field review", created_by="stage6-owner-authorization",
+            patch_id="stage6-owner-patch", occurred_at="2026-09-29T09:00:00+00:00",
+        )
+        append_patch_event(
+            db, patch_id, "PATCH_APPROVED", actor="stage6-owner-authorization",
+            occurred_at="2026-09-29T09:01:00+00:00",
+        )
+        append_patch_event(
+            db, patch_id, "PATCH_APPLIED", actor="stage6-owner-authorization",
+            occurred_at="2026-09-29T09:02:00+00:00",
+        )
+
+    rows = ProductionRepository(cfg["storage"]["db_path"]).load_current_export_records()
+    provenance = rows[0]["_localization_provenance"]["spec"]
+    assert provenance["approved_by"] == "stage6-owner-authorization"
+    assert provenance["approved_at"] == "2026-09-29T09:01:00+00:00"
+    assert provenance["freshness_status"] == "CURRENT"
+
+
 def test_primary_localization_recovery_restores_only_empty_fields_and_rebuilds_content_events(tmp_path: Path):
     cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
     run_id = "2026-08-30_010000"

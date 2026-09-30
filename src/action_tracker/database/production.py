@@ -637,9 +637,8 @@ def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
                               import_id: str, evidence: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Atomically apply verified Spanish detail fields to a PRIMARY database.
 
-    This narrow recovery writer is used when the normal detail session is
-    BLOCKED but an authorised browser (for example Edge) has produced page
-    evidence.  It may write *only* the Spanish ``description`` and
+    This narrow recovery writer is used for validated product-detail evidence
+    from Edge or the programmatic detail-retry flow. It may write *only* the Spanish ``description`` and
     ``details`` fields.  Listing-owned fields (name, categories, spec, URLs,
     images, prices and badges), lifecycle, Presence and all Chinese fields
     remain immutable.  Callers validate page evidence, SKU membership and URL
@@ -653,6 +652,13 @@ def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
     if not import_id or any(not str(row.get("sku") or "").strip() for row in payload):
         raise ProductionDatabaseError("DETAIL_IMPORT_SKU_MISSING")
     now = datetime.now(timezone.utc).isoformat()
+    source_label = str((evidence or {}).get("source") or "EDGE_PLUGIN").strip().upper()
+    if source_label not in {"EDGE_PLUGIN", "PROGRAMMATIC_DETAIL_RETRY"}:
+        raise ProductionDatabaseError("DETAIL_IMPORT_SOURCE_INVALID")
+    source_name = "programmatic_detail_retry" if source_label == "PROGRAMMATIC_DETAIL_RETRY" else "edge_detail_import"
+    actor = "programmatic-detail-retry" if source_label == "PROGRAMMATIC_DETAIL_RETRY" else "edge-import"
+    field_source = "programmatic_detail_fetch" if source_label == "PROGRAMMATIC_DETAIL_RETRY" else "edge_detail"
+    patch_reason = "verified_programmatic_detail_retry" if source_label == "PROGRAMMATIC_DETAIL_RETRY" else "verified_edge_detail_import"
     changed_skus = 0
     changed_fields = 0
     with connect(Path(path)) as db:
@@ -724,7 +730,7 @@ def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
                     "review_status=?,source_hash=?,resolution_status=?,freshness_status=?,updated_at=?,last_commit_id=? "
                     "WHERE official_sku=? AND language='es'",
                     (merged["description"], merged["details"],
-                     "EDGE_PLUGIN", review_status, source_hash, resolution_status, "CURRENT", now, import_id, sku),
+                     source_label, review_status, source_hash, resolution_status, "CURRENT", now, import_id, sku),
                 )
                 db.execute(
                     "UPDATE product_localizations SET source_hash=?, updated_at=? WHERE official_sku=? AND language='zh'",
@@ -736,9 +742,9 @@ def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
                 sync_localization_field_provenance(
                     db,
                     {"sku": sku, "language": "es", **merged,
-                     "source": "EDGE_PLUGIN", "review_status": review_status,
+                     "source": source_label, "review_status": review_status,
                      "source_hash": source_hash, "applied_commit_id": import_id,
-                     "description_source": "edge_detail", "details_source": "edge_detail",
+                     "description_source": field_source, "details_source": field_source,
                      "freshness_status": "CURRENT"},
                     commit_id=import_id, now=now,
                 )
@@ -772,11 +778,11 @@ def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
                     patch_id = create_patch(
                         db, official_sku=sku, language="es", field_name=field_name,
                         old_value=old[field_name], new_value=merged[field_name],
-                        source_hash=source_hash, reason="verified_edge_detail_import",
-                        created_by="edge-import",
+                        source_hash=source_hash, reason=patch_reason,
+                        created_by=actor,
                     )
-                    append_patch_event(db, patch_id, "PATCH_APPROVED", actor="edge-import", reason="official page evidence")
-                    append_patch_event(db, patch_id, "PATCH_APPLIED", actor="edge-import", reason="PRIMARY detail recovery")
+                    append_patch_event(db, patch_id, "PATCH_APPROVED", actor=actor, reason="official page evidence")
+                    append_patch_event(db, patch_id, "PATCH_APPLIED", actor=actor, reason="PRIMARY detail recovery")
                 changed = sum(
                     old[field] != merged[field]
                     for field in ("description", "details")
@@ -786,7 +792,7 @@ def apply_detail_only_updates(path: Path, rows: Iterable[Mapping[str, Any]], *,
                     changed_fields += changed
                 db.execute(
                     "INSERT INTO migration_source_issues(source_name,issue_type,entity_id,details) VALUES(?,?,?,?)",
-                    ("edge_detail_import", "DETAIL_FIELDS_APPLIED", sku,
+                    (source_name, "DETAIL_FIELDS_APPLIED", sku,
                      json.dumps({"import_id": import_id, "resolution_status": resolution_status,
                                  "followups": followups, **(dict(evidence or {}))}, ensure_ascii=False, sort_keys=True)),
                 )

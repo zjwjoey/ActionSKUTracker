@@ -15,6 +15,9 @@ from .content_integrity import (
     find_illegal_official_field_content,
     summarize_issues,
 )
+from ..stage5.source_candidate_v2 import (
+    source_consistency_evidence, source_consistency_rules_manifest, source_hash,
+)
 
 
 @dataclass
@@ -24,6 +27,7 @@ class QAReport:
     checks: dict[str, tuple[bool, str]] = field(default_factory=dict)
     counts: dict[str, Any] = field(default_factory=dict)
     reasons: list[str] = field(default_factory=list)
+    findings: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -32,6 +36,7 @@ class QAReport:
             "checks": {k: {"ok": v[0], "message": v[1]} for k, v in self.checks.items()},
             "counts": self.counts,
             "reasons": self.reasons,
+            "findings": self.findings,
         }
 
 
@@ -63,6 +68,12 @@ def run_qa(
     checks: dict[str, tuple[bool, str]] = {}
     reasons: list[str] = []
     passed = True
+    source_findings = _source_findings(products)
+    source_finding_count = len(source_findings)
+    checks["source_consistency_review"] = (
+        True,
+        f"源字段冲突/异常待审核={source_finding_count}; 不改变 Presence 与生命周期判断",
+    )
 
     sitemap_fallback = presence_mode == "SITEMAP_FALLBACK"
 
@@ -72,7 +83,7 @@ def run_qa(
     # presented as a fully observed listing run.
     if blocked and not sitemap_fallback:
         checks["fetch_not_blocked"] = (False, "网站访问异常/BLOCKED")
-        return QAReport(passed=False, state="BLOCKED", checks=checks, counts=_counts(locals()), reasons=["网站访问被封锁"])
+        return QAReport(passed=False, state="BLOCKED", checks=checks, counts=_counts(locals()), reasons=["网站访问被封锁"], findings=source_findings)
     if blocked:
         checks["fetch_not_blocked"] = (True, "listing 访问受限；已冻结有效 Sitemap Presence 证据")
 
@@ -80,7 +91,7 @@ def run_qa(
         message = f"global access controller ended in {access_state}"
         if not sitemap_fallback:
             checks["access_state_complete"] = (False, message)
-            return QAReport(passed=False, state="FAIL", checks=checks, counts=_counts(locals()), reasons=[message])
+            return QAReport(passed=False, state="FAIL", checks=checks, counts=_counts(locals()), reasons=[message], findings=source_findings)
         checks["access_state_complete"] = (True, f"{message}; 使用已冻结 Sitemap Presence 证据")
     else:
         checks["access_state_complete"] = (True, "global access controller NORMAL")
@@ -95,7 +106,7 @@ def run_qa(
         failed = [name for name, valid in (category_coverage or {}).items() if not valid]
         message = "sitemap 无有效观测" + (f"; listing 未完整类目: {', '.join(failed)}" if failed else "")
         checks["observation_valid"] = (False, message)
-        return QAReport(passed=False, state="FAIL", checks=checks, counts=_counts(locals()), reasons=[message])
+        return QAReport(passed=False, state="FAIL", checks=checks, counts=_counts(locals()), reasons=[message], findings=source_findings)
 
     # 1. 总量变化比例
     drop = _pct(max(0, yesterday_total - today_total), yesterday_total)
@@ -248,11 +259,50 @@ def run_qa(
         "new": new_count, "missing": missing_count, "price_up": price_up, "price_down": price_down,
         "anomaly_count": anomaly_count,
         "illegal_field_content": len(content_issues),
+        "source_consistency_findings": source_finding_count,
     }
     state = "PASS_PRESENCE_ONLY" if passed and sitemap_fallback else ("PASS" if passed else "FAIL")
     if sitemap_fallback:
         reasons.append("Sitemap 完整；Listing 不完整，类目轻量字段仅按已观测记录更新")
-    return QAReport(passed=passed, state=state, checks=checks, counts=counts, reasons=reasons)
+    return QAReport(passed=passed, state=state, checks=checks, counts=counts, reasons=reasons,
+                    findings=source_findings)
+
+
+def _source_findings(products: list[dict]) -> list[dict[str, Any]]:
+    """Keep source-only anomalies in run QA evidence without changing lifecycle.
+
+    Values are copied verbatim from the observed Spanish fields. A finding is
+    a review signal, not an instruction to rewrite or suppress source content.
+    """
+    fields = ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")
+    findings: list[dict[str, Any]] = []
+    rule_manifest = source_consistency_rules_manifest()
+    for product in products:
+        source = {
+            "name": product.get("name_es", ""),
+            "cat1": product.get("cat1_es", ""),
+            "cat2": product.get("cat2_es", ""),
+            "spec": product.get("spec_es", ""),
+            "description": product.get("desc_es", ""),
+            "details": product.get("details_es", ""),
+        }
+        evidence = source_consistency_evidence(source)
+        if not evidence:
+            continue
+        flags = sorted({str(item["code"]) for item in evidence})
+        findings.append({
+            "finding_type": "SOURCE_ANOMALY_OR_CONFLICT",
+            "sku": str(product.get("sku") or "").strip(),
+            "flags": flags,
+            "source_hash": source_hash(source),
+            "source_consistency_rules": rule_manifest,
+            "source_fields": {key: str(product.get(key) or "") for key in fields},
+            "evidence": evidence,
+            "status": "OPEN_REVIEW",
+            "action": "REVIEW_ONLY_SOURCE_UNCHANGED",
+        })
+    findings.sort(key=lambda item: (item["sku"], item["flags"]))
+    return findings
 
 
 def _tags_parsed(raw: str) -> bool:
@@ -267,4 +317,5 @@ def _counts(loc: dict) -> dict:
         "today_total": loc.get("today_total"),
         "sitemap_count": loc.get("sitemap_count"),
         "listing_count": loc.get("listing_count"),
+        "source_consistency_findings": loc.get("source_finding_count", 0),
     }

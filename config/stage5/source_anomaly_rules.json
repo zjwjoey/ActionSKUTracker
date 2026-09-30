@@ -1,0 +1,18 @@
+{
+  "version": "action-source-anomaly-v2",
+  "detail_pair_rules": [
+    {
+      "key_regex": "^sustancia$",
+      "value_regex": "^valido(?:\\b.*)?$",
+      "flag": "SOURCE_ANOMALY_SUSTANCIA_VALIDO"
+    },
+    {
+      "key_regex": "^incluye oido$",
+      "flag": "SOURCE_ANOMALY_INCLUYE_OIDO"
+    },
+    {
+      "key_regex": "^funda para movil.*(?:gramos por m2|g/m2)",
+      "flag": "SOURCE_ANOMALY_METRIC_IN_ATTRIBUTE_KEY"
+    }
+  ]
+}

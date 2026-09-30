@@ -151,18 +151,76 @@ class ProductionRepository:
             ).fetchall()
             provenance_rows = db.execute(
                 """
-                SELECT official_sku,language,field_name,value,source,review_status,source_hash,updated_at,applied_commit_id
-                FROM localization_fields
+                SELECT official_sku,language,field_name,value,source,review_status,source_hash,
+                       updated_at,applied_commit_id,approved_by,approved_at,freshness_status
+                FROM localization_field_provenance
                 WHERE language IN ('es','zh')
+                """
+            ).fetchall()
+            approved_patch_rows = db.execute(
+                """
+                SELECT lp.official_sku,lp.field_name,a.actor,a.occurred_at,lp.patch_id
+                FROM localization_patches lp
+                JOIN products p ON p.official_sku=lp.official_sku
+                    AND p.status='CURRENT' AND p.source_hash=lp.source_hash
+                JOIN localization_field_provenance f ON f.official_sku=lp.official_sku
+                    AND f.language=lp.language AND f.field_name=lp.field_name
+                    AND f.value=lp.new_value
+                JOIN localization_patch_events a ON a.patch_id=lp.patch_id
+                    AND a.event_type='PATCH_APPROVED'
+                WHERE lp.language='zh'
+                  AND (
+                    a.actor='project-owner'
+                    OR a.actor='stage6-owner-authorization'
+                    OR a.actor LIKE 'human:%'
+                  )
+                  AND EXISTS (
+                    SELECT 1 FROM localization_patch_events applied
+                    WHERE applied.patch_id=lp.patch_id AND applied.event_type='PATCH_APPLIED'
+                  )
+                  AND (
+                    SELECT latest.event_type FROM localization_patch_events latest
+                    WHERE latest.patch_id=lp.patch_id ORDER BY latest.rowid DESC LIMIT 1
+                  )='PATCH_APPLIED'
+                ORDER BY lp.revision DESC,lp.created_at DESC,lp.patch_id DESC
                 """
             ).fetchall()
         records = []
         provenance: dict[tuple[str, str], dict[str, Any]] = {}
+        patch_approval_evidence: dict[tuple[str, str, str], dict[str, str]] = {}
+        for item in approved_patch_rows:
+            key = (str(item[0]), "zh", str(item[1]))
+            patch_approval_evidence.setdefault(key, {
+                "approved_by": str(item[2] or ""),
+                "approved_at": str(item[3] or ""),
+                "approval_evidence_source": "APPLIED_PATCH_EVENT",
+                "approval_patch_id": str(item[4]),
+            })
         for item in provenance_rows:
-            provenance[(str(item[0]), str(item[1]), str(item[2]))] = {
+            key = (str(item[0]), str(item[1]), str(item[2]))
+            item_provenance = {
                 "value": item[3], "source": item[4], "review_status": item[5],
                 "source_hash": item[6], "updated_at": item[7], "applied_commit_id": item[8],
+                "approved_by": item[9], "approved_at": item[10], "freshness_status": item[11],
             }
+            evidence = patch_approval_evidence.get(key)
+            if evidence and (
+                not item_provenance["approved_by"]
+                or item_provenance["approved_by"] == evidence["approved_by"]
+            ) and (
+                not item_provenance["approved_at"]
+                or item_provenance["approved_at"] == evidence["approved_at"]
+            ):
+                if not item_provenance["approved_by"]:
+                    item_provenance["approved_by"] = evidence["approved_by"]
+                if not item_provenance["approved_at"]:
+                    item_provenance["approved_at"] = evidence["approved_at"]
+                if not item_provenance["freshness_status"]:
+                    item_provenance["freshness_status"] = "CURRENT"
+                if item_provenance["approved_by"] == evidence["approved_by"] and item_provenance["approved_at"] == evidence["approved_at"]:
+                    item_provenance["approval_evidence_source"] = evidence["approval_evidence_source"]
+                    item_provenance["approval_patch_id"] = evidence["approval_patch_id"]
+            provenance[key] = item_provenance
         for row in rows:
             zh_provenance = {
                 field: provenance.get((str(row[1]), "zh", field), {})

@@ -64,15 +64,17 @@ def _build_report(resolutions: list[RecordResolution], source: Any, date: str, d
 
 
 def _write_csv(path: Path, resolutions: list[RecordResolution]) -> None:
-    headers = ["sku", "auto_ready", "name_status", "cat1_status", "cat2_status", "spec_status", "brand_status", "brand_classification", "source_hash_status", "source_quality_status", "review_reason"]
+    headers = ["sku", "auto_ready", "name_status", "name_candidate", "cat1_status", "cat2_status", "spec_status", "spec_candidate", "brand_status", "brand_classification", "source_hash_status", "source_quality_status", "review_reason"]
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=headers)
         writer.writeheader()
         for item in resolutions:
             writer.writerow({
                 "sku": item.sku, "auto_ready": item.readiness == "AUTO_READY",
-                "name_status": item.fields["name"].status, "cat1_status": item.fields["cat1"].status,
+                "name_status": item.fields["name"].status, "name_candidate": item.fields["name"].value,
+                "cat1_status": item.fields["cat1"].status,
                 "cat2_status": item.fields["cat2"].status, "spec_status": item.fields["spec"].status,
+                "spec_candidate": item.fields["spec"].value,
                 "brand_status": item.fields["brand"].status, "source_hash_status": item.source_hash_status,
                 "brand_classification": item.brand_classification,
                 "source_quality_status": item.source_quality_status, "review_reason": "|".join(item.review_reasons),

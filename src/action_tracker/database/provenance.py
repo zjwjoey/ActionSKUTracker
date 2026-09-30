@@ -48,7 +48,9 @@ def sync_localization_field_provenance(
     if not sku or language not in {"es", "zh"}:
         raise ValueError("LOCALIZATION_PROVENANCE_IDENTITY_MISSING")
 
-    tables = [table for table in ("localization_fields", "localization_field_provenance")
+    # The canonical table owns the audit-only approval metadata. Read it first
+    # so writes to the compatibility projection cannot erase that metadata.
+    tables = [table for table in ("localization_field_provenance", "localization_fields")
               if _table_exists(db, table)]
     if not tables:
         return
@@ -97,8 +99,15 @@ def sync_localization_field_provenance(
             for idx, name in enumerate(names, start=6):
                 if idx < len(existing):
                     extras[name] = existing[idx]
-        extras.update({name: row.get(f"{field_name}_{name}") for name in ("approved_by", "approved_at", "freshness_status")
-                       if f"{field_name}_{name}" in row})
+        for name in ("approved_by", "approved_at", "freshness_status"):
+            field_key = f"{field_name}_{name}"
+            if field_key in row:
+                extras[name] = row.get(field_key)
+            elif row.get(name) is not None:
+                # Older localization writers attach approval metadata to the
+                # whole language row; project it to each field unless a
+                # field-specific value explicitly overrides it.
+                extras[name] = row.get(name)
 
         for table in tables:
             cols = _columns(db, table)

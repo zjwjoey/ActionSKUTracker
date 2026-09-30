@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
-from action_tracker.products.updater import plan_updates
+from action_tracker.products import updater
+from action_tracker.products.updater import fetch_and_merge, plan_updates
 
 
 def _status(sku: str, lifecycle: str, source_flag: str):
@@ -140,3 +141,46 @@ def test_known_cat2_cat1_mismatch_is_requeued_for_official_breadcrumb():
 
     assert plans[0]["reason"] == "CATEGORY_MISMATCH"
     assert plans[0]["need_detail"] is True
+
+
+def test_invalid_nonempty_categories_are_requeued_for_official_breadcrumb():
+    plans = plan_updates(
+        {"3218264": _status("3218264", "ACTIVE", "BOTH")},
+        baseline={"3218264": {
+            "name_es": "Guirnalda de luz navideña Luxuriance Lights",
+            "cat1_es": "Guirnalda de luz navideña Luxuriance Lights",
+            "cat2_es": "Atrás", "desc_es": "Descripción oficial",
+            "details_es": "Número del artículo: 3218264",
+        }},
+        today_light={"3218264": {"name_es": "Guirnalda de luz navideña Luxuriance Lights"}},
+    )
+
+    assert plans[0]["reason"] == "CATEGORY_INVALID"
+    assert plans[0]["need_detail"] is True
+
+
+def test_invalid_categories_do_not_fall_back_to_listing_when_detail_is_blank(tmp_path, monkeypatch):
+    monkeypatch.setattr(updater, "_get_detail", lambda *args, **kwargs: {"cat1_es": "", "cat2_es": ""})
+
+    class Browser:
+        @staticmethod
+        def sleep():
+            pass
+
+    plan = [{
+        "sku": "3218264", "canonical_id": "ACT3218264", "reason": "CATEGORY_INVALID",
+        "need_detail": True,
+        "light": {"cat1_es": "Vivienda", "cat2_es": "Decoración", "product_url": "https://example/3218264"},
+    }]
+    _, updated = fetch_and_merge(
+        Browser(), plan,
+        baseline={"3218264": {
+            "name_es": "Guirnalda de luz navideña Luxuriance Lights",
+            "cat1_es": "Guirnalda de luz navideña Luxuriance Lights", "cat2_es": "Atrás",
+        }},
+        checkpoint_dir=tmp_path,
+    )
+
+    assert updated["3218264"]["cat1_es"] == ""
+    assert updated["3218264"]["cat2_es"] == ""
+    assert updated["3218264"]["status"] == "CURRENT"

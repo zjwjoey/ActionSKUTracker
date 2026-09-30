@@ -14,8 +14,8 @@ import os
 import platform
 import subprocess
 import tempfile
-from collections import Counter
-from dataclasses import dataclass
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field as dataclass_field
 from datetime import date
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -23,7 +23,24 @@ from typing import Any, Iterable, Mapping
 from ..dictionary_resolver import FieldResolution, resolve_record
 from ..exporting.dictionary_join import DictionaryContext
 from ..services.hashing import localization_source_hash
-from ..translation.model_guard import ModelOutputCheck, numeric_tokens, technical_tokens, validate_model_output
+from ..translation.detail_terminology import (
+    DetailTerminologyConfigError, find_unmapped_closed_enum_values,
+    repair_detail_candidate, resolve_detail_from_rules, validate_detail_terminology_rules,
+)
+from ..translation.description_fidelity import (
+    DescriptionFidelityPolicyError, description_compression_finding,
+    load_description_fidelity_policy,
+)
+from ..translation.approved_terms import (
+    approved_source_term_ledger, inspect_approved_term_candidate,
+    inspect_approved_term_cross_field_movement,
+)
+from ..translation.model_guard import (
+    ModelOutputCheck, certification_tokens, numeric_tokens, technical_tokens,
+    unit_tokens, validate_model_output,
+)
+from ..translation.source_fact_repair import repair_model_output as inspect_source_facts
+from ..translation.title_policy import load_title_display_policy, title_policy_prompt
 
 
 FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
@@ -33,6 +50,7 @@ FIELD_TO_SOURCE = {
 }
 RULE_SOURCES = frozenset({
     "manual_override", "product_dictionary", "category_dictionary", "term_dictionary", "model_cache",
+    "detail_terminology",
 })
 FAILURE_COLUMNS = (
     "failure_id", "batch", "sku", "field", "source", "resolver", "model_prediction",
@@ -42,8 +60,8 @@ FAILURE_COLUMNS = (
 REVIEW_COLUMNS = (
     "review_id", "candidate_id", "batch_id", "sku", "field", "spanish_source",
     "resolver_result", "model_candidate", "guard_findings", "historical_chinese",
-    "dictionary_evidence", "category", "brand", "numeric_facts", "technical_tokens",
-    "proposed_disposition", "review_status", "reviewer", "reviewed_at",
+    "dictionary_evidence", "terminology_corrections", "category", "brand", "numeric_facts", "technical_tokens",
+    "semantic_fact_findings", "proposed_disposition", "review_status", "reviewer", "reviewed_at",
 )
 
 
@@ -62,6 +80,9 @@ class Stage5Contracts:
     pipeline: dict[str, Any]
     guard: dict[str, Any]
     hashes: dict[str, str]
+    detail_terminology: dict[str, Any] = dataclass_field(default_factory=dict)
+    title_display_policy: dict[str, Any] = dataclass_field(default_factory=dict)
+    description_fidelity_policy: dict[str, Any] = dataclass_field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -136,11 +157,74 @@ def load_contracts(repo: Path) -> Stage5Contracts:
         "ownership": root / "config/stage5/stage5_field_ownership.json",
         "pipeline": root / "config/stage5/stage5_pipeline_contract.json",
         "guard": root / "config/stage5/stage5_guard_policy.json",
+        "description_fidelity": root / "config/stage5/description_fidelity_policy.json",
     }
     values = {key: _load_json(path) for key, path in locations.items()}
+    failure_classes = values["guard"].get("failure_classes")
+    fallback_failure_class = values["guard"].get("fallback_failure_class")
+    if (
+        not isinstance(failure_classes, dict)
+        or not isinstance(fallback_failure_class, str)
+        or not fallback_failure_class.strip()
+        or fallback_failure_class not in failure_classes.values()
+    ):
+        raise ContractError("GUARD_FAILURE_CLASS_POLICY_INVALID")
+    detail_rules_path = root / "config/stage5/detail_terminology_rules.json"
+    detail_terminology = _load_json(detail_rules_path)
+    try:
+        validate_detail_terminology_rules(detail_terminology)
+    except DetailTerminologyConfigError as exc:
+        raise ContractError(str(exc)) from exc
+    title_policy_path = root / "config/stage5/title_display_policy.json"
+    title_policy_impl_path = root / "src/action_tracker/translation/title_policy.py"
+    title_display_policy = load_title_display_policy(title_policy_path)
+    description_policy_path = locations["description_fidelity"]
+    try:
+        description_fidelity_policy = load_description_fidelity_policy(description_policy_path)
+    except DescriptionFidelityPolicyError as exc:
+        raise ContractError(str(exc)) from exc
+    prompt = values["pipeline"]["inference"]["system_prompt"]
+    if "{{TITLE_DISPLAY_POLICY}}" not in prompt:
+        raise ContractError("TITLE_POLICY_PROMPT_MARKER_MISSING")
+    values["pipeline"]["inference"]["system_prompt"] = prompt.replace(
+        "{{TITLE_DISPLAY_POLICY}}", title_policy_prompt(title_display_policy),
+    )
+    hashes = {key: sha256_file(path) for key, path in locations.items()}
+    # Candidate identity must change when deterministic guard behavior changes,
+    # not only when the policy JSON changes. Otherwise a pre-guard-upgrade
+    # candidate could retain the same ID while receiving different QA results.
+    guard_impl_path = root / "src/action_tracker/translation/model_guard.py"
+    hashes["guard"] = sha256_bytes(
+        f"{hashes['guard']}:{sha256_file(guard_impl_path)}".encode("utf-8")
+    )
+    # Resolver implementations are part of candidate identity as well as their
+    # configuration. In particular, the exact approved-term resolver is shared
+    # by Stage 5 and formal export, while dictionary_resolver delegates several
+    # operations to dictionary_join. Hashing only the outer resolver used to
+    # miss behavior changes in those imported modules.
+    resolver_identity_paths = (
+        detail_rules_path,
+        root / "src/action_tracker/products/details_parser.py",
+        root / "src/action_tracker/translation/detail_terminology.py",
+        root / "src/action_tracker/translation/description_fidelity.py",
+        description_policy_path,
+        title_policy_path,
+        title_policy_impl_path,
+        root / "src/action_tracker/translation/term_resolver.py",
+        root / "src/action_tracker/translation/approved_terms.py",
+        root / "src/action_tracker/translation/source_fact_repair.py",
+        root / "src/action_tracker/dictionary_resolver.py",
+        root / "src/action_tracker/exporting/dictionary_join.py",
+        root / "src/action_tracker/dictionary.py",
+        root / "src/action_tracker/stage5/pipeline.py",
+    )
+    resolver_identity = ":".join(sha256_file(path) for path in resolver_identity_paths)
+    hashes["pipeline"] = sha256_bytes(
+        f"{hashes['pipeline']}:{resolver_identity}".encode("utf-8")
+    )
     return Stage5Contracts(
         values["input_contract"], values["ownership"], values["pipeline"], values["guard"],
-        {key: sha256_file(path) for key, path in locations.items()},
+        hashes, detail_terminology, title_display_policy, description_fidelity_policy,
     )
 
 
@@ -298,11 +382,13 @@ def validate_input_rows(rows: Iterable[Mapping[str, Any]], contracts: Stage5Cont
     return sorted(normalized, key=lambda row: (row["metadata"]["sku"], row["metadata"]["source_hash"]))
 
 
-def _request_id(row: Mapping[str, Any], field: str, contracts: Stage5Contracts) -> str:
+def _request_id(
+    row: Mapping[str, Any], field: str, contracts: Stage5Contracts, dictionary_hash: str,
+) -> str:
     metadata = row["metadata"]
     payload = [
-        "stage5-request-v1", metadata["batch_id"], metadata["sku"], metadata["source_hash"], field,
-        contracts.pipeline["inference"]["task_id"], contracts.hashes["pipeline"],
+        "stage5-request-v2", metadata["batch_id"], metadata["sku"], metadata["source_hash"], field,
+        contracts.pipeline["inference"]["task_id"], contracts.hashes["pipeline"], dictionary_hash,
     ]
     return sha256_bytes(canonical_json(payload).encode("utf-8"))
 
@@ -322,7 +408,7 @@ def plan_batch(
         )
         for field in FIELDS:
             source_value = source[field]
-            request_id = _request_id(row, field, contracts)
+            request_id = _request_id(row, field, contracts, context.content_hash)
             if not source_value:
                 plans.append(FieldPlan(row, field, source_value, request_id, None, "SOURCE", "SOURCE_AMBIGUOUS", allowed_brands))
                 continue
@@ -342,6 +428,49 @@ def plan_batch(
                 if check.accepted:
                     plans.append(FieldPlan(row, field, source_value, request_id, resolved, "RULE", "RESOLVER_READY", allowed_brands))
                     continue
+            if field == "details" and contracts.detail_terminology and not safe_rule:
+                rule_context = {
+                    "name_es": source.get("name", ""),
+                    "cat1_es": source.get("cat1", ""),
+                    "cat2_es": source.get("cat2", ""),
+                }
+                deterministic_details = resolve_detail_from_rules(
+                    source_value, contracts.detail_terminology, context=rule_context,
+                )
+                if deterministic_details is not None:
+                    rule_resolution = FieldResolution(
+                        deterministic_details, "detail_terminology", "READY",
+                    )
+                    check = validate_model_output(
+                        {field: source_value}, {field: deterministic_details}, expected_fields=[field],
+                        allowed_brand_phrases=allowed_brands,
+                    )
+                    if check.accepted:
+                        plans.append(FieldPlan(
+                            row, field, source_value, request_id, rule_resolution,
+                            "RULE", "DETAIL_TERMINOLOGY_RULE", allowed_brands,
+                        ))
+                        continue
+            if field == "details" and contracts.detail_terminology and not safe_rule:
+                unmapped_closed_enums = find_unmapped_closed_enum_values(
+                    source_value,
+                    contracts.detail_terminology,
+                    context={
+                        "name_es": source.get("name", ""),
+                        "cat1_es": source.get("cat1", ""),
+                        "cat2_es": source.get("cat2", ""),
+                    },
+                )
+                if unmapped_closed_enums:
+                    evidence = canonical_json(unmapped_closed_enums)
+                    review_resolution = FieldResolution(
+                        evidence, "closed_enum_review", "REVIEW",
+                    )
+                    plans.append(FieldPlan(
+                        row, field, source_value, request_id, review_resolution,
+                        "RESOLVER", "DETAIL_ENUM_UNMAPPED", allowed_brands,
+                    ))
+                    continue
             if field not in allowed_model_fields:
                 reason = "RESOLVER_FAILURE" if resolved is None or resolved.status != "READY" else "RULE_GUARD_REJECT"
                 plans.append(FieldPlan(row, field, source_value, request_id, resolved, "RESOLVER", reason, allowed_brands))
@@ -350,7 +479,9 @@ def plan_batch(
     return plans
 
 
-def model_requests(plans: Iterable[FieldPlan]) -> list[dict[str, Any]]:
+def model_requests(
+    plans: Iterable[FieldPlan], *, approved_terms: Iterable[dict[str, Any]] = (),
+) -> list[dict[str, Any]]:
     return [
         {
             "request_id": plan.request_id,
@@ -359,9 +490,37 @@ def model_requests(plans: Iterable[FieldPlan]) -> list[dict[str, Any]]:
             "source_hash": plan.row["metadata"]["source_hash"],
             "field": plan.field,
             "source": plan.source_value,
+            # The model is never trusted to invent or repair facts.  Persist a
+            # deterministic per-field ledger alongside every request so the
+            # caller can template/verify numbers and technical tokens before
+            # accepting a response.  The ledger is advisory metadata only;
+            # ``build_batch`` remains the authoritative reject-only guard.
+            "numeric_ledger": list(numeric_tokens(plan.source_value)),
+            "unit_ledger": list(unit_tokens(plan.source_value)),
+            "technical_token_ledger": list(technical_tokens(plan.source_value)),
+            "certification_ledger": list(certification_tokens(plan.source_value)),
+            "approved_fact_ledger": approved_source_term_ledger(plan.source_value, approved_terms),
+            "rule_first": True,
         }
         for plan in plans if plan.resolution_path == "MODEL"
     ]
+
+
+def model_input_payload(request: Mapping[str, Any]) -> dict[str, Any]:
+    """Build the strict single-field inference payload plus protected ledger."""
+    field = str(request.get("field") or "")
+    if field not in FIELDS:
+        raise ContractError("MODEL_REQUEST_FIELD_INVALID")
+    return {
+        field: str(request.get("source") or ""),
+        "__protected_fact_ledger__": {
+            "numbers": list(request.get("numeric_ledger") or ()),
+            "units": list(request.get("unit_ledger") or ()),
+            "technical_tokens": list(request.get("technical_token_ledger") or ()),
+            "certifications": list(request.get("certification_ledger") or ()),
+            "approved_terms": list(request.get("approved_fact_ledger") or ()),
+        },
+    }
 
 
 def strict_parse_prediction(raw_output: str | None, field: str) -> dict[str, str] | None:
@@ -441,12 +600,14 @@ def build_batch(
     plans: list[FieldPlan], raw_outputs: Mapping[str, str | None], contracts: Stage5Contracts,
     identity: Mapping[str, Any], *, dictionary_hash: str,
     owner_corrections: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+    approved_terms: Iterable[dict[str, str]] = (),
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
     reviews: list[dict[str, Any]] = []
     hard_reasons = set(contracts.guard["hard_reasons"])
     failure_classes = contracts.guard["failure_classes"]
+    approved_terms = tuple(approved_terms)
     for plan in plans:
         metadata = plan.row["metadata"]
         resolver_payload = None if plan.resolver is None else {
@@ -458,8 +619,25 @@ def build_batch(
         parsed = strict_parse_prediction(raw_output, plan.field) if model_invoked else None
         parsed_candidate = None
         owner_correction = None
+        semantic_fact_findings: list[dict[str, Any]] = []
+        terminology_corrections: tuple[str, ...] = ()
         if plan.resolution_path == "RULE" and plan.resolver is not None:
             parsed_candidate = plan.resolver.value
+            if (
+                plan.field == "details"
+                and contracts.detail_terminology
+                and plan.resolver.source != "manual_override"
+            ):
+                parsed_candidate, terminology_corrections = repair_detail_candidate(
+                    plan.source_value,
+                    parsed_candidate,
+                    contracts.detail_terminology,
+                    context={
+                        "name_es": plan.row["source"].get("name", ""),
+                        "cat1_es": plan.row["source"].get("cat1", ""),
+                        "cat2_es": plan.row["source"].get("cat2", ""),
+                    },
+                )
             candidate_value, owner_correction = apply_owner_correction(
                 metadata["sku"], plan.field, parsed_candidate, owner_corrections,
             )
@@ -467,18 +645,48 @@ def build_batch(
                 {plan.field: plan.source_value}, {plan.field: candidate_value}, expected_fields=[plan.field],
                 allowed_brand_phrases=plan.allowed_brand_phrases,
             )
+            check = _require_detail_manual_review(check, plan.field, terminology_corrections)
+            semantic_fact_findings = _inspect_semantic_facts(plan, candidate_value, contracts)
+            check = _require_semantic_fact_review(check, semantic_fact_findings)
+            approved_term_findings = inspect_approved_term_candidate(
+                plan.field, plan.source_value, candidate_value, approved_terms,
+            )
+            semantic_fact_findings.extend(approved_term_findings)
+            check = _require_approved_term_review(check, plan.field, approved_term_findings)
             status = "RULE_RESOLVED"
             final_candidate = candidate_value if check.accepted else None
             review_status = "NOT_REQUIRED" if check.accepted else "PENDING"
         elif plan.resolution_path == "MODEL":
             parsed_candidate = parsed.get(plan.field) if parsed else None
+            candidate_base = parsed_candidate
+            if plan.field == "details" and candidate_base is not None and contracts.detail_terminology:
+                candidate_base, terminology_corrections = repair_detail_candidate(
+                    plan.source_value,
+                    candidate_base,
+                    contracts.detail_terminology,
+                    context={
+                        "name_es": plan.row["source"].get("name", ""),
+                        "cat1_es": plan.row["source"].get("cat1", ""),
+                        "cat2_es": plan.row["source"].get("cat2", ""),
+                    },
+                )
             candidate_value, owner_correction = apply_owner_correction(
-                metadata["sku"], plan.field, parsed_candidate, owner_corrections,
+                metadata["sku"], plan.field, candidate_base, owner_corrections,
             )
             check = validate_model_output(
-                {plan.field: plan.source_value}, {plan.field: candidate_value} if owner_correction else parsed,
+                {plan.field: plan.source_value},
+                {plan.field: candidate_value} if owner_correction or terminology_corrections else parsed,
+                expected_fields=[plan.field],
                 allowed_brand_phrases=plan.allowed_brand_phrases,
             )
+            check = _require_detail_manual_review(check, plan.field, terminology_corrections)
+            semantic_fact_findings = _inspect_semantic_facts(plan, candidate_value, contracts)
+            check = _require_semantic_fact_review(check, semantic_fact_findings)
+            approved_term_findings = inspect_approved_term_candidate(
+                plan.field, plan.source_value, candidate_value, approved_terms,
+            )
+            semantic_fact_findings.extend(approved_term_findings)
+            check = _require_approved_term_review(check, plan.field, approved_term_findings)
             status = "GUARD_PASS_PENDING_REVIEW" if check.accepted else (
                 "MODEL_FAILURE" if "JSON_PARSE" in check.reasons or "SCHEMA" in check.reasons else "GUARD_REJECT"
             )
@@ -525,6 +733,9 @@ def build_batch(
             "raw_model_output": raw_output,
             "parsed_candidate": parsed_candidate,
             "corrected_candidate": candidate_value,
+            "terminology_rules_version": contracts.detail_terminology.get("version"),
+            "terminology_corrections": list(terminology_corrections),
+            "semantic_fact_findings": semantic_fact_findings,
             "owner_correction": owner_correction,
             "owner_correction_applied": owner_correction is not None,
             "guard_result": {
@@ -548,15 +759,19 @@ def build_batch(
                 "resolver_result": canonical_json(resolver_payload), "model_candidate": candidate_value or "",
                 "guard_findings": "|".join(field_reasons), "historical_chinese": "",
                 "dictionary_evidence": canonical_json(resolver_payload),
+                "terminology_corrections": "|".join(terminology_corrections),
                 "category": plan.row["source"].get("cat1", ""), "brand": "",
                 "numeric_facts": canonical_json(numeric_tokens(plan.source_value)),
                 "technical_tokens": canonical_json(technical_tokens(plan.source_value)),
+                "semantic_fact_findings": canonical_json(semantic_fact_findings),
                 "proposed_disposition": status,
                 "review_status": "PENDING", "reviewer": "", "reviewed_at": "",
             })
         if not check.accepted or plan.resolution_path not in {"RULE", "MODEL"}:
             reasons = field_reasons or [plan.reason]
-            failure_type = failure_classes.get(reasons[0], plan.reason)
+            failure_type = failure_classes.get(
+                reasons[0], contracts.guard["fallback_failure_class"],
+            )
             failure_id = sha256_bytes(f"stage5-failure-v1|{candidate_id}|{'|'.join(reasons)}".encode("utf-8"))
             failures.append({
                 "failure_id": failure_id, "batch": metadata["batch_id"], "sku": metadata["sku"],
@@ -573,11 +788,171 @@ def build_batch(
                 "evidence": "|".join(reasons), "action": "HUMAN_REVIEW_REQUIRED",
                 "owner": "human_reviewer", "status": "OPEN",
             })
+    _apply_cross_field_term_reviews(plans, candidates, failures, reviews, approved_terms)
     candidates.sort(key=lambda item: (item["sku"], FIELDS.index(item["source_field"]), item["candidate_id"]))
     failures.sort(key=lambda item: (item["sku"], item["field"], item["failure_id"]))
     reviews.sort(key=lambda item: (item["sku"], item["field"], item["review_id"]))
     evaluation = evaluate_batch(candidates, failures, reviews)
     return candidates, failures, reviews, evaluation
+
+
+def _inspect_semantic_facts(
+    plan: FieldPlan, candidate: Any, contracts: Stage5Contracts,
+) -> list[dict[str, Any]]:
+    """Produce source-bound semantic warnings without rewriting the candidate."""
+    if plan.field not in {"name", "description"} or not isinstance(candidate, str):
+        return []
+    source = {
+        "name": str(plan.row["source"].get("name") or ""),
+        "description": str(plan.row["source"].get("description") or ""),
+    }
+    _, findings = inspect_source_facts(source, {plan.field: candidate})
+    if plan.field == "description" and contracts.description_fidelity_policy:
+        compression = description_compression_finding(
+            source["description"], candidate, contracts.description_fidelity_policy,
+        )
+        if compression:
+            findings.append({"field": "description", **compression})
+    return findings
+
+
+def _apply_cross_field_term_reviews(
+    plans: list[FieldPlan], candidates: list[dict[str, Any]], failures: list[dict[str, Any]],
+    reviews: list[dict[str, Any]], approved_terms: Iterable[dict[str, str]],
+) -> None:
+    """Route glossary-backed cross-field movement to review after field candidates exist."""
+    plans_by_sku: dict[str, list[FieldPlan]] = defaultdict(list)
+    candidates_by_sku: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
+    for plan in plans:
+        plans_by_sku[str(plan.row["metadata"]["sku"])].append(plan)
+    for candidate in candidates:
+        candidates_by_sku[str(candidate["sku"])][str(candidate["source_field"])] = candidate
+
+    for sku, field_candidates in candidates_by_sku.items():
+        sku_plans = plans_by_sku.get(sku, ())
+        if not sku_plans:
+            continue
+        source_row = sku_plans[0].row["source"]
+        source_fields = {
+            "name": source_row.get("name", ""), "spec": source_row.get("spec", ""),
+            "description": source_row.get("description", ""), "details": source_row.get("details", ""),
+        }
+        target_fields = {
+            field: str(candidate.get("corrected_candidate") or "")
+            for field, candidate in field_candidates.items()
+        }
+        findings = inspect_approved_term_cross_field_movement(
+            source_fields, target_fields, approved_terms,
+        )
+        for finding in findings:
+            field = str(finding["field"])
+            candidate = field_candidates.get(field)
+            if candidate is None:
+                continue
+            reason = str(finding["code"])
+            semantic_findings = list(candidate.get("semantic_fact_findings") or [])
+            semantic_findings.append(finding)
+            candidate["semantic_fact_findings"] = semantic_findings
+            guard = candidate["guard_result"]
+            guard["accepted"] = False
+            guard["reasons"] = sorted(set(guard.get("reasons") or ()) | {reason})
+            guard["field_reasons"] = sorted(set(guard.get("field_reasons") or ()) | {reason})
+            candidate["final_candidate"] = None
+            candidate["status"] = "GUARD_REJECT"
+            candidate["review_status"] = "PENDING"
+
+            review = next((row for row in reviews if row.get("candidate_id") == candidate["candidate_id"]), None)
+            if review is None:
+                plan = next((item for item in sku_plans if item.field == field), sku_plans[0])
+                review_id = sha256_bytes(f"stage5-review-v1|{candidate['candidate_id']}".encode("utf-8"))
+                review = {
+                    "review_id": review_id, "candidate_id": candidate["candidate_id"],
+                    "batch_id": candidate["batch_id"], "sku": sku, "field": field,
+                    "spanish_source": candidate.get("source_spanish_value", ""),
+                    "resolver_result": canonical_json(candidate.get("resolver_result")),
+                    "model_candidate": candidate.get("corrected_candidate") or "",
+                    "guard_findings": "", "historical_chinese": "",
+                    "dictionary_evidence": canonical_json(candidate.get("resolver_result")),
+                    "terminology_corrections": "|".join(candidate.get("terminology_corrections") or ()),
+                    "category": plan.row["source"].get("cat1", ""), "brand": "",
+                    "numeric_facts": canonical_json(numeric_tokens(candidate.get("source_spanish_value", ""))),
+                    "technical_tokens": canonical_json(technical_tokens(candidate.get("source_spanish_value", ""))),
+                    "semantic_fact_findings": "[]", "proposed_disposition": "GUARD_REJECT",
+                    "review_status": "PENDING", "reviewer": "", "reviewed_at": "",
+                }
+                reviews.append(review)
+            review_findings = [value for value in str(review.get("guard_findings") or "").split("|") if value]
+            review["guard_findings"] = "|".join(sorted(set(review_findings) | {reason}))
+            review["semantic_fact_findings"] = canonical_json(semantic_findings)
+            review["proposed_disposition"] = "GUARD_REJECT"
+
+            if not any(row.get("sku") == sku and row.get("field") == field and reason in str(row.get("evidence") or "") for row in failures):
+                failure_id = sha256_bytes(f"stage5-failure-v1|{candidate['candidate_id']}|{reason}".encode("utf-8"))
+                failures.append({
+                    "failure_id": failure_id, "batch": candidate["batch_id"], "sku": sku,
+                    "field": field, "source": candidate.get("source_spanish_value", ""),
+                    "resolver": canonical_json(candidate.get("resolver_result")),
+                    "model_prediction": candidate.get("corrected_candidate") or "",
+                    "final_candidate": "", "failure_type": "SEMANTIC_REVIEW_REQUIRED",
+                    "severity": "P2", "root_cause": "validator_guard", "guard_detected": True,
+                    "escaped_guard": False, "evidence": reason,
+                    "action": "HUMAN_REVIEW_REQUIRED", "owner": "human_reviewer", "status": "OPEN",
+                })
+
+
+def _require_semantic_fact_review(
+    check: ModelOutputCheck, findings: list[dict[str, Any]],
+) -> ModelOutputCheck:
+    """Hold candidates when deterministic source-fact clues need human review."""
+    if not findings:
+        return check
+    field_reasons = dict(check.field_reasons)
+    review_codes: set[str] = set()
+    for item in findings:
+        field = str(item.get("field") or "")
+        code = str(item.get("code") or "")
+        review_code = "DESCRIPTION_COMPRESSION_REVIEW" if code == "DESCRIPTION_COMPRESSION_REVIEW" else "SOURCE_FACT_REVIEW_REQUIRED"
+        review_codes.add(review_code)
+        if field:
+            field_reasons[field] = tuple(sorted(set(field_reasons.get(field, ())) | {review_code}))
+    return ModelOutputCheck(
+        False, tuple(sorted(set(check.reasons) | review_codes)), field_reasons,
+    )
+
+
+def _require_detail_manual_review(
+    check: ModelOutputCheck, field: str, terminology_flags: tuple[str, ...],
+) -> ModelOutputCheck:
+    """Fail closed when structured detail pairs or their context are uncertain."""
+    uncertain = field == "details" and any(
+        flag.startswith("DETAIL_PAIR_")
+        or flag.startswith("DETAIL_VALUE_TRANSLATION_UNRECOGNIZED:")
+        or flag.startswith("DETAIL_SOURCE_VALUE_UNMAPPED_REVIEW:")
+        or flag == "DETAIL_CONTEXT_REQUIRED"
+        for flag in terminology_flags
+    )
+    if not uncertain:
+        return check
+    review_code = "DETAIL_TERMINOLOGY_REVIEW"
+    field_reasons = dict(check.field_reasons)
+    field_reasons[field] = tuple(sorted(set(field_reasons.get(field, ())) | {review_code}))
+    return ModelOutputCheck(
+        False, tuple(sorted(set(check.reasons) | {review_code})), field_reasons,
+    )
+
+
+def _require_approved_term_review(
+    check: ModelOutputCheck, field: str, findings: list[dict[str, Any]],
+) -> ModelOutputCheck:
+    """Route approved-term conflicts and unresolved synonyms to a reviewer."""
+    if not findings:
+        return check
+    codes = {str(item.get("code") or "") for item in findings if item.get("code")}
+    field_reasons = dict(check.field_reasons)
+    field_reasons[field] = tuple(sorted(set(field_reasons.get(field, ())) | codes))
+    return ModelOutputCheck(
+        False, tuple(sorted(set(check.reasons) | codes)), field_reasons,
+    )
 
 
 def evaluate_batch(
@@ -595,6 +970,7 @@ def evaluate_batch(
     escaped = [candidate for candidate in candidates if candidate["guard_result"]["accepted"] and candidate["guard_result"]["reasons"]]
     selections = Counter(reason for row in sku_rows.values() for reason in row["selection_reasons"])
     human = Counter(row["review_status"] for row in reviews)
+    terminology = [reason for row in candidates for reason in row.get("terminology_corrections", ())]
     return {
         "batch_id": candidates[0]["batch_id"] if candidates else None,
         "eligible_sku_count": len(sku_rows),
@@ -607,12 +983,25 @@ def evaluate_batch(
         "resolver_gap": len(model_candidates),
         "model_invocation_count": len(model_candidates),
         "model_invocation_ratio": len(model_candidates) / len(candidates) if candidates else 0.0,
+        "detail_terminology_rules_applied": sum(
+            reason.startswith(("DETAIL_KEY_RULE:", "DETAIL_VALUE_RULE:", "DETAIL_NUMERIC_KEY_RULE:"))
+            for reason in terminology
+        ),
+        "detail_pair_alignment_uncertain": sum(reason.startswith("DETAIL_PAIR_") for reason in terminology),
+        "detail_context_required": sum(reason == "DETAIL_CONTEXT_REQUIRED" for reason in terminology),
         "guard_pass": len(guard_pass),
         "guard_reject": len(guard_reject),
         "numeric_reject": reasons["NUMERIC_DROPPED"] + reasons["NUMERIC_HALLUCINATED"],
         "unit_reject": reasons["UNIT_DROPPED"] + reasons["UNIT_HALLUCINATED"],
         "tech_token_reject": reasons["TECH_TOKEN_DROPPED"] + reasons["TECH_TOKEN_HALLUCINATED"],
         "category_reject": reasons["INVALID_CATEGORY"],
+        "certification_reject": reasons["CERTIFICATION_DROPPED"] + reasons["CERTIFICATION_HALLUCINATED"],
+        "internal_qa_note_leak_reject": reasons["INTERNAL_QA_NOTE_LEAKED"],
+        "term_forbidden_reject": reasons["TERM_FORBIDDEN_TRANSLATION"],
+        "approved_term_review": reasons["APPROVED_TERM_CANONICAL_ABSENT_REVIEW"],
+        "approved_term_cross_field_review": reasons["APPROVED_TERM_CROSS_FIELD_REVIEW"],
+        "approved_term_unsupported_target_review": reasons["APPROVED_TERM_UNSUPPORTED_TARGET_REVIEW"],
+        "negation_reject": reasons["NEGATION_DROPPED"] + reasons["NEGATION_HALLUCINATED"],
         "residual_language_reject": reasons["SPANISH_RESIDUAL"] + reasons["ENGLISH_RESIDUAL"],
         "schema_reject": reasons["JSON_PARSE"] + reasons["SCHEMA"],
         "human_accept_as_is": human["ACCEPT_AS_IS"],
@@ -626,14 +1015,18 @@ def evaluate_batch(
         "fact_hallucination_escaped": sum(
             "NUMERIC_HALLUCINATED" in item["guard_result"]["reasons"] or
             "UNIT_HALLUCINATED" in item["guard_result"]["reasons"] or
-            "TECH_TOKEN_HALLUCINATED" in item["guard_result"]["reasons"]
+            "TECH_TOKEN_HALLUCINATED" in item["guard_result"]["reasons"] or
+            "CERTIFICATION_HALLUCINATED" in item["guard_result"]["reasons"] or
+            "NEGATION_HALLUCINATED" in item["guard_result"]["reasons"]
             for item in escaped
         ),
         "source_fact_loss_escaped": sum(
             "EMPTY_REQUIRED_FIELD" in item["guard_result"]["reasons"] or
             "NUMERIC_DROPPED" in item["guard_result"]["reasons"] or
             "UNIT_DROPPED" in item["guard_result"]["reasons"] or
-            "TECH_TOKEN_DROPPED" in item["guard_result"]["reasons"]
+            "TECH_TOKEN_DROPPED" in item["guard_result"]["reasons"] or
+            "CERTIFICATION_DROPPED" in item["guard_result"]["reasons"] or
+            "NEGATION_DROPPED" in item["guard_result"]["reasons"]
             for item in escaped
         ),
         "numeric_fact_corruption_escaped": sum(
@@ -646,6 +1039,10 @@ def evaluate_batch(
         ),
         "tech_token_corruption_escaped": sum(
             any(reason.startswith("TECH_TOKEN_") for reason in item["guard_result"]["reasons"])
+            for item in escaped
+        ),
+        "forbidden_term_escaped": sum(
+            "TERM_FORBIDDEN_TRANSLATION" in item["guard_result"]["reasons"]
             for item in escaped
         ),
         "invalid_category_escaped": sum(

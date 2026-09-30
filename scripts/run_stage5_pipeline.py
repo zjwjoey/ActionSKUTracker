@@ -17,7 +17,9 @@ from action_tracker.exporting.dictionary_join import load_dictionary_context  # 
 from action_tracker.stage5.pipeline import (  # noqa: E402
     ContractError,
     environment_manifest,
+    load_owner_correction_manifest,
     load_contracts,
+    model_input_payload,
     model_requests,
     plan_batch,
     sha256_file,
@@ -63,7 +65,7 @@ def _load_recorded_outputs(path: Path, expected_request_ids: set[str]) -> dict[s
 
 def run_frozen_qwen(
     requests: list[dict[str, Any]], *, model_path: Path, adapter_path: Path,
-    inference: dict[str, Any],
+    inference: dict[str, Any], batch_size: int = 1,
 ) -> dict[str, str | None]:
     """Run exactly the model, prompt and greedy generation in the frozen contract."""
 
@@ -90,31 +92,38 @@ def run_frozen_qwen(
     model = PeftModel.from_pretrained(model, str(adapter_path), local_files_only=True)
     model.eval()
     outputs: dict[str, str | None] = {}
-    for index, request in enumerate(requests, start=1):
-        messages = [
-            {"role": "system", "content": inference["system_prompt"]},
-            {"role": "user", "content": json.dumps({request["field"]: request["source"]}, ensure_ascii=False)},
-        ]
-        prompt = tokenizer.apply_chat_template(
-            messages, tokenize=False,
-            add_generation_prompt=inference["chat_template"]["add_generation_prompt"],
-            enable_thinking=inference["chat_template"]["enable_thinking"],
-        )
+    batch_size = max(1, int(batch_size))
+    for start in range(0, len(requests), batch_size):
+        batch = requests[start : start + batch_size]
+        prompts = []
+        for request in batch:
+            payload = model_input_payload(request)
+            messages = [
+                {"role": "system", "content": inference["system_prompt"]},
+                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+            ]
+            prompts.append(tokenizer.apply_chat_template(
+                messages, tokenize=False,
+                add_generation_prompt=inference["chat_template"]["add_generation_prompt"],
+                enable_thinking=inference["chat_template"]["enable_thinking"],
+            ))
         encoded = tokenizer(
-            [prompt], return_tensors="pt", padding=True,
+            prompts, return_tensors="pt", padding=True,
             truncation=inference["tokenization"]["truncation"],
             max_length=inference["tokenization"]["max_input_length"],
         ).to(model.device)
+        prompt_width = encoded["input_ids"].shape[1]
         with torch.no_grad():
             generated = model.generate(
                 **encoded,
                 max_new_tokens=inference["generation"]["max_new_tokens"],
                 do_sample=inference["generation"]["do_sample"],
             )
-        outputs[request["request_id"]] = tokenizer.decode(
-            generated[0, encoded["input_ids"].shape[1]:], skip_special_tokens=True,
-        ).strip()
-        print(f"stage5 field {index}/{len(requests)}", flush=True)
+        for offset, request in enumerate(batch):
+            outputs[request["request_id"]] = tokenizer.decode(
+                generated[offset, prompt_width:], skip_special_tokens=True,
+            ).strip()
+        print(f"stage5 fields {start + len(batch)}/{len(requests)}", flush=True)
     return outputs
 
 
@@ -124,6 +133,8 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--recorded-model-outputs", type=Path)
     parser.add_argument("--preflight-only", action="store_true")
+    parser.add_argument("--batch-size", type=int, default=1, help="Frozen inference batch size; 1 preserves serial behavior.")
+    parser.add_argument("--owner-corrections", type=Path, help="Immutable Owner field-correction manifest for shadow/canary only.")
     args = parser.parse_args()
 
     input_path = args.input if args.input.is_absolute() else ROOT / args.input
@@ -133,8 +144,13 @@ def main() -> int:
     rows = validate_input_rows(_load_rows(input_path), contracts)
     settings = load_settings(ROOT / "config/settings.yaml")
     context = load_dictionary_context(settings)
+    owner_correction_manifest = None
+    owner_corrections = None
+    if args.owner_corrections:
+        owner_correction_manifest = args.owner_corrections if args.owner_corrections.is_absolute() else ROOT / args.owner_corrections
+        _, owner_corrections = load_owner_correction_manifest(owner_correction_manifest)
     plans = plan_batch(rows, context, contracts)
-    requests = model_requests(plans)
+    requests = model_requests(plans, approved_terms=context.terms)
     if args.preflight_only:
         print(json.dumps({
             "status": "PREFLIGHT_PASS", "rows": len(rows), "field_plans": len(plans),
@@ -148,18 +164,21 @@ def main() -> int:
     else:
         raw_outputs = run_frozen_qwen(
             requests, model_path=Path(identity["model_path"]), adapter_path=Path(identity["adapter_path"]),
-            inference=contracts.pipeline["inference"],
+            inference=contracts.pipeline["inference"], batch_size=args.batch_size,
         )
-    dictionary_manifest = ROOT / "data/dictionary/baseline_manifest.json"
-    dictionary_hash = sha256_file(dictionary_manifest)
+    # Bind candidate identity to the exact dictionary actually selected by the
+    # resolver (runtime or audited baseline), not merely the baseline manifest.
+    dictionary_hash = context.content_hash
     candidates, failures, reviews, evaluation = build_batch(
         plans, raw_outputs, contracts, identity, dictionary_hash=dictionary_hash,
+        owner_corrections=owner_corrections, approved_terms=context.terms,
     )
     manifest = write_batch_artifacts(
         output_dir, input_path=input_path, contracts=contracts, identity=identity,
         environment=environment_manifest(ROOT), dictionary_hash=dictionary_hash,
         requests=requests, raw_outputs=raw_outputs, candidates=candidates,
         failures=failures, reviews=reviews, evaluation=evaluation,
+        owner_correction_manifest=owner_correction_manifest,
     )
     print(json.dumps({
         "status": "STAGE5_BATCH_COMPLETE", "batch_id": evaluation["batch_id"],

@@ -33,14 +33,14 @@ def test_resolver_manual_override_has_field_level_priority():
     assert result.readiness == "AUTO_READY"
 
 
-def test_resolver_adds_marker_only_for_confirmed_brand_and_not_manual_title():
+def test_resolver_keeps_confirmed_brand_separate_from_title_and_preserves_manual_title():
     record = _record()
     source_hash = product_source_hash({"name_es_raw": "Caja", "cat1_es": "Hogar", "cat2_es": "", "spec_es_raw": "2 unidades"})
     product = {"1001": {"sku": "1001", "name_zh_standard": "记号笔", "spec_zh_standard": "2件装", "source_hash": source_hash, "translation_status": "HUMAN_REVIEWED", "cat1_zh": "家务清洁", "brand_id": "Stanger"}}
     brands = {"Stanger": {"brand_id": "Stanger", "canonical_name": "Stanger", "confidence": "REFERENCE"}}
     result = resolve_record(record, _context(product=product, brands=brands))
     assert result.brand_classification == "CONFIRMED"
-    assert result.fields["name"].value == "Stanger牌记号笔"
+    assert result.fields["name"].value == "记号笔"
 
     manual = resolve_record(record, _context(product=product, brands=brands, manual={"1001": {"name_zh_standard": "人工记号笔"}}))
     assert manual.fields["name"].value == "人工记号笔"
@@ -53,7 +53,7 @@ def test_resolver_matches_confirmed_brand_case_insensitively():
     brands = {"Pro-max": {"brand_id": "Pro-max", "canonical_name": "Pro-max", "confidence": "REFERENCE", "review_status": "HUMAN_REVIEWED"}}
     result = resolve_record({**record, "name_es": "Alargador de enchufes Pro-Max", "spec_es": "3 tomas"}, _context(product=product, brands=brands))
     assert result.brand_classification == "CONFIRMED"
-    assert result.fields["name"].value == "Pro-max牌延长插座线"
+    assert result.fields["name"].value == "延长插座线"
     assert result.fields["brand"].status == "READY"
 
 
@@ -65,6 +65,61 @@ def test_resolver_rejects_stale_model_and_marks_hash_change():
     assert result.source_hash_status == "MISMATCH"
     assert result.readiness == "REVIEW_REQUIRED"
     assert "SOURCE_HASH_CHANGED" in result.review_reasons
+
+
+def test_hash_matched_model_candidate_with_quality_ok_still_requires_owner_review():
+    record = _record()
+    source_hash = product_source_hash({
+        "name_es_raw": record["name_es"], "cat1_es": record["cat1_es"],
+        "cat2_es": record["cat2_es"], "spec_es_raw": record["spec_es"],
+    })
+    result = resolve_record(record, _context(model={"1001": {
+        "name_zh_standard": "模型商品名", "spec_zh_standard": "模型规格",
+        "source_hash": source_hash, "quality_status": "OK",
+    }}))
+
+    assert result.fields["name"].value == "模型商品名"
+    assert result.fields["name"].source == "model_cache"
+    assert result.fields["name"].status == "REVIEW"
+    assert result.fields["name"].approval_status == "PENDING"
+    assert result.fields["spec"].status == "REVIEW"
+    assert result.readiness == "REVIEW_REQUIRED"
+    assert "NAME_REVIEW" in result.review_reasons
+    assert "SPEC_REVIEW" in result.review_reasons
+
+
+def test_model_translated_product_row_must_have_explicit_review_approval():
+    record = _record()
+    source_hash = product_source_hash({
+        "name_es_raw": record["name_es"], "cat1_es": record["cat1_es"],
+        "cat2_es": record["cat2_es"], "spec_es_raw": record["spec_es"],
+    })
+    candidate = {
+        "name_zh_standard": "模型商品名", "spec_zh_standard": "模型规格",
+        "source_hash": source_hash, "translation_status": "MODEL_TRANSLATED",
+        "review_status": "UNREVIEWED", "cat1_zh": "家务清洁",
+    }
+
+    result = resolve_record(record, _context(product={"1001": candidate}))
+
+    assert result.fields["name"].value == "模型商品名"
+    assert result.fields["name"].status == "REVIEW"
+    assert result.fields["spec"].status == "REVIEW"
+    assert result.fields["cat1"].value == "家务清洁"
+    assert result.fields["cat1"].status == "REVIEW"
+    assert result.readiness == "REVIEW_REQUIRED"
+
+
+def test_unapproved_category_mapping_is_not_ready():
+    record = {**_record(), "cat2_es": "Decoración"}
+    result = resolve_record(record, _context(category_pairs={
+        ("hogar", "decoracion"): {"cat2_zh": "家居装饰", "review_status": "UNREVIEWED"},
+    }))
+
+    assert result.fields["cat2"].value == "Decoración"
+    assert result.fields["cat2"].status == "FALLBACK"
+    assert result.readiness == "REVIEW_REQUIRED"
+    assert "CATEGORY_REVIEW" in result.review_reasons
 
 
 def test_resolver_source_damage_blocks_without_back_translation():
@@ -82,7 +137,7 @@ def test_resolver_damaged_spec_does_not_fallback_to_ui_text():
     context = DictionaryContext(
         directory=Path("."), product_by_sku=product, manual_by_sku={}, model_by_sku={},
         brand_by_id={"Action": {"brand_id": "Action", "canonical_name": "Action"}},
-        category_by_pair={}, category_by_cat1={"hogar": {"cat1_zh": "家务清洁"}}, terms=(),
+        category_by_pair={}, category_by_cat1={"hogar": {"cat1_zh": "家务清洁", "review_status": "CAT1_CONFIRMED"}}, terms=(),
         damage_by_sku={"1001": {"spec_es_raw"}}, brand_reference_keys=frozenset({"action"}),
         unresolved_brand_ids=frozenset(), content_hash="test", source_quality_by_sku={"1001": "SOURCE_POLLUTED"},
     )
@@ -104,7 +159,7 @@ def test_resolver_replaces_spanish_product_category_with_dictionary_value():
     record = {**_record(), "cat2_es": "Decoración"}
     source_hash = product_source_hash({"name_es_raw": "Caja", "cat1_es": "Hogar", "cat2_es": "Decoración", "spec_es_raw": "2 unidades"})
     product = {"1001": {"name_zh_standard": "盒子", "spec_zh_standard": "2件", "cat1_zh": "家务清洁", "cat2_zh": "Decoración", "source_hash": source_hash, "translation_status": "HUMAN_REVIEWED"}}
-    context = _context(product=product, category_pairs={("hogar", "decoracion"): {"cat2_zh": "家居装饰"}})
+    context = _context(product=product, category_pairs={("hogar", "decoracion"): {"cat2_zh": "家居装饰", "review_status": "HUMAN_REVIEWED"}})
     result = resolve_record(record, context)
     assert result.fields["cat2"].value == "家居装饰"
     assert result.fields["cat2"].source == "category_dictionary"
@@ -127,7 +182,7 @@ def test_provisional_brand_is_explicit_and_policy_controls_promotion():
     provisional = {"NewBrand": {"brand_id": "NewBrand", "canonical_name": "NewBrand", "confidence": "PRODUCT_DICTIONARY_REFERENCE", "review_status": "NEEDS_HUMAN_REVIEW"}}
     context = DictionaryContext(
         directory=Path("."), product_by_sku=product, manual_by_sku={}, model_by_sku={}, brand_by_id=provisional,
-        category_by_pair={}, category_by_cat1={"hogar": {"cat1_zh": "家务清洁"}}, terms=(), damage_by_sku={},
+        category_by_pair={}, category_by_cat1={"hogar": {"cat1_zh": "家务清洁", "review_status": "CAT1_CONFIRMED"}}, terms=(), damage_by_sku={},
         brand_reference_keys=frozenset({"newbrand"}), unresolved_brand_ids=frozenset(), content_hash="test",
         source_quality_by_sku={}, allow_provisional_brands=True,
     )

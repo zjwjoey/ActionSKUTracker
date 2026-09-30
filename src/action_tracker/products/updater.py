@@ -71,8 +71,12 @@ def plan_updates(
             # Never let that low-authority value silently replace the official
             # breadcrumb. Queue a bounded Detail refresh instead; the page
             # parser is the only source allowed to repair cat1/cat2.
-            from ..services.category_consistency import category_mismatch
-            if category_mismatch(base, category_primary_map):
+            from ..services.category_consistency import category_mismatch, invalid_category_fields
+            invalid_categories = invalid_category_fields(base)
+            if invalid_categories:
+                reason = "CATEGORY_INVALID"
+                need_detail = True
+            elif category_mismatch(base, category_primary_map):
                 reason = "CATEGORY_MISMATCH"
                 need_detail = True
             elif (old_price is None) or (new_price is not None and abs(new_price - (old_price or 0)) > 1e-9):
@@ -195,6 +199,14 @@ def fetch_and_merge(
         # current run. A brand-new record has no prior status, but it must
         # still be written to the CURRENT sheets as CURRENT.
         rec["status"] = "CURRENT"
+        from ..services.category_consistency import invalid_category_fields
+        invalid_base_categories = invalid_category_fields(base)
+        if plan.get("reason") == "CATEGORY_INVALID":
+            # Do not carry known title/UI pollution forward if the official
+            # Detail refresh fails.  A missing category is safer than a false
+            # category; lifecycle and frozen Presence are unaffected.
+            for field in invalid_base_categories:
+                rec[field] = ""
 
         has_detail = False
         if plan["need_detail"]:
@@ -225,7 +237,7 @@ def fetch_and_merge(
                     # The listing entry is not an official product
                     # breadcrumb.  Preserve a category already obtained from
                     # the detail page/baseline; only fill a blank identity.
-                    if not _text(rec.get(k)):
+                    if not _text(rec.get(k)) and k not in invalid_base_categories:
                         rec[k] = v
                 elif v != "":
                     rec[k] = v

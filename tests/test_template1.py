@@ -1,4 +1,6 @@
 import json
+import hashlib
+import csv
 from pathlib import Path
 
 import openpyxl
@@ -49,6 +51,8 @@ def test_template1_builds_history_union_and_three_sheets(tmp_path):
     cfg["history_sources_path"] = history_config
 
     result = export_template1(cfg, export_date="2026-08-26", run_id=run_id)
+    assert result["gold_status"] == "NOT_CERTIFIED"
+    assert result["gold_eligible"] is False
     workbook = openpyxl.load_workbook(result["output"], data_only=True)
     try:
         assert workbook.sheetnames == ["商品上下架明细", "今日西班牙语清单", "今日中文清单"]
@@ -67,6 +71,26 @@ def test_template1_builds_history_union_and_three_sheets(tmp_path):
     assert manifest["history_union_sku_count"] == 2
     assert manifest["current_valid_sku_count"] == 1
     assert manifest["presence_one_count"] == 1
+    assert manifest["gold_status"] == "NOT_CERTIFIED"
+    assert manifest["gold_eligible"] is False
+    assert manifest["quality_status"] == manifest["release_gate"]["zh"]["quality_status"]
+    assert result["quality_status"] == manifest["quality_status"]
+    assert result["release_gate_passed"] is manifest["release_gate"]["zh"]["passed"]
+    assert manifest["validation_results"]["gold_status"] == "NOT_CERTIFIED"
+    assert manifest["validation_results"]["localization_quality_es"] == manifest["release_gate"]["es"]["quality_status"]
+    assert manifest["validation_results"]["localization_quality_zh"] == manifest["release_gate"]["zh"]["quality_status"]
+    assert manifest["validation_results"]["localization_review_finding_count"] == len(
+        manifest["release_gate"]["zh"]["review_findings"]
+    )
+    assert result["localization_review_finding_count"] == manifest["validation_results"]["localization_review_finding_count"]
+    qa_log_path = Path(result["qa_log"])
+    assert qa_log_path.exists()
+    assert manifest["qa_log"]["artifact"] == qa_log_path.name
+    assert manifest["qa_log"]["row_count"] == result["qa_log_count"]
+    assert manifest["qa_log"]["sha256"] == hashlib.sha256(qa_log_path.read_bytes()).hexdigest()
+    with qa_log_path.open(encoding="utf-8-sig", newline="") as handle:
+        qa_log_rows = list(csv.DictReader(handle))
+    assert all(row["sku"] != "" for row in qa_log_rows if row["issue_code"] != "LOCALIZATION_FALLBACK_SUMMARY")
 
     first_workbook = openpyxl.load_workbook(result["output"], read_only=True, data_only=True)
     try:

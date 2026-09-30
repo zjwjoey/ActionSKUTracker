@@ -43,7 +43,8 @@ def _validate_controlled_category_records(
     """Validate a small, explicitly supplied category evidence batch."""
     if str(payload.get("parent_run_id") or "").strip() != run_id:
         raise EdgeListingReconcileError("CONTROLLED_CATEGORY_PARENT_ID_REQUIRED")
-    if str(payload.get("source") or "").strip().upper() not in {"EDGE_PLUGIN", "EDGE_BROWSER"}:
+    source = str(payload.get("source") or "").strip().upper()
+    if source not in {"EDGE_PLUGIN", "EDGE_BROWSER", "OFFICIAL_WEB"}:
         raise EdgeListingReconcileError("CONTROLLED_CATEGORY_SOURCE_REQUIRED")
     if not raw_rows:
         raise EdgeListingReconcileError("CONTROLLED_CATEGORY_EMPTY")
@@ -68,6 +69,13 @@ def _validate_controlled_category_records(
         cat2 = _clean_text(raw.get("cat2_es"), field="cat2_es", sku=sku)
         if not cat1 or not cat2:
             raise EdgeListingReconcileError(f"CONTROLLED_CATEGORY_INCOMPLETE:{sku}")
+        from ..services.category_consistency import is_navigation_category, is_valid_primary_category
+        if not is_valid_primary_category(cat1) or is_navigation_category(cat2):
+            raise EdgeListingReconcileError(f"CONTROLLED_CATEGORY_NOT_TAXONOMY:{sku}")
+        if source == "OFFICIAL_WEB":
+            body = " ".join(body_sample.split()).casefold()
+            if not title.strip() or any(value.casefold() not in body for value in (title.strip(), cat1, cat2)):
+                raise EdgeListingReconcileError(f"CONTROLLED_CATEGORY_WEB_EVIDENCE_INCOMPLETE:{sku}")
         valid.append({"sku": sku, "product_url": product_url, "cat1_es": cat1, "cat2_es": cat2})
     return valid
 

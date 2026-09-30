@@ -13,8 +13,48 @@ from pathlib import Path
 from typing import Any
 
 
+_NAVIGATION_CATEGORIES = {
+    "atras", "atrás", "volver", "back", "home", "inicio", "productos",
+    "cerrar", "ir al contenido principal",
+}
+
+
 def normalize_category(value: Any) -> str:
     return " ".join(str(value or "").split()).strip().casefold()
+
+
+def is_navigation_category(value: Any) -> bool:
+    """Return whether a category value is a generic page-navigation label."""
+    return normalize_category(value) in {normalize_category(item) for item in _NAVIGATION_CATEGORIES}
+
+
+def is_valid_primary_category(value: Any) -> bool:
+    """Validate cat1 against the configured official 15 product categories."""
+    normalized = normalize_category(value)
+    if not normalized:
+        return False
+    # Import lazily to keep this small validator independent of listing startup.
+    from ..monitor.listing import CATEGORY_LABELS
+
+    valid = {
+        normalize_category(label)
+        for key, label in CATEGORY_LABELS.items()
+        if key not in {"nuevo", "promocion-semanal"}
+    }
+    return normalized in valid
+
+
+def invalid_category_fields(record: dict[str, Any]) -> set[str]:
+    """Identify persisted category fields that are clearly not page facts."""
+    name = normalize_category(record.get("name_es"))
+    cat1 = normalize_category(record.get("cat1_es"))
+    cat2 = normalize_category(record.get("cat2_es"))
+    invalid: set[str] = set()
+    if cat1 and (not is_valid_primary_category(cat1) or cat1 == name):
+        invalid.add("cat1_es")
+    if cat2 and (is_navigation_category(cat2) or cat2 == name):
+        invalid.add("cat2_es")
+    return invalid
 
 
 def load_primary_category_map(path: Path | str | None) -> dict[str, str]:

@@ -1,0 +1,60 @@
+{
+  "contract_id": "STAGE5_SOURCE_CANDIDATE_V2",
+  "mode": "OFFLINE_SOURCE_ONLY_PENDING_HUMAN_GOLD",
+  "source_hash_algorithm": "localization_source_hash_v1",
+  "source_hash_contract_version": "SOURCE_HASH_V1",
+  "family_key_method": "SPANISH_NAME_HEURISTIC_V1",
+  "source_version_statuses": [
+    "NEW_SKU_NEW_SOURCE",
+    "SOURCE_HASH_CHANGED"
+  ],
+  "candidate_statuses": [
+    "SOURCE_CANDIDATE_READY",
+    "SOURCE_CONFLICT_REVIEW",
+    "REJECTED_SOURCE"
+  ],
+  "required_metadata": [
+    "batch_id",
+    "run_id",
+    "source_run_id",
+    "source_snapshot_path",
+    "source_observed_at",
+    "observation_date",
+    "sku",
+    "canonical_id",
+    "source_hash",
+    "source_hash_contract_version",
+    "selection_reasons",
+    "source_version_status",
+    "prior_pair_seen",
+    "prior_sku_seen",
+    "prior_family_seen",
+    "frozen_test_membership",
+    "family_key",
+    "family_key_method",
+    "source_consistency_status",
+    "source_consistency_flags",
+    "candidate_status"
+  ],
+  "source_fields": [
+    "name",
+    "cat1",
+    "cat2",
+    "spec",
+    "description",
+    "details"
+  ],
+  "source_consistency_statuses": [
+    "CONSISTENT",
+    "SOURCE_CONFLICT_REVIEW",
+    "REJECTED_SOURCE"
+  ],
+  "production_writes": false,
+  "training_eligible": false,
+  "assistant_reference_messages": "FORBIDDEN",
+  "duplicate_key": [
+    "sku",
+    "source_hash"
+  ],
+  "required_next_step": "HUMAN_GOLD_REVIEW"
+}

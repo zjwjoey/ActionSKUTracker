@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import re
 from typing import Any
 
-from .dictionary import format_confirmed_brand_title, is_confirmed_brand_record
+from .dictionary import is_approved_product_translation, is_confirmed_brand_record
 from .services.hashing import normalize_hash
 from .exporting.dictionary_join import (
     DictionaryContext,
@@ -18,6 +18,7 @@ from .exporting.dictionary_join import (
     is_valid_chinese_category_value,
     lookup_brand_row,
 )
+from .translation.term_resolver import resolve_exact_spec_term
 
 
 FIXED_CAT1 = frozenset({
@@ -105,19 +106,6 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
             source = "brand_dictionary_provisional" if status == "READY" else "brand_dictionary"
             fields["brand"] = FieldResolution(brand_value, source, status)
 
-    # Chinese display titles may add the brand marker only after the brand is
-    # confirmed.  Manual title overrides remain field-level authority and are
-    # never reformatted automatically.
-    if (
-        brand_classification == "CONFIRMED"
-        and fields["name"].status == "READY"
-        and fields["name"].source != "manual_override"
-    ):
-        name = fields["name"]
-        fields["name"] = FieldResolution(
-            format_confirmed_brand_title(name.value, brand_value), name.source, name.status,
-        )
-
     raw_source_quality = context.source_quality_by_sku.get(sku, "") or "OK"
     source_quality = raw_source_quality if raw_source_quality in {"OK", "SOURCE_DAMAGED", "SOURCE_POLLUTED"} else "SOURCE_UNTRUSTED"
     product_hash = normalize_hash(product.get("source_hash"))
@@ -136,9 +124,9 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
         reasons.append("CATEGORY_REVIEW")
     if fields["cat2"].status == "FALLBACK" or not is_valid_chinese_category_value(fields["cat2"].value):
         reasons.append("CATEGORY_REVIEW")
-    if fields["name"].status in {"FALLBACK", "MISSING"}:
+    if fields["name"].status in {"FALLBACK", "MISSING", "REVIEW"}:
         reasons.append("NAME_REVIEW")
-    if fields["spec"].status in {"FALLBACK", "MISSING"}:
+    if fields["spec"].status in {"FALLBACK", "MISSING", "REVIEW"}:
         reasons.append("SPEC_REVIEW")
     if fields["brand"].status in {"MISSING", "REVIEW"}:
         reasons.append("BRAND_CANDIDATE")
@@ -169,36 +157,54 @@ def _product_field(field: str, record: dict[str, Any], product: dict[str, str], 
     sku = str(record.get("sku") or "").strip()
     manual_value = str(manual.get(field) or "").strip()
     if manual_value:
-        return FieldResolution(manual_value, "manual_override", "READY")
+        return FieldResolution(manual_value, "manual_override", "READY", "HUMAN_REVIEWED")
     product_value = str(product.get(field) or "").strip()
-    confirmed = str(product.get("translation_status") or "").strip() not in {"", "UNTRANSLATED", "NEEDS_REVIEW", "LEGACY_UNVERIFIED"}
-    if product_value and _dictionary_field_hash_matches(record, product, field, source_hash) and confirmed:
-        return FieldResolution(product_value, "product_dictionary", "READY")
+    product_hash_matches = _dictionary_field_hash_matches(record, product, field, source_hash)
+    if product_value and product_hash_matches:
+        if is_approved_product_translation(product):
+            approval = str(product.get("review_status") or product.get("translation_status") or "").strip().upper()
+            return FieldResolution(product_value, "product_dictionary", "READY", approval)
+        return FieldResolution(
+            product_value, "product_dictionary", "REVIEW",
+            str(product.get("review_status") or "PENDING").strip().upper(),
+        )
     model_value = str(model.get(field) or "").strip()
     if (model_value and _dictionary_field_hash_matches(record, model, field, source_hash)
             and str(model.get("quality_status") or "").upper() == "OK"):
-        return FieldResolution(model_value, "model_cache", "READY")
-    # Source-damaged facts must fail closed.  In particular, a UI button copied
-    # into spec_es must never leak back into the Chinese export as a Spanish
-    # fallback when no trusted replacement exists.
+        # Model cache quality is not Owner approval. Keep the candidate visible
+        # to the review queue, but never let it make the SKU AUTO_READY.
+        return FieldResolution(model_value, "model_cache", "REVIEW", "PENDING")
+    # Keep a trusted model correction available for damaged source, as before;
+    # never derive a fresh glossary translation from a known-polluted source.
     damage_key = "spec_es_raw" if fallback_field == "spec_es" else ("name_es_raw" if fallback_field == "name_es" else "")
     if damage_key and damage_key in context.damage_by_sku.get(sku, set()):
         return FieldResolution("", "source_damage", "MISSING")
     fallback = str(record.get(fallback_field) or "").strip()
+    if fallback_field == "spec_es":
+        term_resolution = resolve_exact_spec_term(fallback, context.terms)
+        if term_resolution is not None:
+            value, status = term_resolution
+            return FieldResolution(value, "term_dictionary", "READY", status)
     return FieldResolution(fallback, "fallback", "FALLBACK" if fallback else "MISSING")
 
 
 def _category_field(field: str, record: dict[str, Any], product: dict[str, str], manual: dict[str, str], context: DictionaryContext, source_hash: str) -> FieldResolution:
     manual_value = str(manual.get(field) or "").strip()
     if manual_value and is_valid_chinese_category_value(manual_value):
-        return FieldResolution(manual_value, "manual_override", "READY")
+        return FieldResolution(manual_value, "manual_override", "READY", "HUMAN_REVIEWED")
     product_value = str(product.get(field) or "").strip()
     if (
         product_value
         and is_valid_chinese_category_value(product_value)
         and _dictionary_field_hash_matches(record, product, field, source_hash)
+        and is_approved_product_translation(product)
     ):
-        return FieldResolution(product_value, "product_dictionary", "READY")
+        approval = str(product.get("review_status") or product.get("translation_status") or "").strip().upper()
+        return FieldResolution(product_value, "product_dictionary", "READY", approval)
     value, fallback = _resolve_category_field(field, record, product, manual, context, source_hash)
     value = str(value or "").strip()
-    return FieldResolution(value, "category_dictionary" if value and not fallback else "fallback", "READY" if value and not fallback else ("FALLBACK" if value else "MISSING"))
+    if value and not fallback:
+        return FieldResolution(value, "category_dictionary", "READY", "APPROVED")
+    if product_value and is_valid_chinese_category_value(product_value) and _dictionary_field_hash_matches(record, product, field, source_hash):
+        return FieldResolution(product_value, "product_dictionary", "REVIEW", "PENDING")
+    return FieldResolution(value, "fallback" if value else "missing", "FALLBACK" if value else "MISSING")

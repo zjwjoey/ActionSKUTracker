@@ -17,16 +17,19 @@ def test_dictionary_coverage_reports_auto_ready_and_writes_artifacts(tmp_path):
 
     report = dictionary_coverage(cfg, export_date="2026-08-26", run_id=run_id)
     assert report["total_current_skus"] == 1
-    assert report["auto_ready_skus"] == 1
-    assert report["auto_ready_rate"] == 1
+    assert report["auto_ready_skus"] == 0
+    assert report["auto_ready_rate"] == 0
     report_path = cfg["paths"]["dictionary"] / "reports" / "dictionary_coverage_2026-08-26.json"
     csv_path = cfg["paths"]["dictionary"] / "reports" / "dictionary_coverage_2026-08-26.csv"
-    assert json.loads(report_path.read_text(encoding="utf-8"))["auto_ready_skus"] == 1
+    assert json.loads(report_path.read_text(encoding="utf-8"))["auto_ready_skus"] == 0
     with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
         row = next(csv.DictReader(handle))
     assert row["sku"] == "1001"
-    assert row["auto_ready"] == "True"
-    assert row["name_status"] == "READY"
+    assert row["auto_ready"] == "False"
+    assert row["name_status"] == "REVIEW"
+    assert row["name_candidate"] == "字典品名"
+    assert row["spec_status"] == "REVIEW"
+    assert row["spec_candidate"] == "字典规格"
 
 
 def test_dictionary_coverage_marks_stale_source_hash_for_review(tmp_path):
