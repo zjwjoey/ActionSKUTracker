@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from action_tracker.products.details_parser import parse_details
+
 LOCALIZATION_FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
 REQUIRED_KEYS = {
     "case_id", "field", "source_es", "wrong_zh", "expected_zh", "issue_type",
@@ -81,7 +83,7 @@ def find_same_source_occurrences(
     for record in records:
         value = str(record.get(source_key) or "")
         if source and source in value.casefold():
-            rows.append({
+            row = {
                 "case_id": case.case_id,
                 "sku": str(record.get("sku") or ""),
                 "field": case.field,
@@ -90,7 +92,30 @@ def find_same_source_occurrences(
                     "name": "name_zh", "cat1": "cat1_zh", "cat2": "cat2_zh", "spec": "spec_zh",
                     "description": "desc_zh", "details": "details_zh",
                 }[case.field]) or ""),
-            })
+            }
+            # Detail regressions are pair-scoped.  A single details cell can
+            # legitimately contain both ``封面：软封面`` and
+            # ``装订方式：平装``; comparing the whole cell would falsely flag
+            # the latter as a wrong translation of the former.  Align the
+            # source pair by position and expose the corresponding target
+            # pair for exact regression checks while retaining the full cell.
+            if case.field == "details" and case.source_key:
+                source_pairs = parse_details(value)
+                target_pairs = parse_details(row["target_value"])
+                detail_source_key = " ".join(case.source_key.casefold().split())
+                source_value = " ".join(case.source_value.casefold().split())
+                matching = [
+                    index for index, pair in enumerate(source_pairs)
+                    if pair.normalized_key == detail_source_key
+                    and (not source_value or pair.normalized_value == source_value)
+                ]
+                if len(matching) == 1 and matching[0] < len(target_pairs):
+                    row["source_pair_index"] = matching[0]
+                    row["target_pair_value"] = target_pairs[matching[0]].raw
+                else:
+                    row["source_pair_index"] = None
+                    row["target_pair_value"] = None
+            rows.append(row)
     return rows
 
 
@@ -100,11 +125,29 @@ def summarize_occurrences(records: Iterable[Mapping[str, Any]], cases: Iterable[
     output: list[dict[str, Any]] = []
     for case in cases:
         occurrences = find_same_source_occurrences(materialized, case)
-        variants = Counter(row["target_value"] for row in occurrences)
+        variants = Counter(
+            row.get("target_pair_value")
+            if case.field == "details" and row.get("target_pair_value") is not None
+            else row["target_value"]
+            for row in occurrences
+        )
         wrong = case.wrong_zh.casefold().strip()
         expected = case.expected_zh.casefold().strip()
-        wrong_count = sum(1 for row in occurrences if wrong and wrong in row["target_value"].casefold())
-        expected_count = sum(1 for row in occurrences if expected and expected in row["target_value"].casefold())
+        wrong_count = 0
+        expected_count = 0
+        for row in occurrences:
+            comparable = row.get("target_pair_value")
+            if case.field != "details" or comparable is None:
+                comparable = row["target_value"]
+            normalized = " ".join(str(comparable or "").split()).casefold()
+            # ``wrong_zh`` is an owner-confirmed candidate rendering, so it
+            # must match the complete field/pair.  Substring matching here
+            # turns legitimate longer names such as ``礼品袋 XL`` into a
+            # false regression hit for ``礼品袋``.
+            if wrong and normalized == " ".join(wrong.split()).casefold():
+                wrong_count += 1
+            if expected and expected in normalized:
+                expected_count += 1
         output.append({
             "case_id": case.case_id,
             "field": case.field,

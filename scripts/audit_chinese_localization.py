@@ -46,6 +46,9 @@ from action_tracker.translation.approved_terms import (  # noqa: E402
 from action_tracker.translation.model_guard import validate_model_output  # noqa: E402
 from action_tracker.translation.source_fact_repair import repair_model_output as inspect_source_facts  # noqa: E402
 from action_tracker.translation.title_policy import load_title_display_policy  # noqa: E402
+from action_tracker.translation.regression_cases import (  # noqa: E402
+    load_regression_cases, summarize_occurrences,
+)
 from action_tracker.services.normalization import parse_price  # noqa: E402
 
 
@@ -1146,6 +1149,57 @@ def audit_workbooks(
     key_variants: dict[str, dict[str, Counter[str]]] = defaultdict(lambda: defaultdict(Counter))
     value_variants: dict[tuple[str, str], dict[tuple[str, str], Counter[str]]] = defaultdict(lambda: defaultdict(Counter))
     shared = set(source_rows) & set(target_rows)
+    regression_records = []
+    for sku in sorted(shared):
+        source_row, target_row = source_rows[sku], target_rows[sku]
+        record = {"sku": sku}
+        for field in FIELD_ALIASES:
+            if field == "sku":
+                continue
+            record[f"{field}_es"] = str(source_row.get(field) or "")
+            record[f"{field}_zh"] = str(target_row.get(field) or "")
+        regression_records.append(record)
+    regression_cases_path = ROOT / "data/qa/localization_regressions_v1.jsonl"
+    try:
+        regression_cases = load_regression_cases(regression_cases_path)
+        regression_summaries = summarize_occurrences(regression_records, regression_cases)
+        historical_regression = {
+            "status": "PASS" if all(item["regression_passed"] for item in regression_summaries) else "FAIL",
+            "policy_version": "LOCALIZATION_REGRESSION_V1",
+            "case_count": len(regression_cases),
+            "summaries": regression_summaries,
+            "wrong_target_count": sum(item["wrong_target_count"] for item in regression_summaries),
+            "expected_target_count": sum(item["expected_target_count"] for item in regression_summaries),
+            "source_sku_count": len(source_rows),
+            "target_sku_count": len(target_rows),
+            "matched_sku_count": len(shared),
+            "source_only_sku_count": len(set(source_rows) - shared),
+            "target_only_sku_count": len(set(target_rows) - shared),
+            "read_only": True,
+            "master_writes": 0,
+            "production_apply": False,
+        }
+        if historical_regression["wrong_target_count"]:
+            issues.extend({
+                "sku": "",
+                "field": item["field"],
+                "code": "HISTORICAL_REGRESSION_WRONG_TARGET",
+                "review_only": False,
+                "evidence": json.dumps(item, ensure_ascii=False),
+            } for item in regression_summaries if item["wrong_target_count"])
+    except (OSError, ValueError) as exc:
+        historical_regression = {
+            "status": "UNAVAILABLE",
+            "policy_version": "LOCALIZATION_REGRESSION_V1",
+            "error": str(exc),
+            "read_only": True,
+            "master_writes": 0,
+            "production_apply": False,
+        }
+        issues.append({
+            "sku": "", "field": "regression", "code": "HISTORICAL_REGRESSION_UNAVAILABLE",
+            "review_only": False, "evidence": str(exc),
+        })
     category_dictionary_path = category_dictionary_path or ROOT / "data/dictionary/category_dictionary.csv"
     term_dictionary_path = term_dictionary_path or ROOT / "data/dictionary/term_dictionary.csv"
     brand_dictionary_path = brand_dictionary_path or ROOT / "data/dictionary/brand_dictionary.csv"
@@ -1380,6 +1434,7 @@ def audit_workbooks(
         "full_gold_eligible": full_gold_eligible,
         "full_gold_scope_status": "COMPLETE" if all_layers_complete else "PARTIAL",
         "source_consistency_rules": source_consistency_rules_manifest(),
+        "historical_regression": historical_regression,
         "detail_rule_coverage": _detail_rule_coverage(source_rows, target_rows, rules),
         "writes_source_workbook": False, "writes_target_workbook": False,
         "issues": issues,
