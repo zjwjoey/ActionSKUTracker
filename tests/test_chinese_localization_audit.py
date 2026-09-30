@@ -595,6 +595,8 @@ def test_full_workbook_audit_reports_certification_and_negation_loss(tmp_path: P
         source_path, target_path, "Catalog", ROOT / "config/stage5/detail_terminology_rules.json",
         category_dictionary_path=category_path, term_dictionary_path=terms_path,
     )
+    assert report["historical_regression"]["status"] == "PASS"
+    assert report["historical_regression"]["matched_sku_count"] == 1
 
     findings = {
         issue["code"] for issue in report["issues"]
