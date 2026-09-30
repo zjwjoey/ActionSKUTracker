@@ -1543,6 +1543,14 @@ def write_qa_log(path: Path, report: dict[str, Any]) -> Path:
     return path
 
 
+def _is_source_anomaly_issue(issue: Mapping[str, Any]) -> bool:
+    code = str(issue.get("code") or "")
+    field = str(issue.get("field") or "")
+    # *_CONFLICT is also used for target translation mismatches (numeric/unit
+    # conflicts).  Only source-scoped conflicts belong in SOURCE_ANOMALY.
+    return code.startswith("SOURCE_ANOMALY_") or (field == "source" and code.endswith("_CONFLICT"))
+
+
 def write_source_anomaly_log(path: Path, report: dict[str, Any]) -> Path:
     """Write source anomalies separately from translation/process findings.
 
@@ -1560,7 +1568,7 @@ def write_source_anomaly_log(path: Path, report: dict[str, Any]) -> Path:
     rows: list[dict[str, Any]] = []
     for issue in report.get("issues", ()):
         code = str(issue.get("code") or "")
-        if not (code.startswith("SOURCE_ANOMALY_") or code.endswith("_CONFLICT")):
+        if not _is_source_anomaly_issue(issue):
             continue
         identity = {
             "sku": str(issue.get("sku") or ""),
@@ -1823,8 +1831,7 @@ def main() -> int:
         "sha256": _sha256_file(source_anomaly_path),
         "row_count": sum(
             1 for issue in report.get("issues", ())
-            if str(issue.get("code") or "").startswith("SOURCE_ANOMALY_")
-            or str(issue.get("code") or "").endswith("_CONFLICT")
+            if _is_source_anomaly_issue(issue)
         ),
         "source_unchanged": True,
         "auto_apply": False,

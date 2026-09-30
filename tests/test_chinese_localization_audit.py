@@ -93,6 +93,7 @@ def test_source_anomaly_log_is_separate_and_source_preserving(tmp_path: Path):
                 "source": "Sustancia: Válido", "candidate": "物质：有效",
                 "evidence": {"source_key": "Sustancia", "source_value": "Válido"},
             },
+            {"sku": "1001", "field": "source", "code": "MATERIAL_CONFLICT", "source": "Material: algodón", "candidate": "材质：棉"},
             {"sku": "1001", "field": "details", "code": "NUMERIC_CONFLICT", "source": "1", "candidate": "2"},
             {"sku": "1001", "field": "description", "code": "NUMERIC_DROPPED", "source": "1", "candidate": ""},
         ],
@@ -101,7 +102,7 @@ def test_source_anomaly_log_is_separate_and_source_preserving(tmp_path: Path):
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.DictReader(handle))
     assert len(rows) == 2
-    assert {row["code"] for row in rows} == {"SOURCE_ANOMALY_SUSTANCIA_VALIDO", "NUMERIC_CONFLICT"}
+    assert {row["code"] for row in rows} == {"SOURCE_ANOMALY_SUSTANCIA_VALIDO", "MATERIAL_CONFLICT"}
     assert all(row["action"] == "SOURCE_UNCHANGED_REVIEW_ONLY" for row in rows)
     assert all(row["source_sha256"] == "a" * 64 for row in rows)
     assert "备注" not in rows[0]
