@@ -57,6 +57,17 @@ def test_preview_changes_only_one_field_and_preserves_detail_structure():
     assert rows[0]["reviewed_value"] == "封面：软封面；材质：聚丙烯(聚丙烯)"
 
 
+def test_detail_pair_patch_preserves_duplicate_keys_and_count():
+    record = _record()
+    record["details_zh"] = "封面：平装；封面：平装；材质：聚丙烯(聚丙烯)"
+    row = _row(record, "details", operation="REPLACE_DETAILS_PAIR", detail_pair_index=1,
+               expected_target_key="封面", expected_target_value="平装", target_key="封面", target_value="软封面")
+    preview = build_preview([record], [row], expected_policy_hash=policy_hash("policy-v1"))
+    assert preview[0]["status"] == "WOULD_UPDATE"
+    assert preview[0]["reviewed_value"].count("封面：") == 2
+    assert preview[0]["reviewed_value"] == "封面：平装；封面：软封面；材质：聚丙烯(聚丙烯)"
+
+
 def test_preview_blocks_source_or_policy_drift():
     record = _record()
     row = _row(record, "name", reviewed_value="F48 电熨斗")
@@ -92,4 +103,6 @@ def test_database_apply_verify_and_rollback_are_field_scoped(tmp_path):
     result = apply_preview_to_database(db_path, preview, actor="project-owner", run_id="repair-1", expected_policy_hash=policy, dry_run=False)
     assert result["applied"] == 1
     assert verify_database_apply(db_path, preview)["verified"] is True
+    with connect(db_path) as db:
+        assert db.execute("SELECT details FROM product_localizations WHERE official_sku='1001' AND language='zh'").fetchone()[0] == record["details_zh"]
     assert rollback_database(db_path, "repair-1", actor="project-owner")["restored"] == 1
