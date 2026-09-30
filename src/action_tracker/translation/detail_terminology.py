@@ -48,6 +48,25 @@ def validate_detail_terminology_rules(rules: Mapping[str, Any]) -> None:
             ):
                 raise DetailTerminologyConfigError(f"DETAIL_RULE_VALUE_INVALID:{section}:{key}")
 
+    # Normalization collisions are configuration errors, not semantic review
+    # signals. If two spellings collapse to one source key but carry different
+    # targets, deterministic repair would depend on insertion order.
+    normalized_key_targets: dict[str, str] = {}
+    for raw_key, target in rules.get("key_translations", {}).items():
+        normalized = _norm(raw_key)
+        previous = normalized_key_targets.get(normalized)
+        if previous is not None and _norm(previous) != _norm(target):
+            raise DetailTerminologyConfigError("DETAIL_RULES_KEY_NORMALIZATION_COLLISION")
+        normalized_key_targets[normalized] = str(target)
+    normalized_aliases: dict[str, frozenset[str]] = {}
+    for raw_key, values in rules.get("candidate_key_aliases", {}).items():
+        normalized = _norm(raw_key)
+        current = frozenset(_norm(value) for value in values)
+        previous = normalized_aliases.get(normalized)
+        if previous is not None and previous != current:
+            raise DetailTerminologyConfigError("DETAIL_RULES_ALIAS_NORMALIZATION_COLLISION")
+        normalized_aliases[normalized] = current
+
     closed_enum_keys = rules.get("closed_enum_keys")
     if (
         not isinstance(closed_enum_keys, list)
@@ -105,6 +124,28 @@ def validate_detail_terminology_rules(rules: Mapping[str, Any]) -> None:
             else:
                 if any(not isinstance(row.get(key), str) or not row[key].strip() for key in ("target_key", "suffix")):
                     raise DetailTerminologyConfigError(f"DETAIL_RULE_ROW_INVALID:{section}:{index}")
+
+    numeric_rules_seen: dict[str, tuple[str, str]] = {}
+    for row in rules.get("numeric_suffix_rules", ()):
+        source_key = _norm(row.get("source_key"))
+        signature = (_norm(row.get("target_key")), str(row.get("suffix") or ""))
+        previous = numeric_rules_seen.get(source_key)
+        if previous is not None and previous != signature:
+            raise DetailTerminologyConfigError("DETAIL_RULES_NUMERIC_KEY_COLLISION")
+        numeric_rules_seen[source_key] = signature
+
+    value_rules_seen: dict[tuple[str, str, tuple[str, ...]], str] = {}
+    for row in rules.get("value_translations", ()):
+        exact = row.get("source_value")
+        target = row.get("target_value")
+        if not isinstance(exact, str) or not isinstance(target, str):
+            continue
+        context = tuple(sorted(_norm(item) for item in row.get("name_es_any", ()) if _norm(item)))
+        identity = (_norm(row.get("source_key")), _norm(exact), context)
+        previous = value_rules_seen.get(identity)
+        if previous is not None and _norm(previous) != _norm(target):
+            raise DetailTerminologyConfigError("DETAIL_RULES_VALUE_NORMALIZATION_COLLISION")
+        value_rules_seen[identity] = target
 
 
 def load_detail_terminology_rules(path: Path) -> dict[str, Any]:

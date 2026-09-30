@@ -5,7 +5,8 @@ import unicodedata
 from pathlib import Path
 
 from action_tracker.translation.detail_terminology import (
-    repair_detail_candidate, resolve_detail_from_rules,
+    DetailTerminologyConfigError, repair_detail_candidate, resolve_detail_from_rules,
+    validate_detail_terminology_rules,
 )
 
 
@@ -19,6 +20,31 @@ def _rules():
 def _ascii_normalized(value: str) -> str:
     decomposed = unicodedata.normalize("NFKD", value.casefold())
     return "".join(char for char in decomposed if not unicodedata.combining(char))
+
+
+def test_detail_rules_reject_normalized_key_collision():
+    rules = _rules()
+    rules["key_translations"] = {"Color": "颜色", " color ": "色彩"}
+    try:
+        validate_detail_terminology_rules(rules)
+    except DetailTerminologyConfigError as exc:
+        assert str(exc) == "DETAIL_RULES_KEY_NORMALIZATION_COLLISION"
+    else:
+        raise AssertionError("normalized key collision was accepted")
+
+
+def test_detail_rules_reject_unscoped_normalized_value_collision():
+    rules = _rules()
+    rules["value_translations"] = [
+        {"source_key": "Color", "source_value": "Rojo", "target_value": "红色", "candidate_value_any": [], "name_es_any": []},
+        {"source_key": " color ", "source_value": " rojo ", "target_value": "赤色", "candidate_value_any": [], "name_es_any": []},
+    ]
+    try:
+        validate_detail_terminology_rules(rules)
+    except DetailTerminologyConfigError as exc:
+        assert str(exc) == "DETAIL_RULES_VALUE_NORMALIZATION_COLLISION"
+    else:
+        raise AssertionError("normalized value collision was accepted")
 
 
 def test_cleaning_turn_count_repairs_wrong_key_and_adds_count_suffix():
