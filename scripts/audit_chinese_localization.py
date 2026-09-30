@@ -1543,6 +1543,54 @@ def write_qa_log(path: Path, report: dict[str, Any]) -> Path:
     return path
 
 
+def write_source_anomaly_log(path: Path, report: dict[str, Any]) -> Path:
+    """Write source anomalies separately from translation/process findings.
+
+    The Spanish source remains authoritative and unchanged.  This ledger is
+    an audit sidecar so a Chinese export can filter or neutralize a malformed
+    source field without losing the original evidence or its source/target
+    snapshot binding.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    columns = (
+        "anomaly_id", "sku", "field", "code", "source_sha256", "target_sha256",
+        "source", "candidate", "evidence", "status", "action",
+    )
+    rows: list[dict[str, Any]] = []
+    for issue in report.get("issues", ()):
+        code = str(issue.get("code") or "")
+        if not (code.startswith("SOURCE_ANOMALY_") or code.endswith("_CONFLICT")):
+            continue
+        identity = {
+            "sku": str(issue.get("sku") or ""),
+            "field": str(issue.get("field") or "source"),
+            "code": code,
+            "source": str(issue.get("source") or ""),
+            "evidence": issue.get("evidence") or "",
+        }
+        anomaly_id = "anomaly-" + hashlib.sha256(
+            json.dumps(identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()[:24]
+        rows.append({
+            "anomaly_id": anomaly_id,
+            "sku": identity["sku"], "field": identity["field"], "code": code,
+            "source_sha256": report.get("source_sha256", ""),
+            "target_sha256": report.get("target_sha256", ""),
+            "source": identity["source"],
+            "candidate": str(issue.get("candidate") or ""),
+            "evidence": json.dumps(identity["evidence"], ensure_ascii=False, sort_keys=True)
+            if not isinstance(identity["evidence"], str) else identity["evidence"],
+            "status": "OPEN_REVIEW", "action": "SOURCE_UNCHANGED_REVIEW_ONLY",
+        })
+    rows.sort(key=lambda row: (row["sku"], row["code"], row["field"], row["anomaly_id"]))
+    with path.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+    return path
+
+
 def write_detail_rule_review_queue(
     path: Path, rows: list[dict[str, Any]], *, source_sha256: str,
     target_sha256: str, rules_sha256: str,
@@ -1769,6 +1817,18 @@ def main() -> int:
         "sha256": _sha256_file(qa_log_path),
         "row_count": len(report.get("issues", ())),
     }
+    source_anomaly_path = write_source_anomaly_log(args.output_dir / "SOURCE_ANOMALY.csv", report)
+    report["source_anomaly_artifact"] = {
+        "path": source_anomaly_path.name,
+        "sha256": _sha256_file(source_anomaly_path),
+        "row_count": sum(
+            1 for issue in report.get("issues", ())
+            if str(issue.get("code") or "").startswith("SOURCE_ANOMALY_")
+            or str(issue.get("code") or "").endswith("_CONFLICT")
+        ),
+        "source_unchanged": True,
+        "auto_apply": False,
+    }
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     coverage = report.get("detail_rule_coverage", {})
     console_summary = {
@@ -1791,6 +1851,7 @@ def main() -> int:
         "category_rule_review_queue_artifact": report.get("category_rule_review_queue_artifact"),
         "term_rule_review_queue_artifact": report.get("term_rule_review_queue_artifact"),
         "qa_log_artifact": report.get("qa_log_artifact"),
+        "source_anomaly_artifact": report.get("source_anomaly_artifact"),
     }
     # Windows consoles may use a legacy code page. Emit ASCII JSON on stdout;
     # the full UTF-8 artifacts retain their native Chinese text.

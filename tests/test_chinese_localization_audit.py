@@ -83,6 +83,30 @@ def test_qa_log_is_deterministic_and_kept_separate_from_product_fields(tmp_path:
     assert "备注" not in rows[0]
 
 
+def test_source_anomaly_log_is_separate_and_source_preserving(tmp_path: Path):
+    report = {
+        "source_sha256": "a" * 64,
+        "target_sha256": "b" * 64,
+        "issues": [
+            {
+                "sku": "1001", "field": "source", "code": "SOURCE_ANOMALY_SUSTANCIA_VALIDO",
+                "source": "Sustancia: Válido", "candidate": "物质：有效",
+                "evidence": {"source_key": "Sustancia", "source_value": "Válido"},
+            },
+            {"sku": "1001", "field": "details", "code": "NUMERIC_CONFLICT", "source": "1", "candidate": "2"},
+            {"sku": "1001", "field": "description", "code": "NUMERIC_DROPPED", "source": "1", "candidate": ""},
+        ],
+    }
+    path = AUDIT.write_source_anomaly_log(tmp_path / "SOURCE_ANOMALY.csv", report)
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == 2
+    assert {row["code"] for row in rows} == {"SOURCE_ANOMALY_SUSTANCIA_VALIDO", "NUMERIC_CONFLICT"}
+    assert all(row["action"] == "SOURCE_UNCHANGED_REVIEW_ONLY" for row in rows)
+    assert all(row["source_sha256"] == "a" * 64 for row in rows)
+    assert "备注" not in rows[0]
+
+
 def test_audit_manifest_binds_qa_log_hash_and_row_count(tmp_path: Path, monkeypatch):
     report = {
         "source_sha256": "a" * 64, "target_sha256": "b" * 64, "issue_count": 1,
