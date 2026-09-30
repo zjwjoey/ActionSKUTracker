@@ -14,6 +14,11 @@ from typing import Iterable, Mapping
 
 
 NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
+# ``7UP`` is a brand token, not a product quantity.  Keep this narrowly
+# scoped: model/platform tokens such as ``F48`` and ``PS5`` are still handled
+# by the technical-token ledger, while measurements and dimensions retain the
+# historical numeric parsing behavior.
+_NON_NUMERIC_BRAND_TOKEN = re.compile(r"(?<![A-Za-z0-9])7UP(?![A-Za-z0-9])", re.IGNORECASE)
 _CJK = re.compile(r"[\u3400-\u9fff]")
 
 FIXED_CAT1 = frozenset({
@@ -122,6 +127,10 @@ _TECH_EXCLUDED = frozenset({
     "KWH/1000H", "G/M2", "GR/M2",
 })
 _CHINESE_NUMBER = {"零": "0", "〇": "0", "一": "1", "二": "2", "两": "2", "三": "3", "四": "4", "五": "5", "六": "6", "七": "7", "八": "8", "九": "9", "十": "10"}
+_SPANISH_PACKAGE_COUNT = re.compile(
+    r"\b(?:juego|paquete|pack|set|conjunto)\s+de\s+(?P<num>\d+)\b",
+    re.IGNORECASE,
+)
 
 # Sustainability marks are research facts. Compare them by recognized source
 # and Chinese aliases so a faithful Chinese rendering does not need to retain
@@ -915,8 +924,14 @@ def numeric_tokens(value: object) -> list[str]:
         text,
         flags=re.IGNORECASE,
     )
+    # Mask only the confirmed alphanumeric brand exception before applying the
+    # established numeric parser.  A broad "letters next to digits" filter
+    # would incorrectly drop valid facts such as ``1000h``, ``50x50`` or
+    # model/platform aliases.
+    text = _NON_NUMERIC_BRAND_TOKEN.sub(lambda match: " " * len(match.group()), text)
     tokens: list[str] = []
-    for raw in NUMBER.findall(text):
+    for match in NUMBER.finditer(text):
+        raw = match.group()
         token = raw.replace(",", ".")
         if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", token):
             token = token.replace(".", "")
@@ -1148,6 +1163,49 @@ def _only_duplicate_numeric_mentions_collapsed(
     )
 
 
+def _only_split_package_mentions(
+    source_text: str, predicted_text: str,
+    expected: Counter[str], actual: Counter[str],
+) -> bool:
+    """Accept a package count restated as individual item counts.
+
+    ``Juego de 2 bóxers`` may be translated as ``两条装：一条……一条……``.
+    The two ``一`` mentions describe the contents of the already-counted
+    package; they are not an additional product quantity.
+    """
+    extra = actual - expected
+    missing = expected - actual
+    if not extra or missing or set(extra) != {"1"}:
+        return False
+    package_counts = [int(match.group("num")) for match in _SPANISH_PACKAGE_COUNT.finditer(source_text)]
+    if not package_counts:
+        return False
+    split_count = extra["1"]
+    return any(split_count <= count and count >= 2 for count in package_counts)
+
+
+def _only_range_unit_mentions_repeated(
+    expected_units: Counter[str], actual_units: Counter[str],
+    expected_numbers: Counter[str], actual_numbers: Counter[str],
+) -> bool:
+    """Accept a unit repeated for both ends of a source range.
+
+    Spanish often writes ``9 u 11 cm`` while Chinese repeats the unit as
+    ``9 厘米或 11 厘米``.  The extra unit is not a new fact when numeric
+    counters are unchanged and the number of mentions is bounded by the
+    source numeric mentions.
+    """
+    if not expected_units or set(expected_units) != set(actual_units):
+        return False
+    if expected_numbers != actual_numbers:
+        return False
+    numeric_mentions = sum(expected_numbers.values())
+    return all(
+        expected_units[unit] <= actual_units[unit] <= max(expected_units[unit], numeric_mentions)
+        for unit in expected_units
+    )
+
+
 def _only_duplicate_technical_mentions_collapsed(
     expected: Counter[str], actual: Counter[str],
 ) -> bool:
@@ -1235,9 +1293,12 @@ def validate_model_output(
             reasons.append("EMPTY_REQUIRED_FIELD")
         expected, actual = numeric_fact_counters(source_value, predicted_value)
         numeric_mentions_collapsed = _only_duplicate_numeric_mentions_collapsed(expected, actual)
+        split_package_mentions = _only_split_package_mentions(
+            source_value, predicted_value, expected, actual,
+        )
         if list((expected - actual).elements()) and not numeric_mentions_collapsed:
             reasons.append("NUMERIC_DROPPED")
-        if list((actual - expected).elements()) and not numeric_mentions_collapsed:
+        if list((actual - expected).elements()) and not numeric_mentions_collapsed and not split_package_mentions:
             reasons.append("NUMERIC_HALLUCINATED")
         expected_units = Counter(unit_tokens(source_value))
         actual_units = Counter(unit_tokens(predicted_value))
@@ -1248,9 +1309,12 @@ def validate_model_output(
             expected_units.subtract(
                 ["percent"] * mapped_to_phrase_count
             )
+        range_units_repeated = _only_range_unit_mentions_repeated(
+            expected_units, actual_units, expected, actual,
+        )
         if list((expected_units - actual_units).elements()):
             reasons.append("UNIT_DROPPED")
-        if list((actual_units - expected_units).elements()):
+        if list((actual_units - expected_units).elements()) and not range_units_repeated:
             reasons.append("UNIT_HALLUCINATED")
         expected_technical = Counter(technical_tokens(source_value))
         actual_technical = Counter(technical_tokens(predicted_value))

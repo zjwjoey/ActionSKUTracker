@@ -683,6 +683,35 @@ def test_model_guard_accepts_explicit_paired_variant_mentions():
     assert result.accepted, result.field_reasons
 
 
+def test_model_guard_accepts_package_count_split_into_item_mentions():
+    from action_tracker.translation.model_guard import numeric_fact_counters, validate_model_output
+
+    source = "Juego de 2 bóxers: con diseño alegre y versión sin estampado"
+    target = "两条装：一条印花款、一条纯色款"
+    expected, actual = numeric_fact_counters(source, target)
+    assert expected == {"1": 0, "2": 1}
+    assert actual == {"1": 2, "2": 1}
+    result = validate_model_output(
+        {"description": source}, {"description": target}, expected_fields=("description",),
+    )
+    assert result.accepted, result.field_reasons
+
+
+def test_model_guard_ignores_digits_embedded_in_brand_and_repeats_range_units():
+    from action_tracker.translation.model_guard import numeric_tokens, validate_model_output
+
+    assert numeric_tokens("Un vasito de 7UP") == []
+    brand = validate_model_output(
+        {"description": "Un vasito de 7UP"}, {"description": "一杯七喜"}, expected_fields=("description",),
+    )
+    assert brand.accepted, brand.field_reasons
+    range_result = validate_model_output(
+        {"description": "Para elegir entre 9 u 11 cm"},
+        {"description": "可选9厘米或11厘米"}, expected_fields=("description",),
+    )
+    assert range_result.accepted, range_result.field_reasons
+
+
 def test_model_guard_accepts_spelled_spanish_temporal_quantity_as_digits():
     from action_tracker.translation.model_guard import numeric_fact_counters, validate_model_output
 

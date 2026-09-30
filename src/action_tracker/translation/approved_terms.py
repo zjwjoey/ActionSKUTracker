@@ -31,6 +31,19 @@ _FALLBACK_REVIEW_POLICY = {
     "unsupported_target_types": sorted({"material", "apparel"}),
 }
 
+# Runtime translation/Stage 5 historically inspected all approved semantic
+# term types.  The narrower policy above is intentionally an audit-scope
+# policy; it must not silently change candidate generation or existing
+# Stage 5 contracts when callers do not opt into it explicitly.
+_LEGACY_REVIEW_POLICY = {
+    "canonical_absence_types_by_field": {
+        field: sorted(_REVIEW_TERM_TYPES)
+        for field in _LOCALIZED_FIELDS
+    },
+    "cross_field_types": sorted(_REVIEW_TERM_TYPES | _UNIT_TERM_TYPES),
+    "unsupported_target_types": sorted(_REVIEW_TERM_TYPES),
+}
+
 
 @lru_cache(maxsize=8)
 def load_approved_term_review_policy(path: str | Path | None = None) -> dict[str, Any]:
@@ -126,7 +139,10 @@ def inspect_approved_term_candidate(
     source_norm = normalize_category_key(source)
     target_norm = normalize_category_key(target)
     findings: list[dict[str, Any]] = []
-    policy = review_policy or load_approved_term_review_policy()
+    # Only callers that explicitly pass a versioned policy (the read-only
+    # audit does so) should narrow review scope.  Preserve the legacy runtime
+    # behavior for Stage 5 and model candidate inspection.
+    policy = review_policy if review_policy is not None else _LEGACY_REVIEW_POLICY
     for row in terms:
         if str(row.get("review_status") or "").strip().upper() not in APPROVED_TERM_STATUSES:
             continue
@@ -177,7 +193,9 @@ def inspect_approved_term_cross_field_movement(
     the target phrase is false.
     """
     findings: list[dict[str, Any]] = []
-    policy = review_policy or load_approved_term_review_policy()
+    # See inspect_approved_term_candidate: policy narrowing is opt-in for
+    # audit callers and must not alter the established Stage 5 behavior.
+    policy = review_policy if review_policy is not None else _LEGACY_REVIEW_POLICY
     cross_field_types = _review_types(policy, "cross_field_types")
     unsupported_target_types = _review_types(policy, "unsupported_target_types")
     seen: set[tuple[str, str, str, str]] = set()
