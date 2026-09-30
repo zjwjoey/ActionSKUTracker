@@ -36,6 +36,7 @@ DB_TARGET_COLUMNS = {
 PREVIEW_STATES = frozenset({
     "NO_CHANGE", "WOULD_UPDATE", "BLOCKED_SOURCE_CHANGED", "BLOCKED_TARGET_CHANGED",
     "BLOCKED_POLICY_CHANGED", "BLOCKED_DETAILS_STRUCTURE_CHANGED", "BLOCKED_UNAPPROVED",
+    "BLOCKED_DUPLICATE_TARGET",
 })
 
 
@@ -136,6 +137,7 @@ def build_preview(
     """Build deterministic field-level preview rows without writing state."""
     by_sku = {str(row.get("sku") or row.get("official_sku") or ""): row for row in records}
     output: list[dict[str, Any]] = []
+    target_indexes: dict[tuple[str, str], list[int]] = {}
     for manifest in manifest_rows:
         sku = str(manifest.get("sku") or manifest.get("official_sku") or "").strip()
         field = str(manifest.get("field") or "").strip()
@@ -145,6 +147,7 @@ def build_preview(
             row["reason"] = "SKU_OR_FIELD_MISSING"
             output.append(row)
             continue
+        target_indexes.setdefault((sku, field), []).append(len(output))
         record = by_sku[sku]
         source = _source_value(record, field)
         current = _target_value(record, field)
@@ -188,6 +191,16 @@ def build_preview(
         row["status"] = "NO_CHANGE" if reviewed == current else "WOULD_UPDATE"
         row["reason"] = str(manifest.get("reason") or "OWNER_AUTHORIZED_LOCALIZATION_REPAIR")
         output.append(row)
+    # A repair manifest is field-scoped and must have at most one authoritative
+    # decision per SKU/field.  Duplicate rows are blocked before Apply instead
+    # of relying on a later database freshness conflict (which is harder to
+    # diagnose and could leave an operator with an ambiguous patch set).
+    for indexes in target_indexes.values():
+        if len(indexes) < 2:
+            continue
+        for index in indexes:
+            output[index]["status"] = "BLOCKED_DUPLICATE_TARGET"
+            output[index]["reason"] = "DUPLICATE_REPAIR_TARGET"
     return output
 
 

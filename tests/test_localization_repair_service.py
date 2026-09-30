@@ -85,6 +85,17 @@ def test_preview_requires_owner_approval():
     assert build_preview([record], [row], expected_policy_hash=policy_hash("policy-v1"))[0]["status"] == "BLOCKED_UNAPPROVED"
 
 
+def test_preview_blocks_duplicate_repair_target_before_apply():
+    record = _record()
+    first = _row(record, "name", reviewed_value="F48 电熨斗（修复一）")
+    second = _row(record, "name", reviewed_value="F48 电熨斗（修复二）")
+    preview = build_preview([record], [first, second], expected_policy_hash=policy_hash("policy-v1"))
+    assert [row["status"] for row in preview] == [
+        "BLOCKED_DUPLICATE_TARGET", "BLOCKED_DUPLICATE_TARGET",
+    ]
+    assert {row["reason"] for row in preview} == {"DUPLICATE_REPAIR_TARGET"}
+
+
 def test_database_apply_verify_and_rollback_are_field_scoped(tmp_path):
     db_path = tmp_path / "action.db"
     migrate_v2(db_path, role="PRIMARY")
