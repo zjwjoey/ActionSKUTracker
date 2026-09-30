@@ -24,12 +24,15 @@ from .dictionary_join import (
     DictionaryJoinError,
     build_zh_rows,
     build_zh_rows_from_localized_source,
+    confirmed_brand_phrases_by_sku,
     load_dictionary_context,
     unresolved_brand_ids_for_records,
 )
 from .excel_writer import write_catalog_xlsx
 from .history import HistoryExportError, load_presence_history
 from .profiles import ExportProfile, ExportProfileError, load_profile
+from .qa_log import build_export_qa_log, render_export_qa_log
+from .official_labels import build_official_label_rows, render_official_label_sidecar
 from .release_gate import evaluate_release_gate
 
 
@@ -80,20 +83,34 @@ def export_catalog(
     dictionary_hash = None
     fallback_counts: dict[str, int] = {}
     unresolved_brand_ids: list[str] = []
+    confirmed_brand_phrases: dict[str, tuple[str, ...]] = {}
+    approved_terms: tuple[dict[str, str], ...] = ()
     if language == "es":
         validate_spanish_source_fields(source.records)
         rows = build_es_rows(source.records)
     elif language == "zh" and source.kind == "SQLITE_CURRENT":
         rows, fallback_counts = build_zh_rows_from_localized_source(source.records)
+        try:
+            # Read the source-fresh brand map for QA only; do not re-join or
+            # rewrite the SQLite localization projection.
+            dictionary = load_dictionary_context(cfg)
+            confirmed_brand_phrases = confirmed_brand_phrases_by_sku(source.records, dictionary)
+            unresolved_brand_ids = unresolved_brand_ids_for_records(source.records, dictionary)
+            approved_terms = dictionary.terms
+            dictionary_hash = dictionary.content_hash
+        except DictionaryJoinError as exc:
+            raise ExportValidationError(str(exc)) from exc
     elif language == "zh":
         try:
             dictionary = load_dictionary_context(cfg)
             rows, fallback_counts = build_zh_rows(source.records, dictionary)
             dictionary_hash = dictionary.content_hash
             unresolved_brand_ids = unresolved_brand_ids_for_records(source.records, dictionary)
+            approved_terms = dictionary.terms
         except DictionaryJoinError as exc:
             raise ExportValidationError(str(exc)) from exc
         validate_zh_rows_against_source(rows, source.records)
+        confirmed_brand_phrases = confirmed_brand_phrases_by_sku(source.records, dictionary)
     else:
         raise ExportValidationError(f"EXPORT_LANGUAGE_UNSUPPORTED: {language}")
     validate_output_rows(rows)
@@ -105,18 +122,28 @@ def export_catalog(
         # snapshot/master fixtures remain preview-compatible while they are
         # migrated to field-level provenance.
         strict=source.kind == "SQLITE_CURRENT" and release_mode == "formal",
+        confirmed_brand_phrases_by_sku=confirmed_brand_phrases,
+        approved_terms=approved_terms,
     )
+    export_qa_rows = build_export_qa_log({language: release_gate}, fallback_counts)
+    export_qa_bytes = render_export_qa_log(export_qa_rows)
+    official_label_rows = build_official_label_rows(source.records)
+    official_label_bytes = render_official_label_sidecar(official_label_rows)
     # Keep history provenance in every formal manifest, not only Template 1.
     # Fixture projects without a history config record that explicitly.
     history_manifest = _history_manifest(cfg)
 
     date_compact = export_date.replace("-", "")
     output_path = Path(cfg["paths"]["exports"]) / profile.filename_for(date_compact)
+    qa_log_path = output_path.with_name(f"{output_path.stem}_QA_LOG.csv")
+    official_labels_path = output_path.with_name(f"{output_path.stem}_OFFICIAL_LABELS.csv")
     headers = [str(column["header"]) for column in profile.columns]
     expected_skus = {str(r["编号"]) for r in rows}
     # 先写入并验证旁路临时文件；工作簿和 manifest 通过校验后成对发布，
     # 避免验证失败或 manifest 写入失败时留下半套导出物。
     preview_path = output_path.with_name(f".{output_path.stem}.preview.xlsx")
+    qa_log_preview_path = qa_log_path.with_name(f".{qa_log_path.stem}.preview.csv")
+    official_labels_preview_path = official_labels_path.with_name(f".{official_labels_path.stem}.preview.csv")
     allowed_image_skus = _available_image_skus(cfg) if not no_images else None
     try:
         image_stats = write_catalog_xlsx(
@@ -129,6 +156,8 @@ def export_catalog(
                                  expect_images=not no_images, expected_image_count=image_stats["embedded_count"])
         if not no_images and image_stats["embedded_count"] + image_stats["missing_count"] != len(rows):
             raise ExportValidationError("EXPORT_IMAGE_COVERAGE_MISMATCH")
+        qa_log_preview_path.write_bytes(export_qa_bytes)
+        official_labels_preview_path.write_bytes(official_label_bytes)
         source_hash = canonical_source_hash(source.records)
         manifest = {
             "run_id": source.run_id,
@@ -148,8 +177,21 @@ def export_catalog(
                 "output_rows": "PASS",
                 "workbook": "PASS",
                 "release_gate": "PASS" if release_gate["passed"] else "PREVIEW_ONLY",
+                "localization_quality": release_gate["quality_status"],
+                "gold_status": release_gate["gold_status"],
+                "localization_review_finding_count": len(release_gate["review_findings"]),
             },
             "release_gate": release_gate,
+            "qa_log": {
+                "artifact": qa_log_path.name,
+                "row_count": len(export_qa_rows),
+                "sha256": hashlib.sha256(export_qa_bytes).hexdigest(),
+            },
+            "official_labels": {
+                "artifact": official_labels_path.name,
+                "row_count": len(official_label_rows),
+                "sha256": hashlib.sha256(official_label_bytes).hexdigest(),
+            },
             "history_stats": history_manifest,
             "detail_retry_ids": _detail_retry_ids(source),
             "image_profile": "excel_250_white_v1" if not no_images else None,
@@ -162,17 +204,29 @@ def export_catalog(
             manifest["dictionary_fallback_counts"] = fallback_counts
             manifest["dictionary_unresolved_brand_ids"] = unresolved_brand_ids
         manifest_path = output_path.with_suffix(".manifest.json")
-        _publish_export_pair(preview_path, output_path, manifest_path, manifest)
+        _publish_export_pair(
+            preview_path, output_path, manifest_path, manifest,
+            qa_log_preview_path=qa_log_preview_path, qa_log_path=qa_log_path,
+            sidecar_preview_paths={official_labels_preview_path: official_labels_path},
+        )
     finally:
-        if preview_path.exists():
-            preview_path.unlink()
+        for path in (preview_path, qa_log_preview_path, official_labels_preview_path):
+            if path.exists():
+                path.unlink()
     return {
         "output": str(output_path),
         "manifest": str(manifest_path),
+        "qa_log": str(qa_log_path),
+        "qa_log_count": len(export_qa_rows),
         "run_id": source.run_id,
         "sku_count": len(rows),
         "source_kind": source.kind,
         "profile": profile.profile_id,
+        "release_gate_passed": bool(release_gate["passed"]),
+        "quality_status": release_gate["quality_status"],
+        "gold_status": release_gate["gold_status"],
+        "gold_eligible": bool(release_gate["gold_eligible"]),
+        "localization_review_finding_count": len(release_gate["review_findings"]),
         "image_embedded_count": image_stats["embedded_count"],
         "image_missing_count": image_stats["missing_count"],
         "missing_image_skus": sorted(image_stats.get("missing_skus", [])),
@@ -677,6 +731,8 @@ def _publish_export_pair(
     output_path: Path,
     manifest_path: Path,
     manifest: dict[str, Any],
+    *, qa_log_preview_path: Path | None = None, qa_log_path: Path | None = None,
+    sidecar_preview_paths: dict[Path, Path] | None = None,
 ) -> None:
     """Publish workbook and manifest as a recoverable pair.
 
@@ -687,6 +743,9 @@ def _publish_export_pair(
     manifest_tmp: Path | None = None
     old_output_tmp: Path | None = None
     old_manifest_tmp: Path | None = None
+    old_qa_log_tmp: Path | None = None
+    old_sidecar_tmps: dict[Path, Path] = {}
+    sidecar_preview_paths = sidecar_preview_paths or {}
     try:
         fd, manifest_name = tempfile.mkstemp(prefix=f".{manifest_path.stem}.", suffix=".tmp", dir=output_path.parent)
         os.close(fd)
@@ -714,7 +773,35 @@ def _publish_export_pair(
                     backup.unlink()
                 raise
             old_manifest_tmp = backup
+        if qa_log_path and qa_log_path.exists():
+            fd, name = tempfile.mkstemp(prefix=f".{qa_log_path.stem}.old.", suffix=".csv", dir=output_path.parent)
+            os.close(fd)
+            backup = Path(name)
+            try:
+                shutil.copy2(qa_log_path, backup)
+            except BaseException:
+                if backup.exists():
+                    backup.unlink()
+                raise
+            old_qa_log_tmp = backup
+        for sidecar_path in sidecar_preview_paths.values():
+            if not sidecar_path.exists():
+                continue
+            fd, name = tempfile.mkstemp(prefix=f".{sidecar_path.stem}.old.", suffix=sidecar_path.suffix, dir=output_path.parent)
+            os.close(fd)
+            backup = Path(name)
+            try:
+                shutil.copy2(sidecar_path, backup)
+            except BaseException:
+                if backup.exists():
+                    backup.unlink()
+                raise
+            old_sidecar_tmps[sidecar_path] = backup
         preview_path.replace(output_path)
+        if qa_log_preview_path and qa_log_path:
+            qa_log_preview_path.replace(qa_log_path)
+        for preview, sidecar_path in sidecar_preview_paths.items():
+            preview.replace(sidecar_path)
         manifest_tmp.replace(manifest_path)
     except BaseException:
         if old_output_tmp and old_output_tmp.exists():
@@ -725,9 +812,19 @@ def _publish_export_pair(
             old_manifest_tmp.replace(manifest_path)
         elif manifest_path.exists() and not old_manifest_tmp:
             manifest_path.unlink()
+        if qa_log_path:
+            if old_qa_log_tmp and old_qa_log_tmp.exists():
+                old_qa_log_tmp.replace(qa_log_path)
+            elif qa_log_path.exists() and not old_qa_log_tmp:
+                qa_log_path.unlink()
+        for sidecar_path, backup in old_sidecar_tmps.items():
+            if backup.exists():
+                backup.replace(sidecar_path)
+            elif sidecar_path.exists():
+                sidecar_path.unlink()
         raise
     finally:
-        for path in (manifest_tmp, old_output_tmp, old_manifest_tmp):
+        for path in (manifest_tmp, old_output_tmp, old_manifest_tmp, old_qa_log_tmp, *old_sidecar_tmps.values()):
             if path and path.exists():
                 path.unlink()
 

@@ -1,0 +1,25 @@
+{
+  "policy_id": "NO_BRAND_TITLE_V1",
+  "mode": "REMOVE_CONFIRMED_BRAND",
+  "title_field": "name",
+  "preserve_name_facts": [
+    "model",
+    "series_identifier_when_technical",
+    "technical_standard",
+    "interface",
+    "compatible_platform",
+    "size_grade",
+    "capacity",
+    "dose",
+    "color",
+    "quantity",
+    "function"
+  ],
+  "protected_name_tokens": [
+    "F48", "F45", "F40", "D/G12", "T1500", "7-in-1", "all-in-1",
+    "USB-C", "PS3", "PS4", "PS5", "Nintendo Switch", "Xbox", "Windows",
+    "iOS", "Android", "macOS", "ChromeOS", "XL", "XXL", "XXXL", "GaN³"
+  ],
+  "preserve_brand_fields": ["description", "details"],
+  "exceptions": []
+}

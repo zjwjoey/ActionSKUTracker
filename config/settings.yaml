@@ -148,9 +148,8 @@ run:
   lock_stale_minutes: 180
   # 详情抓取后多久需要强制刷新（天）
   detail_refresh_days: 7
-  # 单轮详情页最大请求数。生产默认保守限量；需要扩大范围时必须显式
-  # 通过配置/命令行授权，超额候选进入 detail_backlog.csv。
-  max_detail_per_run: 20
+  # 单轮详情页最大请求数；0 表示不设上限，正数才启用显式限制。
+  max_detail_per_run: 0
   # 翻译：阶段一不做（中文列用西语 fallback 占位）。
   # 后续启用时走 AI API（见下方 ai 段），不用外部翻译服务。
   translation_enabled: false
@@ -179,6 +178,10 @@ knowledge:
 localization:
   production_apply_enabled: true
   auto_approval_enabled: false
+  deterministic_audit_enabled: true
+  stage5_shadow_enabled: true
+  candidate_generation_enabled: false
+  ai_translation_enabled: false
 
 scoped_dictionary:
   enabled: false

@@ -36,6 +36,7 @@ from ..services.review import add_review_item
 from ..services.category_consistency import load_primary_category_map
 from ..snapshot import write_snapshot, write_staging
 from ..translation.service import apply_zh
+from ..localization.shadow_audit import run_shadow_audit
 
 log = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ _DETAIL_REASON_PRIORITY = {
 
 
 def _select_detail_plans(plans: list[dict], max_per_run: int) -> tuple[list[dict], list[dict]]:
-    """Select a deterministic Detail batch and retain any explicit backlog.
+    """Select a deterministic Detail batch; zero means no configured cap.
 
     Presence and Listing facts are already frozen before this point.  A
     deferred candidate keeps its blank Detail fields, so it is automatically
@@ -70,13 +71,12 @@ def _select_detail_plans(plans: list[dict], max_per_run: int) -> tuple[list[dict
         _DETAIL_REASON_PRIORITY.get(str(plan.get("reason") or ""), 9),
         str(plan.get("sku") or ""),
     ))
-    # Zero has an explicit safe meaning: disable detail navigation for this
-    # run and keep every candidate in the backlog.  It must never mean
-    # unlimited.  Negative values are configuration errors.
-    if max_per_run == 0:
-        return [], candidates
+    # Default to processing every candidate. A positive value is an explicit
+    # operator-configured cap; zero means unlimited, not disabled.
     if max_per_run < 0:
         raise ValueError("max_detail_per_run must be non-negative")
+    if max_per_run == 0:
+        return candidates, []
     return candidates[:max_per_run], candidates[max_per_run:]
 
 
@@ -401,6 +401,17 @@ def run_daily(
             translation_updates.append({"sku": sku, "canonical_id": rec.get("canonical_id"),
                                         "translation_status": rec.get("translation_status"), "date": run_date})
 
+    localization_cfg = cfg.get("localization") or {}
+    localization_shadow = {
+        "enabled": False, "read_only": True, "master_writes": 0,
+        "production_apply": False, "status": "DISABLED",
+    }
+    if bool(localization_cfg.get("deterministic_audit_enabled", True)) and bool(localization_cfg.get("stage5_shadow_enabled", True)):
+        localization_shadow = run_shadow_audit(
+            updated.values(),
+            detail_rules_path=Path(cfg["project_root"]) / "config/stage5/detail_terminology_rules.json",
+        )
+
     # ---- 今日 CURRENT 记录（仅本轮 Presence）----
     # CURRENT is an authoritative Presence product: only SKUs observed in
     # this run belong here. Missing candidates remain in known_skus.csv until
@@ -504,6 +515,7 @@ def run_daily(
                              "need_detail": p["need_detail"],
                              "detail_selected": p["sku"] in detail_selected_skus} for p in plans],
         "translation_updates": translation_updates,
+        "localization_shadow_audit": localization_shadow,
         "qa_report": qa.to_dict(),
         "run_report": run_report,
     }
@@ -707,6 +719,7 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "content_change": len(content_events),
         "anomalies": len(anomalies),
         "qa_state": qa.state,
+        "source_consistency_findings": len(qa.findings),
         "master": str(cfg["paths"]["master"]),
         "snapshot": str(snap_dir),
     }

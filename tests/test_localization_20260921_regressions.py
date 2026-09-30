@@ -71,6 +71,12 @@ def test_details_parser_preserves_order_duplicates_and_conflicts():
     assert render_details(pairs) == "Voltaje: 9 V; Material: Plástico; Voltaje: 12 V"
 
 
+def test_details_parser_accepts_fullwidth_colon_in_localized_value():
+    pairs = parse_details("材质：塑料")
+    assert len(pairs) == 1
+    assert (pairs[0].key_es, pairs[0].value_es) == ("材质", "塑料")
+
+
 def test_image_manifest_lists_missing_skus_and_keeps_image_row_height(tmp_path: Path):
     image_root = tmp_path / "images"
     image_root.mkdir()
@@ -111,7 +117,7 @@ def test_guard_pass_remains_a_candidate_not_a_semantic_keep():
            "metadata": {"sku": "1001", "source_hash": "hash"}}
     candidate = module.classify_candidate(row, {"spec": "2件"})
     assert candidate["accepted_by_guard"] is True
-    assert candidate["status"] == "AUTO_READY_CANDIDATE"
+    assert candidate["status"] == "GUARD_PASS_PENDING_REVIEW"
     assert "decision" not in candidate or candidate.get("decision") not in {"KEEP", "CORRECTED"}
 
 
