@@ -101,6 +101,10 @@ def summarize_occurrences(records: Iterable[Mapping[str, Any]], cases: Iterable[
     for case in cases:
         occurrences = find_same_source_occurrences(materialized, case)
         variants = Counter(row["target_value"] for row in occurrences)
+        wrong = case.wrong_zh.casefold().strip()
+        expected = case.expected_zh.casefold().strip()
+        wrong_count = sum(1 for row in occurrences if wrong and wrong in row["target_value"].casefold())
+        expected_count = sum(1 for row in occurrences if expected and expected in row["target_value"].casefold())
         output.append({
             "case_id": case.case_id,
             "field": case.field,
@@ -109,6 +113,9 @@ def summarize_occurrences(records: Iterable[Mapping[str, Any]], cases: Iterable[
             "sku_count": len({row["sku"] for row in occurrences}),
             "target_variant_count": len(variants),
             "target_variants": dict(sorted(variants.items())),
+            "wrong_target_count": wrong_count,
+            "expected_target_count": expected_count,
+            "regression_passed": wrong_count == 0,
         })
     return output
 

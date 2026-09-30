@@ -27,3 +27,5 @@ def test_regression_occurrence_audit_is_source_field_bound():
     summary = summarize_occurrences(rows, [case])[0]
     assert summary["occurrence_count"] == 2
     assert summary["target_variant_count"] == 2
+    assert summary["wrong_target_count"] == 1
+    assert summary["regression_passed"] is False

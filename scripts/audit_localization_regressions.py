@@ -28,9 +28,12 @@ def main() -> int:
         "master_writes": 0,
         "production_apply": False,
     }
+    report["regression_passed"] = all(item["regression_passed"] for item in report["summaries"])
+    report["wrong_target_count"] = sum(item["wrong_target_count"] for item in report["summaries"])
+    report["expected_target_count"] = sum(item["expected_target_count"] for item in report["summaries"])
     Path(args.output).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"case_count": len(cases), "output": args.output}, ensure_ascii=False))
-    return 0
+    print(json.dumps({"case_count": len(cases), "output": args.output, "regression_passed": report["regression_passed"], "wrong_target_count": report["wrong_target_count"]}, ensure_ascii=False))
+    return 0 if report["regression_passed"] else 2
 
 
 if __name__ == "__main__":
