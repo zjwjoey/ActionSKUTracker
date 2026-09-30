@@ -892,6 +892,11 @@ class ModelOutputCheck:
     reasons: tuple[str, ...]
     field_reasons: Mapping[str, tuple[str, ...]]
 
+    @property
+    def status(self) -> str:
+        """Hard-guard status; semantic approval is intentionally separate."""
+        return "PASS" if self.accepted else "FLAG"
+
 
 def numeric_tokens(value: object) -> list[str]:
     """Return normalized numeric tokens, retaining duplicate occurrences."""
