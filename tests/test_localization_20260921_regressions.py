@@ -4,7 +4,12 @@ from PIL import Image
 
 from action_tracker.exporting.dictionary_join import build_zh_rows_from_localized_source
 from action_tracker.exporting.excel_writer import write_catalog_xlsx
-from action_tracker.products.details_parser import conflicting_keys, parse_details, render_details
+from action_tracker.products.details_parser import (
+    conflicting_keys,
+    parse_details,
+    parse_semantic_detail_pairs,
+    render_details,
+)
 from action_tracker.services.hashing import localization_field_source_hash, localization_field_source_hashes
 
 
@@ -75,6 +80,33 @@ def test_details_parser_accepts_fullwidth_colon_in_localized_value():
     pairs = parse_details("材质：塑料")
     assert len(pairs) == 1
     assert (pairs[0].key_es, pairs[0].value_es) == ("材质", "塑料")
+
+
+def test_semantic_detail_parser_removes_only_known_header_and_legacy_pair_wrapper():
+    raw_pairs = parse_details(
+        "Especificaciones; Código de batería; AA; Número del artículo: 2535965"
+    )
+    semantic_pairs = parse_semantic_detail_pairs(
+        "Especificaciones; Código de batería; AA; Número del artículo: 2535965"
+    )
+    # The lossless parser remains suitable for repair/render paths.
+    assert [(pair.key_es, pair.value_es) for pair in raw_pairs] == [
+        ("Especificaciones", ""), ("Código de batería", ""),
+        ("AA", ""), ("Número del artículo", "2535965"),
+    ]
+    assert [(pair.key_es, pair.value_es) for pair in semantic_pairs] == [
+        ("Código de batería", "AA"), ("Número del artículo", "2535965"),
+    ]
+
+
+def test_semantic_detail_parser_preserves_duplicates_and_lone_bare_fragment():
+    pairs = parse_semantic_detail_pairs(
+        "Sin lactosa: No; Sin lactosa: No; Talla L; Color: Azul"
+    )
+    assert [(pair.key_es, pair.value_es) for pair in pairs] == [
+        ("Sin lactosa", "No"), ("Sin lactosa", "No"),
+        ("Talla L", ""), ("Color", "Azul"),
+    ]
 
 
 def test_image_manifest_lists_missing_skus_and_keeps_image_row_height(tmp_path: Path):
