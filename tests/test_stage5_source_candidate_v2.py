@@ -254,6 +254,27 @@ def test_configured_source_anomaly_rules_are_applied_and_keep_field_evidence():
     )
 
 
+def test_configured_source_anomaly_rules_match_legacy_flattened_key_value_rows():
+    source = _source(details="Color: Diseño; Incluye oído Sí; Número del artículo: 3217460")
+
+    flags = source_consistency_flags(source)
+    evidence = source_consistency_evidence(source)
+
+    assert "SOURCE_ANOMALY_INCLUYE_OIDO" in flags
+    row = next(item for item in evidence if item["code"] == "SOURCE_ANOMALY_INCLUYE_OIDO")
+    assert row["source_key"] == "Incluye oído"
+    assert row["source_value"] == "Sí"
+    assert "legacy flattened" in row["reason"]
+
+
+def test_configured_value_rule_matches_legacy_flattened_key_value_rows():
+    source = _source(details="Sustancia Válido; Número del artículo: 2001356")
+    evidence = source_consistency_evidence(source)
+    row = next(item for item in evidence if item["code"] == "SOURCE_ANOMALY_SUSTANCIA_VALIDO")
+    assert row["source_key"] == "Sustancia"
+    assert row["source_value"] == "Válido"
+
+
 def test_historical_splits_use_selection_time_not_later_training(tmp_path):
     import json
 

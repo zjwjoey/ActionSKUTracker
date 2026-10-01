@@ -348,6 +348,45 @@ def _size_tokens(text: str) -> set[str]:
     return {re.sub(r"\s+", "", match.group(1).casefold()) for match in _SIZE.finditer(text)}
 
 
+def _configured_detail_anomaly_evidence(
+    details: str,
+    rules: tuple[tuple[re.Pattern[str], re.Pattern[str] | None, str], ...],
+) -> list[dict[str, Any]]:
+    """Match configured anomalies in colon and legacy flattened key/value rows."""
+    evidence: list[dict[str, Any]] = []
+    seen: set[tuple[str, int]] = set()
+    for pair in parse_details(details):
+        candidates = [(pair.key_es, pair.value_es, "configured source detail key/value rule matched")]
+        if not pair.value_es.strip():
+            words = pair.key_es.split()
+            # Legacy Action pages sometimes flatten ``Key Value`` into one
+            # segment with no colon.  Try every non-empty prefix/suffix split;
+            # a configured anchored key regex keeps this conservative.
+            candidates.extend(
+                (" ".join(words[:index]), " ".join(words[index:]),
+                 "configured source detail legacy flattened key/value rule matched")
+                for index in range(1, len(words))
+            )
+        for key_text, value_text, reason in candidates:
+            key = _normal_text(key_text)
+            value = _normal_text(value_text)
+            for key_pattern, value_pattern, flag in rules:
+                identity = (flag, pair.position)
+                if identity in seen:
+                    continue
+                if key_pattern.search(key) and (value_pattern is None or value_pattern.search(value)):
+                    seen.add(identity)
+                    evidence.append({
+                        "code": flag,
+                        "source_field": "details",
+                        "source_key": key_text,
+                        "source_value": value_text,
+                        "source_pair": pair.raw,
+                        "reason": reason,
+                    })
+    return evidence
+
+
 def source_consistency_flags(source: Mapping[str, Any]) -> list[str]:
     """Conservatively flag explicit cross-field contradictions.
 
@@ -359,12 +398,10 @@ def source_consistency_flags(source: Mapping[str, Any]) -> list[str]:
     normalized = source_from_mapping(source)
     flags: set[str] = set()
     _, rules = _source_anomaly_rules()
-    for pair in parse_details(normalized["details"]):
-        key = _normal_text(pair.key_es)
-        value = _normal_text(pair.value_es)
-        for key_pattern, value_pattern, flag in rules:
-            if key_pattern.search(key) and (value_pattern is None or value_pattern.search(value)):
-                flags.add(flag)
+    flags.update(
+        str(item["code"])
+        for item in _configured_detail_anomaly_evidence(normalized["details"], rules)
+    )
     spec_measurements = _measurements(normalized["spec"])
     details_measurements = _comparable_detail_measurements(normalized["details"])
     description_measurements = _comparable_description_measurements(normalized["description"])
@@ -414,21 +451,9 @@ def source_consistency_evidence(source: Mapping[str, Any]) -> list[dict[str, Any
     normalized = source_from_mapping(source)
     _, rules = _source_anomaly_rules()
     evidence: list[dict[str, Any]] = []
-    detail_flags: set[str] = set()
-    for pair in parse_details(normalized["details"]):
-        key = _normal_text(pair.key_es)
-        value = _normal_text(pair.value_es)
-        for key_pattern, value_pattern, flag in rules:
-            if key_pattern.search(key) and (value_pattern is None or value_pattern.search(value)):
-                detail_flags.add(flag)
-                evidence.append({
-                    "code": flag,
-                    "source_field": "details",
-                    "source_key": pair.key_es,
-                    "source_value": pair.value_es,
-                    "source_pair": pair.raw,
-                    "reason": "configured source detail key/value rule matched",
-                })
+    configured_evidence = _configured_detail_anomaly_evidence(normalized["details"], rules)
+    evidence.extend(configured_evidence)
+    detail_flags = {str(item["code"]) for item in configured_evidence}
 
     fields_by_flag = {
         "NUMERIC_CONFLICT": ("spec", "details", "description"),
