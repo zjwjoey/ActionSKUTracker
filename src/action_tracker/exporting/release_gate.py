@@ -29,6 +29,7 @@ from ..translation.approved_terms import (
 from ..translation.source_fact_repair import repair_model_output as inspect_source_facts
 from ..translation.title_policy import has_unresolved_chinese_brand_marker, load_title_display_policy
 from ..localization.gold_gate import evaluate_gold_gate
+from ..stage5.source_candidate_v2 import source_consistency_evidence, source_consistency_rules_manifest
 
 _DETAIL_RULES_PATH = Path(__file__).resolve().parents[3] / "config/stage5/detail_terminology_rules.json"
 _DESCRIPTION_POLICY_PATH = Path(__file__).resolve().parents[3] / "config/stage5/description_fidelity_policy.json"
@@ -93,6 +94,7 @@ def evaluate_release_gate(
         if language == "es":
             _check_spanish_fields(issues, sku, out)
         elif language == "zh":
+            _check_source_anomalies(issues, sku, source)
             phrases = (confirmed_brand_phrases_by_sku or {}).get(sku, ())
             _check_zh_provenance(
                 issues, sku, source, out, detail_terminology_rules or {},
@@ -142,6 +144,7 @@ def evaluate_release_gate(
             "policy_id": description_policy.get("policy_id"),
             "sha256": hashlib.sha256(_DESCRIPTION_POLICY_PATH.read_bytes()).hexdigest(),
         } if description_policy else None),
+        "source_anomaly_rules": source_consistency_rules_manifest(),
         "approved_term_checker_sha256": hashlib.sha256(_APPROVED_TERM_CHECKER_PATH.read_bytes()).hexdigest()
         if language == "zh" else None,
         "counts": {
@@ -183,7 +186,25 @@ def evaluate_release_gate(
             "DETAIL_TERMINOLOGY_REVIEW": counts.get("DETAIL_TERMINOLOGY_REVIEW", 0),
             "SOURCE_FACT_REVIEW_REQUIRED": counts.get("SOURCE_FACT_REVIEW_REQUIRED", 0),
             "DESCRIPTION_COMPRESSION_REVIEW": counts.get("DESCRIPTION_COMPRESSION_REVIEW", 0),
+            "SOURCE_ANOMALY_REVIEW": counts.get("SOURCE_ANOMALY_REVIEW", 0),
         },
+    }
+    semantic_prefixes = (
+        "DETAIL_", "SOURCE_KEY_TRANSLATION_", "SOURCE_VALUE_TRANSLATION_",
+        "SOURCE_ANOMALY_", "APPROVED_TERM_", "DESCRIPTION_COMPRESSION_REVIEW",
+        "SOURCE_FACT_REVIEW_REQUIRED",
+    )
+    semantic_findings = [
+        item for item in remaining
+        if str(item.get("code") or "").startswith(semantic_prefixes)
+    ]
+    result["semantic_gate"] = {
+        "status": "PASS" if not semantic_findings else "REVIEW_REQUIRED",
+        "review_finding_count": len(semantic_findings),
+        "unresolved": bool(semantic_findings),
+        "gold_blocked": bool(semantic_findings),
+        "source_anomaly_rules": source_consistency_rules_manifest(),
+        "review_only": True,
     }
     gold_policy_path = Path(__file__).resolve().parents[3] / "config/stage5/chinese_gold_qa_policy.json"
     try:
@@ -269,6 +290,33 @@ def _check_zh_official_labels(
         issues, code, sku, "备注",
         source_labels=source_labels, target_labels=target_labels,
     )
+
+
+def _check_source_anomalies(
+    issues: list[dict[str, Any]], sku: str, source: dict[str, Any],
+) -> None:
+    """Carry source-only anomalies into the export semantic gate.
+
+    These are review findings, not translation failures: source evidence is
+    retained and the row remains available for non-Gold research output, while
+    an unresolved anomaly prevents a Gold claim.
+    """
+    source_for_consistency = {
+        "name": source.get("name") or source.get("name_es"),
+        "cat1": source.get("cat1") or source.get("cat1_es"),
+        "cat2": source.get("cat2") or source.get("cat2_es"),
+        "spec": source.get("spec") or source.get("spec_es"),
+        "description": source.get("description") or source.get("desc_es"),
+        "details": source.get("details") or source.get("details_es"),
+    }
+    for evidence in source_consistency_evidence(source_for_consistency):
+        _issue(
+            issues, "SOURCE_ANOMALY_REVIEW", sku,
+            str(evidence.get("source_field") or "source"),
+            review_only=True,
+            anomaly_code=evidence.get("code"),
+            evidence=evidence,
+        )
 
 
 def _check_zh_provenance(

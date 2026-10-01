@@ -22,6 +22,7 @@ from action_tracker.exporting.service import ExportValidationError, _publish_exp
 from action_tracker.exporting.excel_writer import write_catalog_xlsx
 from action_tracker.exporting.qa_log import build_export_qa_log
 from action_tracker.exporting.dictionary_join import _zh_remarks
+from action_tracker.exporting.release_gate import evaluate_release_gate
 
 
 def test_export_qa_log_preserves_duplicate_findings_with_stable_unique_ids():
@@ -37,9 +38,30 @@ def test_export_qa_log_preserves_duplicate_findings_with_stable_unique_ids():
     reversed_order = build_export_qa_log({"zh": {"issues": [distinct, dict(duplicate), dict(duplicate)]}})
 
     assert len(first) == 3
-    assert [row["qa_id"] for row in first] == [row["qa_id"] for row in reversed_order]
     assert len({row["qa_id"] for row in first}) == 3
     assert [row["occurrence"] for row in first] == ["1", "2", "1"]
+    assert [row["qa_id"] for row in first] == [row["qa_id"] for row in reversed_order]
+
+
+def test_release_gate_carries_source_anomaly_into_semantic_gold_gate():
+    source = {
+        "sku": "1001", "current_price": 1.0, "original_price": None,
+        "image_url": "", "product_url": "https://example.test/1001",
+        "name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "Limpieza",
+        "spec_es": "", "desc_es": "", "details_es": "Sustancia: V\u00e1lido; N\u00famero del art\u00edculo: 1001",
+    }
+    output = {
+        "\u7f16\u53f7": "1001", "\u6298\u540e\u4ef7": 1.0, "\u539f\u4ef7": None,
+        "\u56fe\u7247\u94fe\u63a5": "", "\u5546\u54c1\u94fe\u63a5": "https://example.test/1001",
+        "\u6807\u9898": "\u5546\u54c1", "\u4e00\u7ea7\u7c7b\u76ee": "\u5bb6\u5c45", "\u4e8c\u7ea7\u7c7b\u76ee": "\u6e05\u6d01",
+        "\u4e2d\u6587\u89c4\u683c": "", "\u89c4\u683c": "", "\u63cf\u8ff0": "", "\u4ea7\u54c1\u8be6\u60c5": "\u7269\uff1a\u6709\u6548", "\u5907\u6ce8": "",
+    }
+    result = evaluate_release_gate([source], [output], language="zh", strict=False)
+    assert result["counts"]["SOURCE_ANOMALY_REVIEW"] == 1
+    assert result["gold_eligible"] is False
+    assert result["semantic_gate"]["status"] == "REVIEW_REQUIRED"
+    assert result["semantic_gate"]["gold_blocked"] is True
+    assert any(item["code"] == "SOURCE_ANOMALY_REVIEW" for item in result["review_findings"])
 
 
 def test_chinese_remarks_preserve_unrecognized_raw_official_labels():

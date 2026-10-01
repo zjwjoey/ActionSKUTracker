@@ -213,6 +213,7 @@ def test_unmapped_closed_enum_details_route_to_review_without_model_request():
     assert detail_review["review_status"] == "PENDING"
     assert "DETAIL_ENUM_UNMAPPED" in detail_review["guard_findings"]
     assert detail_failure["action"] == "HUMAN_REVIEW_REQUIRED"
+
     assert detail_failure["failure_type"] == "SEMANTIC_REVIEW_REQUIRED"
     assert detail_failure["severity"] == "P2"
 
@@ -222,6 +223,31 @@ def test_unmapped_closed_enum_details_route_to_review_without_model_request():
     )
     assert unknown_failures[0]["failure_type"] == "SEMANTIC_REVIEW_REQUIRED"
     assert unknown_failures[0]["failure_type"] != "UNCLASSIFIED_INTERNAL_ROUTE"
+
+
+def test_source_anomaly_is_review_evidence_not_translation_failure_or_model_request():
+    contracts = load_contracts(ROOT)
+    source = _source(details="Sustancia: Válido; Número del artículo: 1001")
+    rows = validate_input_rows([_row(source)], contracts)
+    plans = plan_batch(rows, _context(source), contracts)
+    detail_plan = next(plan for plan in plans if plan.field == "details")
+
+    assert detail_plan.resolution_path == "SOURCE_ANOMALY"
+    assert detail_plan.reason == "SOURCE_ANOMALY_REVIEW"
+    assert detail_plan.source_anomaly_evidence[0]["code"] == "SOURCE_ANOMALY_SUSTANCIA_VALIDO"
+    assert not any(request["field"] == "details" for request in model_requests(plans))
+
+    candidates, failures, reviews, _ = build_batch(
+        plans, {}, contracts, _identity(), dictionary_hash="dictionary-v1",
+    )
+    detail = next(item for item in candidates if item["source_field"] == "details")
+    assert detail["status"] == "SOURCE_ANOMALY_REVIEW"
+    assert detail["source_anomaly_evidence"]
+    assert any(
+        item["field"] == "details" and item["proposed_disposition"] == "SOURCE_ANOMALY_REVIEW"
+        for item in reviews
+    )
+    assert not any(item["field"] == "details" for item in failures)
 
 
 def test_compressed_model_description_is_held_for_manual_review():

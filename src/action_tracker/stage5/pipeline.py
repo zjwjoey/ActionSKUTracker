@@ -41,6 +41,7 @@ from ..translation.model_guard import (
 )
 from ..translation.source_fact_repair import repair_model_output as inspect_source_facts
 from ..translation.title_policy import load_title_display_policy, title_policy_prompt
+from .source_candidate_v2 import source_consistency_evidence, source_consistency_rules_manifest
 
 
 FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
@@ -95,6 +96,7 @@ class FieldPlan:
     resolution_path: str
     reason: str
     allowed_brand_phrases: tuple[str, ...] = ()
+    source_anomaly_evidence: tuple[dict[str, Any], ...] = ()
 
 
 def canonical_json(value: Any) -> str:
@@ -217,11 +219,13 @@ def load_contracts(repo: Path) -> Stage5Contracts:
         root / "src/action_tracker/exporting/dictionary_join.py",
         root / "src/action_tracker/dictionary.py",
         root / "src/action_tracker/stage5/pipeline.py",
+        root / "src/action_tracker/stage5/source_candidate_v2.py",
     )
     resolver_identity = ":".join(sha256_file(path) for path in resolver_identity_paths)
     hashes["pipeline"] = sha256_bytes(
         f"{hashes['pipeline']}:{resolver_identity}".encode("utf-8")
     )
+    hashes["source_anomaly"] = source_consistency_rules_manifest()["sha256"]
     return Stage5Contracts(
         values["input_contract"], values["ownership"], values["pipeline"], values["guard"],
         hashes, detail_terminology, title_display_policy, description_fidelity_policy,
@@ -411,6 +415,20 @@ def plan_batch(
             request_id = _request_id(row, field, contracts, context.content_hash)
             if not source_value:
                 plans.append(FieldPlan(row, field, source_value, request_id, None, "SOURCE", "SOURCE_AMBIGUOUS", allowed_brands))
+                continue
+            source_anomalies = tuple(
+                source_consistency_evidence(source)
+                if field == "details" else ()
+            )
+            if source_anomalies:
+                evidence = FieldResolution(
+                    canonical_json(list(source_anomalies)), "source_anomaly", "REVIEW",
+                )
+                plans.append(FieldPlan(
+                    row, field, source_value, request_id, evidence,
+                    "SOURCE_ANOMALY", "SOURCE_ANOMALY_REVIEW", allowed_brands,
+                    source_anomalies,
+                ))
                 continue
             resolved = resolution.fields.get(field)
             safe_rule = bool(
@@ -621,7 +639,14 @@ def build_batch(
         owner_correction = None
         semantic_fact_findings: list[dict[str, Any]] = []
         terminology_corrections: tuple[str, ...] = ()
-        if plan.resolution_path == "RULE" and plan.resolver is not None:
+        if plan.resolution_path == "SOURCE_ANOMALY":
+            check = ModelOutputCheck(False, ("SOURCE_ANOMALY_REVIEW",), {plan.field: ("SOURCE_ANOMALY_REVIEW",)})
+            status = "SOURCE_ANOMALY_REVIEW"
+            candidate_value = None
+            final_candidate = None
+            review_status = "PENDING"
+            semantic_fact_findings = list(plan.source_anomaly_evidence)
+        elif plan.resolution_path == "RULE" and plan.resolver is not None:
             parsed_candidate = plan.resolver.value
             if (
                 plan.field == "details"
@@ -736,6 +761,7 @@ def build_batch(
             "terminology_rules_version": contracts.detail_terminology.get("version"),
             "terminology_corrections": list(terminology_corrections),
             "semantic_fact_findings": semantic_fact_findings,
+            "source_anomaly_evidence": list(plan.source_anomaly_evidence),
             "owner_correction": owner_correction,
             "owner_correction_applied": owner_correction is not None,
             "guard_result": {
@@ -767,7 +793,9 @@ def build_batch(
                 "proposed_disposition": status,
                 "review_status": "PENDING", "reviewer": "", "reviewed_at": "",
             })
-        if not check.accepted or plan.resolution_path not in {"RULE", "MODEL"}:
+        if not check.accepted or plan.resolution_path not in {"RULE", "MODEL", "SOURCE_ANOMALY"}:
+            if plan.resolution_path == "SOURCE_ANOMALY":
+                continue
             reasons = field_reasons or [plan.reason]
             failure_type = failure_classes.get(
                 reasons[0], contracts.guard["fallback_failure_class"],
