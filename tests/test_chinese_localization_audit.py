@@ -835,6 +835,27 @@ def test_detail_rule_coverage_respects_product_context_per_occurrence():
     assert key_row["candidate_is_approved"] is False
 
 
+def test_detail_alignment_uses_legacy_view_only_when_it_is_complete_and_count_aligned():
+    source_pairs, target_pairs = AUDIT._detail_pairs_for_audit_alignment(
+        "Especificaciones; Código de batería; AA; Número del artículo: 2535965",
+        "电池型号：AA；商品编号：2535965",
+    )
+
+    assert [(pair.key_es, pair.value_es) for pair in source_pairs] == [
+        ("Código de batería", "AA"), ("Número del artículo", "2535965"),
+    ]
+    assert len(target_pairs) == 2
+
+    # Do not force an alignment where a bare source fragment remains.  It may
+    # be a different legacy serialization that requires a reviewed rule.
+    raw_source_pairs, raw_target_pairs = AUDIT._detail_pairs_for_audit_alignment(
+        "Especificaciones; Talla de las prendas L; Color: Naranja; Género Unisex",
+        "服装尺码：L；颜色：橙色；适用性别：男女通用",
+    )
+    assert len(raw_source_pairs) == 4
+    assert len(raw_target_pairs) == 3
+
+
 def test_detail_rule_coverage_reports_translation_variants_even_when_rule_covers_all():
     source_rows = {
         "1001": {"name": "Libro de ficción", "details": "Género: Ficción"},

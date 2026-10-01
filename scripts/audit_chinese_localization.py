@@ -33,7 +33,7 @@ import openpyxl  # noqa: E402
 from action_tracker.stage5.source_candidate_v2 import (  # noqa: E402
     source_consistency_evidence, source_consistency_rules_manifest,
 )
-from action_tracker.products.details_parser import parse_semantic_detail_pairs  # noqa: E402
+from action_tracker.products.details_parser import parse_details, parse_semantic_detail_pairs  # noqa: E402
 from action_tracker.translation.detail_terminology import (  # noqa: E402
     detail_rule_context_matches, detail_value_rule_matches_source,
     load_detail_terminology_rules, repair_detail_candidate,
@@ -794,6 +794,39 @@ def _audit_category_rows(
     }
 
 
+def _detail_pairs_for_audit_alignment(
+    source_details: str,
+    target_details: str,
+) -> tuple[tuple[Any, ...], tuple[Any, ...]]:
+    """Choose a safe comparison view without changing the lossless parser.
+
+    Historic Spanish exports sometimes add only a presentation header or
+    serialise every detail row as ``Key; Value``.  A semantic view can remove
+    those artefacts, but it is unsafe to use when any bare fragment remains:
+    e.g. ``Género Unisex`` might itself be a flattened field, not a key to be
+    joined to the next row.  Therefore this helper adopts the comparison view
+    only when it (a) changed the source, (b) left no bare fragments, and (c)
+    exactly matches the existing target pair count.  All other cases retain
+    raw segments for review.
+    """
+    raw_source_pairs = parse_details(source_details)
+    raw_target_pairs = parse_details(target_details)
+    if len(raw_source_pairs) == len(raw_target_pairs):
+        return raw_source_pairs, raw_target_pairs
+
+    semantic_source_pairs = parse_semantic_detail_pairs(source_details)
+    semantic_complete = bool(semantic_source_pairs) and all(
+        pair.value_es for pair in semantic_source_pairs
+    )
+    if (
+        semantic_complete
+        and len(semantic_source_pairs) < len(raw_source_pairs)
+        and len(semantic_source_pairs) == len(raw_target_pairs)
+    ):
+        return semantic_source_pairs, raw_target_pairs
+    return raw_source_pairs, raw_target_pairs
+
+
 def _detail_rule_coverage(
     source_rows: dict[str, dict[str, str]],
     target_rows: dict[str, dict[str, str]],
@@ -830,8 +863,9 @@ def _detail_rule_coverage(
     alignment_review_rows: list[dict[str, Any]] = []
 
     for sku in shared:
-        source_pairs = parse_semantic_detail_pairs(source_rows[sku]["details"])
-        target_pairs = parse_semantic_detail_pairs(target_rows[sku]["details"])
+        source_pairs, target_pairs = _detail_pairs_for_audit_alignment(
+            source_rows[sku]["details"], target_rows[sku]["details"],
+        )
         if len(source_pairs) != len(target_pairs):
             skipped_pair_alignment += 1
             alignment_review_rows.append({
@@ -1357,10 +1391,12 @@ def audit_workbooks(
                                if matching_evidence else source["details"]})
 
         # Pair variants are a semantic QA signal, not a repair instruction.
-        # Use the comparison-only parser so historic ``Key; Value`` exports
-        # and presentation headings do not masquerade as missing attributes.
-        source_pairs = parse_semantic_detail_pairs(source["details"])
-        target_pairs = parse_semantic_detail_pairs(target["details"])
+        # Apply a legacy-format view only if it gives a complete, exactly
+        # aligned sequence.  Otherwise preserve the raw lossless fragments as
+        # evidence for reviewer triage.
+        source_pairs, target_pairs = _detail_pairs_for_audit_alignment(
+            source["details"], target["details"],
+        )
         if len(source_pairs) == len(target_pairs):
             for source_pair, target_pair in zip(source_pairs, target_pairs, strict=True):
                 key_variants[source_pair.normalized_key][target_pair.key_es][sku] += 1
