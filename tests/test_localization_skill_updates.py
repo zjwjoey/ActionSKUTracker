@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import ast
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -11,6 +13,7 @@ DETAILS = SKILLS / "action-cn-description-details-review" / "SKILL.md"
 SHORT = SKILLS / "action-cn-localization-review" / "SKILL.md"
 EXAMPLES = SKILLS / "action-cn-description-details-review" / "examples" / "semantic_regressions.json"
 QWEN_EXAMPLES = ROOT / ".agents" / "skills" / "action-qwen-translation" / "examples" / "semantic_regressions.json"
+DETAILS_PILOT = SKILLS / "action-cn-description-details-review" / "scripts" / "run_description_details_pilot.py"
 
 
 def _text(path: Path) -> str:
@@ -113,3 +116,31 @@ def test_spec_safety_protects_x_tokens_and_allows_only_dimension_context():
     assert "(?<=\\d)\\s*[xX]\\s*(?=\\d)" in text
     for token in ("XL", "XXL", "XXXL", "USB-C", "CR2032", "A4", "A3", "IP44"):
         assert token in text
+
+
+def test_description_details_pilot_fails_closed_before_semantic_review():
+    spec = importlib.util.spec_from_file_location("description_details_pilot", DETAILS_PILOT)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    reviewed, decision, issue, _ = module.review_field("Color: Rojo", "颜色：红色", "details")
+    assert reviewed == "颜色：红色"
+    assert decision == "REVIEW_REQUIRED"
+    assert issue == "SEMANTIC_REVIEW_PENDING"
+
+    reviewed, decision, issue, _ = module.review_field("", "错误跨字段补入", "details")
+    assert reviewed == ""
+    assert decision == "NO_SOURCE"
+    assert issue == "NO_SOURCE"
+
+
+def test_description_details_review_main_never_calls_qwen_translation():
+    tree = ast.parse(DETAILS_PILOT.read_text(encoding="utf-8"))
+    main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "main")
+    calls = {
+        node.func.id
+        for node in ast.walk(main)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+    assert "translate_missing" not in calls
