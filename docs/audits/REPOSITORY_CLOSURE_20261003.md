@@ -10,7 +10,7 @@
 - 基线 main：`b47e4c56a0274fdddceff347e2571d77c1476014`。
 - 闭环分支从该基线创建，未使用旧 integration 分支的 dirty state。
 - `git fetch --all --prune` 已通过临时清除 Git proxy 配置成功；`origin/main` 仍为上述基线。
-- 主线合并 CI run `37125971802`、Scrapling `37128908030`、Closure `37136163546`、Stage6 `37136385976` 均为 Windows/Ubuntu 成功。
+- CI 证据采用 audited head / publication metadata 口径：主线合并 `37125971802`、Scrapling `37128908030`；Closure audited head `7b153b72e805b4b5dbe8b36f55d05d9eb691557d` 的 publication metadata 为 `37136163546`；Stage6 audited head `4744fba5523df5ebac5e00773cb96e1fe679979d` 的 publication metadata 为 `37136811440`，均为 Windows/Ubuntu 成功。这里不追踪本审计文档自身的后续 docs-only SHA。
 
 ## B. AGENTS 与架构契约
 
@@ -43,7 +43,7 @@
 
 - 分支：`fix/stage6-provenance-v2`
 - 基线：`b47e4c5`
-- 仅 cherry-pick：`850c49832c48a21f3847cd63447e6fd4ebe11b6b`、`bf2bd7878ba1110b95d389f865ee1aea6ddd66c5`；本轮提交 `e7490997254b20e1dad29f70977321224044d78e`、`ed1205b7550433d241f8dd83b14af8fbe26aa859`。
+- 仅 cherry-pick：`850c49832c48a21f3847cd63447e6fd4ebe11b6b`、`bf2bd7878ba1110b95d389f865ee1aea6ddd66c5`；Stage6 audited head 为 `4744fba5523df5ebac5e00773cb96e1fe679979d`。
 - 明确未 cherry-pick：`add8734aaa72c8794a72de97bf893312bda9e5e5`
 - 专项测试：`25 passed`（含运行时 Git 证明、Git 失败闭锁和混合排除状态测试）。报告不再写死旧 SHA/旧分支；readiness CSV 保留所有候选并统计 total/eligible/excluded/previewed/blocked。
 
@@ -99,9 +99,9 @@ Stage6 targeted tests:
 Full pytest:
 705 passed / 0 failures
 Closure CI:
-37136163546 / PASS
+audited head 7b153b72e805b4b5dbe8b36f55d05d9eb691557d / publication metadata 37136163546 / PASS
 Stage6 CI:
-37136811440 / PASS
+audited head 4744fba5523df5ebac5e00773cb96e1fe679979d / publication metadata 37136811440 / PASS
 Scrapling modified:
 NO
 Translation modified:

@@ -2,6 +2,10 @@
 
 基线：`origin/main@b47e4c56a0274fdddceff347e2571d77c1476014`。
 
+## Snapshot cutoff
+
+本清单是截至 **2026-10-04（Asia/Shanghai）** 观察到的远端 ref 快照，不是实时分支视图。表内 head、merge-base、behind/ahead 和 patch-equivalence 数值只对该 cutoff 的 ref 集合负责；后续提交、移动或删除不会回写本文件。执行合并或删除决策前，必须按同一 `git cherry` 口径重新生成清单。
+
 ## 统计口径
 
 对每个远端分支执行 `git rev-list --left-right --count origin/main...origin/<branch>` 和 `git cherry origin/main origin/<branch>`。
