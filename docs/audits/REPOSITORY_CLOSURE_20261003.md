@@ -2,7 +2,7 @@
 
 结论：`PARTIAL_PASS`（代码、文档、分支和 CI 已完成；main branch protection 仍需管理员配置）。
 
-审计日期：2026-10-04  
+审计日期：2026-10-04
 范围：仓库结构、文档契约、翻译安全默认值、Stage6 provenance v2、Scrapling detail shadow v3、命名历史迁移盘点。
 
 ## A. 基线与远端
