@@ -1,3 +1,5 @@
+<!-- ARCHIVED LEGACY PROMPT: Historical planning text retained for audit only. It does not override AGENTS.md, current architecture, or repository closure requirements. -->
+
 你现在要帮我从零建立一个长期运行的：
 
 「Action 西班牙站商品每日监测程序」
