@@ -35,8 +35,9 @@ The formal path now has one field-level `TranslationResolver` with this
 priority: manual lock, approved revision, exact/normalized/context TM,
 scoped terminology/deterministic rules, then an explicitly enabled Provider.
 The Daily adapter uses `apply_zh_formal`: missing Chinese stays empty/PENDING
-and is queued; Spanish is never persisted as approved Chinese. Export remains
-read-only against the approved PRIMARY projection.
+and is queued; `knowledge.fallback_to_spanish=false` keeps Spanish out of the
+formal Chinese fields, and Spanish is never persisted as approved Chinese.
+Export remains read-only against the approved PRIMARY projection.
 
 Source refresh is field-level: unchanged `source_text_hash` fields reuse a
 fresh approved revision in the new source version, while only changed fields
