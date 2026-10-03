@@ -150,6 +150,12 @@ def build_parser() -> argparse.ArgumentParser:
     ca.add_argument("--limit", type=int, default=50)
     ca.add_argument("--provider", action="store_true", help="显式允许本次 Canary 调用已配置 Provider")
     ca.add_argument("--output", required=True)
+    rb = sub.add_parser("retranslation-batch", help="生成只读字段级重新本地化候选批次")
+    rb.add_argument("--limit", type=int, default=10, help="SKU 数量；第一阶段建议 10")
+    rb.add_argument("--provider", action="store_true", help="显式允许本次批次调用已配置 Provider")
+    rb.add_argument("--output", required=True, help="候选批次输出目录")
+    rb.add_argument("--batch-id", default="", help="可选批次 ID")
+    rb.add_argument("--data-root", default="", help="SQLite/运行数据根目录；代码 worktree 与数据目录分离时必填")
     fa = sub.add_parser("translation-family-audit", help="审计当前商品族与 Canonical QA")
     fa.add_argument("--family", default="", help="可选 family_id；留空审计全部")
     fa.add_argument("--output", help="可选 JSON 报告路径")
@@ -260,6 +266,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    if getattr(args, "data_root", ""):
+        # Must be set before load_settings() so database_path() resolves the
+        # explicit production data root rather than an empty worktree DB.
+        os.environ["ACTION_TRACKER_PROJECT_ROOT"] = str(args.data_root)
     from .config import ensure_runtime_dirs, load_settings
     from .log import setup_logging
 
@@ -676,11 +686,37 @@ def main(argv=None) -> int:
             print(json.dumps(result, ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "retranslation-batch":
+        from .database.integration import database_path
+        from .database.repository import ProductionRepository
+        from .localization.runtime_builder import build_translation_runtime
+        from .localization.retranslation import build_retranslation_batch
+        try:
+            records = ProductionRepository(database_path(cfg)).load_current_export_records()
+            runtime = build_translation_runtime(cfg, allow_provider=bool(args.provider))
+            result = build_retranslation_batch(
+                records,
+                resolver=runtime.resolver,
+                output_dir=Path(args.output),
+                limit=args.limit,
+                allow_provider=bool(args.provider),
+                batch_id=args.batch_id or None,
+            )
+            print(json.dumps(result, ensure_ascii=False, default=str)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}", "production_writes": False}, ensure_ascii=False), file=sys.stderr); return 2
     if args.command == "translation-status":
         from .database.integration import database_path
         from .localization.registry.repository import LocalizationRegistry
+        from .localization.runtime_builder import _database_role
         try:
-            registry = LocalizationRegistry(database_path(cfg), role="SHADOW")
+            registry_path = database_path(cfg)
+            # The production database is PRIMARY after cutover, while a
+            # worktree/test database may still be SHADOW.  Opening the
+            # registry with a hard-coded SHADOW role makes this read-only
+            # status command fail against the real PRIMARY database.  Detect
+            # the existing role without changing it, then read queue state.
+            registry = LocalizationRegistry(registry_path, role=_database_role(registry_path))
             print(json.dumps(registry.queue_status(), ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
@@ -703,21 +739,40 @@ def main(argv=None) -> int:
         out = Path(args.output)
         out.parent.mkdir(parents=True, exist_ok=True)
         try:
-            ai_cfg = ((cfg.get("localization") or {}).get("ai") or {})
+            ai_cfg = dict(((cfg.get("localization") or {}).get("ai") or {}))
+            # The read-only live smoke wrapper passes the Qwen provider and
+            # endpoint through process-scoped environment variables.  Older
+            # production data roots may not have a localization.ai block at
+            # all; without this bridge the smoke command silently falls back
+            # to an empty generic OpenAI-compatible provider and reports
+            # BASE_URL_MISSING.  An explicit Qwen opt-in is required and never
+            # enables production writes.
+            explicit_qwen = os.environ.get("ACTION_TRACKER_ALLOW_QWEN_PROVIDER") == "1"
+            env_base = os.environ.get("QWEN_MT_BASE_URL") or os.environ.get("DASHSCOPE_BASE_URL") or ""
+            configured_provider = str(ai_cfg.get("provider") or "").strip().lower()
+            if explicit_qwen and (not configured_provider or configured_provider == "openai_compatible"):
+                ai_cfg.update({
+                    "provider": "qwen_mt",
+                    "model": os.environ.get("QWEN_MT_MODEL") or "qwen-mt-flash",
+                    "api_key_env": "DASHSCOPE_API_KEY",
+                })
+                if env_base and not str(ai_cfg.get("base_url") or "").strip():
+                    ai_cfg["base_url"] = env_base
             provider = provider_from_config({**ai_cfg, "enabled": True})
             health = provider_health(provider)
             configured_base = str(ai_cfg.get("base_url") or "").strip()
-            env_base = os.environ.get("QWEN_MT_BASE_URL") or os.environ.get("DASHSCOPE_BASE_URL") or ""
             result = {
                 "provider": getattr(provider, "provider", type(provider).__name__),
                 "model": getattr(provider, "model", ""),
                 "endpoint": getattr(provider, "base_url", ""),
-                "api_key_present": bool(os.environ.get(str(getattr(provider, "api_key_env", "DASHSCOPE_API_KEY")))) if getattr(provider, "api_key_env", None) else False,
+                "api_key_present": bool((os.environ.get(str(getattr(provider, "api_key_env", "DASHSCOPE_API_KEY"))) or "").strip()) if getattr(provider, "api_key_env", None) else False,
                 "base_url_source": "LOCAL_CONFIG" if configured_base else ("ENV" if env_base else "MISSING"),
                 "workspace_header_present": bool(os.environ.get("DASHSCOPE_WORKSPACE")),
                 "health": health,
                 "production_writes": False,
             }
+            if health.get("error") in {"QWEN_API_KEY_MISSING", "QWEN_API_KEY_INVALID_FORMAT"}:
+                result["api_key_present"] = False
             if health.get("status") != "PASS":
                 result["status"] = "LIVE_QWEN_API_NOT_VERIFIED"
             elif getattr(args, "minimal", False):
@@ -800,10 +855,12 @@ def main(argv=None) -> int:
     if args.command == "translation-review":
         from .database.integration import database_path
         from .localization.registry.repository import LocalizationRegistry
+        from .localization.runtime_builder import _database_role
         try:
-            registry = LocalizationRegistry(database_path(cfg), role="SHADOW")
+            registry_path = database_path(cfg)
+            registry = LocalizationRegistry(registry_path, role=_database_role(registry_path))
             from .database.connection import connect
-            with connect(database_path(cfg)) as db:
+            with connect(registry_path) as db:
                 rows = [dict(row) for row in db.execute("SELECT queue_id,official_sku,requested_fields,status,retry_count,last_error FROM translation_queue WHERE status IN ('PENDING','RETRY','FAILED','BLOCKED') ORDER BY created_at LIMIT ?", (int(args.limit),)).fetchall()]
             print(json.dumps({"count": len(rows), "rows": rows, "production_writes": False}, ensure_ascii=False)); return 0
         except Exception as exc:

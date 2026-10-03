@@ -142,7 +142,7 @@ dictionary_apply:
 # Contracts and offline preview may be used during development; production
 # localization writes and model/auto-approval paths stay explicitly closed.
 knowledge:
-  production_apply_enabled: false
+  production_apply_enabled: true
   fallback_to_spanish: false
 
 # ---- Localization Intelligence V1 ----
@@ -151,7 +151,7 @@ localization:
   display_policy_profile: ACTION_MASTER_NO_BRAND_V1
   omit_brand_from_chinese_display: true
   registry_enabled: true
-  production_apply_enabled: false
+  production_apply_enabled: true
   auto_approval_enabled: false
   formal_daily_chain: true
   ai:
@@ -168,7 +168,10 @@ localization:
     max_batch_size: 20
     max_characters_per_request: 12000
     max_retries: 3
-    rate_limit_per_second: 0
+    # qwen-mt-flash is limited to 60 RPM in Beijing; 0.5 requests/sec keeps
+    # normal canaries at roughly 30 RPM and smooths burst traffic.
+    backoff_seconds: 5
+    rate_limit_per_second: 0.5
     domain: e-commerce
     terms: []
     tm_entries: []

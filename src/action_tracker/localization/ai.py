@@ -184,6 +184,28 @@ class QwenMTCompatibleProvider:
     domain: str = "e-commerce"
     max_batch_size: int = 20
     max_characters_per_request: int = 12000
+    max_retries: int = 2
+    backoff_seconds: float = 5.0
+    rate_limit_per_second: float = 0.5
+    _provider: QwenMTProvider | None = field(default=None, init=False, repr=False)
+
+    def _qwen_provider(self) -> QwenMTProvider:
+        # Keep one adapter instance for the whole canary/worker run.  The
+        # adapter owns the request-start limiter; recreating it for every
+        # field would silently reset the limiter and defeat pacing.
+        if self._provider is None:
+            self._provider = QwenMTProvider(
+                self.base_url,
+                self.model,
+                self.api_key_env,
+                self.timeout,
+                max_retries=self.max_retries,
+                backoff_seconds=self.backoff_seconds,
+                rate_limit_per_second=self.rate_limit_per_second,
+                max_batch_size=self.max_batch_size,
+                max_characters_per_request=self.max_characters_per_request,
+            )
+        return self._provider
 
     def translate(self, request: TranslationRequest):
         """Expose the resolver's native TranslationProvider contract.
@@ -193,14 +215,7 @@ class QwenMTCompatibleProvider:
         calls ``translate``.  Both paths therefore share the exact Qwen-MT
         wire implementation instead of relying on an unsafe generic adapter.
         """
-        return QwenMTProvider(
-            self.base_url,
-            self.model,
-            self.api_key_env,
-            self.timeout,
-            max_batch_size=self.max_batch_size,
-            max_characters_per_request=self.max_characters_per_request,
-        ).translate(request)
+        return self._qwen_provider().translate(request)
 
     def complete(self, source: SourceFacts, requested_fields: tuple[str, ...]) -> Mapping[str, Any]:
         source_fields = {canonical: getattr(source, CANONICAL_TO_SOURCE[canonical], "") for canonical in requested_fields if canonical in CANONICAL_TO_SOURCE}
@@ -311,12 +326,18 @@ def provider_from_config(config: Mapping[str, Any] | None) -> LocalizationAIProv
             or os.environ.get("DASHSCOPE_BASE_URL")
             or ""
         )
+        configured_rate = config.get("rate_limit_per_second")
+        if "QWEN_MT_RATE_LIMIT_PER_SECOND" in os.environ:
+            configured_rate = os.environ.get("QWEN_MT_RATE_LIMIT_PER_SECOND")
         return QwenMTCompatibleProvider(
             base_url, str(config.get("model") or "qwen-mt-flash"),
             str(config.get("api_key_env") or "DASHSCOPE_API_KEY"), int(config.get("timeout") or 60),
             terms=terms, tm_entries=tm_entries, domain=str(config.get("domain") or "e-commerce"),
             max_batch_size=int(config.get("max_batch_size") or 20),
             max_characters_per_request=int(config.get("max_characters_per_request") or 12000),
+            max_retries=int(config.get("max_retries") if config.get("max_retries") is not None else 2),
+            backoff_seconds=float(config.get("backoff_seconds") if config.get("backoff_seconds") is not None else 5.0),
+            rate_limit_per_second=float(configured_rate if configured_rate is not None else 0.5),
         )
     if provider in {"local_openai_compatible", "local", "ollama", "qwen"}:
         key_env = str(config.get("api_key_env") or "").strip() or None
@@ -347,6 +368,11 @@ def provider_health(provider: LocalizationAIProvider) -> dict[str, Any]:
         api_key = os.environ.get(str(api_key_env))
         if provider_name == "qwen_mt" and not api_key:
             return {"status": "INVALID_CONFIG", "provider": provider_name, "model": model, "error": "QWEN_API_KEY_MISSING"}
+        # A masked placeholder copied from a terminal (for example ``※`` or
+        # ``*``) is not a usable credential.  Report it explicitly instead
+        # of claiming the key is present and waiting for an opaque HTTP 400.
+        if provider_name == "qwen_mt" and api_key and (len(api_key.strip()) <= 1 or set(api_key.strip()) <= {"*", "※", "•"}):
+            return {"status": "INVALID_CONFIG", "provider": provider_name, "model": model, "error": "QWEN_API_KEY_INVALID_FORMAT"}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
     # qwen-mt-flash's compatible endpoint is a translation endpoint and does

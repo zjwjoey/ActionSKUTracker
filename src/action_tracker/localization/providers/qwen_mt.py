@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 import uuid
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
@@ -89,14 +89,36 @@ class QwenMTProvider:
     api_key_env: str = "DASHSCOPE_API_KEY"
     timeout: int = 60
     max_retries: int = 2
-    backoff_seconds: float = 1.5
+    backoff_seconds: float = 5.0
     max_batch_size: int = 20
     max_characters_per_request: int = 12000
-    rate_limit_per_second: float = 0.0
+    # Keep a conservative default below qwen-mt-flash's documented 60 RPM
+    # limit.  This is a start-rate limit, not a concurrency setting.
+    rate_limit_per_second: float = 0.5
     provider: str = "qwen_mt"
     # The official minimal smoke must contain only source/target language
     # options.  Normal registry calls keep the richer domain/term/TM options.
     include_optional_options: bool = True
+    _last_request_started_at: float | None = field(default=None, init=False, repr=False)
+    _optional_options_disabled: bool = field(default=False, init=False, repr=False)
+
+    def _wait_for_request_slot(self) -> None:
+        """Smooth request starts across *all* translate() calls.
+
+        Previously throttling only happened between fields inside one
+        request, while the resolver normally creates one provider call per
+        field.  That left consecutive SKU/field calls unpaced and made a
+        small canary burst exceed the account RPM/burst limits.
+        """
+        if self.rate_limit_per_second <= 0:
+            return
+        interval = 1.0 / float(self.rate_limit_per_second)
+        now = time.monotonic()
+        if self._last_request_started_at is not None:
+            remaining = interval - (now - self._last_request_started_at)
+            if remaining > 0:
+                time.sleep(remaining)
+        self._last_request_started_at = time.monotonic()
 
     def _source_field(self, request: TranslationRequest, field_name: str) -> str:
         return {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field_name, field_name)
@@ -117,7 +139,7 @@ class QwenMTProvider:
             "source_lang": wire_language(request.source_language, "Spanish"),
             "target_lang": wire_language(request.target_language, "Chinese"),
         }
-        if not self.include_optional_options:
+        if not self.include_optional_options or self._optional_options_disabled:
             return options
 
         domain = str(request.domain or "e-commerce").strip() or "e-commerce"
@@ -200,7 +222,7 @@ class QwenMTProvider:
             text = text.rsplit("```", 1)[0].strip()
         return text
 
-    def _translate_one(self, request: TranslationRequest, field_name: str) -> tuple[str, str, str, str, Mapping[str, Any], int]:
+    def _translate_one(self, request: TranslationRequest, field_name: str, *, _minimal_fallback: bool = False) -> tuple[str, str, str, str, Mapping[str, Any], int]:
         compatible = "/compatible-mode/" in self.base_url
         payload, meta = (self._build_compatible_payload(request, field_name) if compatible else self._build_native_payload(request, field_name))
         request_json = _canonical(payload)
@@ -222,6 +244,7 @@ class QwenMTProvider:
         http_request = urllib.request.Request(url, data=request_json.encode("utf-8"), method="POST", headers=headers)
         last_error: ProviderError | None = None
         for attempt in range(self.max_retries + 1):
+            self._wait_for_request_slot()
             started = time.monotonic()
             try:
                 with urllib.request.urlopen(http_request, timeout=self.timeout) as response:  # nosec B310 - configured endpoint
@@ -256,6 +279,14 @@ class QwenMTProvider:
                 detail = f"QWEN_HTTP_{exc.code}: HTTP {exc.code}"
                 if body:
                     detail += f": {body}"
+                # Some workspace-compatible endpoints accept the core
+                # translation_options but reject optional domains/terms/TM
+                # extensions with a generic 400.  Retry once with the
+                # documented minimal wire contract; this is a payload-shape
+                # fallback, not a network retry and does not relax any QA.
+                if exc.code == 400 and compatible and self.include_optional_options and not _minimal_fallback:
+                    self._optional_options_disabled = True
+                    return self._translate_one(request, field_name, _minimal_fallback=True)
                 if exc.code == 400:
                     # Alibaba's gateway often returns only ``Bad Request``.
                     # Add a safe, actionable hint without exposing headers or
@@ -301,8 +332,6 @@ class QwenMTProvider:
         request_id = request.request_id or str(uuid.uuid4())
         retries = 0
         for field_name in request.requested_fields:
-            if self.rate_limit_per_second and normalized:
-                time.sleep(1.0 / self.rate_limit_per_second)
             value, rq, rs, rid, used, retry_count = self._translate_one(request, field_name)
             normalized[field_name] = value
             request_hashes.append(rq); response_hashes.append(rs); retries += retry_count

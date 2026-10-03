@@ -104,7 +104,13 @@ def load_queue(cfg: dict[str, Any]) -> dict[str, dict[str, str]]:
         return {}
     with path.open("r", encoding="utf-8-sig", newline="") as fh:
         reader = csv.DictReader(fh)
-        if reader.fieldnames is None or set(REVIEW_QUEUE_HEADERS) - set(reader.fieldnames):
+        # Queues created before the V1 candidate/knowledge columns were
+        # introduced contain the original 13 lifecycle columns.  Missing
+        # trailing columns are normalized to empty values and will be added
+        # atomically on the next write; genuinely malformed core queues still
+        # fail closed.
+        required_headers = set(REVIEW_QUEUE_HEADERS[:13])
+        if reader.fieldnames is None or required_headers - set(reader.fieldnames):
             raise ReviewQueueError("REVIEW_QUEUE_SCHEMA_MISMATCH")
         result: dict[str, dict[str, str]] = {}
         for raw in reader:

@@ -7,6 +7,7 @@ an unapproved fallback from silently becoming production Chinese.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
@@ -20,6 +21,37 @@ from .hashes import value_hash
 from .policy import DISPLAY_POLICY_PROFILE, strip_forbidden_display_tokens
 from .product_family import TranslationContext, build_translation_context, context_for_field, family_policy_for
 from .normalization.structured_details import parse_structured_details
+
+
+_COMMON_ENGLISH_RESIDUALS = {
+    "description": {"residue": "残留"},
+    "details": {"refill": "补充"},
+}
+
+_COMMON_ENGLISH_RESIDUAL_SOURCE_MARKERS = {
+    "description": {"residue": ("restos", "residuo", "residuos")},
+    "details": {"refill": ("rellenable", "recargable")},
+}
+
+
+def _repair_common_english_residuals(value: str, source_text: str, field_name: str) -> str:
+    """Apply only source-backed, deterministic residual-word repairs.
+
+    These words have appeared as English leftovers inside otherwise Spanish
+    source text.  Replacement is field-scoped and only runs when the source
+    contains the same word, so it cannot invent a product fact.
+    """
+    rendered = str(value or "")
+    for source_word, target_word in _COMMON_ENGLISH_RESIDUALS.get(field_name, {}).items():
+        source_lower = str(source_text or "").casefold()
+        markers = _COMMON_ENGLISH_RESIDUAL_SOURCE_MARKERS.get(field_name, {}).get(source_word, ())
+        if source_word.casefold() in source_lower or any(marker.casefold() in source_lower for marker in markers):
+            rendered = re.sub(
+                rf"([\u3400-\u9fff])\s*{re.escape(source_word)}(?![A-Za-z])",
+                rf"\1{target_word}", rendered, flags=re.IGNORECASE,
+            )
+            rendered = re.sub(rf"(?<![A-Za-z]){re.escape(source_word)}(?![A-Za-z])", target_word, rendered, flags=re.IGNORECASE)
+    return rendered
 
 
 @dataclass(frozen=True)
@@ -158,6 +190,11 @@ class TranslationResolver:
             # instead, so facts such as ``gomas -> 橡皮筋`` cannot be silently
             # dropped by the provider.  Brand/IP spans are deliberately sent
             # source-to-source and removed from Chinese names afterwards.
+            # The Action Chinese display contract omits identified brand/IP
+            # spans from every rendered Chinese field, not only the product
+            # name.  Qwen may repeat a source brand in descriptions/details;
+            # keep it in provenance, but remove it from the display value so
+            # the same policy is applied consistently across fields.
             display_tokens: list[str] = []
             semantic_types = {"PRODUCT_TYPE", "FUNCTION", "MATERIAL", "COMPATIBILITY", "CARE", "NUTRITION", "VARIANT", "DETAIL_KEY"}
             term_by_source = {
@@ -173,8 +210,7 @@ class TranslationResolver:
                 if not token:
                     continue
                 if fact.semantic_type in {"BRAND", "IP_CHARACTER"}:
-                    if field_name == "name":
-                        display_tokens.append(token)
+                    display_tokens.append(token)
                     target = token
                 elif fact.semantic_type in semantic_types:
                     target = str(fact.canonical_value or fact.value or "").strip()
@@ -193,7 +229,8 @@ class TranslationResolver:
             response = self.provider.translate(req)
             value = str(response.fields.get(field_name) or "")
             raw_value = value
-            if field_name == "name" and display_tokens:
+            value = _repair_common_english_residuals(value, source_text, field_name)
+            if display_tokens:
                 value = strip_forbidden_display_tokens(value, display_tokens)
             if value:
                 return Resolution(source.sku, field_name, source_text, source_hash_value, value, "qwen_mt", "PENDING", False, False, provenance={

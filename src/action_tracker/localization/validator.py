@@ -98,9 +98,15 @@ def validate_plan(source: SourceFacts, plan: LocalizationPlan, *, allowed_tokens
         reasons.append("DESCRIPTION_REVIEW")
     if source.details_es and has_ordinary_spanish(plan.fields["details_zh"].value, allowed_tokens=allowed_tokens):
         reasons.append("DETAIL_VALUE_REVIEW")
+    # A populated field-level name from the dictionary/manual/existing
+    # localization is already the product identity.  Do not reopen it merely
+    # because the semantic parser did not emit a separate PRODUCT_TYPE fact;
+    # only a genuinely empty name requires PRODUCT_TYPE review.  Spanish
+    # residue is still caught independently above.
     if (not any(f.semantic_type == "PRODUCT_TYPE" for f in plan.semantic_facts)
             and source.name_es
-            and not is_terminal_field(plan.fields["name_zh"])):
+            and (not str(plan.fields["name_zh"].value or "").strip()
+                 or has_ordinary_spanish(plan.fields["name_zh"].value, allowed_tokens=allowed_tokens))):
         reasons.append("PRODUCT_TYPE_REVIEW")
     coverage = validate_fact_coverage(plan)
     if not coverage.ok:

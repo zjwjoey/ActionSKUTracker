@@ -26,6 +26,12 @@ def main() -> int:
     parser.add_argument("--mode", choices=("smoke", "canary"), default="smoke")
     parser.add_argument("--minimal", action="store_true", help="smoke 模式下只发送官方最小 Qwen-MT 请求")
     parser.add_argument("--field", default="", help="可选字段；留空则按全部可翻译字段执行")
+    parser.add_argument(
+        "--rate-limit-per-second",
+        type=float,
+        default=0.5,
+        help="Qwen 请求启动速率；默认 0.5/秒（约 30 RPM）",
+    )
     parser.add_argument("--keep-proxy", action="store_true")
     args = parser.parse_args()
 
@@ -33,7 +39,12 @@ def main() -> int:
     if not (repo / "src" / "action_tracker" / "__main__.py").exists():
         raise SystemExit(f"不是有效的 ActionSKUTracker 项目目录：{repo}")
 
-    key = getpass.getpass("请输入 DASHSCOPE_API_KEY（输入时隐藏）：").strip()
+    # Prefer a persistent Windows user/system environment variable for normal
+    # operation.  Interactive input remains a safe fallback for one-off
+    # validation, but the key is never written to repository files or reports.
+    key = os.environ.get("DASHSCOPE_API_KEY", "").strip()
+    if not key:
+        key = getpass.getpass("请输入 DASHSCOPE_API_KEY（输入时隐藏）：").strip()
     if not key:
         raise SystemExit("DASHSCOPE_API_KEY 不能为空")
 
@@ -41,6 +52,9 @@ def main() -> int:
     env["DASHSCOPE_API_KEY"] = key
     env["QWEN_MT_BASE_URL"] = args.endpoint.rstrip("/")
     env["DASHSCOPE_BASE_URL"] = env["QWEN_MT_BASE_URL"]
+    if args.rate_limit_per_second < 0:
+        raise SystemExit("--rate-limit-per-second 不能小于 0")
+    env["QWEN_MT_RATE_LIMIT_PER_SECOND"] = str(args.rate_limit_per_second)
     if args.mode == "canary":
         # Explicit, process-scoped opt-in.  It does not alter settings.yaml
         # and cannot enable production writes.

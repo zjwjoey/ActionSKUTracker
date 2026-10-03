@@ -29,6 +29,22 @@ def test_cleaning_cloth_classifier_is_phrase_aware_and_fail_closed():
     assert classify_product_family({"sku": "3", "name_es": "Paño"}).family_id == UNKNOWN_FAMILY
 
 
+def test_stage5_socks_and_bedding_families_are_versioned_and_deterministic():
+    socks = classify_product_family({
+        "sku": "2504202", "name_es": "Calcetines cortos de algodón",
+        "cat1_es": "Moda", "cat2_es": "Ropa",
+    })
+    assert socks.family_id == "SOCKS_HOSIERY"
+    assert socks.policy_version == "SOCKS_HOSIERY_V1"
+
+    duvet = classify_product_family({
+        "sku": "2505001", "name_es": "Edredón 4 estaciones",
+        "cat1_es": "Hogar", "cat2_es": "Accesorios de cama",
+    })
+    assert duvet.family_id == "BEDDING_DUVET"
+    assert duvet.policy_version == "BEDDING_DUVET_V1"
+
+
 def test_cleaning_cloth_classifier_does_not_promote_kitchen_paper_from_details():
     record = {
         "sku": "2569291",
@@ -40,6 +56,28 @@ def test_cleaning_cloth_classifier_does_not_promote_kitchen_paper_from_details()
     assert classify_product_family(record).family_id == UNKNOWN_FAMILY
     plan = LocalizationEngine().resolve(record)
     assert plan.fields["name_zh"].value == "厨房纸XL"
+
+
+def test_cleaning_cloth_classifier_uses_name_identity_not_incidental_description_terms():
+    false_positive_names = (
+        "Colgadores de pared", "Lienzos Van Bleiswijck", "Cordones Shoe like",
+        "Apósitos adhesivos Hansaplast", "Sistema de fregona Vileda",
+    )
+    for index, name in enumerate(false_positive_names, 1):
+        match = classify_product_family({
+            "sku": str(index), "name_es": name, "cat1_es": "Hogar",
+            "cat2_es": "Artículos de limpieza",
+            "desc_es": "Práctico para colgar paños y bayetas.",
+        })
+        assert match.family_id == UNKNOWN_FAMILY
+
+
+def test_diy_paint_accessories_use_scoped_category_terminology():
+    plan = LocalizationEngine().resolve({
+        "sku": "2500418", "name_es": "Rodillos de pintura", "cat1_es": "Bricolaje",
+        "cat2_es": "Complementos de pintura",
+    })
+    assert plan.fields["cat2_zh"].value == "涂料配件"
 
 
 def test_cleaning_cloth_real_usage_and_plural_facts_are_preserved():
@@ -65,6 +103,20 @@ def test_fact_qa_allows_numeric_relocation_from_official_fields():
     })
     result = __import__("action_tracker.localization.qa", fromlist=["guard_translation"]).guard_translation(
         source, {"spec": "多种颜色｜40cm｜40×40cm｜蓝色"}, ("spec",)
+    )
+    assert result["status"] == "PASS"
+
+
+def test_fact_qa_normalizes_spanish_thousands_and_decimal_separators():
+    source = SourceFacts.from_record({
+        "sku": "1",
+        "name_es": "Cable",
+        "desc_es": "Máximo 3.680 vatios y almohadilla de 9,5 cm",
+    })
+    result = __import__("action_tracker.localization.qa", fromlist=["guard_translation"]).guard_translation(
+        source,
+        {"description": "最大3680瓦；尺寸9.5cm"},
+        ("description",),
     )
     assert result["status"] == "PASS"
 

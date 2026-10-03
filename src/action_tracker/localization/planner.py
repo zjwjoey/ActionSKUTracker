@@ -6,7 +6,7 @@ from typing import Any
 
 from .contracts import CANONICAL_TO_ZH, ZH_TO_CANONICAL, LocalizationField, LocalizationPlan, SemanticFact, SourceFacts
 from .formatter import format_details, format_spec, format_text, format_unit_price
-from .policy import FIXED_CAT1, OMIT_BRAND_FROM_CHINESE_DISPLAY, has_ordinary_spanish, map_cat1
+from .policy import FIXED_CAT1, OMIT_BRAND_FROM_CHINESE_DISPLAY, has_ordinary_spanish, map_cat1, strip_forbidden_display_tokens
 from ..dictionary import normalize_category_key
 from .product_family import classify_product_family
 
@@ -81,6 +81,13 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     cat2_map = knowledge.get("cat2_map") or {}
     cat2_lookup = cat2_map.get((normalize_category_key(source.cat1_es), normalize_category_key(source.cat2_es)), "") if isinstance(cat2_map, Mapping) else ""
     cat2, c2s = value("cat2_zh", cat2_lookup or _dict_value(knowledge.get("cat2_map"), source.cat2_es) or source.cat2_es)
+    # ``pintura`` is ambiguous in Spanish.  In the official DIY category
+    # ``Complementos de pintura`` means paint-application accessories, not
+    # art/painting accessories.  Keep this source-bound rule deterministic
+    # and scoped to the category pair.
+    if (source.cat1_es or "").strip().casefold() == "bricolaje" and (source.cat2_es or "").strip().casefold() == "complementos de pintura":
+        cat2 = "涂料配件"
+        c2s = "deterministic_context_terminology"
     spec, ss = value("spec_zh")
     if not spec:
         spec = format_spec(source.spec_es)
@@ -115,6 +122,15 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     desc, ds = value("desc_zh", format_text(replace_known(source.desc_es, "desc_es")))
     details, dts = value("details_zh", format_details(replace_known(source.details_es, "details_es")))
     details = format_details(details)
+    if OMIT_BRAND_FROM_CHINESE_DISPLAY:
+        forbidden_display_tokens = [brand, *(f.value for f in facts if f.semantic_type == "IP_CHARACTER")]
+        for target, rendered in (("cat1", cat1), ("cat2", cat2), ("spec", spec), ("description", desc), ("details", details)):
+            cleaned = strip_forbidden_display_tokens(rendered, forbidden_display_tokens)
+            if target == "cat1": cat1 = cleaned
+            elif target == "cat2": cat2 = cleaned
+            elif target == "spec": spec = cleaned
+            elif target == "description": desc = cleaned
+            else: details = cleaned
     placements = {"PRODUCT_TYPE": "name", "BRAND": "name", "SERIES": "name", "IP_CHARACTER": "name", "MODEL": "spec", "TECH_TOKEN": "spec", "STANDARD_UNIT": "spec", "SIZE_DIMENSION": "spec", "CAPACITY": "spec", "WEIGHT": "spec", "QUANTITY": "spec", "COLOR": "spec", "VARIANT": "spec", "MATERIAL": "name", "FUNCTION": "description", "COMPATIBILITY": "spec", "VOLTAGE": "spec", "POWER": "spec", "CURRENT": "spec", "FREQUENCY": "spec", "BATTERY_CAPACITY": "spec", "SOCKET": "spec", "INTERFACE": "spec", "PROTECTION_RATING": "spec", "CARE": "details", "NUTRITION": "name", "DETAIL_KEY": "details", "DESCRIPTION_FACT": "description"}
     planned_facts = tuple(
         SemanticFact(
@@ -144,7 +160,13 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         "details_zh": LocalizationField(details, dts, "READY" if (not source.details_es or clean(details)) else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("details"), review_reasons=() if (not source.details_es or clean(details)) else ("DETAIL_VALUE_REVIEW",)),
     }
     reasons = tuple(dict.fromkeys(r for f in fields.values() for r in f.review_reasons))
-    if not product_type and source.name_es:
+    # A reviewed/product-dictionary name is already the field-level product
+    # identity.  Do not block the whole SKU merely because the semantic
+    # parser could not separately extract a PRODUCT_TYPE token from the
+    # Spanish source.  Only rows with no usable name at all require a
+    # product-type review; this preserves the dictionary-first contract and
+    # avoids re-reviewing thousands of established names.
+    if not product_type and source.name_es and not clean(name):
         reasons = tuple(dict.fromkeys((*reasons, "PRODUCT_TYPE_REVIEW")))
     readiness = "AUTO_READY" if all(f.status == "READY" for f in fields.values()) else "REVIEW_REQUIRED"
     return LocalizationPlan(source.sku, source.source_hash, fields, planned_facts, readiness, reasons, tuple(hits), False)

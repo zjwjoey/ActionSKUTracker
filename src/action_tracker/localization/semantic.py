@@ -95,6 +95,17 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
                 semantic = kind if kind in {"PRODUCT_TYPE", "BRAND", "SERIES", "MODEL", "TECH_TOKEN", "MATERIAL", "FUNCTION", "CARE", "COMPATIBILITY", "DESCRIPTION_FACT"} else "DESCRIPTION_FACT"
                 add(semantic, term, zh, field, "term_dictionary")
         for term, (kind, zh) in _TERM_MAP.items():
+            # In canvas/artist products, ``Tipo de paño / panel`` is a
+            # panel/primer specification, not a cleaning-cloth product fact.
+            # Keep the source evidence in details, but do not make the generic
+            # ``paño -> 清洁布`` semantic guard require a cleaning-cloth noun.
+            if (
+                field == "details_es"
+                and term in {"paño", "paños"}
+                and re.search(r"tipo\s+de\s+paño\s*/\s*panel", text, re.I)
+                and re.search(r"lienzo", source.name_es, re.I)
+            ):
+                continue
             if re.search(rf"(?<!\w){re.escape(term)}(?!\w)", lower):
                 add(kind, term, zh, field, term)
         for token, zh in _COLORS.items():

@@ -30,7 +30,17 @@ def strip_forbidden_display_tokens(value: str, tokens: list[str] | tuple[str, ..
     if not OMIT_BRAND_FROM_CHINESE_DISPLAY or not rendered:
         return rendered
     for token in sorted({str(item).strip() for item in tokens if str(item).strip()}, key=len, reverse=True):
-        rendered = re.sub(rf"(?i)(?<!\w){re.escape(token)}(?:牌)?", "", rendered, count=1).strip()
+        # ``\w`` is Unicode-aware in Python and treats adjacent Chinese
+        # characters as word characters.  That prevented removal from normal
+        # display strings such as ``Spargo的湿巾``.  The policy boundary only
+        # needs to protect Latin/model characters; Chinese may sit directly
+        # next to a source brand token.
+        rendered = re.sub(
+            rf"(?i)(?<![A-Za-z0-9_]){re.escape(token)}(?:牌)?(?![A-Za-z0-9_])",
+            "",
+            rendered,
+            count=1,
+        ).strip()
     return rendered
 
 

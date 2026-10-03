@@ -134,12 +134,49 @@ _CLEANING_CLOTH_POLICY = ProductFamilyPolicy(
     naming_rules=("CANONICAL_PRODUCT_TYPE", "NAME_MATERIAL_USAGE_ORDER", "NO_BRAND_DISPLAY"),
 )
 
+_SOCKS_HOSIERY_POLICY = ProductFamilyPolicy(
+    family_id="SOCKS_HOSIERY",
+    policy_version="SOCKS_HOSIERY_V1",
+    canonical_product_type="袜子",
+    aliases=("calcetines", "calcetines bajos", "calcetines cortos", "calcetines de deporte"),
+    category_constraints=("moda", "ropa", "ropa interior", "artículos deportivos", "服饰鞋包", "运动用品"),
+    field_policies={},
+    canonical_terms=(
+        CanonicalTermRule("calcetines", "袜子", "name"),
+        CanonicalTermRule("calcetines bajos", "低帮袜", "name"),
+        CanonicalTermRule("calcetines cortos", "短袜", "name"),
+        CanonicalTermRule("calcetines de deporte", "运动袜", "name"),
+        CanonicalTermRule("tobillo", "脚踝", "description"),
+        CanonicalTermRule("talón", "脚跟", "description"),
+        CanonicalTermRule("puntera reforzada", "加固袜头", "description"),
+    ),
+    naming_rules=("SIZE_RANGE_AS_SINGLE_FACT", "PACK_QUANTITY_AS_SINGLE_FACT", "NO_BRAND_DISPLAY"),
+)
+
+_BEDDING_DUVET_POLICY = ProductFamilyPolicy(
+    family_id="BEDDING_DUVET",
+    policy_version="BEDDING_DUVET_V1",
+    canonical_product_type="被子",
+    aliases=("edredón", "edredon", "4 estaciones"),
+    category_constraints=("accesorios de cama", "hogar", "家居布置"),
+    field_policies={},
+    canonical_terms=(
+        CanonicalTermRule("edredón", "被子", "name"),
+        CanonicalTermRule("4 estaciones", "四季", "name"),
+        CanonicalTermRule("microfibra", "超细纤维", "description"),
+        CanonicalTermRule("g/m²", "克/平方米", "details"),
+        CanonicalTermRule("1 persona", "单人", "name"),
+        CanonicalTermRule("2 personas", "双人", "name"),
+    ),
+    naming_rules=("FOUR_SEASONS_AS_SEMANTIC_FACT", "SIZE_AND_FILLING_WEIGHT_PRESERVE", "NO_BRAND_DISPLAY"),
+)
+
 
 class ProductFamilyRegistry:
     """Versioned in-code seed registry; future policies can be loaded from a manifest."""
 
     def __init__(self, policies: Iterable[ProductFamilyPolicy] | None = None):
-        policies = tuple(policies or (_CLEANING_CLOTH_POLICY,))
+        policies = tuple(policies or (_CLEANING_CLOTH_POLICY, _SOCKS_HOSIERY_POLICY, _BEDDING_DUVET_POLICY))
         self._policies = {policy.family_id: policy for policy in policies}
 
     def get(self, family_id: str) -> ProductFamilyPolicy | None:
@@ -162,6 +199,7 @@ def classify_product_family(source: SourceFacts | Mapping[str, Any], *, semantic
     text = _family_text(source)
     candidates: list[ProductFamilyMatch] = []
     for policy in registry.all():
+        aliases = tuple(alias for alias in policy.aliases if _phrase_present(text, alias))
         # A low-priority occurrence in details (for example ``Sustancia:
         # Paño`` on a kitchen-paper product) must not override an explicit
         # product identity in the name.  Keep this exclusion versioned with
@@ -170,7 +208,21 @@ def classify_product_family(source: SourceFacts | Mapping[str, Any], *, semantic
             name_text = source.name_es.casefold()
             if re.search(r"\b(?:papel\s+de\s+cocina|papel\s+hig[ií]enico|toallitas?|pañuelos?)\b", name_text, re.I):
                 continue
-        aliases = tuple(alias for alias in policy.aliases if _phrase_present(text, alias))
+            # CLEANING_CLOTH is a product-identity family.  Mentions of
+            # ``paño``/``bayeta`` in a description or a detail value (for
+            # example a wall hook used to hang kitchen towels) are not family
+            # evidence.  Require the product name itself to contain a
+            # reviewed multi-word cloth phrase or a cloth alias in an
+            # explicitly cleaning category.  This prevents false positives
+            # such as canvas, shoelaces, bandages, mops and wall hangers.
+            name_aliases = tuple(alias for alias in aliases if _phrase_present(source.name_es, alias))
+            cleaning_category = any(
+                constraint.casefold() in f"{source.cat1_es} {source.cat2_es}".casefold()
+                for constraint in policy.category_constraints
+            )
+            strong_name_phrase = any(len(alias.split()) > 1 for alias in name_aliases)
+            if not name_aliases or not (strong_name_phrase or cleaning_category):
+                continue
         if not aliases:
             continue
         evidence = [f"alias:{alias}" for alias in aliases]

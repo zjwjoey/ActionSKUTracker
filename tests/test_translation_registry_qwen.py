@@ -285,6 +285,22 @@ def test_runtime_builder_canary_selects_qwen_for_legacy_config(monkeypatch, tmp_
     assert getattr(runtime.provider, "model", "") == "qwen-mt-flash"
 
 
+def test_qwen_provider_carries_conservative_pacing_config(monkeypatch):
+    monkeypatch.setenv("QWEN_MT_RATE_LIMIT_PER_SECOND", "0.5")
+    provider = provider_from_config({
+        "enabled": True,
+        "provider": "qwen_mt",
+        "base_url": "https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+        "max_retries": 2,
+        "backoff_seconds": 5,
+        "rate_limit_per_second": 0.5,
+    })
+    assert provider.rate_limit_per_second == 0.5
+    assert provider.max_retries == 2
+    assert provider.backoff_seconds == 5.0
+    assert provider._qwen_provider() is provider._qwen_provider()
+
+
 def test_tm_normalized_lookup_uses_indexed_hash(tmp_path: Path):
     registry = LocalizationRegistry(tmp_path / "terms.sqlite")
     registry.add_tm("  LED   light ", "LED灯", field_name="name", approval_status="APPROVED")
@@ -337,6 +353,18 @@ def test_qwen_provider_health_does_not_assume_models_endpoint(monkeypatch):
     assert health["health_check"] == "CONFIG_ONLY_QWEN_MT"
 
 
+def test_qwen_provider_health_rejects_masked_placeholder_key(monkeypatch):
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "※")
+    provider = provider_from_config({
+        "enabled": True,
+        "provider": "qwen_mt",
+        "base_url": "https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    })
+    health = provider_health(provider)
+    assert health["status"] == "INVALID_CONFIG"
+    assert health["error"] == "QWEN_API_KEY_INVALID_FORMAT"
+
+
 def test_qwen_provider_health_reports_safe_endpoint_contract(monkeypatch):
     monkeypatch.setenv("DASHSCOPE_API_KEY", "fixture-key")
     provider = provider_from_config({
@@ -381,11 +409,34 @@ def test_qwen_client_errors_are_not_retried(monkeypatch, status):
         raise urllib.error.HTTPError(request.full_url, status, "bad", {}, None)
 
     monkeypatch.setattr("urllib.request.urlopen", fail)
-    provider = QwenMTProvider("https://example.test/compatible-mode/v1", max_retries=3, backoff_seconds=0)
+    provider = QwenMTProvider("https://example.test/compatible-mode/v1", include_optional_options=False, max_retries=3, backoff_seconds=0)
     request = TranslationRequest("123456", {"name_es": "Producto"}, ("name",), "source-hash")
     with pytest.raises(ProviderError, match=f"QWEN_HTTP_{status}"):
         provider.translate(request)
     assert attempts == [status]
+
+
+def test_qwen_compatible_400_falls_back_once_to_minimal_options(monkeypatch):
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "fixture-key")
+    seen = []
+
+    def respond(request, timeout):
+        seen.append(json.loads(request.data.decode("utf-8")))
+        if len(seen) == 1:
+            raise urllib.error.HTTPError(request.full_url, 400, "bad", {}, io.BytesIO(b"Bad Request"))
+        return type("Response", (), {
+            "__enter__": lambda self: self,
+            "__exit__": lambda self, *args: False,
+            "read": lambda self: json.dumps({"choices": [{"message": {"content": "商品"}}]}, ensure_ascii=False).encode("utf-8"),
+        })()
+
+    monkeypatch.setattr("urllib.request.urlopen", respond)
+    provider = QwenMTProvider("https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", max_retries=0, backoff_seconds=0)
+    request = TranslationRequest("123456", {"name_es": "Producto"}, ("name",), "source-hash", terms=({"source": "Producto", "target": "商品"},))
+    result = provider.translate(request)
+    assert result.fields == {"name": "商品"}
+    assert seen[0]["translation_options"].get("terms")
+    assert seen[1]["translation_options"] == {"source_lang": "Spanish", "target_lang": "Chinese"}
 
 
 def test_qwen_400_error_includes_safe_endpoint_hint(monkeypatch):
@@ -588,6 +639,121 @@ def test_guard_accepts_microfiber_synonym():
     assert result["status"] == "PASS"
 
 
+def test_guard_accepts_source_bound_glp_lpg_translation():
+    source = SourceFacts.from_record({
+        "sku": "1336900",
+        "desc_es": "Aceite apto para motores de gasolina, GLP y diésel.",
+        "details_es": "Tipo de motor: gasolina, LPG, diésel",
+    })
+    result = guard_translation(
+        source,
+        {
+            "description": "适用于汽油、液化石油气和柴油发动机。",
+            "details": "发动机类型：汽油、液化石油气、柴油",
+        },
+        ("description", "details"),
+    )
+    assert result["status"] == "PASS"
+
+
+def test_guard_accepts_case_only_technical_token_rendering():
+    source = SourceFacts.from_record({
+        "sku": "TECH-CASE",
+        "details_es": "Material: Polipropileno (pp); PH-neutro",
+    })
+    result = guard_translation(
+        source,
+        {"details": "材质：聚丙烯（PP）；pH值中性"},
+        ("details",),
+    )
+    assert result["status"] == "PASS"
+
+
+def test_guard_accepts_wet_wipe_semantic_alias():
+    source = SourceFacts.from_record({
+        "sku": "WET-WIPE",
+        "details_es": "Tipo de paño húmedo: Toallitas para bebé",
+    })
+    facts = (SemanticFact("PRODUCT_TYPE", "paño", "清洁布", "清洁布", "details_es"),)
+    result = guard_translation(
+        source,
+        {"details": "湿巾类型：婴儿湿巾"},
+        ("details",), semantic_facts=facts,
+    )
+    assert result["status"] == "PASS"
+
+
+def test_guard_accepts_chinese_numeral_for_three_in_one():
+    source = SourceFacts.from_record({
+        "sku": "2001356",
+        "desc_es": "Gel de ducha refrescante 3 en 1 para cuerpo, cara y cabello.",
+    })
+    result = guard_translation(
+        source,
+        {"description": "清爽三合一沐浴啫喱，适用于身体、面部与头发。"},
+        ("description",),
+    )
+    assert result["status"] == "PASS"
+
+
+def test_guard_ignores_lexical_chinese_numerals_and_slash_labels():
+    description_source = SourceFacts.from_record({
+        "sku": "NUM-LEX",
+        "desc_es": "6 galletas por envase. Deliciosas en cualquier momento del día.",
+    })
+    description = guard_translation(
+        description_source,
+        {"description": "每包6块饼干，一天中的任何时候都很美味。"},
+        ("description",),
+    )
+    assert description["status"] == "PASS"
+
+    details_source = SourceFacts.from_record({
+        "sku": "LABEL-SLASH",
+        "details_es": "Tipo de ropa interior: Shorts tipo bóxer",
+    })
+    details = guard_translation(
+        details_source,
+        {"details": "内裤/三角裤/平角裤类型：平角短裤"},
+        ("details",),
+    )
+    assert details["status"] == "PASS"
+
+
+def test_resolver_repairs_source_backed_english_residual_words():
+    class ResidualProvider:
+        provider = "fake"
+        model = "fixture"
+
+        def translate(self, request):
+            field = request.requested_fields[0]
+            value = "是否可 refill：否" if field == "details" else "去除蜡 residue"
+            return TranslationResponse({field: value}, "fake", "fixture", request.source_hash, "rq", "rs", "id")
+
+    resolver = TranslationResolver(provider=ResidualProvider())
+    detail = resolver.resolve_field(
+        {"sku": "1325690", "details_es": "¿Se puede refill?: No"},
+        "details", allow_provider=True,
+    )
+    description = resolver.resolve_field(
+        {"sku": "1325691", "desc_es": "Elimina los residuos de cera residue."},
+        "description", allow_provider=True,
+    )
+    assert detail.value == "是否可补充：否"
+    assert description.value == "去除蜡残留"
+
+    source_backed_detail = resolver.resolve_field(
+        {"sku": "1325692", "details_es": "Rellenable: No"},
+        "details", allow_provider=True,
+    )
+    source_backed_description = resolver.resolve_field(
+        {"sku": "1325693", "desc_es": "Elimina restos de cera."},
+        "description", allow_provider=True,
+    )
+    assert source_backed_detail.value == "是否可补充：否"
+    assert source_backed_description.value == "去除蜡残留"
+
+
 def test_resolver_sends_reviewed_semantic_facts_as_provider_terms():
     seen = {}
 
@@ -694,6 +860,20 @@ def test_typed_qa_accepts_equivalent_celsius_and_fixed_category_mapping():
         source, {"cat1": "DIY五金", "details": "可机洗，60℃"}, ("cat1", "details"),
     )
     assert result["status"] == "PASS"
+
+
+def test_typed_qa_allows_bricolaje_to_diy_semantic_translation():
+    source = SourceFacts.from_record({
+        "sku": "1222401",
+        "desc_es": "Lona profesional para todos tus trabajos de bricolaje dentro y fuera de casa.",
+    })
+    result = guard_translation(
+        source,
+        {"description": "专业级帆布，适用于您在家内外的所有DIY项目。"},
+        ("description",),
+    )
+    assert result["status"] == "PASS"
+    assert "PROTECTED_TOKEN_ADDED" not in {item["rule_id"] for item in result["findings"]}
 
 
 def test_translation_registry_to_primary_and_export_e2e(tmp_path: Path):

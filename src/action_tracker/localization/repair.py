@@ -77,12 +77,12 @@ def repair_field(record: Mapping[str, Any], field_name: str, candidate: str, *, 
         )
         response = provider.translate(request)
         value = str(response.fields.get(field_name) or "")
-        if field_name == "name":
-            brand_tokens = [
-                str(getattr(fact, "source_text", "") or "").strip()
-                for fact in semantic_facts
-                if getattr(fact, "semantic_type", "") in {"BRAND", "IP_CHARACTER"}
-            ]
+        brand_tokens = [
+            str(getattr(fact, "source_text", "") or "").strip()
+            for fact in semantic_facts
+            if getattr(fact, "semantic_type", "") in {"BRAND", "IP_CHARACTER"}
+        ]
+        if brand_tokens:
             value = strip_forbidden_display_tokens(value, brand_tokens)
         qa = guard_translation(source, {field_name: value}, (field_name,), terminology=terminology, semantic_facts=semantic_facts, context=field_context)
         repair_source = response.provider

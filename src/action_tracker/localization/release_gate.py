@@ -321,7 +321,12 @@ def _validated_exception_ids(
 ) -> set[str]:
     """Return only exact, evidence-backed, source-bound short-lived exceptions."""
     accepted: set[str] = set()
-    today = date.today()
+    # Exception timestamps are parsed as timezone-aware values and date-only
+    # expiries are interpreted at UTC end-of-day below.  Compare against the
+    # same UTC calendar date so a late-evening UTC run cannot reject an
+    # exception created with ``datetime.now(timezone.utc).date()`` merely
+    # because the host's local/UTC dates differ.
+    today = datetime.now(timezone.utc).date()
     current_source_hashes = current_source_hashes or {}
     for item in exceptions:
         issue_id = str(item.get("issue_id") or "").strip()
