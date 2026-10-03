@@ -1,0 +1,15 @@
+{
+  "contract_id": "STAGE6_OFFLINE_PREVIEW_V1",
+  "status": "CONTRACT_FROZEN_FOR_ENGINEERING_PREVIEW",
+  "target_schema_version": "MASTER_CURRENT_ZH_V1",
+  "source_hash_contract_version": "SOURCE_HASH_V2",
+  "review_policy_version": "STAGE5_OWNER_SIGNED_103_V1",
+  "apply_policy_version": "PREVIEW_ONLY_FIELD_LEVEL_V1",
+  "accepted_owner_dispositions": ["ACCEPT_AS_IS", "ACCEPT_WITH_MINOR_EDIT"],
+  "blocked_owner_dispositions": ["REQUIRES_MAJOR_EDIT", "AMBIGUOUS", "REJECT", "PENDING"],
+  "source_conflict_policy": "BLOCK_UNLESS_SEPARATELY_OWNER_CLEARED",
+  "allowed_fields": ["name", "cat1", "cat2", "spec", "description", "details"],
+  "production_write_enabled": false,
+  "owner_approval_enabled": false,
+  "production_apply_authorized": false
+}

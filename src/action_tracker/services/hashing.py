@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from typing import Any
+
+from ..products.details_parser import parse_semantic_detail_pairs
 
 
 def normalize_hash(value: Any) -> str | None:
@@ -56,12 +59,38 @@ def localization_source_hash(rec: dict[str, Any]) -> str:
 
     This is deliberately separate from ``content_hash``: the latter is the
     product/update hash and also includes stable URLs, while this hash binds
-    only the source text that can invalidate a Chinese localization.
+    only the source text that can invalidate a Chinese localization.  Detail
+    transport formatting (``;`` versus ``|``, whitespace and the known bare
+    article-number spelling) is normalized before hashing so a collector or
+    workbook serializer cannot manufacture a false translation change.
     """
+    return _h(
+        rec.get("name_es"), rec.get("cat1_es"), rec.get("cat2_es"),
+        rec.get("spec_es"), rec.get("desc_es"), details_semantic_hash(rec.get("details_es")),
+    )
+
+
+def semantic_localization_source_hash(rec: dict[str, Any]) -> str:
+    """Explicit name for the current semantic aggregate hash contract."""
+    return localization_source_hash(rec)
+
+
+def legacy_localization_source_hash(rec: dict[str, Any]) -> str:
+    """Return the pre-semantic six-field hash used by older artifacts."""
     return _h(
         rec.get("name_es"), rec.get("cat1_es"), rec.get("cat2_es"),
         rec.get("spec_es"), rec.get("desc_es"), rec.get("details_es"),
     )
+
+
+def localization_source_hash_candidates(rec: dict[str, Any]) -> frozenset[str]:
+    """Return current and legacy source hashes during contract migration."""
+    return frozenset({localization_source_hash(rec), legacy_localization_source_hash(rec)})
+
+
+def localization_source_hash_matches(rec: dict[str, Any], declared: Any) -> bool:
+    value = normalize_hash(declared)
+    return bool(value and value in localization_source_hash_candidates(rec))
 
 
 _LOCALIZATION_FIELD_TO_SOURCE = {
@@ -84,6 +113,26 @@ def _field_source_value(rec: dict[str, Any], field: str) -> Any:
     return rec.get(field)
 
 
+def details_semantic_hash(value: Any) -> str:
+    """Hash detail key/value meaning while ignoring transport formatting.
+
+    Delimiter, whitespace and the known no-colon article-number variant are
+    transport details. Key order and duplicate rows remain significant, so a
+    real source edit still invalidates the field.
+    """
+    pairs = parse_semantic_detail_pairs(value)
+    payload = json.dumps(
+        [(pair.normalized_key, pair.normalized_value) for pair in pairs],
+        ensure_ascii=False, separators=(",", ":"),
+    )
+    return _h(payload)
+
+
+def legacy_localization_field_source_hash(rec: dict[str, Any], field: str) -> str:
+    """Return the pre-semantic field hash for legacy provenance records."""
+    return _h(_field_source_value(rec, field))
+
+
 def localization_field_source_hash(rec: dict[str, Any], field: str) -> str:
     """Return the freshness identity for one localized field.
 
@@ -96,7 +145,21 @@ def localization_field_source_hash(rec: dict[str, Any], field: str) -> str:
         source_key = _LOCALIZATION_FIELD_TO_SOURCE[field]
     except KeyError as exc:
         raise ValueError(f"UNKNOWN_LOCALIZATION_FIELD:{field}") from exc
+    if field == "details":
+        return details_semantic_hash(_field_source_value(rec, field))
     return _h(_field_source_value(rec, field))
+
+
+def localization_field_hash_candidates(rec: dict[str, Any], field: str) -> frozenset[str]:
+    """Accept current semantic and legacy raw hashes during migration."""
+    current = localization_field_source_hash(rec, field)
+    legacy = legacy_localization_field_source_hash(rec, field)
+    return frozenset({current, legacy})
+
+
+def localization_field_hash_matches(rec: dict[str, Any], field: str, declared: Any) -> bool:
+    value = normalize_hash(declared)
+    return bool(value and value in localization_field_hash_candidates(rec, field))
 
 
 def localization_field_source_hashes(rec: dict[str, Any]) -> dict[str, str]:

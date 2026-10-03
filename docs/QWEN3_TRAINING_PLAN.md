@@ -71,7 +71,13 @@ SKU、价格、链接、在售状态、事件和 source_hash 只保存在元数�
 
 合并器逐行重算六字段 `source_hash`，拒绝空/重复 SKU，并对 train/validation/test 做 SKU、source hash 与自由文本指纹的跨集合泄漏检查。输出位于 `runtime/training/qwen3_8b/20260911/combined_gold_incremental/`，由 manifest 绑定全部输入/输出 SHA-256。
 
-正式训练必须从原始 `runtime/models/Qwen3-8B` 开始，不能在旧 adapter 上叠加训练；保留验证集早停和最佳 checkpoint。合并测试集的 146 条记录在训练与 checkpoint 选择期间完全隔离。评估器 `scripts/compare_qwen_baselines.py` 的 policy version 为 `stage4_safety_first_v2_2026-09-11`；它只生成只读报告，不写 Master、字典或模型缓存。
+正式训练必须从原始 `runtime/models/Qwen3-8B` 开始，不能在旧 adapter 上叠加训练；保留验证集早停和最佳 checkpoint。合并测试集的 146 条记录在训练与 checkpoint 选择期间完全隔离。评估器 `scripts/compare_qwen_baselines.py` 的整行 policy version 为 `stage4_safety_first_v3_2026-09-11`，字段条件评估使用 `field_conditioned_safety_v2_2026-09-11`；它只生成只读报告，不写 Master、字典或模型缓存。训练结束后使用 `scripts/benchmark_qwen_four_way.py` 在同一 146 条测试集上对比 raw Qwen、旧 adapter、当前 adapter 和 Dictionary Resolver，再用 `scripts/freeze_qwen_training_snapshot.py` 绑定模型配置、数据、脚本、评估规则、LoRA 配置和 adapter 哈希。
+
+本轮四方 benchmark 的当前 adapter 仍有 3 个机械硬错误，因此不再继续围绕步数盲调。已生成 Field-conditioned SFT 数据集（训练 7,553、验证 935、测试 874，拒绝 10 个数字不一致 details 样本），并完成 3 步 smoke（训练 loss 1.599、验证 loss 1.588、峰值显存约 6.79GB）。随后完成独立的 200 步上限正式实验：180 步时按 patience=3 早停，最佳 checkpoint 为 `checkpoint-150`，训练 loss 约 0.4330、最佳验证 loss 约 0.2833、峰值显存约 6.892GB。按新 Guard 重跑的 874 条字段测试集评估显示硬错误 3 条、数字保留率 99.66%、数字幻觉率 0.11%；因此 Field-conditioned Stage 4 仍为 FAIL，不进入 Stage 5。快照 `QWEN3_ACTION_FIELD_CONDITIONED_20260911_V1` 已冻结，3 个 hard examples 已进入只读审核队列，必须人工确认后才能生成新的金标/人工覆盖数据；数据 manifest 状态已更新为 `FORMAL_TRAINING_COMPLETE_STAGE4_FAIL`。
+
+此前从当前商品池筛出的 500 条候选虽然完成双轮审核，但事后审计确认其中的 SKU 已出现在既有训练语料中。它们不是“新一轮增量数据”，因此被永久排除：不得重新拆分、训练、评估或作为新的金标来源。候选收集器现已收紧为排除所有历史 train/validation/test 以及已审核通过的增量批次。
+
+按收紧后的无泄漏规则，当前可用的全字段新候选只有 22 条，不能虚构为 500 条。这 22 条已完成两轮审校（首轮 PASS 10、REVISE 12；第二轮确认 12）。终检又拦截 2 条：`2558074` 的 Milka/Oreo 双已确认品牌无法自动判定主品牌，`3224121` 的二级类目仍残留西语 `Juegos`。剩余 20/22 通过源哈希、字段级数字、残留语言、品牌规则和历史集交叉检查；它们全部是 `MODEL_REVIEWED_SILVER`，只能累积到下一次新拆分，不能单独启动训练。必须继续从后续新增或 source_hash 变化的 SKU 收集足量、未进入任何冻结集的新证据。
 
 ### 阶段 5：离线接入
 
@@ -82,6 +88,14 @@ SKU、价格、链接、在售状态、事件和 source_hash 只保存在元数�
 ## 当前产物
 
 - 当前模型与 QLoRA/LoRA 状态：[QWEN3_MODEL_TRAINING_STATUS.md](QWEN3_MODEL_TRAINING_STATUS.md)
+
+- 字段条件训练快照：[snapshot_manifest.json](../runtime/training/qwen3_8b/20260911/field_conditioned_v1/snapshots/QWEN3_ACTION_FIELD_CONDITIONED_20260911_V1/snapshot_manifest.json)
+- 字段条件 874 条评估：[field_conditioned_benchmark_policy_v2.json](../runtime/training/qwen3_8b/20260911/field_conditioned_v1/field_conditioned_benchmark_policy_v2.json)
+- 字段条件 Hard-Example 审核队列：[hard_example_review_v1.jsonl](../runtime/training/qwen3_8b/20260911/field_conditioned_v1/hard_example_review_v1.jsonl)
+- Hard-Example 队列生成器：[scripts/build_qwen_hard_example_expansion.py](../scripts/build_qwen_hard_example_expansion.py)
+- 已废止（有历史训练重叠）的 500 条审计证据：[qwen_incremental_candidate_500.manifest.json](../runtime/training/qwen3_8b/20260911/qwen_incremental_candidate_500.manifest.json)
+- 无泄漏 22 条候选：[qwen_incremental_fresh_v2_candidate_22.jsonl](../runtime/training/qwen3_8b/20260911/qwen_incremental_fresh_v2_candidate_22.jsonl)
+- 无泄漏 22 条审核结果（20 条通过、2 条阻断）：[qwen_incremental_fresh_v2_review_22.manifest.json](../runtime/training/qwen3_8b/20260911/qwen_incremental_fresh_v2_review_22.manifest.json)
 
 - 字段级全量候选：`runtime/training/qwen3_8b/20260908/qwen_field_examples_all.jsonl`
 - 初始 5,000 条整行候选：`runtime/training/qwen3_8b/20260908/qwen_candidates_5000.jsonl`

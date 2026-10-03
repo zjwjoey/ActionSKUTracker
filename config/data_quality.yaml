@@ -1,0 +1,21 @@
+# Data Quality & Integrity V1 thresholds.  These are operational defaults,
+# not permanent business rules.  Every collection-quality decision records
+# the effective values in its evidence.
+collection_integrity:
+  required_categories: 15
+  listing_warn_drop_pct: 8
+  listing_block_drop_pct: 15
+  current_warn_drop_pct: 8
+  current_block_drop_pct: 15
+  coverage_warn_drop_points: 5
+  coverage_block_drop_points: 10
+  price_coverage_warn_below: 0.995
+  price_coverage_block_below: 0.98
+  description_warn_drop_points: 10
+  description_block_drop_points: 25
+  detail_failure_warn_above: 0.10
+  detail_failure_block_above: 0.25
+  drift:
+    price_equal_current_ratio: 0.90
+    ui_contamination_rate: 0
+    html_contamination_rate: 0

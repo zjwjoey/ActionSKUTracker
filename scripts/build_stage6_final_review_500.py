@@ -41,7 +41,7 @@ def immutable_write(path: Path, payload: bytes) -> None:
 
 
 def source_hash(source: dict[str, str]) -> str:
-    # Keep the existing localization_source_hash_v1 contract without changing
+    # Keep the semantic_localization_source_hash_v2 contract without changing
     # historical hashes.  Import lazily so this remains a data-factory script.
     import sys
     sys.path.insert(0, str(ROOT / "src"))

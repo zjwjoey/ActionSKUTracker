@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from action_tracker.cli import build_parser, resolve_daily_run_dry_run
+from action_tracker.cli import build_parser, resolve_cli_argv, resolve_daily_run_dry_run
 from action_tracker.config import load_settings
 from action_tracker.services.category_consistency import load_primary_category_map
 
@@ -9,6 +9,15 @@ def test_daily_run_is_dry_run_until_explicit_apply():
     parser = build_parser()
     assert resolve_daily_run_dry_run(parser.parse_args(["daily-run"]).dry_run) is True
     assert resolve_daily_run_dry_run(parser.parse_args(["daily-run", "--apply"]).dry_run) is False
+
+
+def test_executable_without_a_command_defaults_to_safe_daily_run():
+    parser = build_parser()
+    assert resolve_cli_argv([]) == ["daily-run"]
+    args = parser.parse_args(resolve_cli_argv([]))
+    assert args.command == "daily-run"
+    assert resolve_daily_run_dry_run(args.dry_run) is True
+    assert resolve_cli_argv(["status"]) == ["status"]
 
 
 def test_zero_detail_limit_means_unlimited_detail_candidates():

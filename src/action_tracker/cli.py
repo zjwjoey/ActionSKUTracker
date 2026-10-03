@@ -1,5 +1,6 @@
 """命令行入口（规范 §54）。
 
+    python -m action_tracker                 # defaults to safe daily-run
     python -m action_tracker daily-run [--dry-run] [--no-dry-run]
     python -m action_tracker status
     python -m action_tracker export
@@ -152,6 +153,18 @@ def build_parser() -> argparse.ArgumentParser:
 def resolve_daily_run_dry_run(value: bool | None) -> bool:
     """Resolve the CLI tri-state with a safe, evidence-only default."""
     return True if value is None else bool(value)
+
+
+def resolve_cli_argv(argv=None) -> list[str]:
+    """Make the executable entrypoint default to the safe daily run.
+
+    ``main`` remains usable as a low-level API (where ``None`` still means
+    argparse's normal no-subcommand behavior).  Only the public executable
+    wrapper applies this convenience default, so explicit commands retain
+    their existing behavior.
+    """
+    actual = list(sys.argv[1:] if argv is None else argv)
+    return ["daily-run"] if not actual else actual
 
 
 def main(argv=None) -> int:
@@ -548,4 +561,4 @@ def _git_head() -> str:
 
 
 def run():
-    sys.exit(main())
+    sys.exit(main(resolve_cli_argv()))

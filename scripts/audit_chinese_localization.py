@@ -851,6 +851,8 @@ def _detail_rule_coverage(
     value_target_skus: dict[tuple[tuple[str, str], str], set[str]] = defaultdict(set)
     value_examples: dict[tuple[str, str], set[str]] = defaultdict(set)
     value_uncovered_examples: dict[tuple[str, str], set[str]] = defaultdict(set)
+    key_contexts: dict[str, set[str]] = defaultdict(set)
+    value_contexts: dict[tuple[str, str], set[str]] = defaultdict(set)
     key_rules = {_norm(key) for key in (rules.get("key_translations") or {})}
     contextual_key_rules = list(rules.get("contextual_key_translations") or ())
     numeric_rules = {
@@ -868,6 +870,11 @@ def _detail_rule_coverage(
         )
         if len(source_pairs) != len(target_pairs):
             skipped_pair_alignment += 1
+            context = {
+                "name_es": source_rows[sku].get("name", ""),
+                "cat1_es": source_rows[sku].get("cat1", ""),
+                "cat2_es": source_rows[sku].get("cat2", ""),
+            }
             alignment_review_rows.append({
                 "review_kind": "PAIR_ALIGNMENT",
                 "source_key_normalized": "",
@@ -886,9 +893,14 @@ def _detail_rule_coverage(
                 "target_details": target_rows[sku]["details"],
                 "source_pair_count": len(source_pairs),
                 "target_pair_count": len(target_pairs),
+                "context_scope": json.dumps([context], ensure_ascii=False, sort_keys=True),
             })
             continue
-        context = {"name_es": source_rows[sku].get("name", "")}
+        context = {
+            "name_es": source_rows[sku].get("name", ""),
+            "cat1_es": source_rows[sku].get("cat1", ""),
+            "cat2_es": source_rows[sku].get("cat2", ""),
+        }
         for source_pair, target_pair in zip(source_pairs, target_pairs, strict=True):
             key = _norm(source_pair.key_es)
             target_key = str(target_pair.key_es or "").strip()
@@ -907,6 +919,9 @@ def _detail_rule_coverage(
                 key_uncovered_examples[key].add(sku)
             source_value = _norm(source_pair.value_es)
             pair = (key, source_value)
+            context_json = json.dumps(context, ensure_ascii=False, sort_keys=True)
+            key_contexts[key].add(context_json)
+            value_contexts[pair].add(context_json)
             value_occurrences[pair] += 1
             target_value = str(target_pair.value_es or "").strip()
             value_targets[pair][target_value] += 1
@@ -1033,6 +1048,7 @@ def _detail_rule_coverage(
                 "TRANSLATION_VARIANTS" if has_variants else "",
             ))),
             "candidate_is_approved": False,
+            "context_scope": json.dumps(sorted(key_contexts[key]), ensure_ascii=False),
         })
 
     for (key, value), count in value_occurrences.most_common():
@@ -1068,6 +1084,7 @@ def _detail_rule_coverage(
                 "TRANSLATION_VARIANTS" if variant or has_target_pair_variants else "",
             ))),
             "candidate_is_approved": False,
+            "context_scope": json.dumps(sorted(value_contexts[(key, value)]), ensure_ascii=False),
         })
 
     review_queue_rows.extend(alignment_review_rows)
@@ -1650,7 +1667,7 @@ def write_detail_rule_review_queue(
         "occurrences", "rule_covered_occurrences", "uncovered_occurrences", "sku_count",
         "sku_examples", "observed_target_candidates", "single_observed_candidate",
         "review_reasons", "candidate_is_approved", "sku", "source_details", "target_details",
-        "source_pair_count", "target_pair_count", "source_sha256", "target_sha256",
+        "source_pair_count", "target_pair_count", "context_scope", "source_sha256", "target_sha256",
         "detail_rules_sha256",
     )
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1666,6 +1683,7 @@ def write_detail_rule_review_queue(
                 source_sha256, target_sha256, str(row.get("review_kind") or ""),
                 str(row.get("source_key_normalized") or ""),
                 str(row.get("source_value_normalized") or ""), str(row.get("sku") or ""),
+                str(row.get("context_scope") or ""),
             ))
             writer.writerow({
                 **row,
@@ -1676,7 +1694,7 @@ def write_detail_rule_review_queue(
                 "detail_rules_sha256": rules_sha256,
             })
     manifest = {
-        "schema": "ACTION_DETAIL_RULE_REVIEW_QUEUE_V1",
+        "schema": "ACTION_DETAIL_RULE_REVIEW_QUEUE_V2",
         "artifact": path.name,
         "row_count": len(ordered),
         "sha256": _sha256_file(path),

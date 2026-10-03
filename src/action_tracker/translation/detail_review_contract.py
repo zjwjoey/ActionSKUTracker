@@ -83,6 +83,9 @@ def validate_detail_rule_decisions(
             if not required["approved_target"]:
                 errors.append({"code": "APPROVED_TARGET_MISSING", "review_id": review_id})
 
+    if queue and not decisions and not errors:
+        errors.append({"code": "DECISION_LEDGER_EMPTY", "review_id": ""})
+
     approved = [
         {"review_id": review_id, **row}
         for review_id, row in decisions.items()

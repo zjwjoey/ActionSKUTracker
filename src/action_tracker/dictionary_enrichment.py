@@ -147,6 +147,19 @@ def _load_category2_mapping(cfg: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _load_category2_pair_mapping(cfg: dict[str, Any]) -> dict[tuple[str, str], str]:
+    """Load optional scoped cat2 mappings keyed by (cat1_es, cat2_es)."""
+    path = Path(cfg["project_root"]) / "config" / "dictionary_categories.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+    output: dict[tuple[str, str], str] = {}
+    for key, value in (raw.get("cat2_pair_mappings") or {}).items():
+        if isinstance(key, str) and "|" in key and _text(value):
+            cat1, cat2 = (part.strip() for part in key.split("|", 1))
+            if cat1 and cat2:
+                output[(normalize_category_key(cat1), normalize_category_key(cat2))] = _text(value)
+    return output
+
+
 def _load_rows(directory: Path, filename: str, headers: list[str], key_fields: tuple[str, ...]) -> list[dict[str, str]]:
     return load_dictionary_rows(directory / filename, headers=headers, key_fields=key_fields)
 
@@ -234,6 +247,7 @@ def enrich_dictionary(cfg: dict[str, Any], *, run_id: str) -> dict[str, Any]:
     candidate_existing = {sku: by_sku[sku] for sku in processable_skus if sku in by_sku}
     category_mapping = _load_category_mapping(cfg)
     category2_mapping = _load_category2_mapping(cfg)
+    category2_pair_mapping = _load_category2_pair_mapping(cfg)
     updated_candidates = build_product_dictionary(
         candidate_records, candidate_existing, category_mapping=category_mapping,
         product_overrides=overrides, model_translations=models,
@@ -248,7 +262,8 @@ def enrich_dictionary(cfg: dict[str, Any], *, run_id: str) -> dict[str, Any]:
 
     existing_categories = _load_rows(dictionary, "category_dictionary.csv", CATEGORY_DICTIONARY_HEADERS, ("cat1_es", "cat2_es"))
     merged_categories = category_rows_from_products(
-        updated_candidates, category_mapping, cat2_mapping=category2_mapping, existing=existing_categories,
+        updated_candidates, category_mapping, cat2_mapping=category2_mapping,
+        cat2_pair_mapping=category2_pair_mapping, existing=existing_categories,
     )
     existing_brands = _load_rows(dictionary, "brand_dictionary.csv", BRAND_DICTIONARY_HEADERS, ("brand_id",))
     merged_brands = reconcile_brand_rows(merged_products, {row["brand_id"]: row for row in existing_brands})

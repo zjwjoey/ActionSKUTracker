@@ -129,6 +129,23 @@ def test_category_mapping_replaces_legacy_spanish_second_level_value():
     assert rows[0]["cat2_zh"] == "家居装饰"
 
 
+def test_category_mapping_prefers_cat1_cat2_pair_scope():
+    rows = category_rows_from_products(
+        [
+            {"cat1_es": "Vivienda", "cat2_es": "Decoración"},
+            {"cat1_es": "Cocina", "cat2_es": "Decoración"},
+        ],
+        cat2_mapping={normalize_category_key("Decoración"): "通用错误映射"},
+        cat2_pair_mapping={
+            (normalize_category_key("Vivienda"), normalize_category_key("Decoración")): "家居装饰",
+            (normalize_category_key("Cocina"), normalize_category_key("Decoración")): "厨房装饰",
+        },
+    )
+    by_pair = {(row["cat1_es"], row["cat2_es"]): row["cat2_zh"] for row in rows}
+    assert by_pair[("Vivienda", "Decoración")] == "家居装饰"
+    assert by_pair[("Cocina", "Decoración")] == "厨房装饰"
+
+
 def test_legacy_chinese_category_alias_is_normalized_to_fixed_fifteen_categories():
     mapping = {normalize_category_key("家居维修"): {"cat1_code": "C01", "cat1_zh": "DIY五金"}}
     row = build_product_dictionary({"1001": {"cat1_es": "", "cat1_zh": "家居维修"}},

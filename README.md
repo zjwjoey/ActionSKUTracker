@@ -54,6 +54,9 @@ Master / State
 ```powershell
 $env:PYTHONPATH = "src"
 
+# 不带命令时默认执行安全的 daily-run（dry-run，不写正式数据）
+python -m action_tracker
+
 # 查看状态
 python -m action_tracker status
 

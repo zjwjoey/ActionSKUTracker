@@ -55,9 +55,14 @@ def parse_details(value: Any) -> tuple[DetailPair, ...]:
             key = key.strip()
             item = item.strip()
         else:
-            # Preserve an unstructured official fragment instead of guessing
-            # a key.  It remains visible to the semantic reviewer.
-            key, item = raw, ""
+            bare_article = _BARE_ARTICLE_NUMBER_RE.fullmatch(raw)
+            if bare_article is not None:
+                key = bare_article.group("key").strip()
+                item = bare_article.group("value").strip()
+            else:
+                # Preserve an unstructured official fragment instead of
+                # guessing a key. It remains visible to the semantic reviewer.
+                key, item = raw, ""
         pairs.append(DetailPair(position, key, item, raw))
     return tuple(pairs)
 
@@ -66,6 +71,14 @@ def parse_details(value: Any) -> tuple[DetailPair, ...]:
 # than product attributes.  Keep this intentionally small: semantic review
 # must not silently discard an unrecognised source fragment.
 _STRUCTURAL_DETAIL_HEADERS = frozenset({"especificaciones"})
+
+# A small number of historical exports omit the colon from the article-number
+# row (``Número del artículo 3008365``). Keep this rule deliberately narrow:
+# a generic whitespace split would misclassify free-text values.
+_BARE_ARTICLE_NUMBER_RE = re.compile(
+    r"^(?P<key>n[uú]mero\s+del\s+art[ií]culo)\s+(?P<value>\d+)$",
+    re.IGNORECASE,
+)
 
 
 def parse_semantic_detail_pairs(value: Any) -> tuple[DetailPair, ...]:

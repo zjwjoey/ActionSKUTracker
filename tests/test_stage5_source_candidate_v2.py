@@ -27,7 +27,7 @@ def _source(**changes):
 
 
 def test_v1_hash_contract_and_family_key_are_deterministic():
-    assert SOURCE_HASH_CONTRACT_VERSION == "SOURCE_HASH_V1"
+    assert SOURCE_HASH_CONTRACT_VERSION == "SOURCE_HASH_V2"
     assert FAMILY_KEY_METHOD == "SPANISH_NAME_HEURISTIC_V1"
     assert source_hash(_source()) == source_hash(dict(reversed(list(_source().items()))))
     assert family_key(_source(name="Alicates para bomba de agua Werckmann 245 mm")) == family_key(_source())

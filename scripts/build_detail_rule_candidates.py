@@ -12,6 +12,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from action_tracker.translation.detail_rule_candidates import build_detail_rule_candidates  # noqa: E402
 
+csv.field_size_limit(10 * 1024 * 1024)
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -31,7 +33,7 @@ def main() -> int:
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps({
-        "schema": "ACTION_DETAIL_RULE_CANDIDATES_V1",
+        "schema": "ACTION_DETAIL_RULE_CANDIDATES_V2",
         "source_sha256": first.get("source_sha256", ""),
         "target_sha256": first.get("target_sha256", ""),
         "detail_rules_sha256": first.get("detail_rules_sha256", ""),

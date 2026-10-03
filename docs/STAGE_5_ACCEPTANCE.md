@@ -46,7 +46,7 @@ Formal committed source
 
 ### P1
 
-1. 三批共 `108` 条人工审核项仍为 `PENDING`，不得冒充人工确认。
+1. 初始 v1 记录为 `108` 条；Guard v2 replay 的当前基线为 `107` 条 `PENDING`，Resolver v3 旁路重放为 `103` 条。三者均不得冒充人工确认。
 2. 三批由 Guard v1 生成；其单位识别会把“巧克力”的“克”、“安装”的“安”及西语后缀误判为单位，导致部分 `UNIT_REJECT` 是误报。
 3. Guard v2 已通过定向测试，但尚未用已保存的模型输出做版本化重放，因此当前批次报告不能代表 v2 最终分类。
 4. 正式 replay/idempotency 报告尚未完成；现阶段仅有不可变写入及稳定 ID 的单元测试证据。
@@ -107,7 +107,7 @@ Formal committed source
 | residual-language reject | 0 | 0 | 0 | 0 |
 | schema reject | 0 | 0 | 0 | 0 |
 | human accept/minor/major/reject | 0/0/0/0 | 0/0/0/0 | 0/0/0/0 | 尚未人工裁决 |
-| human pending / unresolved | 23 | 43 | 42 | 108 |
+| human pending / unresolved（v1 初始记录） | 23 | 43 | 42 | 108 |
 | duplicate | 0 | 0 | 0 | 0 |
 | pipeline error | 0 | 0 | 0 | 0 |
 | factual error escaped | 0 | 0 | 0 | 0 |
@@ -118,7 +118,7 @@ Formal committed source
 
 - `UNKNOWN`：Stage 6 的正式定义、正式人工质量阈值和 Guard v2 重放后的真实失败分布仍未知。
 - `P0`：没有 Stage 5 错误逃逸；但 Stage 4 正式放行缺失仍是上游 P0 准入阻断。
-- `human review`：108 条 `PENDING`。
+- `human review`：以最新 v2 包为准为 107 条 `PENDING`；Resolver v3 旁路包为 103 条。
 - 已拦截候选保持隔离，没有进入安全候选或生产事实层。
 - 旧单位误报根因属于 validator/Guard，而不是 Qwen；不得错误归因给模型。
 
@@ -176,7 +176,7 @@ Formal committed source
 
 `NOT_READY_FOR_STAGE6`
 
-阻断项（初始审计记录）：Stage 4 未正式放行、Stage 5 未通过、108 条人工审核未闭环、v2 replay 未完成、工作区不干净、Stage 6 合同尚未由项目所有者冻结。最新状态以本页 V2 CLOSURE ADDENDUM 为准。
+阻断项（初始审计记录）：Stage 4 未正式放行、Stage 5 未通过、108 条人工审核未闭环、v2 replay 未完成、工作区不干净、Stage 6 合同尚未由项目所有者冻结。最新状态以本页 V2 CLOSURE ADDENDUM 及 `docs/STAGE5_EXTERNAL_REVIEW_RECONCILIATION.md` 为准。
 
 ## 2026-09-12 V2 CLOSURE ADDENDUM
 
@@ -209,3 +209,31 @@ Formal committed source
 `RETURN_TO_STAGE4_REQUIRED`
 
 Stage 5 的工程性问题已经自动收口；当前唯一上游硬阻断仍是 Stage 4 `FULL_STAGE4_RELEASE=false`。同时 107 条候选必须由真实人工完成 disposition 后，才可能讨论 Stage 5 的业务质量接受。
+
+## 2026-09-12 外部复核与 Resolver v3 对账
+
+外部辅助复核提出的 15 条 Stage 4、107 条 Stage 5 和 Stage 6 合同意见已单独记录在 `docs/STAGE5_EXTERNAL_REVIEW_RECONCILIATION.md`。该意见不等同于人工签字。
+
+### V3 Owner-Signed Closure Addendum — 2026-09-12
+
+项目所有者提交的 `Qwen_Stage4_Stage5_OWNER_SIGNED_20260912.xlsx` 已完成证据核验：Stage 4 的 13 条可用 Gold 候选为 `APPROVED + OWNER_SIGNED_OFF`，3006792 与 3224748 保持 `HOLD_SOURCE_CONFLICT`；Stage 5 Resolver v3 的 103 条均已填写 owner disposition，91 条具备后续 Stage 6 候选资格。该包只关闭审核处置队列，不等同于 Stage 4 全量发布验收。
+
+对应证据报告：`runtime/training/qwen3_8b/20260911/stage4_stage5_owner_signed_recheck_20260912.json`。当前 `FULL_STAGE4_RELEASE` 仍为 `false`，因为 500 条 strict closure 中仍有 485 条 `TEST_ONLY_MODEL_REVIEWED_SILVER`，不能被 13 条样本签字替代。
+
+对三条确定的类目字典映射补齐后，使用原始输入与已记录模型输出完成旁路 Resolver v3 replay：`resolver coverage=77`、`human pending=103`、`failure_count=2`，没有重新推理，也没有覆盖 v2 的 107 条基线。v3 审核包位于 `runtime/stage5/20260912/stage5_human_review_package_resolver_v3/`。
+
+## 2026-09-13 人工 Gold 接入后最新状态
+
+项目所有者提供的 `Action_Stage5_候选数据_500条_修订版_446Gold.xlsx` 已按 Stage 5 离线合同接入。该包不是对旧 103/107 条候选的自动覆盖，而是新的、可追溯的人工作业证据版本。
+
+- 500 行、500 个唯一 SKU；`GOLD/ACCEPT_AS_GOLD=446`；`REVISE_THEN_GOLD=45`；`NOT_GOLD=9`。
+- 446 条 Gold 中 442 条已存在于历史 train/validation/test split，已标为 `HISTORICAL_OVERLAP_BLOCKED`，不可重复加入新训练集；4 条不在历史 split，可作为未来新 split 候选：`3215954、3218150、3221215、3221470`。
+- 与 Stage 5 500 候选包的六个西语事实字段和 `source_hash` 对账均为 0 mismatch。
+- 生成的 source-only 输入严格只含一条 `user` 消息，不含 assistant/reference 答案；现有 Stage 5 预检通过：446 行、2676 个字段计划、911 个模型请求计划。
+- 证据目录：`runtime/training/qwen3_8b/20260913/stage5_gold_ingestion_446_v2/`；入口脚本：`scripts/ingest_stage5_gold_workbook.mjs`。
+- 系统 Python 没有 CUDA，冻结合同禁止 CPU fallback；项目专用 CUDA 12.6 虚拟环境可用，因此没有用 Gold 答案伪造模型输出，而是通过项目虚拟环境执行真实 shadow。
+- 追加验证：项目专用 CUDA 12.6 虚拟环境已对 4 条无历史重叠 Gold 执行真实 shadow，共 16 个模型字段请求；16/16 Guard PASS、事实逃逸 0、pipeline error 0。与人工 Gold 比较 11 条完全一致、13 条不一致，比较报告为 `runtime/stage5/20260913/gold_shadow_disjoint4_qwen_v1/stage5_shadow_gold_comparison.json`，因此 4 条仍保持人工复核，不得自动 Apply。
+
+全量追加验证：446 条 Gold 已完成真实冻结模型 shadow，共 2676 个字段计划、911 个模型请求；852 Guard PASS、59 Guard REJECT、0 事实逃逸、0 pipeline error、0 duplicate。与人工 Gold 对账为 1630 条完全一致、1046 条需复核，报告为 `runtime/stage5/20260913/gold_shadow_full_qwen_batch32_v1/stage5_shadow_gold_comparison.json`；全量仍为 `REVIEW_REQUIRED_NO_APPLY`。
+
+该步骤关闭了本批 Gold 的接入和泄漏审计，但不解除 Stage 4 `FULL_STAGE4_RELEASE=false`，也不自动授权训练、Master、SQLite、正式字典或 Stage 6。生产写入开关仍全部为 `false`。

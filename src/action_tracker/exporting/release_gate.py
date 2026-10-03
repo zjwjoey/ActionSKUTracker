@@ -13,9 +13,9 @@ import re
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
-from ..services.hashing import localization_field_source_hash
+from ..services.hashing import localization_field_hash_matches, localization_field_source_hash
 from ..translation.detail_terminology import (
     DetailTerminologyConfigError, load_detail_terminology_rules, repair_detail_candidate,
 )
@@ -92,7 +92,8 @@ def evaluate_release_gate(
             continue
         _compare_shared_fact(issues, sku, source, out)
         if language == "es":
-            _check_spanish_fields(issues, sku, out)
+            _check_spanish_fields(issues, sku, source, out, strict=strict)
+            _check_source_anomalies(issues, sku, source)
         elif language == "zh":
             _check_source_anomalies(issues, sku, source)
             phrases = (confirmed_brand_phrases_by_sku or {}).get(sku, ())
@@ -106,12 +107,25 @@ def evaluate_release_gate(
             _check_zh_official_labels(issues, sku, source.get("raw_tags"), out.get("备注"))
 
     exceptions = {
-        (str(item.get("sku") or ""), str(item.get("field") or ""), str(item.get("code") or ""))
+        (
+            str(item.get("sku") or ""), str(item.get("field") or ""),
+            str(item.get("code") or ""), str(item.get("anomaly_code") or ""),
+        )
         for item in explicit_exceptions
         if str(item.get("status") or "") == "EXPLICIT_EXCEPTION"
         and not (str(item.get("field") or "") == "name" and str(item.get("code") or "") == "BRAND_RETAINED")
     }
-    remaining = [item for item in issues if (str(item.get("sku") or ""), str(item.get("field") or ""), str(item.get("code") or "")) not in exceptions]
+    def _is_excepted(item: Mapping[str, Any]) -> bool:
+        code = str(item.get("code") or "")
+        anomaly_code = str(item.get("anomaly_code") or "")
+        key = (str(item.get("sku") or ""), str(item.get("field") or ""), code, anomaly_code)
+        if code == "SOURCE_ANOMALY_REVIEW":
+            # A generic exception must not suppress a different source anomaly
+            # on the same SKU/field.  The owner must name the exact anomaly.
+            return key in exceptions
+        return key in exceptions or (key[0], key[1], key[2], "") in exceptions
+
+    remaining = [item for item in issues if not _is_excepted(item)]
     blocking = [item for item in remaining if not item.get("review_only")]
     review_findings = [item for item in remaining if item.get("review_only")]
     counts = Counter(str(item["code"]) for item in remaining)
@@ -157,6 +171,7 @@ def evaluate_release_gate(
             "STALE_ZH": counts.get("STALE_ZH", 0),
             "SPANISH_RESIDUAL": counts.get("SPANISH_RESIDUAL", 0),
             "EMPTY_REQUIRED_FIELD": counts.get("EMPTY_REQUIRED_FIELD", 0),
+            "SOURCE_EMPTY_REQUIRED_FIELD": counts.get("SOURCE_EMPTY_REQUIRED_FIELD", 0),
             "SOURCE_EMPTY_NONEMPTY": counts.get("SOURCE_EMPTY_NONEMPTY", 0),
             "SOURCE_HASH_MISMATCH": counts.get("SOURCE_HASH_MISMATCH", 0),
             "NUMERIC_DROPPED": counts.get("NUMERIC_DROPPED", 0),
@@ -238,7 +253,25 @@ def _compare_shared_fact(issues: list[dict[str, Any]], sku: str, source: dict[st
         _issue(issues, "UNDECLARED_DISPLAY_MISMATCH", sku, "原价", expected=expected_original, actual=actual_original)
 
 
-def _check_spanish_fields(issues: list[dict[str, Any]], sku: str, out: dict[str, Any]) -> None:
+def _check_spanish_fields(
+    issues: list[dict[str, Any]], sku: str, source: dict[str, Any], out: dict[str, Any], *, strict: bool,
+) -> None:
+    source_cat2 = _text(source.get("cat2_es"))
+    output_cat2 = _text(out.get("分类2"))
+    if not source_cat2 and output_cat2:
+        _issue(
+            issues, "SOURCE_EMPTY_NONEMPTY", sku, "cat2_es",
+            review_only=False,
+            source_value="",
+            output_value=output_cat2,
+            reason="official category-2 source is absent; an exported value would be an unsupported guess",
+        )
+    elif not output_cat2:
+        _issue(
+            issues, "SOURCE_EMPTY_REQUIRED_FIELD", sku, "cat2_es",
+            review_only=not strict,
+            reason="official category-2 source is pending/absent; no model value may be guessed",
+        )
     for field in ("标题", "分类1", "分类2", "规格", "单价", "描述", "产品详情", "备注"):
         value = _text(out.get(field))
         if not value:
@@ -359,7 +392,11 @@ def _check_zh_provenance(
             expected_field_hash = localization_field_source_hash(source, field_name) if source_fields_present else source_hash
         except (KeyError, ValueError):
             expected_field_hash = source_hash
-        if not field_hash or (expected_field_hash and field_hash != expected_field_hash):
+        field_hash_ok = bool(field_hash) and (
+            localization_field_hash_matches(source, field_name, field_hash)
+            if source_fields_present else field_hash == source_hash
+        )
+        if not field_hash_ok:
             _issue(issues, "STALE_ZH", sku, field_name, source_hash=expected_field_hash, field_hash=field_hash)
             _issue(issues, "SOURCE_HASH_MISMATCH", sku, field_name, source_hash=expected_field_hash, field_hash=field_hash)
         source_value = _text(source.get(source_field_map[field_name]))

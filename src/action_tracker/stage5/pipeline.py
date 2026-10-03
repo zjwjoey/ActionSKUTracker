@@ -22,7 +22,7 @@ from typing import Any, Iterable, Mapping
 
 from ..dictionary_resolver import FieldResolution, resolve_record
 from ..exporting.dictionary_join import DictionaryContext
-from ..services.hashing import localization_source_hash
+from ..services.hashing import localization_source_hash, localization_source_hash_matches
 from ..translation.detail_terminology import (
     DetailTerminologyConfigError, find_unmapped_closed_enum_values,
     repair_detail_candidate, resolve_detail_from_rules, validate_detail_terminology_rules,
@@ -362,8 +362,12 @@ def validate_input_rows(rows: Iterable[Mapping[str, Any]], contracts: Stage5Cont
             raise ContractError(f"IDENTITY_FIELD_EMPTY line={position}")
         computed_hash = localization_source_hash(_source_record(source))
         source_hash = str(metadata.get("source_hash") or "").strip().lower()
-        if source_hash != computed_hash:
+        if not localization_source_hash_matches(_source_record(source), source_hash):
             raise ContractError(f"SOURCE_HASH_MISMATCH line={position} sku={sku}")
+        # Canonicalize accepted legacy V1 metadata to the semantic V2 hash so
+        # downstream requests and manifests stop carrying formatting-sensitive
+        # identities forward.
+        source_hash = computed_hash
         key = (sku, source_hash)
         if key in seen:
             raise ContractError(f"DUPLICATE_INPUT sku={sku}")
@@ -397,6 +401,17 @@ def _request_id(
     return sha256_bytes(canonical_json(payload).encode("utf-8"))
 
 
+def _source_anomaly_applies_to_field(evidence: Mapping[str, Any], field: str) -> bool:
+    """Route source evidence to every affected field, not just ``details``."""
+    source_field = str(evidence.get("source_field") or "")
+    if source_field == field:
+        return True
+    if source_field != "multiple":
+        return False
+    affected = evidence.get("source_fields")
+    return isinstance(affected, Mapping) and field in affected
+
+
 def plan_batch(
     rows: list[dict[str, Any]], context: DictionaryContext, contracts: Stage5Contracts,
 ) -> list[FieldPlan]:
@@ -417,8 +432,8 @@ def plan_batch(
                 plans.append(FieldPlan(row, field, source_value, request_id, None, "SOURCE", "SOURCE_AMBIGUOUS", allowed_brands))
                 continue
             source_anomalies = tuple(
-                source_consistency_evidence(source)
-                if field == "details" else ()
+                evidence for evidence in source_consistency_evidence(source)
+                if _source_anomaly_applies_to_field(evidence, field)
             )
             if source_anomalies:
                 evidence = FieldResolution(

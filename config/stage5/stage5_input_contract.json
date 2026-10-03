@@ -24,7 +24,7 @@
     "description",
     "details"
   ],
-  "source_hash_algorithm": "localization_source_hash_v1",
+  "source_hash_algorithm": "semantic_localization_source_hash_v2",
   "source_message_roles": ["user"],
   "assistant_reference_messages": "FORBIDDEN",
   "duplicate_key": ["sku", "source_hash"],

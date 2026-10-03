@@ -16,10 +16,10 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ..products.details_parser import parse_details
-from ..services.hashing import localization_source_hash
+from ..services.hashing import semantic_localization_source_hash
 
-SOURCE_HASH_ALGORITHM = "localization_source_hash_v1"
-SOURCE_HASH_CONTRACT_VERSION = "SOURCE_HASH_V1"
+SOURCE_HASH_ALGORITHM = "semantic_localization_source_hash_v2"
+SOURCE_HASH_CONTRACT_VERSION = "SOURCE_HASH_V2"
 FAMILY_KEY_METHOD = "SPANISH_NAME_HEURISTIC_V1"
 SOURCE_FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
 SOURCE_FIELD_KEYS = {
@@ -87,7 +87,7 @@ def source_hash(source: Mapping[str, Any]) -> str:
     """Compute the existing V1 hash contract for a six-field source row."""
 
     normalized = source_from_mapping(source)
-    return localization_source_hash(
+    return semantic_localization_source_hash(
         {SOURCE_FIELD_KEYS[field]: normalized[field] for field in SOURCE_FIELDS}
     )
 

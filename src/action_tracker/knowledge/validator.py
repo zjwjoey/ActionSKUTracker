@@ -21,7 +21,8 @@ def validate_candidate(candidate: Mapping[str, Any], record: Mapping[str, Any]) 
     reasons: list[str] = []
     if not str(candidate.get("sku") or candidate.get("official_sku") or "").strip() == str(record.get("sku") or record.get("official_sku") or "").strip():
         reasons.append("SKU_MISMATCH")
-    if str(candidate.get("source_hash") or "") != _source_hash(record):
+    from ..services.hashing import localization_source_hash_matches
+    if not localization_source_hash_matches(dict(record), candidate.get("source_hash")):
         reasons.append("SOURCE_HASH_MISMATCH")
     fields = candidate.get("fields")
     if not isinstance(fields, Mapping):

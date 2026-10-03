@@ -113,8 +113,8 @@ def main() -> int:
             raise ValueError(f"RUN_PROVENANCE_INVALID:{run_id}")
 
     policy = {
-        "source_hash_contract_version": "SOURCE_HASH_V1",
-        "source_hash_algorithm": "localization_source_hash_v1",
+        "source_hash_contract_version": "SOURCE_HASH_V2",
+        "source_hash_algorithm": "semantic_localization_source_hash_v2",
         "source_hash_note": "Existing six-Spanish-field V1 hash, without SKU; (SKU, hash) is the identity. Adding SKU requires SOURCE_HASH_V2.",
         "historical_split_cutoff_exclusive": "20260913",
         "later_training_overlap_is_not_prior_leakage": audit["later_training_pair_overlap_count"],

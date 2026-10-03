@@ -7,6 +7,25 @@
 
 以下自动项目已完成：Guard v2 固化、三批版本化 replay、幂等 hash 对账、clean worktree 完整 pytest（415 passed）和 v2 总结。旧 v1 产物保留在原目录；v2 产物使用 `*_guard_v2` 新目录。
 
+## 2026-09-13：人工 Gold 接入（离线）
+
+已将人工确认的 `Action_Stage5_候选数据_500条_修订版_446Gold.xlsx` 接入为不可变的 Stage 5 Gold 证据包。该步骤只写入 `runtime/training/.../stage5_gold_ingestion_446_v1/`，不写 Master、SQLite、正式字典或生产定位数据。
+
+结果：
+
+- 500 行、500 个唯一 SKU；446 条 `GOLD/ACCEPT_AS_GOLD`；45 条 `REVISE_THEN_GOLD`；9 条 `NOT_GOLD`。
+- 与既有 train/validation/test 合并语料比对：442 条 Gold 已在历史 split 中，全部标记 `HISTORICAL_OVERLAP_BLOCKED`，不得重复加入新训练集。
+- 4 条 Gold 不在既有 split 中，写入 `stage5_gold_disjoint_eligible_4.jsonl`，仅作为未来新 split 的候选，尚未启动训练。
+- 工作簿与 Stage 5 500 候选包的六个西语事实字段和 `source_hash`：`0` 个不一致。
+- 运行脚本再次执行时内容 hash 不变；现有 split 成员未改变。
+
+证据 manifest：
+`runtime/training/qwen3_8b/20260913/stage5_gold_ingestion_446_v2/stage5_gold_ingestion_446_v1.manifest.json`
+
+入口脚本：`scripts/ingest_stage5_gold_workbook.mjs`。另外已用 Gold 的六个西语字段生成无答案的 source-only 输入，并通过现有 Stage 5 合同预检：446 行、2676 个字段计划、911 个模型请求计划，未把 assistant 答案送入输入；预检结果由 `scripts/run_stage5_pipeline.py --preflight-only` 输出，不产生候选或生产写入。
+
+本次离线 Gold 接入已通过；Stage 5 正式发布仍受 Stage 4 `FULL_STAGE4_RELEASE=false` 门禁约束。该门禁必须在 Stage 4 独立闭环后才可解除，不能用人工 Gold 接入绕过。
+
 ## A. 必须修复后才能重新验收
 
 ### A1. 固化 Guard v2（已完成）
@@ -44,11 +63,13 @@
 
 ## B. 真正需要人工处理
 
-### B1. 审核 108 条候选
+### B1. 审核 Stage 5 当前候选（v2 为 107 条；v3 旁路包为 103 条）
 
-来源：Batch 01 为 23 条，Batch 02 为 43 条，Batch 03 为 42 条。
+来源：Guard v2 Batch 01 为 23 条、Batch 02 为 42 条、Batch 03 为 42 条；补齐确定类目映射后的 Resolver v3 旁路包为 23 + 40 + 40 = 103 条。历史 v1 的 108 条只作为谱系记录保留。
 
-方案：先完成 Guard v2 replay，再以 v2 Review Queue 为准逐条处理。人工状态只能是 `ACCEPT_AS_IS`、`ACCEPT_WITH_MINOR_EDIT`、`REQUIRES_MAJOR_EDIT`、`REJECT` 或 `AMBIGUOUS`。修改必须保留 reviewer、reviewed_at、原值和最终值。
+2026-09-12 owner-signed 包已覆盖 Resolver v3 的 103 条：77 条 `ACCEPT_AS_IS`、14 条 `ACCEPT_WITH_MINOR_EDIT`、11 条 `REQUIRES_MAJOR_EDIT`、1 条 `AMBIGUOUS`；其中 91 条可作为 Stage 6 候选，12 条继续隔离。该签字不解除 Stage 4 上游门禁。
+
+方案：以审核者选定的版本化包为准逐条处理（默认 v3，或保留 v2 作为审计基线）。人工状态只能是 `ACCEPT_AS_IS`、`ACCEPT_WITH_MINOR_EDIT`、`REQUIRES_MAJOR_EDIT`、`REJECT` 或 `AMBIGUOUS`。修改必须保留 reviewer、reviewed_at、原值和最终值。
 
 ### B2. 冻结质量阈值
 

@@ -6,11 +6,19 @@ import csv
 import hashlib
 import json
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from action_tracker.translation.detail_rule_candidates import build_detail_rule_candidates  # noqa: E402
+
+csv.field_size_limit(10 * 1024 * 1024)
 
 
 COLUMNS = (
-    "review_id", "decision", "approved_target", "reviewer", "reviewed_at",
-    "evidence_status", "source_sha256", "target_sha256", "detail_rules_sha256",
+    "review_id", "decision", "approved_target", "regression_case_ids", "reviewer",
+    "reviewed_at", "evidence_status", "source_sha256", "target_sha256", "detail_rules_sha256",
 )
 
 
@@ -27,22 +35,23 @@ def main() -> int:
     queue_manifest = json.loads(args.queue_manifest.read_text(encoding="utf-8"))
     with args.queue.open("r", encoding="utf-8-sig", newline="") as handle:
         queue_rows = list(csv.DictReader(handle))
-    seen: set[str] = set()
-    review_ids: list[str] = []
-    for row in queue_rows:
-        review_id = str(row.get("review_id") or "").strip()
-        if review_id and review_id not in seen:
-            seen.add(review_id)
-            review_ids.append(review_id)
+    first = queue_rows[0] if queue_rows else {}
+    candidates = build_detail_rule_candidates(
+        queue_rows,
+        source_sha256=str(queue_manifest.get("source_sha256") or first.get("source_sha256") or ""),
+        target_sha256=str(queue_manifest.get("target_sha256") or first.get("target_sha256") or ""),
+        rules_sha256=str(queue_manifest.get("detail_rules_sha256") or first.get("detail_rules_sha256") or ""),
+    )
     rows = [
         {
-            "review_id": review_id, "decision": "", "approved_target": "",
+            "review_id": str(candidate.get("candidate_id") or ""), "decision": "", "approved_target": "",
+            "regression_case_ids": "[]",
             "reviewer": "", "reviewed_at": "", "evidence_status": "",
             "source_sha256": str(queue_manifest.get("source_sha256") or ""),
             "target_sha256": str(queue_manifest.get("target_sha256") or ""),
             "detail_rules_sha256": str(queue_manifest.get("detail_rules_sha256") or ""),
         }
-        for review_id in sorted(review_ids)
+        for candidate in candidates
     ]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8-sig", newline="") as handle:
@@ -50,12 +59,13 @@ def main() -> int:
         writer.writeheader()
         writer.writerows(rows)
     manifest = {
-        "schema": "ACTION_DETAIL_RULE_DECISION_TEMPLATE_V1",
+        "schema": "ACTION_DETAIL_RULE_DECISION_TEMPLATE_V2",
         "artifact": args.output.name,
         "queue_artifact": args.queue.name,
         "queue_sha256": _sha256(args.queue),
         "queue_manifest_sha256": _sha256(args.queue_manifest),
         "row_count": len(rows),
+        "candidate_count": len(candidates),
         "review_only": True,
         "auto_apply": False,
         "rules_write": False,

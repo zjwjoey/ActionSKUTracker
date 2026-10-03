@@ -7,6 +7,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from .contracts import KNOWLEDGE_FIELDS, Resolution, source_hash
+from ..services.hashing import localization_source_hash_matches
 
 
 def _queue_id(sku: str, digest: str, fields: tuple[str, ...]) -> str:
@@ -29,7 +30,10 @@ def build_queue(
         if not sku:
             continue
         resolution = (resolutions or {}).get(sku)
-        digest = resolution.source_hash if resolution else source_hash(record)
+        # The live Spanish source is authoritative.  A resolution may carry a
+        # legacy raw-detail hash; normalize it to the current semantic hash so
+        # delimiter-only changes do not create a new translation task.
+        digest = source_hash(record)
         source_quality = str(record.get("source_quality") or record.get("source_quality_status") or "OK").upper()
         if source_quality in {"SOURCE_BLOCKED", "SOURCE_DAMAGED", "SOURCE_POLLUTED", "SOURCE_UNTRUSTED"}:
             continue
@@ -40,7 +44,7 @@ def build_queue(
         # An empty hash means freshness is unknown, not "unchanged".  This
         # queues legacy localization rows so their provenance can be rebuilt.
         existing_hash = str(loc.get("source_hash") or "")
-        changed = not existing_hash or existing_hash != digest
+        changed = not existing_hash or not localization_source_hash_matches(dict(record), existing_hash)
         is_new = bool(record.get("is_new") or record.get("new") or record.get("status") == "NEW")
         if not (is_new or changed or missing or (resolution and resolution.readiness == "REVIEW_REQUIRED")):
             continue

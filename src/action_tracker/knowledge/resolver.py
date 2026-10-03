@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from .contracts import FIELD_TO_ES, KNOWLEDGE_FIELDS, Resolution, ResolutionField, source_hash
+from ..services.hashing import localization_source_hash_matches
 
 _APPROVED_DICTIONARY_STATUSES = frozenset({
     "APPROVED", "HUMAN_APPROVED", "CONFIRMED", "HUMAN_REVIEWED", "LOCKED", "SEED_REVIEWED",
@@ -73,7 +74,11 @@ def resolve(
     reasons: list[str] = []
     fields: dict[str, ResolutionField] = {}
     cache_hash = str((model_cache or {}).get("source_hash") or "")
-    cache_valid = bool(model_cache and cache_hash == h and str((model_cache or {}).get("validation_status") or "").upper() == "PASS")
+    cache_valid = bool(
+        model_cache
+        and localization_source_hash_matches(dict(record), cache_hash)
+        and str((model_cache or {}).get("validation_status") or "").upper() == "PASS"
+    )
 
     for field in KNOWLEDGE_FIELDS:
         manual_value = _value(manual, field)

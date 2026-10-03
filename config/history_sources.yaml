@@ -124,7 +124,7 @@ sources:
     evidence_level: A
     fields: {name_zh: "中文品名", image_url: "图片链接", product_url: "商品链接"}
   - date: "2026-09-14"
-    path: "F:/按日期整理/260914/20260914_Action商品上下架明细.xlsx"
+    path: "F:/按日期整理/20260914/20260914_Action商品上下架明细.xlsx"
     sheet: "商品上下架明细"
     sku_header: "编号"
     presence_header: "26.09.14"

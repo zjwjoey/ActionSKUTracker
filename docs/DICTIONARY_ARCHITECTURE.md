@@ -94,9 +94,18 @@ Export 是字典的只读消费者。中文版逐字段应用人工覆盖、商�
 ## Resolver 与覆盖率
 
 `dictionary_resolver.py` 对每个 CURRENT SKU 返回字段值、来源、字段状态和 SKU 级
-`AUTO_READY / REVIEW_REQUIRED / SOURCE_BLOCKED`。仅 source_hash 匹配且质量为 OK
-的模型缓存可用；普通西语残留、源损坏、未确认商品记录和未知品牌进入审核。`dictionary-coverage`
-写入 `runtime/dictionary/reports/`，不改 Master、State 或正式字典。
+`AUTO_READY / REVIEW_REQUIRED / SOURCE_BLOCKED`。模型缓存的 source hash 与质量分只证明新鲜度和基础检查，
+不代表语义 Owner 审批；因此 `quality_status=OK` 的模型值仍作为候选写入 `review_required.csv`，不会使 SKU AUTO_READY。
+
+同一约束也适用于 `knowledge.resolver`：只有 source hash 匹配且 `validation_status=PASS` 的模型缓存，
+才可显示为字段级 `REVIEW` 候选；它不能直接成为 `READY` 或 `AUTO_READY`。商品、范围和术语字典也必须
+携带批准状态才能 `READY`，裸字符串及未批准值只能作为 `REVIEW` 候选。通过人工确认后应进入相应的
+人工/商品字典层，再由解析器按高优先级读取。
+商品字典自由文本只有显式批准状态才可 READY；过期值、UNREVIEWED 值和未知品牌进入审核。分类值只接受人工批准的
+分类映射或固定一级类目确认。`dictionary-coverage` 写入 `runtime/dictionary/reports/`，其中保留待审名称/规格候选，
+不改 Master、State 或正式字典。对规格字段，人工确认/Seed-reviewed 的 `term_dictionary` 仅在整格精确命中唯一译法时
+作为确定性解析；复合短语、无审批词条或冲突映射继续走现有审核/回退流程，不进行词内替换或猜译。Resolver 实现和
+归一化代码哈希进入 Stage 5 候选合同身份。
 
 `dictionary-apply --dry-run` 生成字段级 preview、`field_diff.csv`、审核清单和 hash manifest；
 正式 `--commit` 受 QA、FULL_COMMIT、未过期审计、不可变事实、当前 SKU 集合、字典基线逐文件 SHA-256

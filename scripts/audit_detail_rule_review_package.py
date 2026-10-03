@@ -7,6 +7,17 @@ import csv
 import hashlib
 import json
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from action_tracker.translation.detail_rule_candidates import build_detail_rule_candidates  # noqa: E402
+
+
+# Detail source cells can be substantially larger than csv's 128 KiB default.
+# Keep this reader aligned with the queue/candidate/template builders.
+csv.field_size_limit(10 * 1024 * 1024)
 
 
 def _sha256(path: Path) -> str:
@@ -30,6 +41,18 @@ def audit_package(
     template_ids = [str(row.get("review_id") or "") for row in template]
     queue_counts = Counter(queue_ids)
     template_counts = Counter(template_ids)
+    candidates = build_detail_rule_candidates(
+        queue,
+        source_sha256=str(queue_manifest.get("source_sha256") or ""),
+        target_sha256=str(queue_manifest.get("target_sha256") or ""),
+        rules_sha256=str(queue_manifest.get("detail_rules_sha256") or ""),
+    )
+    candidate_ids = [str(row.get("candidate_id") or "") for row in candidates]
+    # V2 templates are keyed by aggregate candidate_id.  Preserve support for
+    # legacy occurrence-level templates while selecting the expected identity
+    # scope from the actual template instead of comparing unlike IDs.
+    template_uses_candidates = any(review_id.startswith("detail-rule-") for review_id in template_ids)
+    expected_ids = candidate_ids if template_uses_candidates else queue_ids
     review_kinds = Counter(str(row.get("review_kind") or "") for row in queue)
     review_reasons = Counter(str(row.get("review_reasons") or "") for row in queue)
     nonblank_decisions = sum(
@@ -46,7 +69,14 @@ def audit_package(
         "template_binds_queue_manifest_sha256": _sha256(queue_manifest_path) == str(template_manifest.get("queue_manifest_sha256") or ""),
         "queue_review_ids_unique": all(review_id and count == 1 for review_id, count in queue_counts.items()),
         "template_review_ids_unique": all(review_id and count == 1 for review_id, count in template_counts.items()),
-        "queue_and_template_review_ids_equal": set(queue_ids) == set(template_ids),
+        "queue_and_template_review_ids_equal": set(expected_ids) == set(template_ids),
+        "candidate_ids_rebuilt_unique": all(review_id and count == 1 for review_id, count in Counter(candidate_ids).items()),
+        "candidate_scope_context_bound": (
+            not template_uses_candidates or all(
+                row.get("context_scope") and "<unknown>" not in row.get("context_scope", [])
+                for row in candidates
+            )
+        ),
         "queue_contains_no_preapproval": not any(
             str(row.get("candidate_is_approved") or "").strip().casefold() in {"true", "1", "yes"}
             for row in queue
@@ -71,9 +101,12 @@ def audit_package(
         "status": "READY_FOR_DESCRIPTION_DETAILS_HUMAN_AUDIT" if package_valid else "DESCRIPTION_DETAILS_PILOT_FAILED",
         "package_valid": package_valid,
         "semantic_review_state": "NOT_STARTED" if nonblank_decisions == 0 else "IN_PROGRESS",
+        "review_scope": "candidate_id" if template_uses_candidates else "review_id",
+        "template_uses_aggregate_candidates": template_uses_candidates,
         "checks": checks,
         "counts": {
             "queue_rows": len(queue), "template_rows": len(template),
+            "candidate_rows": len(candidates),
             "nonblank_decisions": nonblank_decisions,
             "source_key_rows": review_kinds.get("SOURCE_KEY", 0),
             "source_value_rows": review_kinds.get("SOURCE_VALUE", 0),

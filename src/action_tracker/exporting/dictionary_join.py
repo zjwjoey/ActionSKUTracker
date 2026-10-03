@@ -25,7 +25,7 @@ from ..dictionary import (
     normalize_category_key,
 )
 from ..services.normalization import parse_bool_zh, parse_price
-from ..services.hashing import localization_field_source_hash
+from ..services.hashing import localization_field_hash_matches
 from ..translation.term_resolver import resolve_exact_spec_term
 
 
@@ -459,7 +459,7 @@ def _dictionary_field_hash_matches(
     }.get(field)
     declared = _text(row.get(f"{field_name}_source_hash")) if field_name else ""
     if declared:
-        return declared == localization_field_source_hash(record, field_name)
+        return localization_field_hash_matches(record, field_name, declared)
     return _text(row.get("source_hash")) == legacy_hash
 
 

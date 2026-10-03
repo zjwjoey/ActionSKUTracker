@@ -1,8 +1,8 @@
 {
   "contract_id": "STAGE5_SOURCE_CANDIDATE_V2",
   "mode": "OFFLINE_SOURCE_ONLY_PENDING_HUMAN_GOLD",
-  "source_hash_algorithm": "localization_source_hash_v1",
-  "source_hash_contract_version": "SOURCE_HASH_V1",
+  "source_hash_algorithm": "semantic_localization_source_hash_v2",
+  "source_hash_contract_version": "SOURCE_HASH_V2",
   "family_key_method": "SPANISH_NAME_HEURISTIC_V1",
   "source_version_statuses": [
     "NEW_SKU_NEW_SOURCE",

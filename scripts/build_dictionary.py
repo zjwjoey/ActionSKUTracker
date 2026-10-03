@@ -99,6 +99,12 @@ def main() -> int:
         for key, value in (mapping_raw.get("cat2_mappings") or {}).items()
         if str(value or "").strip()
     }
+    category_mapping_cat2_pair = {}
+    for key, value in (mapping_raw.get("cat2_pair_mappings") or {}).items():
+        if isinstance(key, str) and "|" in key and str(value or "").strip():
+            cat1, cat2 = (part.strip() for part in key.split("|", 1))
+            if cat1 and cat2:
+                category_mapping_cat2_pair[(normalize_category_key(cat1), normalize_category_key(cat2))] = str(value).strip()
     product_path = out_dir / "product_dictionary.csv"
     existing = load_dictionary_csv(_dictionary_input(product_path, baseline_dir), key_field="sku")
     override_path = out_dir / "manual_overrides.csv"
@@ -119,7 +125,8 @@ def main() -> int:
         model_translations=index_model_translations(model_translation_rows),
     )
     categories = category_rows_from_products(
-        products, category_mapping, cat2_mapping=category_mapping_cat2, existing=existing_categories,
+        products, category_mapping, cat2_mapping=category_mapping_cat2,
+        cat2_pair_mapping=category_mapping_cat2_pair, existing=existing_categories,
     )
     source_damage_rows = []
     for row in products:

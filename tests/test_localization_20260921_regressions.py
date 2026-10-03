@@ -10,7 +10,14 @@ from action_tracker.products.details_parser import (
     parse_semantic_detail_pairs,
     render_details,
 )
-from action_tracker.services.hashing import localization_field_source_hash, localization_field_source_hashes
+from action_tracker.services.hashing import (
+    details_semantic_hash,
+    legacy_localization_source_hash,
+    localization_field_source_hash,
+    localization_field_source_hashes,
+    localization_source_hash,
+    localization_source_hash_matches,
+)
 
 
 def test_source_empty_clears_stale_chinese_description_and_details():
@@ -80,6 +87,35 @@ def test_details_parser_accepts_fullwidth_colon_in_localized_value():
     pairs = parse_details("材质：塑料")
     assert len(pairs) == 1
     assert (pairs[0].key_es, pairs[0].value_es) == ("材质", "塑料")
+
+
+def test_details_parser_recognizes_historic_bare_article_number():
+    pairs = parse_details("Color: Azul | Número del artículo 3008365")
+    assert [(pair.key_es, pair.value_es) for pair in pairs] == [
+        ("Color", "Azul"), ("Número del artículo", "3008365"),
+    ]
+
+
+def test_details_semantic_hash_ignores_transport_delimiters_but_not_facts():
+    first = "Color: Azul; Número del artículo: 3008365"
+    equivalent = "Color: Azul | Número del artículo 3008365"
+    changed = "Color: Rojo | Número del artículo 3008365"
+    assert details_semantic_hash(first) == details_semantic_hash(equivalent)
+    assert details_semantic_hash(first) != details_semantic_hash(changed)
+    assert localization_field_source_hash({"details_es": first}, "details") == localization_field_source_hash({"details_es": equivalent}, "details")
+
+
+def test_aggregate_source_hash_ignores_detail_transport_but_accepts_legacy_hash():
+    first = {
+        "name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "Limpieza",
+        "spec_es": "2 piezas", "desc_es": "Para casa",
+        "details_es": "Color: Azul; Número del artículo: 3008365",
+    }
+    equivalent = {**first, "details_es": "Color: Azul | Número del artículo 3008365"}
+    assert localization_source_hash(first) == localization_source_hash(equivalent)
+    assert localization_source_hash_matches(equivalent, legacy_localization_source_hash(equivalent))
+    changed = {**equivalent, "details_es": "Color: Rojo | Número del artículo 3008365"}
+    assert localization_source_hash(changed) != localization_source_hash(first)
 
 
 def test_semantic_detail_parser_removes_only_known_header_and_legacy_pair_wrapper():

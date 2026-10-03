@@ -6,7 +6,12 @@ import json
 from typing import Any, Mapping
 
 from ..dictionary_apply import ALLOWLIST
-from ..services.hashing import field_source_hash, localization_source_hash
+from ..services.hashing import (
+    field_source_hash,
+    localization_field_hash_matches,
+    localization_source_hash,
+    localization_source_hash_matches,
+)
 from ..stage5.pipeline import canonical_json
 from ..stage5.source_candidate_v2 import source_consistency_flags
 
@@ -91,11 +96,29 @@ def preview_one(
             if hash_scope == "field"
             else localization_source_hash(source_hash_record)
         )
-        if source and expected_source_hash != reviewed_source_hash:
+        source_hash_matches = (
+            localization_field_hash_matches(source_hash_record, field, reviewed_source_hash)
+            if hash_scope == "field"
+            else localization_source_hash_matches(source_hash_record, reviewed_source_hash)
+        )
+        current_hash_matches = source_hash_matches
+        if hash_scope != "field":
+            current_target_source = {
+                "name_es": target.get("name_es") if target else None,
+                "cat1_es": target.get("cat1_es") if target else None,
+                "cat2_es": target.get("cat2_es") if target else None,
+                "spec_es": target.get("spec_es") if target else None,
+                "desc_es": target.get("desc_es") if target else None,
+                "details_es": target.get("details_es") if target else None,
+            }
+            current_hash_matches = localization_source_hash_matches(
+                current_target_source, reviewed_source_hash,
+            )
+        if source and not source_hash_matches:
             conflicts.add("CANDIDATE_STALE")
         if flags:
             conflicts.add("SOURCE_CONFLICT")
-        if current_source_hash != reviewed_source_hash:
+        if source and not current_hash_matches:
             conflicts.add("SOURCE_CHANGED")
     if expected_target_hash is not None and current_target_hash != expected_target_hash:
         conflicts.add("TARGET_CHANGED")

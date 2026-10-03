@@ -22,7 +22,7 @@ from action_tracker.exporting.service import ExportValidationError, _publish_exp
 from action_tracker.exporting.excel_writer import write_catalog_xlsx
 from action_tracker.exporting.qa_log import build_export_qa_log
 from action_tracker.exporting.dictionary_join import _zh_remarks
-from action_tracker.exporting.release_gate import evaluate_release_gate
+from action_tracker.exporting.release_gate import ReleaseGateError, evaluate_release_gate
 
 
 def test_export_qa_log_preserves_duplicate_findings_with_stable_unique_ids():
@@ -62,6 +62,49 @@ def test_release_gate_carries_source_anomaly_into_semantic_gold_gate():
     assert result["semantic_gate"]["status"] == "REVIEW_REQUIRED"
     assert result["semantic_gate"]["gold_blocked"] is True
     assert any(item["code"] == "SOURCE_ANOMALY_REVIEW" for item in result["review_findings"])
+
+
+def test_es_release_gate_reports_source_anomaly_and_pending_cat2():
+    source = {
+        "sku": "1001", "current_price": 1.0, "original_price": None,
+        "image_url": "", "product_url": "https://example.test/1001",
+        "name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "",
+        "spec_es": "", "desc_es": "", "details_es": "Sustancia: Válido; Número del artículo: 1001",
+    }
+    output = {
+        "编号": "1001", "折后价": 1.0, "原价": None,
+        "图片链接": "", "商品链接": "https://example.test/1001",
+        "标题": "Producto", "分类1": "Hogar", "分类2": "", "规格": "", "单价": "",
+        "描述": "", "产品详情": source["details_es"], "备注": "",
+    }
+    result = evaluate_release_gate([source], [output], language="es", strict=False)
+    assert result["passed"] is True
+    assert result["quality_status"] == "RELEASE_PASS_WITH_REVIEW_NOT_GOLD"
+    assert result["counts"]["SOURCE_ANOMALY_REVIEW"] == 1
+    assert result["counts"]["SOURCE_EMPTY_REQUIRED_FIELD"] == 1
+
+    with pytest.raises(ReleaseGateError, match="EXPORT_RELEASE_GATE_BLOCKED"):
+        evaluate_release_gate([source], [output], language="es", strict=True)
+
+
+def test_es_release_gate_blocks_guessed_category2_when_source_is_empty():
+    source = {
+        "sku": "1002", "current_price": 1.0, "original_price": None,
+        "image_url": "", "product_url": "https://example.test/1002",
+        "name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "",
+        "spec_es": "", "desc_es": "", "details_es": "",
+    }
+    output = {
+        "编号": "1002", "折后价": 1.0, "原价": None,
+        "图片链接": "", "商品链接": "https://example.test/1002",
+        "标题": "Producto", "分类1": "Hogar", "分类2": "猜测类目", "规格": "", "单价": "",
+        "描述": "", "产品详情": None, "备注": "",
+    }
+    result = evaluate_release_gate([source], [output], language="es", strict=False)
+    assert result["passed"] is False
+    assert result["counts"]["SOURCE_EMPTY_NONEMPTY"] == 1
+    with pytest.raises(ReleaseGateError, match="SOURCE_EMPTY_NONEMPTY=1"):
+        evaluate_release_gate([source], [output], language="es", strict=True)
 
 
 def test_chinese_remarks_preserve_unrecognized_raw_official_labels():

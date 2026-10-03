@@ -185,7 +185,7 @@ def main() -> int:
                 "guard_status": guard_status,
                 "guard_reasons": guard_reasons,
                 "source_hash": expected_hash,
-                "source_hash_contract_version": clean(metadata.get("source_hash_contract_version")) or "SOURCE_HASH_V1",
+                "source_hash_contract_version": clean(metadata.get("source_hash_contract_version")) or "SOURCE_HASH_V2",
                 "source_run_id": clean(metadata.get("source_run_id")),
                 "source_snapshot_path": clean(metadata.get("source_snapshot_path")),
                 "family_key": family_key(source),
