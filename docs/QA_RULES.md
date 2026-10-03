@@ -112,7 +112,7 @@ Master 只能通过集中 Writer 原子更新，失败时保留原文件和诊�
 
 ### QA-DICT-002：字段级优先级
 
-人工字段覆盖 > 有效商品字典 > 正式品牌/类目/术语 > source hash 有效模型结果 > 西语 fallback。
+人工字段覆盖 > 有效商品字典 > 正式品牌/类目/术语 > source hash 有效模型结果 > `display_fallback=ES`（仅展示层提示）。
 
 ### QA-DICT-003：source hash
 
@@ -136,9 +136,7 @@ TERM_CANDIDATE 必须经人工 APPROVED 才能进入正式术语字典。
 
 ### QA-DICT-008：西语残留
 
-中文品名和中文规格中的普通西语残留不得标记为 AUTO_READY；品牌、型号和技术缩写可
-按品牌字典/人工确认保留原文。描述和详情当前允许西语 fallback，但必须标记字段待补，
-不得伪装成中文已完成。
+中文品名和中文规格中的普通西语残留不得标记为 AUTO_READY；品牌/IP 仅在内部证据和 QA 中保留，正式展示按 NO_BRAND；型号、技术 token、数字和单位不能删除。描述和详情缺失或过期保持 `PENDING`/`REVIEW_REQUIRED`；`display_fallback=ES` 只用于展示提示，不能改变发布门禁。
 
 ### QA-DICT-009：Apply Gate
 
@@ -178,7 +176,7 @@ ES/ZH 的 SKU、顺序、当前售价、原价、图片链接和商品链接逐 
 
 ### QA-EXP-005：中文缺失
 
-中文缺失保留 SKU，以 fallback 和精确待审核标记处理。禁止为了得到“纯中文”而删除商品。
+中文缺失保留 SKU，以 `PENDING`/`REVIEW_REQUIRED` 和 presentation-only `display_fallback=ES` 标记处理。禁止为了得到“纯中文”而删除商品。
 
 ### QA-EXP-006：历史 Presence
 

@@ -89,7 +89,7 @@ QA PASS / PASS_PRESENCE_ONLY
 → 有效商品字典
 → 正式品牌/类目/术语字典
 → source_hash 有效模型结果
-→ 西语 fallback + 精确待审核标记
+→ `PENDING`/`REVIEW_REQUIRED` + presentation-only `display_fallback=ES`
 ```
 
 中文、描述或详情缺失不能删除 SKU。价格、图片链接和商品链接必须与西语版逐 SKU 一致。

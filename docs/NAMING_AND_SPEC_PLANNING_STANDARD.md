@@ -91,14 +91,14 @@ bayeta de microfibra
 确认品牌：
 
 ```text
-品牌标准名 + 牌 + 商品通用名
+正式中文展示不显示品牌/IP，不添加“牌”字；品牌仅保留在内部事实、证据、QA 和术语上下文。
 ```
 
 例如：
 
 ```text
-Stanger牌记号笔
-Spargo牌微纤维清洁布
+记号笔
+微纤维清洁布
 ```
 
 品牌不确认：
@@ -527,10 +527,10 @@ Paño de microfibra para el suelo Spargo
 50x60 cm | varios colores
 ```
 
-若 Spargo 已正式确认品牌：
+品牌确认只进入内部证据与 QA；正式中文展示仍按 NO_BRAND：
 
 ```text
-品名：Spargo牌微纤维地板清洁布
+品名：微纤维地板清洁布
 规格：50×60cm｜多种颜色
 ```
 
@@ -552,7 +552,7 @@ Paños de microfibra Spargo
 标准：
 
 ```text
-品名：Spargo牌微纤维清洁布（品牌确认后）
+品名：微纤维清洁布（品牌证据保留在内部）
 规格：3件｜多种颜色
 ```
 

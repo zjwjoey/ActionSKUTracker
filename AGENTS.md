@@ -38,13 +38,15 @@
 - 同一天重跑必须幂等，不推进多次缺失次数，不重复产生事件。
 - Presence 必须在 Detail 前冻结。
 - 所有正式写入必须经过 QA；QA FAIL 和 dry-run 只留证据，不覆盖 Master、known_skus 或 offline_skus。
-- SQLite 代码保持冻结，不得未经单独立项改成生产主链。
+- SQLite PRIMARY 是当前生产主链和唯一正式读事实源；Excel/CSV 只能作为由当前 committed head 生成并经 `export_sync` 确认的兼容投影。
+- 正式写入必须经过 CommitBundle、QA、integrity、base commit 校验、事务和导出同步边界；任何 schema、commit contract 或 PRIMARY 路径结构变更都必须另立项目并补迁移与回归测试。
 
 ## 5. 字典与中文数据
 
 - 不每天全量翻译；增量范围仅限 NEW、官网事实哈希变化和 NEEDS_REVIEW。
 - 人工覆盖按字段保护，不能因为改了中文品名就冻结同 SKU 的全部字段。
-- 品牌名称可以保留原文；非品牌西语残留必须有明确 fallback/待审核标记。
+- NO_BRAND 展示策略：品牌/IP 仍保留在内部事实、证据、QA 和术语上下文中，但正式中文展示字段不得显示品牌；不得删除型号、接口、标准、技术 token、数字或单位，西语事实不可改写。
+- 未翻译或过期字段必须保持 `PENDING`/`REVIEW_REQUIRED`；不得把西语复制进正式中文字段。`display_fallback=ES` 仅允许作为展示层提示，不能影响审批或发布就绪状态。
 - `source_hash` 变化时旧模型结果失效，不能静默复用。
 - 模型或规则不得直接批量晋升术语；正式术语必须经过 Review Queue 人工确认。
 - 字典不得改写 SKU、价格、商品链接、西语官网事实或在售结论。
@@ -79,6 +81,15 @@
 - CI 使用 `requirements-dev.txt` 安装依赖，不安装 Playwright 浏览器，不访问 Action 官网。
 - 真实采集、浏览器交互、dry-run、正式 Master/State 写入、字典基线发布和图片任务均属于 `LOCAL_ONLY`，不得被 CI 默认触发。
 - 未完成安全分类的测试属于 `UNCERTAIN`，不得加入白名单，必须留在本地审查，不能为了让 CI 变绿而静默跳过。
+
+### Translation V1 safety defaults
+
+- `knowledge.production_apply_enabled=false`
+- `localization.production_apply_enabled=false`
+- `localization.auto_approval_enabled=false`
+- `localization.ai.enabled=false`
+- `knowledge.fallback_to_spanish=false`
+- 缺失或过期本地化统一进入 `PENDING`/`REVIEW_REQUIRED`；Spanish 只可作为 `display_fallback=ES` 的 presentation-only 值，不能进入正式中文、审批或 release readiness。
 - CI 通过只说明代码回归测试通过，不代表官网访问、QA、生命周期提交或导出正式来源已经通过。
 
 ## 8. Git 规则
