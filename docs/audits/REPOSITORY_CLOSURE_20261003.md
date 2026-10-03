@@ -83,7 +83,7 @@ chore/repository-consolidation-closure-v1
 7b153b72e805b4b5dbe8b36f55d05d9eb691557d
 Stage6 branch:
 fix/stage6-provenance-v2
-ed1205b7550433d241f8dd83b14af8fbe26aa859
+4744fba5523df5ebac5e00773cb96e1fe679979d
 Branch Inventory algorithm:
 git cherry
 Branch Inventory:
@@ -101,7 +101,7 @@ Full pytest:
 Closure CI:
 37136163546 / PASS
 Stage6 CI:
-37136385976 / PASS
+37136811440 / PASS
 Scrapling modified:
 NO
 Translation modified:
