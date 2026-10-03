@@ -11,10 +11,13 @@ from typing import Any, Mapping, Protocol
 
 from .contracts import (
     POLICY_VERSION, SourceFacts, CANONICAL_AI_FIELDS, CANONICAL_TO_SOURCE,
-    ZH_TO_CANONICAL,
+    ZH_TO_CANONICAL, source_hash,
 )
 from .policy import FIXED_CAT1, has_ordinary_spanish
 from .validator import _NUMBER
+from .providers.qwen_mt import QwenMTProvider
+from .providers.qwen_mt import endpoint_diagnostics
+from .providers.base import TranslationRequest
 
 
 def _system_prompt() -> str:
@@ -22,7 +25,7 @@ def _system_prompt() -> str:
         "你是商品结构化中文标准化引擎。只返回一个 JSON 对象，禁止 Markdown、代码围栏、解释和思考过程。"
         "JSON 顶层必须包含 sku、source_hash、fields、semantic_items、product_type_candidate、detail_key_candidates、tech_token_candidates、confidence；"
         "fields 必须是对象，只填写 requested_fields 中的字段。不得改变 SKU、source_hash、价格、URL 或官方西语事实。"
-        "普通西班牙语必须翻译成中文；品牌、型号、技术词和标准单位按原文保留。必须保留所有数字。"
+        "普通西班牙语必须翻译成中文；型号、技术词和标准单位按原文保留。中文版不输出品牌/IP名称，也不添加“牌”；必须保留所有数字。"
         "未知或无法核实的内容放入 review_notes，不得臆造。"
     )
 
@@ -167,6 +170,62 @@ class LocalOpenAICompatibleProvider(OpenAICompatibleProvider):
         return result
 
 
+@dataclass
+class QwenMTCompatibleProvider:
+    """Bridge the dedicated qwen-mt provider to the localization candidate API."""
+
+    base_url: str
+    model: str = "qwen-mt-flash"
+    api_key_env: str = "DASHSCOPE_API_KEY"
+    timeout: int = 60
+    provider: str = "qwen_mt"
+    terms: tuple[Mapping[str, Any], ...] = ()
+    tm_entries: tuple[Mapping[str, Any], ...] = ()
+    domain: str = "e-commerce"
+    max_batch_size: int = 20
+    max_characters_per_request: int = 12000
+    max_retries: int = 2
+    backoff_seconds: float = 5.0
+    rate_limit_per_second: float = 0.5
+    _provider: QwenMTProvider | None = field(default=None, init=False, repr=False)
+
+    def _qwen_provider(self) -> QwenMTProvider:
+        # Keep one adapter instance for the whole canary/worker run.  The
+        # adapter owns the request-start limiter; recreating it for every
+        # field would silently reset the limiter and defeat pacing.
+        if self._provider is None:
+            self._provider = QwenMTProvider(
+                self.base_url,
+                self.model,
+                self.api_key_env,
+                self.timeout,
+                max_retries=self.max_retries,
+                backoff_seconds=self.backoff_seconds,
+                rate_limit_per_second=self.rate_limit_per_second,
+                max_batch_size=self.max_batch_size,
+                max_characters_per_request=self.max_characters_per_request,
+            )
+        return self._provider
+
+    def translate(self, request: TranslationRequest):
+        """Expose the resolver's native TranslationProvider contract.
+
+        ``complete`` is retained for the legacy candidate API, whereas the
+        Translation Registry resolver consumes a ``TranslationRequest`` and
+        calls ``translate``.  Both paths therefore share the exact Qwen-MT
+        wire implementation instead of relying on an unsafe generic adapter.
+        """
+        return self._qwen_provider().translate(request)
+
+    def complete(self, source: SourceFacts, requested_fields: tuple[str, ...]) -> Mapping[str, Any]:
+        source_fields = {canonical: getattr(source, CANONICAL_TO_SOURCE[canonical], "") for canonical in requested_fields if canonical in CANONICAL_TO_SOURCE}
+        source_hash_value = source_hash(source.as_record())
+        response = self.translate(
+            TranslationRequest(source.sku, source_fields, requested_fields, source_hash_value, terms=self.terms, tm_entries=self.tm_entries, domain=self.domain)
+        )
+        return {"sku": source.sku, "canonical_id": source.canonical_id, "source_hash": source_hash_value, "fields": dict(response.fields), "confidence": None, "review_notes": "", "provider_request_hash": response.request_hash, "provider_response_hash": response.response_hash}
+
+
 def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, requested_fields: tuple[str, ...]) -> tuple[bool, tuple[str, ...]]:
     """Validate the provider envelope before it becomes a candidate."""
     reasons: list[str] = []
@@ -175,7 +234,7 @@ def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, reques
         reasons.append("AI_REQUESTED_FIELD_NON_CANONICAL")
     if not isinstance(payload, Mapping):
         return False, ("AI_RESPONSE_NOT_OBJECT",)
-    allowed_top = {"fields", "product_type_candidate", "semantic_items", "detail_key_candidates", "tech_token_candidates", "placement", "confidence", "review_notes", "sku", "canonical_id", "product_url", "current_price", "original_price", "source_hash"}
+    allowed_top = {"fields", "product_type_candidate", "semantic_items", "detail_key_candidates", "tech_token_candidates", "placement", "confidence", "review_notes", "sku", "canonical_id", "product_url", "current_price", "original_price", "source_hash", "provider_request_hash", "provider_response_hash"}
     if set(payload) - allowed_top:
         reasons.append("AI_RESPONSE_UNKNOWN_KEY")
     if "sku" in payload and str(payload.get("sku") or "").strip() != source.sku:
@@ -254,6 +313,32 @@ def provider_from_config(config: Mapping[str, Any] | None) -> LocalizationAIProv
         return DisabledProvider()
     provider = str(config.get("provider") or "openai_compatible").lower()
     if provider in {"fake", "test"}: return FakeProvider({})
+    if provider in {"qwen_mt", "qwen-mt", "qwen_mt_flash"}:
+        terms = tuple(config.get("terms") or ())
+        tm_entries = tuple(config.get("tm_entries") or ())
+        # An explicit profile endpoint is authoritative.  Environment
+        # variables remain a convenient runtime fallback, but must not
+        # silently override a profile/test endpoint and make endpoint
+        # diagnostics non-deterministic.
+        base_url = (
+            str(config.get("base_url") or "").strip()
+            or os.environ.get("QWEN_MT_BASE_URL")
+            or os.environ.get("DASHSCOPE_BASE_URL")
+            or ""
+        )
+        configured_rate = config.get("rate_limit_per_second")
+        if "QWEN_MT_RATE_LIMIT_PER_SECOND" in os.environ:
+            configured_rate = os.environ.get("QWEN_MT_RATE_LIMIT_PER_SECOND")
+        return QwenMTCompatibleProvider(
+            base_url, str(config.get("model") or "qwen-mt-flash"),
+            str(config.get("api_key_env") or "DASHSCOPE_API_KEY"), int(config.get("timeout") or 60),
+            terms=terms, tm_entries=tm_entries, domain=str(config.get("domain") or "e-commerce"),
+            max_batch_size=int(config.get("max_batch_size") or 20),
+            max_characters_per_request=int(config.get("max_characters_per_request") or 12000),
+            max_retries=int(config.get("max_retries") if config.get("max_retries") is not None else 2),
+            backoff_seconds=float(config.get("backoff_seconds") if config.get("backoff_seconds") is not None else 5.0),
+            rate_limit_per_second=float(configured_rate if configured_rate is not None else 0.5),
+        )
     if provider in {"local_openai_compatible", "local", "ollama", "qwen"}:
         key_env = str(config.get("api_key_env") or "").strip() or None
         return LocalOpenAICompatibleProvider(
@@ -268,14 +353,54 @@ def provider_health(provider: LocalizationAIProvider) -> dict[str, Any]:
     """Perform a non-mutating endpoint/model check for an explicit CLI call."""
     if isinstance(provider, DisabledProvider):
         return {"status": "DISABLED", "provider": provider.provider, "model": provider.model}
+    provider_name = str(getattr(provider, "provider", "") or "")
     base_url = str(getattr(provider, "base_url", "") or "").rstrip("/")
     if not base_url:
-        return {"status": "INVALID_CONFIG", "provider": getattr(provider, "provider", ""), "model": getattr(provider, "model", "")}
-    request = urllib.request.Request(base_url + "/models", headers={"Accept": "application/json"}, method="GET")
+        error = "QWEN_BASE_URL_MISSING" if provider_name == "qwen_mt" else "BASE_URL_MISSING"
+        return {"status": "INVALID_CONFIG", "provider": provider_name, "model": getattr(provider, "model", ""), "error": error}
+    model = str(getattr(provider, "model", "") or "").strip()
+    if not model:
+        error = "QWEN_MODEL_MISSING" if provider_name == "qwen_mt" else "MODEL_MISSING"
+        return {"status": "INVALID_CONFIG", "provider": provider_name, "model": "", "error": error}
+    headers = {"Accept": "application/json"}
+    api_key_env = getattr(provider, "api_key_env", None)
+    if api_key_env:
+        api_key = os.environ.get(str(api_key_env))
+        if provider_name == "qwen_mt" and not api_key:
+            return {"status": "INVALID_CONFIG", "provider": provider_name, "model": model, "error": "QWEN_API_KEY_MISSING"}
+        # A masked placeholder copied from a terminal (for example ``※`` or
+        # ``*``) is not a usable credential.  Report it explicitly instead
+        # of claiming the key is present and waiting for an opaque HTTP 400.
+        if provider_name == "qwen_mt" and api_key and (len(api_key.strip()) <= 1 or set(api_key.strip()) <= {"*", "※", "•"}):
+            return {"status": "INVALID_CONFIG", "provider": provider_name, "model": model, "error": "QWEN_API_KEY_INVALID_FORMAT"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+    # qwen-mt-flash's compatible endpoint is a translation endpoint and does
+    # not guarantee an OpenAI-style GET /models route.  Treat configuration as
+    # healthy after the explicit key/base/model checks; the subsequent Live
+    # Smoke POST is the real contract/endpoint verification.
+    if provider_name == "qwen_mt":
+        diagnostics = endpoint_diagnostics(base_url)
+        if diagnostics["endpoint_contract"] == "UNKNOWN_ENDPOINT_PATH":
+            return {
+                "status": "INVALID_CONFIG",
+                "provider": provider_name,
+                "model": model,
+                "error": "QWEN_ENDPOINT_PATH_INVALID",
+                **diagnostics,
+            }
+        return {
+            "status": "PASS",
+            "provider": provider_name,
+            "model": model,
+            "health_check": "CONFIG_ONLY_QWEN_MT",
+            **diagnostics,
+        }
+    request = urllib.request.Request(base_url + "/models", headers=headers, method="GET")
     try:
         with urllib.request.urlopen(request, timeout=int(getattr(provider, "timeout", 60))) as response:  # nosec B310 - explicit configured endpoint
             body = json.loads(response.read().decode() or "{}")
-        configured = str(getattr(provider, "model", "") or "").strip()
+        configured = model
         models = body.get("data") if isinstance(body, Mapping) else None
         if configured and isinstance(models, list):
             ids = {str(item.get("id") or item.get("name") or "") for item in models if isinstance(item, Mapping)}
@@ -313,8 +438,8 @@ def resolve_unknown(engine, record: Mapping[str, Any], plan, provider: Localizat
                  "tech_token_candidates": result.get("tech_token_candidates") or [],
                  "confidence": result.get("confidence"),
                  "review_notes": result.get("review_notes", ""),
-                 "request_hash": hashlib.sha256(request_body.encode("utf-8")).hexdigest(),
-                 "response_hash": hashlib.sha256(json.dumps(result, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")).hexdigest(),
+                 "request_hash": str(result.get("provider_request_hash") or hashlib.sha256(request_body.encode("utf-8")).hexdigest()),
+                 "response_hash": str(result.get("provider_response_hash") or hashlib.sha256(json.dumps(result, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")).hexdigest()),
                  "generated_at": datetime.now(timezone.utc).isoformat(),
                  "schema_status": "PASS" if schema_ok else "FAIL",
                  "schema_reasons": schema_reasons}

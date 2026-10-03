@@ -87,15 +87,16 @@ def _safe_config_snapshot(cfg: dict[str, Any]) -> dict[str, Any]:
     knowledge = cfg.get("knowledge") or {}
     dictionary = cfg.get("scoped_dictionary") or {}
     translation = cfg.get("translation") or {}
+    localization = cfg.get("localization") or {}
     ai = cfg.get("ai") or {}
     return {
         "storage_mode": str((cfg.get("storage") or {}).get("mode") or ""),
         "database_path": str((cfg.get("storage") or {}).get("db_path") or ""),
         "image_enabled": bool(run.get("image_download_enabled", image.get("enabled", False))),
-        "knowledge_apply_enabled": bool(knowledge.get("production_apply_enabled", False)),
+        "knowledge_apply_enabled": bool(knowledge.get("production_apply_enabled", False)) and bool(localization.get("production_apply_enabled", False)),
         "scoped_dictionary_enabled": bool(dictionary.get("enabled", False)),
         "ai_enabled": bool(translation.get("ai_enabled", False) or ai.get("translation_provider")),
         "provider": str(translation.get("provider") or ai.get("translation_provider") or ""),
         "model": str(translation.get("model") or ai.get("model") or ""),
-        "auto_approval_enabled": bool(translation.get("auto_approval_enabled", False)),
+        "auto_approval_enabled": bool(translation.get("auto_approval_enabled", False) or localization.get("auto_approval_enabled", False)),
     }

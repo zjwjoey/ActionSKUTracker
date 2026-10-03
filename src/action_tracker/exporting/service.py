@@ -104,15 +104,28 @@ def export_catalog(
     dictionary_hash = None
     fallback_counts: dict[str, int] = {}
     unresolved_brand_ids: list[str] = []
+    historical_localization_reuse: dict[str, Any] = {}
     if language == "es":
         validate_spanish_source_fields(source.records)
         rows = build_es_rows(source.records)
     elif language == "zh" and source.kind == "SQLITE_CURRENT":
-        rows, fallback_counts = build_zh_rows_from_localized_source(source.records)
+        try:
+            dictionary = load_dictionary_context(cfg)
+            rows, fallback_counts = build_zh_rows_from_localized_source(
+                source.records, category_context=dictionary,
+            )
+            dictionary_hash = dictionary.content_hash
+        except DictionaryJoinError as exc:
+            raise ExportValidationError(str(exc)) from exc
     elif language == "zh":
         try:
             dictionary = load_dictionary_context(cfg)
-            rows, fallback_counts = build_zh_rows(source.records, dictionary)
+            zh_records = source.records
+            if source.kind == "FORMAL_SNAPSHOT":
+                zh_records, historical_localization_reuse = _reuse_source_bound_localizations(
+                    cfg, source.records,
+                )
+            rows, fallback_counts = build_zh_rows(zh_records, dictionary)
             dictionary_hash = dictionary.content_hash
             unresolved_brand_ids = unresolved_brand_ids_for_records(source.records, dictionary)
         except DictionaryJoinError as exc:
@@ -201,6 +214,8 @@ def export_catalog(
             manifest["dictionary_hash"] = dictionary_hash
             manifest["dictionary_fallback_counts"] = fallback_counts
             manifest["dictionary_unresolved_brand_ids"] = unresolved_brand_ids
+            if historical_localization_reuse:
+                manifest["historical_localization_reuse"] = historical_localization_reuse
         manifest_path = output_path.with_suffix(".manifest.json")
         _publish_export_pair(preview_path, output_path, manifest_path, manifest)
         if selection_id:
@@ -231,6 +246,115 @@ def export_catalog(
         "artifact_source_commit_id": artifact_source_commit_id,
         "release_mode": "research_release" if research_release else "preview",
     }
+
+
+_HISTORICAL_LOCALIZATION_FIELDS = (
+    ("name_es", "name_zh"),
+    ("spec_es", "spec_zh"),
+    ("desc_es", "desc_zh"),
+    ("details_es", "details_zh"),
+)
+
+
+def _reuse_source_bound_localizations(
+    cfg: dict[str, Any], records: Iterable[dict[str, Any]],
+) -> tuple[tuple[dict[str, Any], ...], dict[str, Any]]:
+    """Reuse PRIMARY Chinese values for an immutable historical snapshot.
+
+    The snapshot remains authoritative for SKU membership and every Spanish
+    fact. A Chinese field is copied only when the same SKU exists in PRIMARY,
+    that field's Spanish source is unchanged, the localization is fresh, and
+    the target visibly contains Chinese. This keeps the reuse field-scoped and
+    prevents a newer product revision from leaking into an older export.
+    """
+    if str((cfg.get("storage") or {}).get("mode") or "EXCEL_PRIMARY").upper() != "SQLITE_PRIMARY":
+        return tuple(records), {}
+
+    from ..database.repository import ProductionRepository, ProductionRepositoryError
+
+    try:
+        references = ProductionRepository(_database_path(cfg)).load_current_export_records(
+            include_non_current=True,
+        )
+    except ProductionRepositoryError as exc:
+        raise ExportValidationError(f"HISTORICAL_LOCALIZATION_REFERENCE_ERROR: {exc}") from exc
+
+    reference_by_sku = {
+        str(record.get("sku") or "").strip(): record
+        for record in references
+        if str(record.get("sku") or "").strip()
+    }
+    field_counts = {target: 0 for _, target in _HISTORICAL_LOCALIZATION_FIELDS}
+    source_changed_counts = {target: 0 for _, target in _HISTORICAL_LOCALIZATION_FIELDS}
+    no_reference_count = 0
+    output: list[dict[str, Any]] = []
+    for record in records:
+        hydrated = dict(record)
+        sku = str(record.get("sku") or "").strip()
+        reference = reference_by_sku.get(sku)
+        if reference is None:
+            no_reference_count += 1
+            output.append(hydrated)
+            continue
+        source_bound_fields: list[str] = []
+        provenance = reference.get("zh_field_provenance") or {}
+        for source_field, target_field in _HISTORICAL_LOCALIZATION_FIELDS:
+            historical_source = _normalized_source_identity(record.get(source_field))
+            current_source = _normalized_source_identity(reference.get(source_field))
+            if not historical_source:
+                # Source-absent fields must remain absent in the target.
+                hydrated[target_field] = None
+                continue
+            if historical_source != current_source:
+                source_changed_counts[target_field] += 1
+                continue
+            canonical = {
+                "name_zh": "name", "spec_zh": "spec",
+                "desc_zh": "description", "details_zh": "details",
+            }[target_field]
+            metadata = provenance.get(canonical) or {}
+            freshness = str(
+                metadata.get("freshness_status")
+                or reference.get("zh_freshness_status")
+                or ""
+            ).upper()
+            if freshness not in {"CURRENT", "FRESH"}:
+                continue
+            target_value = str(metadata.get("value") or reference.get(target_field) or "").strip()
+            if not target_value or not _CJK_RE.search(target_value):
+                continue
+            hydrated[target_field] = target_value
+            source_bound_fields.append(target_field)
+            field_counts[target_field] += 1
+        if source_bound_fields:
+            hydrated["_source_bound_localization_fields"] = tuple(source_bound_fields)
+        output.append(hydrated)
+
+    return tuple(output), {
+        "reference": "SQLITE_PRIMARY_FIELD_SOURCE_MATCH",
+        "field_reuse_counts": field_counts,
+        "source_changed_counts": source_changed_counts,
+        "sku_without_reference_count": no_reference_count,
+    }
+
+
+def _normalized_source_identity(value: Any) -> str:
+    text = str(value or "").replace("\r\n", "\n").replace("\r", "\n")
+    text = "\n".join(line.rstrip() for line in text.strip().split("\n"))
+    # The detail parser historically inserted a separator inside a compound
+    # Spanish key (for example ``Material: de revestimiento``). Treat only
+    # those connector forms as punctuation-equivalent; values after a real
+    # key separator remain significant.
+    text = re.sub(
+        r"\b(Capacidad|Material|Tama(?:ñ|n)o):\s+(?=(?:de\b|del\b|máx\.|max\.))",
+        r"\1 ", text, flags=re.IGNORECASE,
+    )
+    # Quantity abbreviations and their expanded form own the same fact.
+    text = re.sub(
+        r"\b(?:uds?|unid(?:ades)?)\.?(?=\s|$)",
+        "unidades", text, flags=re.IGNORECASE,
+    )
+    return text
 
 
 def _commit_id_for_run(db_path: Path, run_id: str | None) -> str | None:

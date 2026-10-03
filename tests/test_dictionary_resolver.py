@@ -33,14 +33,14 @@ def test_resolver_manual_override_has_field_level_priority():
     assert result.readiness == "AUTO_READY"
 
 
-def test_resolver_adds_marker_only_for_confirmed_brand_and_not_manual_title():
+def test_resolver_omits_confirmed_brand_from_display_and_not_manual_title():
     record = _record()
     source_hash = product_source_hash({"name_es_raw": "Caja", "cat1_es": "Hogar", "cat2_es": "", "spec_es_raw": "2 unidades"})
     product = {"1001": {"sku": "1001", "name_zh_standard": "记号笔", "spec_zh_standard": "2件装", "source_hash": source_hash, "translation_status": "HUMAN_REVIEWED", "cat1_zh": "家务清洁", "brand_id": "Stanger"}}
     brands = {"Stanger": {"brand_id": "Stanger", "canonical_name": "Stanger", "confidence": "REFERENCE"}}
     result = resolve_record(record, _context(product=product, brands=brands))
     assert result.brand_classification == "CONFIRMED"
-    assert result.fields["name"].value == "Stanger牌记号笔"
+    assert result.fields["name"].value == "记号笔"
 
     manual = resolve_record(record, _context(product=product, brands=brands, manual={"1001": {"name_zh_standard": "人工记号笔"}}))
     assert manual.fields["name"].value == "人工记号笔"

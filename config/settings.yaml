@@ -121,8 +121,8 @@ run:
   lock_stale_minutes: 180
   # 详情抓取后多久需要强制刷新（天）
   detail_refresh_days: 7
-  # 翻译：阶段一不做（中文列用西语 fallback 占位）。
-  # 后续启用时走 AI API（见下方 ai 段），不用外部翻译服务。
+  # 正式中文由 Translation Registry / PRIMARY projection 管理；未批准时
+  # 保持 PENDING/空值，正式中文链路不自动使用西语填充中文字段。
   translation_enabled: false
   image_download_enabled: false
   # dry-run 时是否对新品/变化 SKU 抓详情
@@ -143,27 +143,44 @@ dictionary_apply:
 # localization writes and model/auto-approval paths stay explicitly closed.
 knowledge:
   production_apply_enabled: false
-  fallback_to_spanish: true
+  fallback_to_spanish: false
 
 # ---- Localization Intelligence V1 ----
 localization:
   policy_version: CHINESE_LOCALIZATION_STANDARD_V1
+  display_policy_profile: ACTION_MASTER_NO_BRAND_V1
+  omit_brand_from_chinese_display: true
+  registry_enabled: true
+  production_apply_enabled: false
+  auto_approval_enabled: false
+  formal_daily_chain: true
   ai:
     enabled: false
-    # Provider is interchangeable; local Qwen3:8B is an example, not a
-    # required runtime dependency.  Set enabled explicitly for a smoke test.
-    provider: local_openai_compatible
+    # Dedicated Alibaba Qwen MT adapter.  Keep disabled until an explicit
+    # operator enables a shadow translation run; secrets are never stored in
+    # this file.
+    provider: qwen_mt
     base_url: null
-    model: qwen3:8b
-    api_key_env: null
+    model: qwen-mt-flash
+    api_key_env: DASHSCOPE_API_KEY
     temperature: 0
-    timeout: 120
+    timeout: 60
     max_batch_size: 20
+    max_characters_per_request: 12000
     max_retries: 3
+    # qwen-mt-flash is limited to 60 RPM in Beijing; 0.5 requests/sec keeps
+    # normal canaries at roughly 30 RPM and smooths burst traffic.
+    backoff_seconds: 5
+    rate_limit_per_second: 0.5
+    domain: e-commerce
+    terms: []
+    tm_entries: []
 
 scoped_dictionary:
   enabled: false
 
+# Legacy compatibility configuration. Formal Translation V1 reads
+# localization.* above; these keys are retained for older callers only.
 translation:
   ai_enabled: false
   provider: null

@@ -24,6 +24,7 @@ _DETAIL_VALUE_MAP = {
 
 def format_spec(value: str) -> str:
     value = str(value or "").strip()
+    value = re.sub(r"(?<!\d)(\d{1,3})[.](\d{3})(?!\d)", r"\1\2", value)
     value = value.replace("|", "｜").replace("×", "×")
     value = re.sub(r"(?<=\d)\s*[xX]\s*(?=\d)", "×", value)
     value = re.sub(r"(?<=\d)\s*[-–]\s*(?=\d)", "–", value)
@@ -32,6 +33,10 @@ def format_spec(value: str) -> str:
     value = re.sub(r"\bvarias variantes\b|\bdiferentes variantes\b", "多款可选", value, flags=re.I)
     value = re.sub(r"\b(\d+)\s*en\s*(\d+)\b", lambda m: f"{m.group(1)}合{m.group(2)}", value, flags=re.I)
     value = re.sub(r"\bvarios modelos\b|\bvarios modelos\b", "多款可选", value, flags=re.I)
+    value = re.sub(r"\bnúmeros?\b", "尺码", value, flags=re.I)
+    value = re.sub(r"\bvatios\b", "W", value, flags=re.I)
+    value = re.sub(r"\blavados\b", "次洗涤", value, flags=re.I)
+    value = re.sub(r"(?i)\bA partir de\s+(\d+)\s+años\b", r"\1岁以上", value)
     value = re.sub(r"\bunidades?\b", "件", value, flags=re.I)
     value = re.sub(r"\bpiezas?\b", "件", value, flags=re.I)
     value = re.sub(r"\bpares?\b", "双", value, flags=re.I)
@@ -45,6 +50,7 @@ def format_spec(value: str) -> str:
     value = re.sub(r"\blitros?\b", "L", value, flags=re.I)
     value = re.sub(r"\bmililitros?\b", "ml", value, flags=re.I)
     value = re.sub(r"\bpulgadas?\b", "英寸", value, flags=re.I)
+    value = re.sub(r"\bl[uú]menes?\b", "流明", value, flags=re.I)
     value = re.sub(r"\bhojas?\b", "张", value, flags=re.I)
     # Unit conversion above may introduce a space (``100 gramos`` -> ``100 g``).
     # Compact retail notation removes only the space immediately before a
@@ -56,9 +62,12 @@ def format_spec(value: str) -> str:
 
 def format_unit_price(value: str) -> str:
     value = str(value or "").strip()
-    value = re.sub(r"€/kg", "€/千克", value, flags=re.I)
-    value = re.sub(r"€/l", "€/升", value, flags=re.I)
+    value = re.sub(r"€/kg(?![A-Za-z])", "€/千克", value, flags=re.I)
+    # ``€/lav`` is cost per wash.  Match the litre token only when it is a
+    # complete unit so the leading ``l`` cannot corrupt ``lav``.
+    value = re.sub(r"€/l(?![A-Za-z])", "€/升", value, flags=re.I)
     value = re.sub(r"€/ud\.?", "€/件", value, flags=re.I)
+    value = re.sub(r"€/lav(?![A-Za-z])", "€/次洗涤", value, flags=re.I)
     return value
 
 

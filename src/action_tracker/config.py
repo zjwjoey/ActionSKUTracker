@@ -37,8 +37,36 @@ def load_settings(path: Path | str | None = None) -> dict[str, Any]:
         if not profile.is_absolute():
             profile = _PROJECT_ROOT / profile
         cfg["browser"]["profile_dir"] = profile
+    _apply_fail_closed_defaults(cfg)
     cfg["project_root"] = _PROJECT_ROOT
     return cfg
+
+
+def _apply_fail_closed_defaults(cfg: dict[str, Any]) -> None:
+    """Normalize Translation V1 safety switches without ever opening them.
+
+    Configuration files are allowed to be older or minimal fixtures.  Missing
+    production, auto-approval, AI, or Spanish-fallback switches must resolve
+    to the safe state rather than relying on every caller to remember a
+    default.  Explicit values are preserved for operator-controlled previews.
+    """
+    knowledge = dict(cfg.get("knowledge") or {})
+    knowledge.setdefault("production_apply_enabled", False)
+    knowledge.setdefault("fallback_to_spanish", False)
+    cfg["knowledge"] = knowledge
+
+    localization = dict(cfg.get("localization") or {})
+    localization.setdefault("production_apply_enabled", False)
+    localization.setdefault("auto_approval_enabled", False)
+    ai = dict(localization.get("ai") or {})
+    ai.setdefault("enabled", False)
+    localization["ai"] = ai
+    cfg["localization"] = localization
+
+    translation = dict(cfg.get("translation") or {})
+    translation.setdefault("ai_enabled", False)
+    translation.setdefault("auto_approval_enabled", False)
+    cfg["translation"] = translation
 
 
 def ensure_runtime_dirs(cfg: dict[str, Any]) -> None:

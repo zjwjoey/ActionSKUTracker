@@ -14,6 +14,7 @@ from .exporting.dictionary_join import (
     _resolve_existing_chinese_field,
     _resolve_product_field,
 )
+from .localization.policy import OMIT_BRAND_FROM_CHINESE_DISPLAY
 
 
 FIXED_CAT1 = frozenset({
@@ -109,17 +110,23 @@ def resolve_record(record: dict[str, Any], context: DictionaryContext) -> Record
             source = "brand_dictionary_provisional" if status == "READY" else "brand_dictionary"
             fields["brand"] = FieldResolution(brand_value, source, status)
 
-    # Chinese display titles may add the brand marker only after the brand is
-    # confirmed.  Manual title overrides remain field-level authority and are
-    # never reformatted automatically.
+    # Brand/IP evidence is internal provenance, not Chinese display text.
+    # Manual title overrides remain field-level authority and are never
+    # reformatted automatically.  Remove only an identified brand span; do
+    # not globally replace the ordinary Chinese character “牌”.
     if (
         brand_classification == "CONFIRMED"
         and fields["name"].status == "READY"
         and fields["name"].source != "manual_override"
     ):
         name = fields["name"]
+        value = name.value
+        if OMIT_BRAND_FROM_CHINESE_DISPLAY:
+            value = re.sub(rf"(?i)(?<!\w){re.escape(brand_value)}(?:牌)?", "", value, count=1).strip()
+        else:
+            value = format_confirmed_brand_title(value, brand_value)
         fields["name"] = FieldResolution(
-            format_confirmed_brand_title(name.value, brand_value), name.source, name.status,
+            value, name.source, name.status,
         )
 
     raw_source_quality = context.source_quality_by_sku.get(sku, "") or "OK"

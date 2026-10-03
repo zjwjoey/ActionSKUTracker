@@ -4,6 +4,13 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 
 项目以 Action ES 官网西班牙语内容为事实，以 Listing/Sitemap Presence 判断商品是否被观察到，以本地 Excel、CSV 和 JSON 保存可审计证据。中文名称、品牌、类目和术语属于派生数据，不能反向改写官网事实。
 
+### 中文显示品牌规则（ACTION_MASTER_NO_BRAND_V1）
+
+中文翻译和中文导出中不保留品牌名、IP 名称，也不添加“牌”字。品牌/IP
+仍可作为内部识别、QA、来源证据和术语判断使用，但不得出现在中文品名、
+Action 商品、中文描述或产品详情的显示文本中。型号、接口、技术 Token、
+标准单位和数字事实不属于品牌，必须保留。西班牙语官方字段始终原样保留。
+
 ## 当前能力
 
 - Sitemap、15 个主类目、Nuevo 和 Promoción semanal 入口采集；
@@ -23,6 +30,15 @@ Action 西班牙站商品每日监测、生命周期管理、中文标准化和 
 - Saved View CLI：`saved-view create/list/update/delete`；Selection 成员创建后保持固定。
 - Data Quality & Integrity V1：历史问题审计/修复候选、只读 Master Quality Gate、采集指标/健康基线、
   Collection 状态与 Schema Drift；详见 [`DATA_QUALITY_INTEGRITY_V1`](docs/DATA_QUALITY_INTEGRITY_V1.md)。
+- Translation System V1：字段级 source version、唯一 Resolver、TM/术语范围、Qwen-MT Provider、
+  typed QA、repair/review、不可变 revision、Daily queue 和只读 Approved Projection；默认 fail-closed，
+  详见 [`TRANSLATION_SYSTEM_V1`](docs/TRANSLATION_SYSTEM_V1.md)。
+- Translation Runtime V1 已收口为统一 Runtime Builder、字段级 Queue Worker 和
+  Approved Revision → Immutable Patch → SQLite PRIMARY 的显式链路；生产 Apply、自动审批和 AI 默认关闭。
+  Queue Worker 只对网络/超时/429/5xx（及瞬时 SQLite I/O）有限重试；终止性
+  Provider 错误进入 FAILED/BLOCKED。真实 Provider 调用与 revision 通过
+  `provider_call_id`、request/response hash、usage 和 retry_count 可追溯，
+  Resolver 命中的术语同时进入 Qwen 请求和最终 QA。
 
 当前准确状态、已提交和仅存在于本地工作区的功能区别，见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
@@ -60,6 +76,9 @@ Master / State
 - [Data Quality & Integrity V1 Plan](docs/DATA_QUALITY_INTEGRITY_V1_PLAN.md)
 - [Data Quality & Integrity V1 Acceptance Draft](docs/DATA_QUALITY_INTEGRITY_V1_ACCEPTANCE.md)
 - [Data Quality & Integrity V1 Self-Audit](docs/DATA_QUALITY_INTEGRITY_V1_SELF_AUDIT.md)
+- [Translation System V1](docs/TRANSLATION_SYSTEM_V1.md)
+- [Translation System V1 Contract](docs/TRANSLATION_SYSTEM_V1_CONTRACT.md)
+- [Translation Runtime V1](docs/TRANSLATION_RUNTIME_V1_IMPLEMENTATION.md)
 
 ## 快速使用
 
@@ -85,6 +104,12 @@ python -m action_tracker qa
 
 # 统计当前正式 CURRENT 的 AI-Free 字典覆盖率（只读）
 python -m action_tracker dictionary-coverage --run-id <正式run_id>
+
+# 消费翻译队列（一次执行，默认不启用 Provider）
+python -m action_tracker translation-worker --limit 50 --once
+
+# 只读预览 Registry 中已批准字段；正式 Apply 仍需显式配置与 Owner 参数
+python -m action_tracker translation-apply --from-registry --dry-run --base-commit-id <commit>
 
 # 生成字典字段应用预览；默认绝不写 Master
 python -m action_tracker dictionary-apply --run-id <正式run_id> --dry-run
@@ -122,7 +147,7 @@ python scripts/publish_dictionary_baseline.py
 
 增量字典、审核队列、术语候选和 Resolver 已实现为本地离线能力；Dictionary Apply Gate 已实现，生产写入由 YAML 布尔值 `dictionary_apply.production_enabled: false` 明确关闭（字符串配置会安全报错）。正式 Apply 还要求字典与已发布基线逐文件 hash 一致、审计未过期、全部 SKU 为 AUTO_READY，且默认不允许 PROVISIONAL 品牌。具体状态见 [CURRENT_STATE](docs/CURRENT_STATE.md)。
 
-Knowledge Production V1（P3–P6）的统一合同、SQLite resolution/queue/candidate/audit 表、字段级 Resolver、增量队列、候选 Validator 和 Auto-Approval Shadow 已完成；生产 Apply、AI provider、Scoped Dictionary 审批和 Auto-Approval 仍由配置门禁关闭。合同文档见 [`docs/knowledge/`](docs/knowledge/)。
+Knowledge Production V1（P3–P6）的统一合同、SQLite resolution/queue/candidate/audit 表、字段级 Resolver、增量队列、候选 Validator 和 Auto-Approval Shadow 已完成；生产 Apply、AI provider、Scoped Dictionary 审批和 Auto-Approval 仍由配置门禁关闭，正式中文链路默认不把西语回填到中文字段，缺失翻译保持待审。合同文档见 [`docs/knowledge/`](docs/knowledge/)。
 
 ## 导出
 

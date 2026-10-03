@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -128,6 +129,82 @@ def build_parser() -> argparse.ArgumentParser:
     kf.add_argument("--run-id", default="knowledge-feed-v1-baseline", help="本轮 Feed 标识")
     sub.add_parser("localization-ai-status", help="检查本地 Localization AI Provider 配置与端点（只读）")
     sub.add_parser("localization-ai-check", help="执行虚构数据的本地 AI JSON 合同 smoke test（只读）")
+    ri = sub.add_parser("localization-registry-ingest", help="将 PRIMARY 当前西语事实登记到 Shadow 翻译注册表，不写生产字段")
+    ri.add_argument("--run-id", required=True, help="来源 observation run_id")
+    ri.add_argument("--observed-at", required=True, help="来源观测时间或日期")
+    mp = sub.add_parser("localization-migration-preview", help="预览 TM/Gold/Patch 迁移资格，不写任何生产数据")
+    mp.add_argument("--input", action="append", required=True, help="TM/Gold/Patch CSV/JSON/XLSX，可重复")
+    mp.add_argument("--output", required=True, help="预览输出目录")
+    mp.add_argument("--baseline", default="origin-main")
+    ma = sub.add_parser("localization-migration-apply", help="应用未改变且已校验 hash 的迁移预览（默认只读）")
+    ma.add_argument("--preview", required=True)
+    ma.add_argument("--manifest-hash", required=True)
+    ma.add_argument("--commit", action="store_true")
+    ma.add_argument("--actor", default="")
+    sh = sub.add_parser("localization-shadow-run", help="对 PRIMARY CURRENT 做只读翻译解析 Shadow")
+    sh.add_argument("--run-id")
+    sh.add_argument("--output", required=True)
+    ca = sub.add_parser("localization-canary", help="对指定 SKU/字段做只读 Canary")
+    ca.add_argument("--sku", dest="skus", action="append")
+    ca.add_argument("--field", dest="field_name")
+    ca.add_argument("--limit", type=int, default=50)
+    ca.add_argument("--provider", action="store_true", help="显式允许本次 Canary 调用已配置 Provider")
+    ca.add_argument("--output", required=True)
+    rb = sub.add_parser("retranslation-batch", help="生成只读字段级重新本地化候选批次")
+    rb.add_argument("--limit", type=int, default=10, help="SKU 数量；第一阶段建议 10")
+    rb.add_argument("--provider", action="store_true", help="显式允许本次批次调用已配置 Provider")
+    rb.add_argument("--output", required=True, help="候选批次输出目录")
+    rb.add_argument("--batch-id", default="", help="可选批次 ID")
+    rb.add_argument("--data-root", default="", help="SQLite/运行数据根目录；代码 worktree 与数据目录分离时必填")
+    fa = sub.add_parser("translation-family-audit", help="审计当前商品族与 Canonical QA")
+    fa.add_argument("--family", default="", help="可选 family_id；留空审计全部")
+    fa.add_argument("--output", help="可选 JSON 报告路径")
+    fr = sub.add_parser("translation-family-regression", help="运行产品族回归测试")
+    fr.add_argument("--family", default="CLEANING_CLOTH")
+    fr.add_argument("--output", help="可选 JSON 报告路径")
+    ff = sub.add_parser("translation-family-feedback", help="从人工修正中生成产品族候选，不自动批准")
+    ff.add_argument("--input", required=True, help="JSON/JSONL/CSV 人工修正记录")
+    ff.add_argument("--output", required=True)
+    ff.add_argument("--min-occurrences", type=int, default=3)
+    ls = sub.add_parser("localization-live-smoke", help="显式执行少量 Provider smoke；默认不写生产")
+    ls.add_argument("--limit", type=int, default=5)
+    ls.add_argument("--output", required=True)
+    ls.add_argument("--minimal", action="store_true", help="执行官方最小 Qwen-MT wire smoke，不带 domains/terms/TM")
+    tr = sub.add_parser("translation-status", help="显示翻译注册表队列状态")
+    tw = sub.add_parser("translation-worker", help="消费翻译队列并写入 Shadow Registry（不写 PRIMARY）")
+    tw.add_argument("--limit", type=int, default=50)
+    tw.add_argument("--worker-id", default="localization-worker")
+    tw.add_argument("--provider", action="store_true", help="显式允许本次 Worker 调用已配置 Provider")
+    tw.add_argument("--dry-run", action="store_true")
+    tw.add_argument("--once", action="store_true", help="执行一批后退出（默认行为）")
+    # Stable English aliases for automation; the localization-* names remain
+    # backward-compatible with existing scripts.
+    tri = sub.add_parser("translation-registry-ingest", help=argparse.SUPPRESS)
+    tri.add_argument("--run-id", required=True); tri.add_argument("--observed-at", required=True)
+    tmr = sub.add_parser("translation-migration-preview", help=argparse.SUPPRESS)
+    tmr.add_argument("--input", action="append", required=True); tmr.add_argument("--output", required=True); tmr.add_argument("--baseline", default="origin-main")
+    tma = sub.add_parser("translation-migration-apply", help=argparse.SUPPRESS)
+    tma.add_argument("--preview", required=True); tma.add_argument("--manifest-hash", required=True); tma.add_argument("--commit", action="store_true"); tma.add_argument("--actor", default="")
+    tsh = sub.add_parser("translation-shadow-run", help=argparse.SUPPRESS)
+    tsh.add_argument("--run-id"); tsh.add_argument("--output", required=True)
+    tca = sub.add_parser("translation-canary", help=argparse.SUPPRESS)
+    tca.add_argument("--sku", dest="skus", action="append"); tca.add_argument("--field", dest="field_name"); tca.add_argument("--limit", type=int, default=50); tca.add_argument("--provider", action="store_true"); tca.add_argument("--output", required=True)
+    tls = sub.add_parser("translation-live-smoke", help=argparse.SUPPRESS)
+    tls.add_argument("--limit", type=int, default=5); tls.add_argument("--output", required=True)
+    trep = sub.add_parser("translation-report", help=argparse.SUPPRESS)
+    trep.add_argument("--input", required=True)
+    tge = sub.add_parser("translation-gold-eval", help="离线评估冻结 Gold，不写入任何生产数据")
+    tge.add_argument("--input", required=True, help="CSV 或 JSONL，包含 sku/field/source/prediction/gold")
+    tge.add_argument("--output", required=True)
+    trev = sub.add_parser("translation-review", help=argparse.SUPPRESS)
+    trev.add_argument("--limit", type=int, default=100)
+    tap = sub.add_parser("translation-apply", help=argparse.SUPPRESS)
+    tap.add_argument("--run-id", required=False); tap.add_argument("--dry-run", action="store_true"); tap.add_argument("--commit", action="store_true")
+    tap.add_argument("--from-registry", action="store_true", help="从 Approved Registry Revision 构建 PRIMARY patch")
+    tap.add_argument("--base-commit-id", default="")
+    tap.add_argument("--actor", default="")
+    tlp = sub.add_parser("translation-legacy-preview", help=argparse.SUPPRESS)
+    tlp.add_argument("--directory", required=True); tlp.add_argument("--output", required=True)
     lr = sub.add_parser("localization-learning-report", help="查看最近一次 Localization learning candidates")
     lr.add_argument("--run-id", help="指定报告 run_id")
     lp = sub.add_parser("localization-promote", help="记录候选知识晋升决定（默认只读）")
@@ -189,6 +266,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    if getattr(args, "data_root", ""):
+        # Must be set before load_settings() so database_path() resolves the
+        # explicit production data root rather than an empty worktree DB.
+        os.environ["ACTION_TRACKER_PROJECT_ROOT"] = str(args.data_root)
     from .config import ensure_runtime_dirs, load_settings
     from .log import setup_logging
 
@@ -454,7 +535,8 @@ def main(argv=None) -> int:
         provider = provider_from_config(ai_cfg)
         health = provider_health(provider)
         result = {"provider": getattr(provider, "provider", type(provider).__name__),
-                  "model": getattr(provider, "model", ""), "endpoint": ai_cfg.get("base_url") or "",
+                  "model": getattr(provider, "model", ""),
+                  "endpoint": getattr(provider, "base_url", "") or ai_cfg.get("base_url") or "",
                   "enabled": bool(ai_cfg.get("enabled") or ai_cfg.get("ai_enabled")), "health": health}
         if args.command == "localization-ai-check" and health.get("status") == "PASS":
             source = SourceFacts.from_record({"sku": "TEST-LOCAL-QWEN", "name_es": "Espumador eléctrico portátil"})
@@ -467,6 +549,329 @@ def main(argv=None) -> int:
         elif args.command == "localization-ai-check":
             result["smoke"] = {"status": "LOCAL_PROVIDER_NOT_VERIFIED", "reason": "endpoint health did not pass"}
         print(json.dumps(result, ensure_ascii=False)); return 0
+    if args.command in {"localization-registry-ingest", "translation-registry-ingest"}:
+        from .database.integration import database_path
+        from .database.repository import ProductionRepository
+        from .localization.registry.repository import LocalizationRegistry
+        try:
+            db_path = database_path(cfg)
+            records = ProductionRepository(db_path).load_current_export_records()
+            registry = LocalizationRegistry(db_path, role="PRIMARY")
+            result = registry.ingest_records(records, source_run_id=args.run_id, observed_at=args.observed_at)
+            result.update({"run_id": args.run_id, "production_writes": False, "target": "translation_registry"})
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command in {"localization-migration-preview", "translation-migration-preview"}:
+        from .localization.registry.migration import build_migration_preview
+        try:
+            result = build_migration_preview([Path(item) for item in args.input], Path(args.output), baseline_name=args.baseline)
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command in {"localization-migration-apply", "translation-migration-apply"}:
+        from .database.integration import database_path
+        from .localization.registry.repository import LocalizationRegistry
+        from .localization.registry.migration import apply_migration_preview
+        try:
+            registry = LocalizationRegistry(database_path(cfg), role="SHADOW")
+            result = apply_migration_preview(registry, Path(args.preview), manifest_hash=args.manifest_hash, commit=bool(args.commit), actor=args.actor)
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-family-audit":
+        from .database.integration import database_path
+        from .database.repository import ProductionRepository
+        from .localization.product_family import ProductFamilyRegistry, classify_product_family
+        from .localization.canonical_qa import canonical_guard
+        from .localization.engine import LocalizationEngine
+        from .localization.product_family import context_for_field
+        try:
+            records = ProductionRepository(database_path(cfg)).load_current_export_records()
+            registry = ProductFamilyRegistry()
+            engine = LocalizationEngine()
+            counts = {"family_counts": {}, "canonical_pass": 0, "canonical_fail": 0, "unknown_family": 0, "terminology_conflicts": 0}
+            rows = []
+            for record in records:
+                match = classify_product_family(record, registry=registry)
+                if args.family and match.family_id != args.family:
+                    continue
+                counts["family_counts"][match.family_id] = counts["family_counts"].get(match.family_id, 0) + 1
+                counts["unknown_family"] += int(match.family_id == "UNKNOWN")
+                row = {"sku": str(record.get("sku") or record.get("official_sku") or ""), "family_id": match.family_id, "confidence": match.confidence, "evidence": list(match.evidence), "policy_version": match.policy_version}
+                if match.family_id != "UNKNOWN":
+                    plan = engine.resolve(record)
+                    base_context = getattr(plan, "context", None)
+                    canonical_findings = []
+                    current_fields = {"name": record.get("name_zh") or record.get("name_zh_standard") or record.get("name_zh_display") or "", "cat1": record.get("cat1_zh") or record.get("category1_zh") or "", "cat2": record.get("cat2_zh") or record.get("category2_zh") or "", "spec": record.get("spec_zh") or "", "description": record.get("desc_zh") or record.get("description_zh") or "", "details": record.get("details_zh") or ""}
+                    for field_name, value in current_fields.items():
+                        if base_context is None:
+                            continue
+                        check = canonical_guard(context_for_field(base_context, field_name), {field_name: value}, registry=registry, production=False)
+                        canonical_findings.extend(check.get("findings") or [])
+                    row["canonical_status"] = "PASS" if not canonical_findings else "FAIL"
+                    row["canonical_findings"] = canonical_findings
+                    counts["canonical_pass" if not canonical_findings else "canonical_fail"] += 1
+                    counts["terminology_conflicts"] += len(canonical_findings)
+                else:
+                    row["canonical_status"] = "NOT_RUN"
+                    row["canonical_findings"] = []
+                rows.append(row)
+            result = {"schema_version": "PRODUCT_FAMILY_AUDIT_V1", **counts, "rows": rows, "production_writes": False}
+            if args.output:
+                Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-family-regression":
+        from .localization.product_family import ProductFamilyRegistry, build_translation_context
+        from .localization.engine import LocalizationEngine
+        from .localization.canonical_qa import canonical_guard
+        from .localization.contracts import SourceFacts
+        try:
+            cases = (
+                ({"sku": "F-1", "name_es": "Paño de microfibra", "cat1_es": "Hogar", "cat2_es": "Limpieza"}, "name", "微纤维清洁布"),
+                ({"sku": "F-2", "name_es": "Paño de microfibra para el suelo", "cat1_es": "Hogar", "cat2_es": "Limpieza"}, "name", "微纤维地板清洁布"),
+                ({"sku": "F-3", "name_es": "Bayeta", "cat1_es": "Hogar", "cat2_es": "Limpieza"}, "name", "清洁布"),
+                ({"sku": "F-4", "name_es": "Paño", "cat1_es": "Hogar", "cat2_es": "Limpieza", "desc_es": "Paño de microfibra"}, "description", "超细纤维"),
+                ({"sku": "F-5", "name_es": "Paño de limpieza", "cat1_es": "Hogar", "cat2_es": "Limpieza", "details_es": "Material: Goma"}, "details", "材质：橡胶"),
+                ({"sku": "F-6", "name_es": "Paño de limpieza", "cat1_es": "Hogar", "cat2_es": "Limpieza", "desc_es": "Envase ahorro de gomas para sujetar objetos."}, "description", "橡皮筋"),
+            )
+            rows = []; passed = 0
+            for record, field_name, expected in cases:
+                source = SourceFacts.from_record(record)
+                plan = LocalizationEngine().resolve(record)
+                context = build_translation_context(record, field_name, semantic_facts=plan.semantic_facts, detail_key="material" if field_name == "details" else "")
+                target = expected
+                qa = canonical_guard(context, {field_name: target})
+                ok = qa["status"] == "PASS" and ((field_name != "name") or expected in target)
+                passed += int(ok)
+                rows.append({"sku": source.sku, "field_name": field_name, "family_id": context.family_id, "expected": expected, "canonical_qa": qa, "status": "PASS" if ok else "FAIL"})
+            result = {"schema_version": "CLEANING_CLOTH_REGRESSION_V1", "family": args.family, "total": len(rows), "passed": passed, "failed": len(rows) - passed, "rows": rows, "production_writes": False}
+            if args.output:
+                Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(result, ensure_ascii=False)); return 0 if not result["failed"] else 3
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-family-feedback":
+        from .localization.feedback import mine_family_feedback
+        try:
+            source = Path(args.input)
+            if source.suffix.casefold() == ".csv":
+                import csv
+                rows = list(csv.DictReader(source.open(encoding="utf-8-sig", newline="")))
+            else:
+                payload = json.loads(source.read_text(encoding="utf-8"))
+                rows = payload if isinstance(payload, list) else payload.get("rows", [])
+            result = {"schema_version": "PRODUCT_FAMILY_FEEDBACK_V1", "candidates": mine_family_feedback(rows, min_occurrences=args.min_occurrences), "auto_approved": False, "production_writes": False}
+            Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command in {"localization-shadow-run", "localization-canary", "translation-shadow-run", "translation-canary"}:
+        from .database.integration import database_path
+        from .database.repository import ProductionRepository
+        from .localization.runtime import shadow_run, canary
+        from .localization.runtime_builder import build_translation_runtime
+        try:
+            records = ProductionRepository(database_path(cfg)).load_current_export_records()
+            runtime = build_translation_runtime(cfg, allow_provider=bool(getattr(args, "provider", False)))
+            resolver = runtime.resolver
+            if args.command in {"localization-shadow-run", "translation-shadow-run"}:
+                result = shadow_run(records, output_dir=Path(args.output), run_id=args.run_id, resolver=resolver,
+                                    allow_provider=False)
+            else:
+                result = canary(records, output_dir=Path(args.output), skus=args.skus, field_name=args.field_name,
+                                limit=args.limit, resolver=resolver, allow_provider=bool(getattr(args, "provider", False)))
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "retranslation-batch":
+        from .database.integration import database_path
+        from .database.repository import ProductionRepository
+        from .localization.runtime_builder import build_translation_runtime
+        from .localization.retranslation import build_retranslation_batch
+        try:
+            records = ProductionRepository(database_path(cfg)).load_current_export_records()
+            runtime = build_translation_runtime(cfg, allow_provider=bool(args.provider))
+            result = build_retranslation_batch(
+                records,
+                resolver=runtime.resolver,
+                output_dir=Path(args.output),
+                limit=args.limit,
+                allow_provider=bool(args.provider),
+                batch_id=args.batch_id or None,
+            )
+            print(json.dumps(result, ensure_ascii=False, default=str)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}", "production_writes": False}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-status":
+        from .database.integration import database_path
+        from .localization.registry.repository import LocalizationRegistry
+        from .localization.runtime_builder import _database_role
+        try:
+            registry_path = database_path(cfg)
+            # The production database is PRIMARY after cutover, while a
+            # worktree/test database may still be SHADOW.  Opening the
+            # registry with a hard-coded SHADOW role makes this read-only
+            # status command fail against the real PRIMARY database.  Detect
+            # the existing role without changing it, then read queue state.
+            registry = LocalizationRegistry(registry_path, role=_database_role(registry_path))
+            print(json.dumps(registry.queue_status(), ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-worker":
+        from .localization.runtime_builder import build_translation_runtime
+        try:
+            runtime = build_translation_runtime(cfg, allow_provider=bool(args.provider))
+            if args.dry_run:
+                result = {"status": "PREVIEW_ONLY", "queue": runtime.registry.queue_status(), "production_writes": 0}
+            else:
+                result = runtime.worker.process_once(limit=args.limit, worker_id=args.worker_id).as_dict()
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command in {"localization-live-smoke", "translation-live-smoke"}:
+        from .localization.ai import provider_from_config, provider_health, validate_ai_response
+        from .localization.contracts import SourceFacts
+        from .localization.providers.base import TranslationRequest
+        from .localization.providers.qwen_mt import QwenMTProvider
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            ai_cfg = dict(((cfg.get("localization") or {}).get("ai") or {}))
+            # The read-only live smoke wrapper passes the Qwen provider and
+            # endpoint through process-scoped environment variables.  Older
+            # production data roots may not have a localization.ai block at
+            # all; without this bridge the smoke command silently falls back
+            # to an empty generic OpenAI-compatible provider and reports
+            # BASE_URL_MISSING.  An explicit Qwen opt-in is required and never
+            # enables production writes.
+            explicit_qwen = os.environ.get("ACTION_TRACKER_ALLOW_QWEN_PROVIDER") == "1"
+            env_base = os.environ.get("QWEN_MT_BASE_URL") or os.environ.get("DASHSCOPE_BASE_URL") or ""
+            configured_provider = str(ai_cfg.get("provider") or "").strip().lower()
+            if explicit_qwen and (not configured_provider or configured_provider == "openai_compatible"):
+                ai_cfg.update({
+                    "provider": "qwen_mt",
+                    "model": os.environ.get("QWEN_MT_MODEL") or "qwen-mt-flash",
+                    "api_key_env": "DASHSCOPE_API_KEY",
+                })
+                if env_base and not str(ai_cfg.get("base_url") or "").strip():
+                    ai_cfg["base_url"] = env_base
+            provider = provider_from_config({**ai_cfg, "enabled": True})
+            health = provider_health(provider)
+            configured_base = str(ai_cfg.get("base_url") or "").strip()
+            result = {
+                "provider": getattr(provider, "provider", type(provider).__name__),
+                "model": getattr(provider, "model", ""),
+                "endpoint": getattr(provider, "base_url", ""),
+                "api_key_present": bool((os.environ.get(str(getattr(provider, "api_key_env", "DASHSCOPE_API_KEY"))) or "").strip()) if getattr(provider, "api_key_env", None) else False,
+                "base_url_source": "LOCAL_CONFIG" if configured_base else ("ENV" if env_base else "MISSING"),
+                "workspace_header_present": bool(os.environ.get("DASHSCOPE_WORKSPACE")),
+                "health": health,
+                "production_writes": False,
+            }
+            if health.get("error") in {"QWEN_API_KEY_MISSING", "QWEN_API_KEY_INVALID_FORMAT"}:
+                result["api_key_present"] = False
+            if health.get("status") != "PASS":
+                result["status"] = "LIVE_QWEN_API_NOT_VERIFIED"
+            elif getattr(args, "minimal", False):
+                # Do not run the full resolver here.  This request is the
+                # first diagnostic layer and intentionally excludes domains,
+                # terms, TM entries, prompts and internal metadata.
+                minimal = QwenMTProvider(
+                    str(getattr(provider, "base_url", "")),
+                    str(getattr(provider, "model", "qwen-mt-flash")),
+                    str(getattr(provider, "api_key_env", "DASHSCOPE_API_KEY")),
+                    int(getattr(provider, "timeout", 60)),
+                    max_retries=0,
+                    include_optional_options=False,
+                )
+                request = TranslationRequest(
+                    "SMOKE-MINIMAL",
+                    {"name_es": "No me reí después de ver este video"},
+                    ("name",),
+                    "minimal-qwen-mt-smoke-v1",
+                    target_language="Chinese",
+                    domain="",
+                )
+                response = minimal.translate(request)
+                result.update({
+                    "status": "PASS",
+                    "minimal_status": "MINIMAL_QWEN_MT_SMOKE_PASS",
+                    "translation": response.fields.get("name", ""),
+                    "provider_calls": 1,
+                    "success": 1,
+                    "failed": 0,
+                    "retry_count": int(response.usage.get("retry_count", 0) or 0),
+                    "request_hash_present": bool(response.request_hash),
+                    "response_hash_present": bool(response.response_hash),
+                    "request_id_present": bool(response.request_id),
+                })
+            else:
+                samples = [SourceFacts.from_record({"sku": f"SMOKE-{i}", "name_es": text, "spec_es": spec, "details_es": f"Número del artículo: SMOKE-{i}"}) for i, (text, spec) in enumerate((("Auriculares inalámbricos USB-C", "20 mg"), ("Pack de bombillas LED", "9 W E27"), ("Mesa plegable", "80 x 50 cm"), ("Cable de carga", "1,2 m"), ("Batería", "1000 mAh"))[:max(1, min(args.limit, 5))], 1)]
+                checked = []
+                for sample in samples:
+                    payload = provider.complete(sample, ("name", "spec"))
+                    ok, reasons = validate_ai_response(payload, sample, ("name", "spec"))
+                    checked.append({"sku": sample.sku, "qa": "PASS" if ok else "FAIL", "reasons": reasons})
+                result.update({"status": "PASS" if all(item["qa"] == "PASS" for item in checked) else "FAIL", "fields": checked})
+            out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(result, ensure_ascii=False)); return 0 if result.get("status") == "PASS" else 3
+        except Exception as exc:
+            # Always overwrite the output path so operators never mistake a
+            # previous run's report for the current failure.
+            failure = {
+                "status": "FAIL",
+                "error": f"{type(exc).__name__}: {exc}",
+                "production_writes": False,
+            }
+            out.write_text(json.dumps(failure, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(failure, ensure_ascii=False))
+            return 2
+    if args.command == "translation-report":
+        path = Path(args.input)
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            print(json.dumps(payload, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-gold-eval":
+        from .localization.evaluation import evaluate_frozen_gold
+        try:
+            path = Path(args.input)
+            if path.suffix.casefold() == ".jsonl":
+                rows = [json.loads(line) for line in path.read_text(encoding="utf-8-sig").splitlines() if line.strip()]
+            else:
+                import csv
+                with path.open(encoding="utf-8-sig", newline="") as handle:
+                    rows = list(csv.DictReader(handle))
+            result = evaluate_frozen_gold(rows)
+            out = Path(args.output); out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(result, ensure_ascii=False)); return 0 if result["status"] == "PASS" else 3
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-review":
+        from .database.integration import database_path
+        from .localization.registry.repository import LocalizationRegistry
+        from .localization.runtime_builder import _database_role
+        try:
+            registry_path = database_path(cfg)
+            registry = LocalizationRegistry(registry_path, role=_database_role(registry_path))
+            from .database.connection import connect
+            with connect(registry_path) as db:
+                rows = [dict(row) for row in db.execute("SELECT queue_id,official_sku,requested_fields,status,retry_count,last_error FROM translation_queue WHERE status IN ('PENDING','RETRY','FAILED','BLOCKED') ORDER BY created_at LIMIT ?", (int(args.limit),)).fetchall()]
+            print(json.dumps({"count": len(rows), "rows": rows, "production_writes": False}, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
+    if args.command == "translation-legacy-preview":
+        from .localization.legacy import build_legacy_registry_preview
+        try:
+            result = build_legacy_registry_preview(Path(args.directory), Path(args.output))
+            print(json.dumps(result, ensure_ascii=False)); return 0
+        except Exception as exc:
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2
     if args.command == "localization-learning-report":
         from .localization.service import _report_root
         root = _report_root(cfg)
@@ -509,10 +914,32 @@ def main(argv=None) -> int:
             except KnowledgePromotionError as exc:
                 print(json.dumps({"error": str(exc), "decision": result}, ensure_ascii=False), file=sys.stderr); return 2
         print(json.dumps(result, ensure_ascii=False)); return 0
-    if args.command == "localization-apply":
-        from .localization.service import apply_from_audit
+    if args.command in {"localization-apply", "translation-apply"}:
         try:
-            result = apply_from_audit(cfg, run_id=args.run_id, commit=bool(args.commit and not args.dry_run))
+            if getattr(args, "from_registry", False):
+                if not args.base_commit_id:
+                    raise ValueError("REGISTRY_APPLY_BASE_COMMIT_REQUIRED")
+                from .database.integration import database_path
+                from .knowledge.storage import KnowledgeStore
+                from .database.production import apply_approved_localization_patches
+                db_path = database_path(cfg)
+                store = KnowledgeStore(db_path, role="PRIMARY")
+                if args.dry_run or not args.commit:
+                    result = {"status": "PREVIEW_ONLY", "rows": store.preview_approved_registry_apply(), "production_writes": False}
+                else:
+                    if not args.actor:
+                        raise ValueError("REGISTRY_APPLY_ACTOR_REQUIRED")
+                    enabled = bool((cfg.get("knowledge") or {}).get("production_apply_enabled")) and bool((cfg.get("localization") or {}).get("production_apply_enabled"))
+                    if not enabled:
+                        raise PermissionError("LOCALIZATION_PRODUCTION_APPLY_DISABLED")
+                    staged = store.stage_approved_registry_patches(expected_base_commit_id=args.base_commit_id, actor=args.actor)
+                    applied = apply_approved_localization_patches(db_path, patch_ids=staged["patch_ids"], expected_base_commit_id=args.base_commit_id, actor="service:translation-apply", run_id=args.run_id or "translation_registry_apply") if staged["patch_ids"] else {"status": "NOOP", "applied_fields": 0}
+                    result = {"staged": staged, "applied": applied, "production_writes": True}
+            else:
+                if not args.run_id:
+                    raise ValueError("RUN_ID_REQUIRED")
+                from .localization.service import apply_from_audit
+                result = apply_from_audit(cfg, run_id=args.run_id, commit=bool(args.commit and not args.dry_run))
         except Exception as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2

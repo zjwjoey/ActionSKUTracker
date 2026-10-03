@@ -3,6 +3,11 @@ from __future__ import annotations
 import re
 
 POLICY_VERSION = "CHINESE_LOCALIZATION_STANDARD_V1"
+# Display policy requested for the Action Master Chinese projection.  Brand
+# knowledge remains available for QA/provenance, but brand names and the
+# suffix “牌” are never emitted in Chinese display fields.
+DISPLAY_POLICY_PROFILE = "ACTION_MASTER_NO_BRAND_V1"
+OMIT_BRAND_FROM_CHINESE_DISPLAY = True
 FIXED_CAT1 = (
     "DIY五金", "办公文具", "宠物用品", "厨房餐具", "服饰鞋包", "个人美容",
     "家居布置", "家务清洁", "旅行用品", "食品饮料", "数码影音", "玩具",
@@ -11,6 +16,32 @@ FIXED_CAT1 = (
 _SPANISH_WORDS = re.compile(r"\b(?:para|con|sin|varios?|varias?|diferentes?|unidades?|colores?|negro|blanco|rojo|azul|verde|de|del|la|el|y|o|en|tipo|tamaño|material|contenido|cantidad|incluye|lavable|resistente)\b", re.I)
 _LATIN = re.compile(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]")
 _TECH = re.compile(r"^(?:USB(?:-[A-Z])?|LED|LCD|DIY|FSC|E27|A\d+|D\d+|XL?|[A-Z]{1,6}\d{2,}[A-Z0-9-]*|[A-Z]{2,6}|\d+(?:mg|mcg|mAh|V|W|D))$")
+
+
+def strip_forbidden_display_tokens(value: str, tokens: list[str] | tuple[str, ...] | set[str] = ()) -> str:
+    """Remove identified brand/IP spans from a Chinese display value.
+
+    This deliberately removes only the exact source token (plus an optional
+    ``牌`` suffix).  It must not remove every occurrence of the Chinese
+    character ``牌`` because that would corrupt legitimate words such as
+    ``扑克牌`` and ``行李牌``.
+    """
+    rendered = str(value or "").strip()
+    if not OMIT_BRAND_FROM_CHINESE_DISPLAY or not rendered:
+        return rendered
+    for token in sorted({str(item).strip() for item in tokens if str(item).strip()}, key=len, reverse=True):
+        # ``\w`` is Unicode-aware in Python and treats adjacent Chinese
+        # characters as word characters.  That prevented removal from normal
+        # display strings such as ``Spargo的湿巾``.  The policy boundary only
+        # needs to protect Latin/model characters; Chinese may sit directly
+        # next to a source brand token.
+        rendered = re.sub(
+            rf"(?i)(?<![A-Za-z0-9_]){re.escape(token)}(?:牌)?(?![A-Za-z0-9_])",
+            "",
+            rendered,
+            count=1,
+        ).strip()
+    return rendered
 
 
 def has_ordinary_spanish(value: str, *, allowed_tokens: set[str] | None = None) -> bool:

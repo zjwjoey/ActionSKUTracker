@@ -246,6 +246,11 @@ def _validate_patch_apply_in_connection(
             raise ImmutablePatchError("PATCH_LEGACY_SOURCE_NOT_ALLOWED")
     if evidence.get("field_name") and evidence.get("field_name") != patch["field_name"]:
         raise ImmutablePatchError("PATCH_APPROVAL_FIELD_MISMATCH")
+    canonical_status = str(evidence.get("canonical_qa_status") or "").upper()
+    if canonical_status == "FAIL":
+        raise ImmutablePatchError("PATCH_CANONICAL_QA_FAILED")
+    if evidence.get("revision_id") and canonical_status not in {"PASS", "NOT_REQUIRED"}:
+        raise ImmutablePatchError("PATCH_CANONICAL_QA_NOT_VERIFIED")
     if expected_base_commit_id and evidence.get("base_commit_id") and evidence.get("base_commit_id") != expected_base_commit_id:
         raise ImmutablePatchError("STALE_LOCALIZATION_APPLY_BUNDLE")
     if current_value is not None and _text(current_value) != _text(patch.get("old_value")):
