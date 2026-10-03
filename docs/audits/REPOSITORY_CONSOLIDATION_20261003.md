@@ -93,6 +93,6 @@ owner-reviewed PR. Old branches remain available; no deletion was performed.
 
 | artifact | remote ref / SHA |
 |---|---|
-| integration branch | `integrate/repository-consolidation-v1` / `93b476d4b836c6ab7a9d7d6200d2407727eb49a5` |
+| integration branch | `integrate/repository-consolidation-v1` / `03c33914148ec3a04205363099a34bdd21753b34` |
 | Scrapling v2 branch | `experiment/scrapling-detail-shadow-v2` / `1a68003198c66d4bc04cfc9b332a45f7a1e2f64d` |
 | Stage6 provenance branch | `fix/legacy-artifact-stage6-provenance` / `add8734aaa72c8794a72de97bf893312bda9e5e5` |
