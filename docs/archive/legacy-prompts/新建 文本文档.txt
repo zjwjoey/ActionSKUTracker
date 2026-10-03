@@ -1,4 +1,8 @@
-<!-- ARCHIVED LEGACY PROMPT: Historical planning text retained for audit only. It does not override AGENTS.md, current architecture, or repository closure requirements. -->
+ARCHIVED LEGACY PROMPT
+NOT CURRENT ARCHITECTURE
+DO NOT USE AS IMPLEMENTATION CONTRACT
+
+<!-- Historical planning text retained for audit only. It does not override AGENTS.md, current architecture, or repository closure requirements. -->
 
 你现在要帮我从零建立一个长期运行的：
 

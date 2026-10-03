@@ -3,6 +3,10 @@
 更新时间：2026-10-03
 基线：`origin/main@b47e4c56a0274fdddceff347e2571d77c1476014`
 
+## Canonical branch
+
+`main@b47e4c56a0274fdddceff347e2571d77c1476014`
+
 ## 稳定主线
 
 - SQLite PRIMARY 是生产主链和唯一正式读事实源。
@@ -22,14 +26,19 @@
 ## 当前代码状态
 
 - Translation System V1 安全默认值已在主线合并。
-- 本闭环工作在 `chore/repository-consolidation-closure-v1`，从上述基线创建；本分支只提交文档、审计和安全的实验分支编排，不执行生产采集、apply 或导出写回。
+- 本闭环工作在 `chore/repository-consolidation-closure-v1`，从上述基线创建并已推送；本分支只提交文档、审计和安全的实验分支编排，不执行生产采集、apply 或导出写回。
 - CI 白名单来自 `tests/ci_safe_tests.txt`；完整回归和 CI-safe 回归均需使用临时 fixture，不触碰生产 PRIMARY。
 
 ## 待审计边界
 
 - 远端旧分支保留用于证据和 owner review；本闭环不删除分支、不移动 recovery tag、不直接修改或推送 main。
-- Stage6 provenance 与 Scrapling detail shadow 分别在独立分支验证，实验依赖只能放在 `requirements-experiments/`，不得进入生产链。
+- Stage6 provenance 已在 `fix/stage6-provenance-v2` 验证，Scrapling detail shadow 已在 `experiment/scrapling-detail-shadow-v3` 验证；实验依赖只能放在 `requirements-experiments/`，不得进入生产链。
 - 命名历史只做迁移盘点，不直接合并旧分支。
+
+## 当前已知缺口
+
+- GitHub `main` 尚未配置 branch protection/ruleset，需要管理员配置 PR、required checks、禁止 force-push 和禁止删除。
+- 任何真实 daily-run、官网采集、production apply 和真实生产数据验收均不属于本闭环，仍需单独运行与审批。
 
 ## 证据位置
 

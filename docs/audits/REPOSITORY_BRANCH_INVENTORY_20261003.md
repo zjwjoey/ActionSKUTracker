@@ -6,6 +6,9 @@
 | branch | head | merge-base | behind/ahead | unique patch | category | recommended_action | safe_to_delete | recovery_tag |
 |---|---|---|---:|---:|---|---|---|---|
 | main | b47e4c5 | b47e4c5 | 0/0 | 0 | CURRENT_MAIN | retain | NO | pre-consolidation-main-20261003 |
+| chore/repository-consolidation-closure-v1 | 7b53dbe | b47e4c5 | 0/4 | 4 | CURRENT_CLOSURE_CANDIDATE | owner review; do not merge automatically | NO | — |
+| fix/stage6-provenance-v2 | 47971fd | b47e4c5 | 0/2 | 2 | CURRENT_STAGE6_CANDIDATE | owner review; keep isolated | NO | — |
+| experiment/scrapling-detail-shadow-v3 | c1a3ffc | b47e4c5 | 0/1 | 1 | CURRENT_EXPERIMENT | owner review; keep shadow-only | NO | — |
 | feat/translation-registry-qwen-mt-v1 | ffc6ba0 | ffc6ba0 | 18/0 | 0 | SUPERSEDED_AFTER_CONSOLIDATION | DELETE_AFTER_OWNER_CONFIRMATION | OWNER_CONFIRMATION_REQUIRED | — |
 | integrate/repository-consolidation-v1 | abe0237 | abe0237 | 1/0 | 0 | SUPERSEDED_AFTER_CONSOLIDATION | DELETE_AFTER_OWNER_CONFIRMATION | OWNER_CONFIRMATION_REQUIRED | — |
 | feat/action-data-platform-v2 | 59adcb1 | 59adcb1 | 207/0 | 0 | SUPERSEDED_AFTER_CONSOLIDATION | DELETE_AFTER_OWNER_CONFIRMATION | OWNER_CONFIRMATION_REQUIRED | — |
@@ -29,13 +32,13 @@
 
 The following tags were present locally at preflight and were not moved or deleted:
 
-- `pre-consolidation-main-20261003` → `f4e7678`
-- `archive-naming-history-20261003` → `2f7f1dd`
-- `archive-scrapling-shadow-20261003` → `84fb9a4`
-- `archive-export-foundation-20261003` → `6002c58`
-- `archive-sqlite-foundation-20261003` → `9e3fca9`
+- `pre-consolidation-main-20261003` → `788e290ece1ec4bb4a2ba110b0ab2ffe1f451864`
+- `archive-naming-history-20261003` → `0b3795b7565c9432ee0419e2dfb8937fad56bdb0`
+- `archive-scrapling-shadow-20261003` → `782e4ed277bd28a6cd7eb1caff2f91479f85fefa`
+- `archive-export-foundation-20261003` → `dac6f8f394e3c29eb197fe7ebedfd029464f4517`
+- `archive-sqlite-foundation-20261003` → `6e7c5940b90d2eec8ef6942c93c7af772af40b31`
 
-Network fetch was unavailable during this run, so remote tag parity must be rechecked after connectivity returns.
+Remote tag parity was rechecked after connectivity returned; annotated tag objects were resolved to the commit IDs above.
 
 ## Decision rule
 

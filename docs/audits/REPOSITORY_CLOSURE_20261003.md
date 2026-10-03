@@ -1,5 +1,7 @@
 # Repository Consolidation Closure V1
 
+结论：`PARTIAL_PASS`（代码、文档、分支和 CI 已完成；main branch protection 仍需管理员配置）。
+
 审计日期：2026-10-03  
 范围：仓库结构、文档契约、翻译安全默认值、Stage6 provenance v2、Scrapling detail shadow v3、命名历史迁移盘点。
 
@@ -7,8 +9,8 @@
 
 - 基线 main：`b47e4c56a0274fdddceff347e2571d77c1476014`。
 - 闭环分支从该基线创建，未使用旧 integration 分支的 dirty state。
-- `git fetch --all --prune` 因本机代理无法连接 GitHub 失败；owner review 前必须重新 fetch 并重算清单。
-- 已知主线合并 CI run `37125971802` 为 Windows/Ubuntu 成功；本轮网络阻断未重新查询。
+- `git fetch --all --prune` 已通过临时清除 Git proxy 配置成功；`origin/main` 仍为上述基线。
+- 主线合并 CI run `37125971802`、闭环 `37128907845`、Stage6 `37128907786`、Scrapling `37128908030` 均为 Windows/Ubuntu 成功。
 
 ## B. AGENTS 与架构契约
 
@@ -22,7 +24,7 @@
 - PASS：`docs/CURRENT_STATE.md` 已重写为当前事实，不再混写旧分支数量、旧生产快照或过期验收结论。
 - PASS：`docs/audits/REPOSITORY_BRANCH_INVENTORY_20261003.md` 使用 `origin/main@b47e4c5` 重算 behind/ahead/unique，并将已合并分支标为 `SUPERSEDED_AFTER_CONSOLIDATION`。
 - PASS：旧分支、实验分支和迁移源均保留；本轮未删除远端分支或移动 recovery tag。
-- PASS：五个 recovery tag 均仍存在于本地指针，远端 tag parity 待网络恢复后复核。
+- PASS：五个 recovery tag 均仍存在，且已核对远端 annotated tag 的解引用提交 SHA。
 
 ## D. 翻译安全不变量
 
@@ -69,8 +71,7 @@
 ## I. 平台保护与剩余阻塞
 
 - `BRANCH_PROTECTION_REQUIRED`：GitHub API 返回 main 未保护（404），rulesets 返回空数组；本任务未修改 GitHub 设置，需管理员另行配置 required checks、review 和禁止直接 push/force-push。
-- `NETWORK_FETCH_REQUIRED`：当前代理无法访问 GitHub，owner review 前必须重新 fetch、核对远端 main、分支和 tags，并确认三条新分支 CI。
-- 本闭环已完成本地审计，但因上述外部状态未闭环，不能宣称最终 READY。
+- 本闭环已完成本地与远端分支/CI 审计；分支保护仍需管理员动作，因此结论为 `PARTIAL_PASS`，提交 owner review。
 
 ## Final report
 
@@ -79,7 +80,7 @@ Base main:
 b47e4c56a0274fdddceff347e2571d77c1476014
 Closure branch:
 chore/repository-consolidation-closure-v1
-3fd7842
+7b53dbe (audit tip before this evidence refresh)
 Full pytest:
 688 passed / 0 failures
 CI-safe:
@@ -104,7 +105,12 @@ Remote branches deleted:
 NO
 Main modified directly:
 NO
+Production boundary:
+REAL_COLLECTION_NOT_RUN
+PRODUCTION_PRIMARY_NOT_MODIFIED
+DICTIONARY_PRODUCTION_APPLY_NOT_RUN
+LOCALIZATION_PRODUCTION_APPLY_NOT_RUN
 Remaining blockers:
-BRANCH_PROTECTION_REQUIRED; NETWORK_FETCH_REQUIRED; remote CI for new branches not yet verified
+BRANCH_PROTECTION_REQUIRED
 Recommendation:
-NOT_READY
+READY_FOR_OWNER_REVIEW

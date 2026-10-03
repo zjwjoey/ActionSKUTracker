@@ -7,7 +7,7 @@
 ## 远端与同步
 
 - fetch remote：`origin https://github.com/zjwjoey/ActionSKUTracker.git`
-- 已执行 `git fetch --all --prune`；本机代理无法连接 `github.com:443`，因此本次以已存在的本地 `origin/main` 远端跟踪指针为审计基线。不得据此宣称远端有新提交。
+- 已重新执行 `git fetch --all --prune`（通过临时清除 Git proxy 配置），远端可访问；`origin/main` 仍为 `b47e4c56a0274fdddceff347e2571d77c1476014`。
 - 闭环分支从基线创建，未使用旧 integration 分支的工作树或未提交内容。
 
 ## 预检快照
@@ -15,7 +15,17 @@
 - `git status --short --branch`：闭环分支创建时 clean；文档修改仅发生在本分支。
 - `git log --oneline --decorate -20 origin/main`：最新为 `b47e4c5 Merge Translation System V1 safety defaults closure`，父提交为 `abe0237`。
 - 当前远端分支和短 SHA 以 `git branch -r --format='%(refname:short) %(objectname:short)'` 读取，详见 `REPOSITORY_BRANCH_INVENTORY_20261003.md`。
-- recovery tags 已读取，详见本审计的 tag 校验章节；本任务不移动、不删除它们。
+- recovery tags 已从远端复核，详见下表；本任务不移动、不删除它们。
+
+## Recovery tags（dereferenced commit）
+
+| tag | dereferenced commit |
+|---|---|
+| `pre-consolidation-main-20261003` | `788e290ece1ec4bb4a2ba110b0ab2ffe1f451864` |
+| `archive-naming-history-20261003` | `0b3795b7565c9432ee0419e2dfb8937fad56bdb0` |
+| `archive-scrapling-shadow-20261003` | `782e4ed277bd28a6cd7eb1caff2f91479f85fefa` |
+| `archive-export-foundation-20261003` | `dac6f8f394e3c29eb197fe7ebedfd029464f4517` |
+| `archive-sqlite-foundation-20261003` | `6e7c5940b90d2eec8ef6942c93c7af772af40b31` |
 
 ## 生产边界检查
 
@@ -26,8 +36,9 @@
 ## 已知主线 CI 证据
 
 - 主线合并提交：`b47e4c56a0274fdddceff347e2571d77c1476014`。
-- 已知合并 CI：GitHub Actions run `37125971802`，Windows 与 Ubuntu 均成功（来自先前主线记录；本次因网络阻断未重新查询）。
+- 已知合并 CI：GitHub Actions run `37125971802`，Windows 与 Ubuntu 均成功。
+- 本闭环三条分支 CI：`37128907845`、`37128907786`、`37128908030`，均为 Windows 与 Ubuntu 成功。
 
 ## 预检结论
 
-基线可用于闭环审计；网络恢复后 owner review 前必须再次 fetch，并确认 `origin/main` 未前进。若基线改变，所有分支和 SHA 需要从新基线重算。
+基线已完成远端复核；owner review 前若 main 再次前进，所有分支和 SHA 需要从新基线重算。
