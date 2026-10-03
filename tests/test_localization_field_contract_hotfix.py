@@ -74,6 +74,23 @@ def test_manual_override_rebuilds_resolvable_reasons():
     assert "NAME_REVIEW" not in result.reasons and "SPANISH_RESIDUAL" not in result.reasons
 
 
+def test_populated_dictionary_name_does_not_require_product_type_fact():
+    """A valid existing name is enough for identity-level validation."""
+    source = SourceFacts.from_record({"sku": "DICT-NAME", "name_es": "Producto sin término", "cat1_es": "Hogar"})
+    fields = {
+        "name_zh": LocalizationField("已确认商品", "dictionary", "READY", source.source_hash),
+        "cat1_zh": LocalizationField("家居布置", "dictionary", "READY", source.source_hash),
+        "cat2_zh": LocalizationField("", "missing", "READY", source.source_hash),
+        "spec_zh": LocalizationField("", "missing", "READY", source.source_hash),
+        "unit_price_zh": LocalizationField("", "official_unit_price", "READY", source.source_hash),
+        "desc_zh": LocalizationField("", "missing", "READY", source.source_hash),
+        "details_zh": LocalizationField("", "missing", "READY", source.source_hash),
+    }
+    plan = LocalizationPlan(source.sku, source.source_hash, fields, (), "READY", ())
+    result = LocalizationEngine().validate(source.as_record(), plan)
+    assert "PRODUCT_TYPE_REVIEW" not in result.reasons
+
+
 def test_bad_manual_override_remains_blocked():
     source = SourceFacts.from_record({"sku": "M2", "name_es": "Producto", "cat1_es": "Hogar"})
     plan = LocalizationEngine().resolve({"sku": "M2", "name_es": "Producto", "cat1_es": "Hogar"})
@@ -165,6 +182,23 @@ def test_manual_only_resolved_sku_makes_zero_ai_calls_even_without_product_type(
     assert result["ai_call_count"] == 0
 
 
+def test_existing_clean_name_does_not_reopen_product_type_review(tmp_path):
+    from action_tracker.localization.knowledge import ensure_schemas
+    from action_tracker.localization.service import audit_current
+    import csv
+
+    directory = tmp_path / "dict"; ensure_schemas(directory)
+    _write_override(directory, "KNOWN-NAME", "name_zh_standard", "已确认商品")
+    cfg = {"project_root": tmp_path, "paths": {"temp": tmp_path / "runtime" / "temp", "dictionary_baseline": directory}}
+    cfg["paths"]["temp"].mkdir(parents=True)
+    result = audit_current(cfg, run_id="known-name-terminal", records=[
+        {"sku": "KNOWN-NAME", "name_es": "Producto sin término conocido", "cat1_es": "Hogar", "spec_es": "10 gramos"}
+    ])
+    row = next(csv.DictReader(open(result["audit"], encoding="utf-8-sig")))
+    assert row["new_name_zh"] == "已确认商品"
+    assert "PRODUCT_TYPE_REVIEW" not in set(filter(None, row["review_reasons"].split("|")))
+
+
 def test_manual_spec_numeric_mismatch_remains_blocked_and_cache_cannot_replace_it(tmp_path):
     from action_tracker.localization.knowledge import ensure_schemas
     from action_tracker.localization.service import audit_current
@@ -207,3 +241,113 @@ def test_anti_edad_is_not_forced_as_technical_token():
     source = {"sku": "TECH-ES", "name_es": "Crema anti-edad"}
     candidate = {"sku": "TECH-ES", "source_hash": source_hash(source), "fields": {"name": "抗衰老霜"}}
     assert validate_candidate(candidate, source).ok
+
+
+def test_numeric_guard_accepts_scoped_semantic_equivalents_and_size_lists():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({
+        "sku": "NUM-EQUIV",
+        "name_es": "Edredón 4 estaciones",
+        "spec_es": "39,40,41,42; 9'5x13 cm",
+    })
+    findings = audit_translation(
+        source,
+        {"name": "四季被", "spec": "39、40、41、42；9.5×13cm"},
+        ("name", "spec"),
+    )
+    assert not any(item.rule_id in {"NUMERIC_DROPPED", "NUMERIC_ADDED"} for item in findings)
+
+
+def test_numeric_guard_does_not_globally_waive_unrelated_numbers():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({"sku": "NUM-BLOCK", "name_es": "Producto 4 unidades"})
+    findings = audit_translation(source, {"name": "商品"}, ("name",))
+    assert any(item.rule_id == "NUMERIC_DROPPED" for item in findings)
+
+
+def test_numeric_guard_ignores_digit_inside_removed_7up_brand_only():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({"sku": "BRAND-7UP", "name_es": "7Up"})
+    findings = audit_translation(source, {"name": "柠檬青柠汽水"}, ("name",))
+    assert not any(item.rule_id == "NUMERIC_DROPPED" for item in findings)
+
+
+def test_empty_source_is_not_a_required_translation():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({"sku": "EMPTY-SOURCE", "description": ""})
+    findings = audit_translation(source, {"description": ""}, ("description",))
+    assert findings == ()
+
+
+def test_nonempty_target_without_source_is_blocked():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({"sku": "EMPTY-SOURCE-TARGET", "description": ""})
+    findings = audit_translation(source, {"description": "凭空生成"}, ("description",))
+    assert any(item.rule_id == "EMPTY_SOURCE_TARGET_NONEMPTY" for item in findings)
+
+
+def test_brand_display_policy_removes_latin_brand_adjacent_to_chinese():
+    from action_tracker.localization.policy import strip_forbidden_display_tokens
+
+    assert strip_forbidden_display_tokens("Spargo的湿巾", ["Spargo"]) == "的湿巾"
+    assert strip_forbidden_display_tokens("Spargo牌湿巾", ["Spargo"]) == "湿巾"
+
+
+def test_fact_qa_accepts_source_bound_localized_technical_abbreviations():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({
+        "sku": "TECH-ALIASES",
+        "desc_es": "Full HD; PH-neutro; personajes de TV",
+        "details_es": "Uso previsto: WC; Relleno GSM: 350 g; Sin BPA: Sí",
+    })
+    findings = audit_translation(
+        source,
+        {
+            "description": "全高清；pH值中性；电视角色",
+            "details": "适用对象：马桶；填充克重（克/平方米）：350 g；不含双酚A：是",
+        },
+        ("description", "details"),
+    )
+    assert not any(item.rule_id in {"PROTECTED_TOKEN_MISSING", "PROTECTED_TOKEN_CHANGED"} for item in findings)
+
+
+def test_fact_qa_does_not_treat_reviewed_uppercase_spanish_values_as_models():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({
+        "sku": "UPPER-VALUES",
+        "details_es": "Tipo: CALCULADORA; Tipo de silla: TABURETE; Tipo: EDREDÓN",
+    })
+    findings = audit_translation(
+        source,
+        {"details": "类型：计算器；椅子类型：凳子；类型：被子"},
+        ("details",),
+    )
+    assert not any(item.rule_id in {"PROTECTED_TOKEN_MISSING", "PROTECTED_TOKEN_CHANGED"} for item in findings)
+
+
+def test_fact_qa_accepts_sock_bedding_and_footwear_scoped_equivalents():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({
+        "sku": "FAMILY-EQUIV",
+        "name_es": "Calcetines",
+        "desc_es": "Disponibles en los números 39-42; edredón para 2 personas",
+        "details_es": "Talla de calzado: 39-42",
+    })
+    findings = audit_translation(
+        source,
+        {
+            "name": "长袜",
+            "description": "有39、40、41、42码可选；适合双人被子使用",
+            "details": "鞋码：39,40,41,42",
+        },
+        ("name", "description", "details"),
+    )
+    assert not any(item.rule_id in {"SEMANTIC_FACT_DROPPED", "NUMERIC_ADDED"} for item in findings)

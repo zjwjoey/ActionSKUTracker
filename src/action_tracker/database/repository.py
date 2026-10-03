@@ -134,14 +134,20 @@ class ProductionRepository:
             ).fetchone()
         return {"commit_id": row[0], "run_id": row[1], "run_date": row[2], "committed_at": row[3], "status": row[4]} if row else None
 
-    def load_current_export_records(self) -> list[dict[str, Any]]:
-        """Return CURRENT facts plus both language localization projections."""
+    def load_current_export_records(self, *, include_non_current: bool = False) -> list[dict[str, Any]]:
+        """Return facts plus both language localization projections.
+
+        Normal callers receive only CURRENT products. Historical export may
+        request all statuses as a read-only localization reference; its own
+        immutable snapshot still controls the exported SKU set and facts.
+        """
         with connect(self.path) as db:
             self._check_v2(db)
             head_row = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC,commit_id DESC LIMIT 1").fetchone()
             run_row = db.execute("SELECT run_id FROM runs ORDER BY started_at DESC,run_id DESC LIMIT 1").fetchone()
+            status_clause = "" if include_non_current else "WHERE p.status='CURRENT'"
             rows = db.execute(
-                """SELECT p.canonical_id,p.official_sku,p.name_es,p.name_zh,p.current_price,p.original_price,
+                f"""SELECT p.canonical_id,p.official_sku,p.name_es,p.name_zh,p.current_price,p.original_price,
                    p.unit_price_raw,p.raw_badges,p.action_new_badge,p.promotion_active,p.sustainable_badge,
                    p.status,p.product_url,p.image_url,p.first_seen_at,p.last_seen_at,
                    es.name,es.cat1,es.cat2,es.spec,es.description,es.details,
@@ -153,7 +159,7 @@ class ProductionRepository:
                    FROM products p
                    LEFT JOIN product_localizations es ON es.official_sku=p.official_sku AND es.language='es'
                    LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'
-                   WHERE p.status='CURRENT' ORDER BY p.official_sku"""
+                   {status_clause} ORDER BY p.official_sku"""
             ).fetchall()
             provenance_rows = _read_field_provenance(db)
         source_commit_id = str(head_row[0]) if head_row else ""

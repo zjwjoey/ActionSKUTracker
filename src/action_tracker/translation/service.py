@@ -1,9 +1,8 @@
 """翻译服务（规范 §32-§35）。
 
-阶段一 translation_enabled=false：不做 AI 翻译。新 SKU / 中文缺失时：
-    - 中文字段 fallback 到西语原文
-    - 翻译状态 = FALLBACK_ES
-    - 更新 translation_state.csv 的 source_hash / 状态
+兼容的 ``apply_zh`` 仍可为旧 Excel fixture 复制西语；正式链路使用
+``apply_zh_formal``，缺少中文时保持空值/PENDING，并在展示边界显式标记
+ES fallback，绝不把西语保存成 approved Chinese。
 """
 from __future__ import annotations
 
@@ -44,6 +43,29 @@ def apply_zh(rec: dict[str, Any]) -> dict[str, Any]:
             rec[z] = rec[e]
     rec["translation_status"] = "FALLBACK_ES" if missing else (rec.get("translation_status") or "NOT_CONFIGURED")
     return rec
+
+
+def apply_zh_formal(rec: dict[str, Any]) -> dict[str, Any]:
+    """Formal production adapter: never stores Spanish as Chinese.
+
+    Legacy ``apply_zh`` remains available for old fixture compatibility, but
+    the official registry/PRIMARY path must use this function.  Missing
+    Chinese values stay empty and are explicitly marked PENDING so they enter
+    the translation queue rather than contaminating approved projections.
+    """
+    result = dict(rec)
+    missing = []
+    for zh, es in zip(_ZH_FIELDS, _ES_FIELDS):
+        if not str(result.get(zh) or "").strip() and str(result.get(es) or "").strip():
+            result[zh] = ""
+            missing.append(zh)
+    if missing:
+        result["translation_status"] = "PENDING"
+        result["translation_missing_fields"] = tuple(missing)
+        result["display_fallback"] = "ES"
+    elif str(result.get("translation_status") or "").upper() in {"FALLBACK_ES", "NOT_CONFIGURED", ""}:
+        result["translation_status"] = "PENDING"
+    return result
 
 
 def refresh_translation_state(trans: dict[str, dict], updated_records: dict[str, dict], state_dir) -> dict[str, dict]:

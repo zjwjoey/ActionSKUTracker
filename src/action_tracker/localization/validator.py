@@ -22,6 +22,9 @@ class LocalizationValidation:
     reasons: tuple[str, ...]
     spanish_residue_tokens: tuple[str, ...] = ()
     numeric_mismatches: tuple[str, ...] = ()
+    fact_status: str = "PASS"
+    canonical_status: str = "NOT_RUN"
+    canonical_findings: tuple[Mapping[str, Any], ...] = ()
 
 
 # Reasons describing source/identity state survive a field correction.  All
@@ -95,11 +98,32 @@ def validate_plan(source: SourceFacts, plan: LocalizationPlan, *, allowed_tokens
         reasons.append("DESCRIPTION_REVIEW")
     if source.details_es and has_ordinary_spanish(plan.fields["details_zh"].value, allowed_tokens=allowed_tokens):
         reasons.append("DETAIL_VALUE_REVIEW")
+    # A populated field-level name from the dictionary/manual/existing
+    # localization is already the product identity.  Do not reopen it merely
+    # because the semantic parser did not emit a separate PRODUCT_TYPE fact;
+    # only a genuinely empty name requires PRODUCT_TYPE review.  Spanish
+    # residue is still caught independently above.
     if (not any(f.semantic_type == "PRODUCT_TYPE" for f in plan.semantic_facts)
             and source.name_es
-            and not is_terminal_field(plan.fields["name_zh"])):
+            and (not str(plan.fields["name_zh"].value or "").strip()
+                 or has_ordinary_spanish(plan.fields["name_zh"].value, allowed_tokens=allowed_tokens))):
         reasons.append("PRODUCT_TYPE_REVIEW")
     coverage = validate_fact_coverage(plan)
     if not coverage.ok:
         reasons.append("FACT_NOT_COVERED")
-    return LocalizationValidation(not reasons, tuple(dict.fromkeys(reasons)), tuple(residue), tuple(numeric_bad))
+    fact_reasons = tuple(dict.fromkeys(reasons))
+    canonical_status = "NOT_RUN"
+    canonical_findings: tuple[Mapping[str, Any], ...] = ()
+    if plan.context is not None:
+        from .canonical_qa import canonical_guard
+        from .product_family import context_for_field
+        canonical_fields = {"name": plan.fields["name_zh"].value, "cat1": plan.fields["cat1_zh"].value, "cat2": plan.fields["cat2_zh"].value, "spec": plan.fields["spec_zh"].value, "description": plan.fields["desc_zh"].value, "details": plan.fields["details_zh"].value}
+        canonical_items = []
+        for field_name, value in canonical_fields.items():
+            canonical_items.extend(canonical_guard(context_for_field(plan.context, field_name), {field_name: value}, production=False).get("findings") or ())
+        canonical_status = "PASS" if not canonical_items else "FAIL"
+        canonical_findings = tuple(canonical_items)
+        if canonical_status != "PASS":
+            reasons.extend(str(item.get("rule_id") or "CANONICAL_QA") for item in canonical_findings)
+    all_reasons = tuple(dict.fromkeys(reasons))
+    return LocalizationValidation(not all_reasons, all_reasons, tuple(residue), tuple(numeric_bad), "PASS" if not fact_reasons else "FAIL", canonical_status, canonical_findings)

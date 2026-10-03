@@ -4,6 +4,7 @@ from action_tracker.exporting.service import ExportValidationError
 from action_tracker.exporting import service as export_service
 from action_tracker.cli import build_parser
 from types import SimpleNamespace
+from datetime import datetime, timedelta, timezone
 import pytest
 
 
@@ -165,6 +166,7 @@ def test_release_residual_check_allows_series_but_blocks_known_spanish():
 
 
 def test_explicit_exception_requires_audit_fields_and_can_close_one_issue():
+    now = datetime.now(timezone.utc)
     result = audit_research_release(
         [_row(cat2_zh="")],
         explicit_exceptions=[{
@@ -174,11 +176,11 @@ def test_explicit_exception_requires_audit_fields_and_can_close_one_issue():
             "field_name": "cat2_zh",
             "source_hash": localization_source_hash(_row(cat2_zh="")),
             "approved_by": "human:reviewer",
-            "approved_at": "2026-09-08T00:00:00+00:00",
-            "created_at": "2026-09-08T00:00:00+00:00",
+            "approved_at": (now - timedelta(days=1)).isoformat(),
+            "created_at": (now - timedelta(days=1)).isoformat(),
             "evidence": "official page has no category",
             "reason": "officially absent",
-            "expires_at": "2026-09-30",
+            "expires_at": (now.date() + timedelta(days=30)).isoformat(),
         }],
     )
     assert result.ok

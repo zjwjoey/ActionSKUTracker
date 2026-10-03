@@ -1,0 +1,115 @@
+"""Field-only repair pipeline for failed translation candidates."""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Mapping
+
+from .contracts import SourceFacts
+from .normalization.target import normalize_target_text
+from .providers.base import TranslationProvider, TranslationRequest
+from .qa import guard_translation
+from .policy import DISPLAY_POLICY_PROFILE, strip_forbidden_display_tokens
+from .product_family import TranslationContext, context_for_field
+
+
+@dataclass(frozen=True)
+class RepairResult:
+    sku: str
+    field_name: str
+    value: str
+    qa: Mapping[str, Any]
+    repair_source: str
+    repair_reason: str
+    parent_revision_id: str | None = None
+    revision_id: str | None = None
+    provenance: Mapping[str, Any] = field(default_factory=dict)
+
+
+def repair_field(record: Mapping[str, Any], field_name: str, candidate: str, *, repair_reason: str,
+                 provider: TranslationProvider | None = None, registry=None,
+                 parent_revision_id: str | None = None,
+                 terminology: tuple[Mapping[str, Any], ...] = (),
+                  semantic_facts: tuple[Any, ...] = (),
+                  context: TranslationContext | None = None) -> RepairResult:
+    source = SourceFacts.from_record(record)
+    value = normalize_target_text(candidate)
+    field_context = context_for_field(context, field_name) if context is not None else None
+    qa = guard_translation(source, {field_name: value}, (field_name,), terminology=terminology, semantic_facts=semantic_facts, context=field_context)
+    repair_source = "deterministic"
+    provenance: dict[str, Any] = {"resolution_source": "DETERMINISTIC_REPAIR"}
+    if qa["status"] != "PASS" and provider is not None:
+        provider_terms = list(terminology)
+        expected_source_field = {
+            "name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es",
+            "spec": "spec_es", "description": "desc_es", "details": "details_es",
+        }.get(field_name, field_name)
+        semantic_types = {"PRODUCT_TYPE", "FUNCTION", "MATERIAL", "COMPATIBILITY", "CARE", "NUTRITION", "VARIANT", "DETAIL_KEY"}
+        existing_terms = {
+            str(item.get("source") or item.get("source_term") or "").strip().casefold()
+            for item in provider_terms if isinstance(item, Mapping)
+        }
+        for fact in semantic_facts:
+            if str(getattr(fact, "source_field", "") or "") != expected_source_field:
+                continue
+            token = str(getattr(fact, "source_text", "") or "").strip()
+            if not token or token.casefold() in existing_terms:
+                continue
+            fact_type = str(getattr(fact, "semantic_type", "") or "")
+            if fact_type in {"BRAND", "IP_CHARACTER"}:
+                target = token
+            elif fact_type in semantic_types:
+                target = str(getattr(fact, "canonical_value", "") or getattr(fact, "value", "") or "").strip()
+                if not target or target.casefold() == token.casefold():
+                    continue
+            else:
+                continue
+            provider_terms.append({"source": token, "target": target})
+            existing_terms.add(token.casefold())
+        request = TranslationRequest(
+            source.sku,
+            {field_name: getattr(source, {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}[field_name])},
+            (field_name,), source.source_hash, terms=tuple(provider_terms),
+            family_id=field_context.family_id if field_context else None,
+            family_policy_version=field_context.family_policy_version if field_context else None,
+            context_key=field_context.context_key if field_context else None,
+            product_type=field_context.product_type if field_context else None,
+            context=field_context.as_dict() if field_context else None,
+        )
+        response = provider.translate(request)
+        value = str(response.fields.get(field_name) or "")
+        brand_tokens = [
+            str(getattr(fact, "source_text", "") or "").strip()
+            for fact in semantic_facts
+            if getattr(fact, "semantic_type", "") in {"BRAND", "IP_CHARACTER"}
+        ]
+        if brand_tokens:
+            value = strip_forbidden_display_tokens(value, brand_tokens)
+        qa = guard_translation(source, {field_name: value}, (field_name,), terminology=terminology, semantic_facts=semantic_facts, context=field_context)
+        repair_source = response.provider
+        provenance = {
+            "resolution_source": "QWEN_MT",
+            "provider": response.provider, "model": response.model,
+            "request_id": response.request_id,
+            "request_hash": response.request_hash,
+            "response_hash": response.response_hash,
+            "usage": dict(response.usage or {}),
+            "retry_count": int((response.usage or {}).get("retry_count", 0) or 0),
+            "display_policy_profile": DISPLAY_POLICY_PROFILE,
+            "translation_context": field_context.as_dict() if field_context else {},
+        }
+    revision_id = None
+    if registry is not None:
+        # The registry owns the new immutable revision.  The caller supplies
+        # the unit's parent revision; no existing revision is overwritten.
+        revision_id = registry.record_revision_for_sku(
+            source.sku, field_name, value, source_hash=source.source_hash,
+            provider=repair_source, model=provenance.get("model"),
+            request_hash=provenance.get("request_hash"),
+            response_hash=provenance.get("response_hash"),
+            request_id=provenance.get("request_id"),
+            provider_call_id=provenance.get("provider_call_id"),
+            provenance=provenance, repair_reason=repair_reason,
+            parent_revision_id=parent_revision_id,
+            qa_status=str(qa.get("status") or "FAIL"),
+        )
+    return RepairResult(source.sku, field_name, value, qa, repair_source, repair_reason, parent_revision_id, revision_id, provenance)

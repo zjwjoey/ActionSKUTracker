@@ -61,3 +61,12 @@ tests/test_source_fact_repair.py
 tests/test_stage5_source_candidate_v2.py
 tests/test_stage6_preview.py
 tests/test_localization_semantic_regressions.py
+tests/test_translation_registry_qwen.py
+tests/test_translation_system_v1_completion.py
+tests/test_translation_v1_final_guarantees.py
+tests/test_product_family_governance.py
+tests/test_retranslation_batch.py
+tests/test_correction_wave_gate.py
+tests/test_action_localization_lite.py
+tests/test_action_localization_lite_v2_review.py
+tests/test_action_localization_lite_v3_review.py

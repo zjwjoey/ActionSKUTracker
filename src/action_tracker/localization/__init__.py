@@ -22,11 +22,12 @@ from .contracts import (
     is_terminal_field,
 )
 from .engine import LocalizationEngine
+from .resolver import TranslationResolver, Resolution
 from .knowledge import KnowledgeContext
 
 __all__ = [
     "POLICY_VERSION", "SourceFacts", "SemanticFact", "LocalizationField",
-    "LocalizationPlan", "LocalizationEngine", "KnowledgeContext",
+    "LocalizationPlan", "LocalizationEngine", "TranslationResolver", "Resolution", "KnowledgeContext",
     "LOCALIZATION_FIELD_CONTRACT", "ZH_TO_CANONICAL", "CANONICAL_TO_ZH",
     "CANONICAL_TO_SOURCE", "SOURCE_TO_CANONICAL", "CANONICAL_FIELDS",
     "CANONICAL_AI_FIELDS", "TERMINAL_FIELD_SOURCES", "is_terminal_field",

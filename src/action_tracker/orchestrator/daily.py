@@ -2,7 +2,7 @@
 
 流程：
     sitemap + listing -> SKU Monitor -> Product Updater(可选详情) -> 变化事件
-    -> 翻译 fallback -> QA Gate -> Snapshot + Staging -> 日报
+    -> 翻译 Registry queue -> QA Gate -> Snapshot + Staging -> 日报
 
 dry-run 只做以上全部但【禁止修改 Master 与状态文件】。
 """
@@ -34,7 +34,7 @@ from ..services.gitutil import git_commit_info
 from ..services.hashing import content_hash
 from ..services.review import add_review_item
 from ..snapshot import write_snapshot, write_staging
-from ..translation.service import apply_zh
+from ..translation.service import apply_zh_formal
 
 log = logging.getLogger(__name__)
 
@@ -400,7 +400,9 @@ def run_daily(
     translation_updates = []
     for sku, rec in updated.items():
         before_zh = rec.get("name_zh")
-        rec = apply_zh(rec)
+        # Formal daily chain never persists Spanish text as approved Chinese;
+        # missing fields remain PENDING and are queued by the registry stage.
+        rec = apply_zh_formal(rec)
         updated[sku] = rec
         if rec.get("translation_status") in ("FALLBACK_ES", "OK"):
             pass
@@ -775,7 +777,7 @@ def _commit_phase(
     """
     from .. import state as st
     from ..excel.writer import commit_master, stage_master
-    from ..database.integration import acknowledge_compatibility_exports, build_daily_bundle, commit_daily_bundle, storage_mode
+    from ..database.integration import acknowledge_compatibility_exports, build_daily_bundle, commit_daily_bundle, storage_mode, database_path
 
     state_dir = cfg["paths"]["state"]
     master = cfg["paths"]["master"]
@@ -873,6 +875,17 @@ def _commit_phase(
             diagnostics["status"] = "COMMITTING"
             diagnostics["commit_id"] = commit_daily_bundle(cfg, sqlite_bundle, mode=mode)
             diagnostics["status"] = "COMMITTED"
+            # Official facts are committed first.  Registry ingestion is a
+            # separate, idempotent shadow step; a provider/registry problem
+            # must never roll back the Presence commit.
+            if bool((cfg.get("localization") or {}).get("registry_enabled", True)):
+                try:
+                    from ..localization.registry.repository import LocalizationRegistry
+                    registry_result = LocalizationRegistry(database_path(cfg), role="SHADOW").ingest_records(
+                        today_records.values(), source_run_id=run_id, observed_at=run_date)
+                    diagnostics["translation_registry"] = {**registry_result, "production_writes": False}
+                except Exception as exc:
+                    diagnostics["translation_registry"] = {"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}
             diagnostics["export_sync"] = acknowledge_compatibility_exports(cfg, diagnostics["commit_id"])
         except Exception as e:
             # Shadow is deliberately non-blocking: Excel/CSV remain the
@@ -880,6 +893,14 @@ def _commit_phase(
             diagnostics.update({"status": "FAILED", "error": f"{type(e).__name__}: {e}"})
             log.error("SQLite SHADOW 提交失败（不影响 Excel 主链）: %s", e)
     if mode == "SQLITE_PRIMARY" and diagnostics.get("commit_id"):
+        if bool((cfg.get("localization") or {}).get("registry_enabled", True)):
+            try:
+                from ..localization.registry.repository import LocalizationRegistry
+                registry_result = LocalizationRegistry(database_path(cfg), role="PRIMARY").ingest_records(
+                    today_records.values(), source_run_id=run_id, observed_at=run_date)
+                diagnostics["translation_registry"] = {**registry_result, "production_writes": False}
+            except Exception as exc:
+                diagnostics["translation_registry"] = {"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}
         try:
             diagnostics["export_sync"] = acknowledge_compatibility_exports(cfg, diagnostics["commit_id"])
             if diagnostics["export_sync"].get("status") != "SUCCESS":
