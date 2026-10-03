@@ -42,8 +42,8 @@ def test_runtime_git_provenance_reports_command_values(monkeypatch):
 
 def test_stage6_script_has_no_stale_hardcoded_git_metadata():
     source = SCRIPT.read_text(encoding="utf-8")
-    assert "788e290ece1ec4bb4a2ba110b0ab2ffe1f451864" not in source
-    assert "fix/legacy-artifact-stage6-provenance" not in source
+    assert "Base main:" not in source
+    assert "current_commit" not in source
     assert "Origin main:" in source
     assert "Merge base:" in source
 
