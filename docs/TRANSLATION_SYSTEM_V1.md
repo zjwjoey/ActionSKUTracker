@@ -115,15 +115,19 @@ is a blocking `TERMINOLOGY_VIOLATION`.
 
 The legacy `apply_zh` function remains only as a compatibility adapter for old
 fixtures.  The formal Daily path uses `apply_zh_formal`: missing Chinese stays
-empty/PENDING and is displayed as an explicitly marked ES fallback only at the
-presentation boundary, never as an approved Chinese value.
+empty/PENDING and enters the review/translation queue.  With
+`knowledge.fallback_to_spanish=false`, the formal Chinese chain never copies
+Spanish into `name_zh`, `spec_zh`, `description_zh` or `details_zh`; an export
+may show an explicitly marked `display_fallback=ES` value only at the
+presentation boundary, and that row remains non-ready for release.
 
 ## Export and Master
 
 Export is read-only.  It reads the approved PRIMARY projection and does not
 call a provider, rewrite the registry or reinterpret Spanish facts.  Missing
-approved fields are either empty or explicitly marked `display_fallback=ES`
-per the export profile.  A Qwen candidate cannot write Master directly.
+approved fields remain empty in the formal projection; an explicitly marked
+`display_fallback=ES` is a presentation-only exception and cannot make the
+row `READY` or approved.  A Qwen candidate cannot write Master directly.
 
 The Action display profile is `ACTION_MASTER_NO_BRAND_V1`: brand/IP evidence
 is retained internally for provenance and QA, but Chinese display omits those

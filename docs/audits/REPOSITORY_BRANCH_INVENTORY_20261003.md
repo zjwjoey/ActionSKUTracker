@@ -27,7 +27,7 @@ The integration row records the comparison at the prior audit snapshot
 | feat/production-operations-v1 | 14bb7ed | 14bb7ed | 198 | 0 | 0 | SUPERSEDED | DELETE_AFTER_VERIFICATION | yes |
 | feat/scrapling-detail-shadow-20260924 | 782e4ed | 503a295 | 238 | 27 | 26 | EXPERIMENT | REBUILD | no, until v2 is verified |
 | feat/sqlite-data-foundation-v1 | 6e7c594 | 8acfebd | 270 | 6 | 6 | MIGRATION_SOURCE | MIGRATE | no, until migration/mirror safety is reviewed |
-| feat/translation-registry-qwen-mt-v1 | ffc6ba0 | 88ad0fa | 7 | 23 | 23 | ACTIVE_FEATURE | PR | no |
+| feat/translation-registry-qwen-mt-v1 | ffc6ba0 | 88ad0fa | 7 | 23 | 23 | SUPERSEDED_AFTER_CONSOLIDATION | DO NOT MERGE AGAIN; retain for recovery/audit | no |
 | experiment/scrapling-detail-shadow-v2 | 1a68003 | 788e290 | 0 | 2 | 2 | EXPERIMENT | PR | no |
 | fix/data-quality-config-fail-closed | 88ad0fa | 88ad0fa | 7 | 0 | 0 | SUPERSEDED | DELETE_AFTER_VERIFICATION | yes |
 | fix/legacy-artifact-stage6-provenance | add8734 | 788e290 | 0 | 3 | 3 | MIGRATION_SOURCE | PR | no |

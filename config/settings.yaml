@@ -122,7 +122,7 @@ run:
   # 详情抓取后多久需要强制刷新（天）
   detail_refresh_days: 7
   # 正式中文由 Translation Registry / PRIMARY projection 管理；未批准时
-  # 保持 PENDING/空值，展示层可按显式策略使用西语 fallback。
+  # 保持 PENDING/空值，正式中文链路不自动使用西语填充中文字段。
   translation_enabled: false
   image_download_enabled: false
   # dry-run 时是否对新品/变化 SKU 抓详情
@@ -142,7 +142,7 @@ dictionary_apply:
 # Contracts and offline preview may be used during development; production
 # localization writes and model/auto-approval paths stay explicitly closed.
 knowledge:
-  production_apply_enabled: true
+  production_apply_enabled: false
   fallback_to_spanish: false
 
 # ---- Localization Intelligence V1 ----
@@ -151,7 +151,7 @@ localization:
   display_policy_profile: ACTION_MASTER_NO_BRAND_V1
   omit_brand_from_chinese_display: true
   registry_enabled: true
-  production_apply_enabled: true
+  production_apply_enabled: false
   auto_approval_enabled: false
   formal_daily_chain: true
   ai:

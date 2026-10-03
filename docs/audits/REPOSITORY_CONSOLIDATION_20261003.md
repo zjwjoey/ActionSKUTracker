@@ -23,6 +23,10 @@ This is suitable for an integration PR. It is not a production collection
 result: `LOCAL_ONLY_NOT_RUN` and `REAL_COLLECTION_NOT_RUN` remain true for this
 repository consolidation.
 
+The source branch `feat/translation-registry-qwen-mt-v1` is
+`SUPERSEDED_AFTER_CONSOLIDATION`; do not merge it again. Its history remains
+available for recovery and audit, and the branch is intentionally not deleted.
+
 ## Stage6 provenance
 
 `fix/legacy-artifact-stage6-provenance` is directly based on current main and
