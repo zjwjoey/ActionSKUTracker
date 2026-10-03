@@ -30,4 +30,3 @@ def mine_family_feedback(rows: Iterable[Mapping[str, Any]], *, min_occurrences: 
         item["confidence"] = min(0.99, 0.6 + 0.1 * min(count, 4))
         result.append(item)
     return sorted(result, key=lambda item: (-int(item["occurrence_count"]), item["family_id"], item["source_term"]))
-

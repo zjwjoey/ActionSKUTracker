@@ -38,4 +38,3 @@ def build_legacy_registry_preview(directory: Path, output_dir: Path) -> dict[str
     manifest["manifest_hash"] = hashlib.sha256(json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
     (output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return manifest
-
