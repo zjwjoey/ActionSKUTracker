@@ -6,6 +6,9 @@ commits present only on main, `ahead_main` is the number present only on the
 branch, and `unique_patch_count` is the count reported by
 `git cherry origin/main <branch>`. No remote branch was deleted.
 
+The integration row records the comparison at the prior audit snapshot
+`3e9830e`; the final follow-up commit only updates these audit documents.
+
 ## Current main
 
 `origin/main` = `788e290ece1ec4bb4a2ba110b0ab2ffe1f451864`.
@@ -32,7 +35,7 @@ branch, and `unique_patch_count` is the count reported by
 | fix/reconcile-uncommitted-master-repairs | 8163053 | 8163053 | 61 | 0 | 0 | SUPERSEDED | DELETE_AFTER_VERIFICATION | yes |
 | hotfix/post-merge-production-safety | 58e6ddc | 58e6ddc | 162 | 0 | 0 | SUPERSEDED | DELETE_AFTER_VERIFICATION | yes |
 | integrate/localization-hardening-20260922 | e0477ff | e0477ff | 1 | 0 | 0 | SUPERSEDED | DELETE_AFTER_VERIFICATION | yes |
-| integrate/repository-consolidation-v1 | 03c3391 | 788e290 | 0 | 27 | 26 | ACTIVE_FEATURE | PR | no |
+| integrate/repository-consolidation-v1 | 3e9830e | 788e290 | 0 | 28 | 27 | ACTIVE_FEATURE | PR | no |
 
 `origin/main` already contains the complete history of the branches marked
 `SUPERSEDED`; their branch heads are ancestors of main and `git cherry` found
