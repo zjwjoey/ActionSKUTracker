@@ -188,7 +188,15 @@ def build_zh_rows(records: Iterable[dict[str, Any]], context: DictionaryContext)
         # dated on-sale export cannot regress after the current run path was
         # fixed.
         title = _repair_export_title(title, _none_or_text(record.get("name_es")))
-        spec = _repair_export_spec(spec, _none_or_text(record.get("spec_es")))
+        # A current model/manual value is already a reviewed translation.  The
+        # source formatter is only allowed to rebuild a stale/missing value;
+        # otherwise a valid value such as “模型规格” gets replaced by the raw
+        # quantity extracted from Spanish.
+        spec = _repair_export_spec(
+            spec,
+            _none_or_text(record.get("spec_es")),
+            force_source_facts=spec_fallback,
+        )
         unit_price = _repair_export_unit_price(unit_price)
         description = _repair_export_description(
             description, _none_or_text(record.get("desc_es"))
@@ -289,7 +297,9 @@ def build_zh_rows_from_localized_source(
             resolved.get("name_zh"), _none_or_text(record.get("name_es"))
         )
         resolved["spec_zh"] = _repair_export_spec(
-            resolved.get("spec_zh"), _none_or_text(record.get("spec_es"))
+            resolved.get("spec_zh"),
+            _none_or_text(record.get("spec_es")),
+            force_source_facts=plan.fields["spec_zh"].status != "READY",
         )
         resolved["desc_zh"] = _repair_export_description(
             resolved.get("desc_zh"), _none_or_text(record.get("desc_es"))
@@ -602,7 +612,9 @@ def _resolve_existing_chinese_field(
 ) -> tuple[str | None, bool]:
     fallback = _none_or_text(record.get(es_field))
     if not fallback:
-        return None, False
+        # Preserve source-empty semantics while still surfacing the missing
+        # derived field for the review queue and export remarks.
+        return None, True
     current = _none_or_text(record.get(zh_field))
     if current and _CJK_RE.search(current):
         return current, False
@@ -713,7 +725,12 @@ def _repair_export_details(value: str | None, source: str | None) -> str | None:
     return _repair_source_bound_content_facts(text, source, include_generic=False)
 
 
-def _repair_export_spec(value: str | None, source: str | None) -> str | None:
+def _repair_export_spec(
+    value: str | None,
+    source: str | None,
+    *,
+    force_source_facts: bool = False,
+) -> str | None:
     text = _none_or_text(value)
     source_value = _none_or_text(source) or ""
     source_text = source_value.casefold()
@@ -731,7 +748,7 @@ def _repair_export_spec(value: str | None, source: str | None) -> str | None:
     # deterministic source formatter when the numeric multiset disagrees.
     # Product/platform-only specs stay on their existing value so their
     # reviewed technical phrasing is not replaced by raw Spanish.
-    if (source_numbers != target_numbers
+    if (force_source_facts and source_numbers != target_numbers
             and (source_numbers or target_numbers)
             and any(term.casefold() in source_text for term in rebuild_terms)):
         text = format_spec(source_value)
