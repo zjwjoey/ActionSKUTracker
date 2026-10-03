@@ -1,5 +1,4 @@
 import importlib.util
-import subprocess
 from collections import Counter
 from pathlib import Path
 
@@ -21,21 +20,24 @@ def _status(*, excluded=0, actions=None, git=True, unchanged=True):
     )
 
 
-def test_runtime_git_provenance_reports_actual_repository_values():
+def test_runtime_git_provenance_reports_command_values(monkeypatch):
+    outputs = {
+        ("git", "rev-parse", "origin/main^{commit}"): "main-sha\n",
+        ("git", "merge-base", "HEAD", "origin/main"): "base-sha\n",
+        ("git", "branch", "--show-current"): "fix/stage6-provenance-v2\n",
+        ("git", "rev-parse", "HEAD"): "head-sha\n",
+    }
+
+    def fake_run(command, **kwargs):
+        return MODULE.subprocess.CompletedProcess(command, 0, outputs[tuple(command)], "")
+
+    monkeypatch.setattr(MODULE.subprocess, "run", fake_run)
     info = MODULE.read_git_provenance(ROOT)
     assert info["available"] is True
-    assert info["commit"] == subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,
-        capture_output=True, text=True,
-    ).stdout.strip()
-    assert info["origin_main"] == subprocess.run(
-        ["git", "rev-parse", "origin/main^{commit}"], cwd=ROOT, check=True,
-        capture_output=True, text=True,
-    ).stdout.strip()
-    assert info["merge_base"] == subprocess.run(
-        ["git", "merge-base", "HEAD", "origin/main"], cwd=ROOT, check=True,
-        capture_output=True, text=True,
-    ).stdout.strip()
+    assert info["origin_main"] == "main-sha"
+    assert info["merge_base"] == "base-sha"
+    assert info["branch"] == "fix/stage6-provenance-v2"
+    assert info["commit"] == "head-sha"
 
 
 def test_stage6_script_has_no_stale_hardcoded_git_metadata():
@@ -48,7 +50,7 @@ def test_stage6_script_has_no_stale_hardcoded_git_metadata():
 
 def test_git_failure_fails_closed_without_ready_status(monkeypatch):
     def fail(*args, **kwargs):
-        return subprocess.CompletedProcess(args=args[0], returncode=1, stdout="", stderr="git unavailable")
+        return MODULE.subprocess.CompletedProcess(args=args[0], returncode=1, stdout="", stderr="git unavailable")
 
     monkeypatch.setattr(MODULE.subprocess, "run", fail)
     info = MODULE.read_git_provenance(ROOT)
