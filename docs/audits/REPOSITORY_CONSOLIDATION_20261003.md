@@ -55,8 +55,8 @@ tests/fixtures/scrapling_detail/**
 ```
 
 Scrapling remains outside production requirements and outside formal daily
-collection. The v2 branch is shadow-only and must have its own experiment test
-run before any consideration of integration.
+collection. The v2 branch is shadow-only; its focused experiment suite passed
+20 tests (with optional dependency installed), and its remote CI run passed.
 
 ## Documentation facts requiring reconciliation
 
@@ -94,5 +94,5 @@ owner-reviewed PR. Old branches remain available; no deletion was performed.
 | artifact | remote ref / SHA |
 |---|---|
 | integration branch | `integrate/repository-consolidation-v1` / `93b476d4b836c6ab7a9d7d6200d2407727eb49a5` |
-| Scrapling v2 branch | `experiment/scrapling-detail-shadow-v2` / `6a8ffe328ca1a299a5c5859ab674c1fa2c149e65` |
+| Scrapling v2 branch | `experiment/scrapling-detail-shadow-v2` / `1a68003198c66d4bc04cfc9b332a45f7a1e2f64d` |
 | Stage6 provenance branch | `fix/legacy-artifact-stage6-provenance` / `add8734aaa72c8794a72de97bf893312bda9e5e5` |
