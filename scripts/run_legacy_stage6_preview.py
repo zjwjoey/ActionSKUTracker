@@ -55,6 +55,16 @@ def write_csv(path: Path, rows: list[dict[str, Any]], headers: list[str]) -> Non
             writer.writerow({key: json.dumps(row.get(key), ensure_ascii=False) if isinstance(row.get(key), (list, dict)) else row.get(key, "") for key in headers})
 
 
+def row_headers(rows: list[dict[str, Any]], fallback: list[str] | None = None) -> list[str]:
+    """Keep every field when rows have different evidence shapes."""
+    headers: list[str] = []
+    for row in rows:
+        for key in row:
+            if key not in headers:
+                headers.append(key)
+    return headers or list(fallback or [])
+
+
 def file_hash(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as handle:
@@ -68,6 +78,55 @@ def state_hashes(master_path: Path, sqlite_path: Path, dictionary_dir: Path) -> 
     if dictionary_dir.exists():
         paths.extend(sorted(path for path in dictionary_dir.rglob("*") if path.is_file()))
     return {str(path.resolve()): file_hash(path) for path in paths if path.exists()}
+
+
+def read_git_provenance(repo_root: Path) -> dict[str, str | bool]:
+    """Read the runtime Git identity used by this preview report.
+
+    The values are evidence only: they are never used as a branch-name safety
+    gate.  Any unavailable value fails closed so a report cannot claim READY
+    with fabricated provenance.
+    """
+    commands = {
+        "origin_main": ["git", "rev-parse", "origin/main^{commit}"],
+        "merge_base": ["git", "merge-base", "HEAD", "origin/main"],
+        "branch": ["git", "branch", "--show-current"],
+        "commit": ["git", "rev-parse", "HEAD"],
+    }
+    values: dict[str, str | bool] = {"available": True}
+    for key, command in commands.items():
+        try:
+            result = subprocess.run(
+                command, cwd=str(repo_root), check=False,
+                capture_output=True, text=True,
+            )
+        except OSError as exc:
+            return {"available": False, "error": f"{key}:{exc}"}
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "command failed").strip()
+            return {"available": False, "error": f"{key}:{detail}"}
+        value = result.stdout.strip()
+        if key != "branch" and not value:
+            return {"available": False, "error": f"{key}:empty"}
+        values[key] = value
+    return values
+
+
+def determine_final_status(
+    *, git_available: bool, protected_inputs_unchanged: bool,
+    candidate_total: int, eligible_count: int, previewed_count: int,
+    action_counts: Counter[str], excluded_count: int,
+) -> str:
+    """Return the fail-closed Stage6 report status."""
+    if not git_available or not protected_inputs_unchanged:
+        return "LEGACY_STAGE6_ADAPTER_BLOCKED"
+    if candidate_total == 0 or eligible_count == 0 or previewed_count == 0:
+        return "LEGACY_STAGE6_ADAPTER_BLOCKED"
+    if action_counts.get("BLOCKED_CONFLICT", 0) or action_counts.get("NO_SOURCE", 0):
+        return "LEGACY_STAGE6_ADAPTER_BLOCKED"
+    if excluded_count:
+        return "LEGACY_STAGE6_PREVIEW_READY_WITH_EXCLUSIONS"
+    return "LEGACY_STAGE6_PREVIEW_READY"
 
 
 def parse_args() -> argparse.Namespace:
@@ -212,7 +271,20 @@ def main() -> int:
         master_row = master.get(sku)
         if master_row is None:
             status_counts["LEGACY_PROVENANCE_BLOCKED"] += 1
-            candidate_output.append({"sku": sku, "field": field, "owner_decision": approval.get("owner_decision"), "legacy_provenance_status": "BLOCKED_CONFLICT", "block_reason": ["MASTER_SKU_MISSING"]})
+            candidate_output.append({
+                "candidate_id": approval.get("candidate_id"), "sku": sku, "field": field,
+                "owner_decision": approval.get("owner_decision"),
+                "legacy_provenance_status": "LEGACY_PROVENANCE_BLOCKED",
+                "block_reason": ["MASTER_SKU_MISSING"],
+            })
+            readiness_output.append({
+                "candidate_id": approval.get("candidate_id"), "sku": sku, "field": field,
+                "stage6_action": "BLOCKED_CONFLICT", "stage6_status": "LEGACY_PROVENANCE_BLOCKED",
+                "readiness_status": "EXCLUDED_BLOCKED", "owner_decision": approval.get("owner_decision"),
+                "current_target_value": "", "approved_value": approval.get("reviewed_value", ""),
+                "current_source_hash": "", "candidate_source_hash": approval.get("source_hash", ""),
+                "conflict_reason": ["MASTER_SKU_MISSING"],
+            })
             continue
         artifact_path, artifact_kind, artifact_row = _verify_review_artifact(args.evidence_root, revalidation, artifact_cache)
         if approval.get("candidate_id") != queue_row.get("candidate_id") or approval.get("source_hash") != queue_row.get("source_hash"):
@@ -307,6 +379,15 @@ def main() -> int:
         })
         if approval.get("owner_decision") != "ACCEPT" or not is_sufficient:
             conflict_counts.update(preconflicts)
+            readiness_output.append({
+                "candidate_id": candidate["candidate_id"], "sku": sku, "field": field,
+                "stage6_action": "BLOCKED_CONFLICT", "stage6_status": "LEGACY_PROVENANCE_BLOCKED",
+                "readiness_status": "EXCLUDED_BLOCKED", "owner_decision": approval.get("owner_decision"),
+                "current_target_value": master_row.get(target, ""), "approved_value": approval.get("reviewed_value", ""),
+                "current_source_hash": provenance.current_source_hash,
+                "candidate_source_hash": candidate.get("source_hash", ""),
+                "conflict_reason": sorted(preconflicts),
+            })
             continue
         preview = preview_one(
             owner, candidate, source, master_row,
@@ -340,15 +421,20 @@ def main() -> int:
 
     conn.close()
     protected_after = state_hashes(args.master, args.sqlite, args.dictionary_dir)
-    if protected_before != protected_after:
-        raise RuntimeError("PROTECTED_PRODUCTION_INPUT_CHANGED_DURING_PREVIEW")
+    protected_inputs_unchanged = protected_before == protected_after
+    if not protected_inputs_unchanged:
+        conflict_counts["PROTECTED_PRODUCTION_INPUT_CHANGED_DURING_PREVIEW"] += 1
 
-    candidate_headers = list(candidate_output[0]) if candidate_output else []
-    preview_headers = list(preview_output[0]) if preview_output else [
+    candidate_headers = row_headers(candidate_output)
+    preview_headers = row_headers(preview_output, [
         "sku", "field", "candidate_id", "provenance_type", "apply_action", "stage6_status",
         "conflict_status", "conflict_reason", "current_source_hash", "reviewed_source_hash",
-    ]
-    readiness_headers = list(readiness_output[0]) if readiness_output else []
+    ])
+    readiness_headers = row_headers(readiness_output, [
+        "candidate_id", "sku", "field", "stage6_action", "stage6_status",
+        "readiness_status", "owner_decision", "current_target_value", "approved_value",
+        "current_source_hash", "candidate_source_hash", "conflict_reason",
+    ])
     output_paths = {
         "candidates": args.output_dir / f"localization_legacy_stage6_candidates_{args.stamp}.csv",
         "preview": args.output_dir / f"localization_stage6_legacy_preview_{args.stamp}.csv",
@@ -360,13 +446,31 @@ def main() -> int:
     action_counts = Counter(row.get("apply_action", "") for row in preview_output)
     readiness_counts = Counter(row.get("readiness_status", "") for row in readiness_output)
     report_path = args.output_dir / f"legacy_artifact_stage6_adapter_report_{args.stamp}.md"
-    current_commit = subprocess.run(
-        ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True,
-    ).stdout.strip()
+    git_info = read_git_provenance(ROOT)
+    candidate_total = len(candidate_output)
+    eligible_count = status_counts.get("LEGACY_PROVENANCE_SUFFICIENT_FOR_PREVIEW", 0)
+    excluded_count = candidate_total - eligible_count
+    blocked_count = excluded_count + readiness_counts.get("BLOCKED", 0)
+    final = determine_final_status(
+        git_available=bool(git_info.get("available")),
+        protected_inputs_unchanged=protected_inputs_unchanged,
+        candidate_total=candidate_total, eligible_count=eligible_count,
+        previewed_count=len(preview_output), action_counts=action_counts,
+        excluded_count=excluded_count,
+    )
     with report_path.open("w", encoding="utf-8", newline="\n") as handle:
         handle.write("# LEGACY ARTIFACT STAGE6 ADAPTER REPORT\n\n")
         handle.write(f"Generated: {dt.datetime.now(dt.timezone.utc).isoformat()}\n\n")
-        handle.write(f"## GIT\n\n- Base main: `788e290ece1ec4bb4a2ba110b0ab2ffe1f451864`\n- Branch: `fix/legacy-artifact-stage6-provenance`\n- Commit: `{current_commit}`\n\n")
+        handle.write("## GIT\n\n")
+        if git_info.get("available"):
+            handle.write(
+                f"- Origin main: `{git_info['origin_main']}`\n"
+                f"- Merge base: `{git_info['merge_base']}`\n"
+                f"- Branch: `{git_info['branch']}`\n"
+                f"- Commit: `{git_info['commit']}`\n\n"
+            )
+        else:
+            handle.write(f"- GIT_PROVENANCE_UNAVAILABLE: `{git_info.get('error', 'unknown')}`\n\n")
         handle.write("## LEGACY INPUT\n\n")
         handle.write(f"- Owner ACCEPT: {decisions.get('ACCEPT', 0)}\n- REJECT excluded: {decisions.get('REJECT', 0)}\n- HOLD excluded: {decisions.get('HOLD', 0)}\n")
         handle.write("- Owner CSV SHA-256: `" + owner_file_hash + "`\n\n")
@@ -390,8 +494,20 @@ def main() -> int:
         handle.write(f"- Previewed: {len(preview_output)}\n- NO_CHANGE: {action_counts.get('NO_CHANGE', 0)}\n- WOULD_UPDATE: {action_counts.get('WOULD_UPDATE', 0)}\n- BLOCKED_CONFLICT: {action_counts.get('BLOCKED_CONFLICT', 0)}\n- NO_SOURCE: {action_counts.get('NO_SOURCE', 0)}\n")
         handle.write("- Block reasons: " + ", ".join(f"{key}={value}" for key, value in sorted(conflict_counts.items())) + "\n\n")
         handle.write("## APPLY READINESS\n\n")
-        handle.write(f"- READY_FOR_APPLY_PLAN: {readiness_counts.get('READY_FOR_APPLY_PLAN', 0)}\n- BLOCKED: {readiness_counts.get('BLOCKED', 0)}\n\n")
-        handle.write("## SAFETY\n\n- Master writes: 0\n- SQLite production writes: 0\n- Dictionary writes: 0\n- Qwen calls: 0\n- Model review calls: 0\n- Production Apply: 0\n- Daily-run: 0\n- Main modified: NO\n- Master/SQLite/dictionary hashes unchanged: YES\n\n")
+        handle.write(
+            f"- Candidate total: {candidate_total}\n- Eligible: {eligible_count}\n"
+            f"- Excluded: {excluded_count}\n- Previewed: {len(preview_output)}\n"
+            f"- Blocked: {blocked_count}\n"
+            f"- READY_FOR_APPLY_PLAN: {readiness_counts.get('READY_FOR_APPLY_PLAN', 0)}\n"
+            f"- BLOCKED: {readiness_counts.get('BLOCKED', 0)}\n"
+            f"- EXCLUDED_BLOCKED: {readiness_counts.get('EXCLUDED_BLOCKED', 0)}\n\n"
+        )
+        handle.write(
+            "## SAFETY\n\n- Master writes: 0\n- SQLite production writes: 0\n"
+            "- Dictionary writes: 0\n- Qwen calls: 0\n- Model review calls: 0\n"
+            "- Production Apply: 0\n- Daily-run: 0\n- Main modified: NO\n"
+            f"- Master/SQLite/dictionary hashes unchanged: {'YES' if protected_inputs_unchanged else 'NO'}\n\n"
+        )
         handle.write("## TESTS\n\n")
         handle.write(f"- Targeted: {args.targeted_tests_result}\n")
         handle.write(f"- Full pytest: {args.full_pytest_result}\n")
@@ -400,12 +516,14 @@ def main() -> int:
         for path in [*output_paths.values(), report_path]:
             handle.write(f"- `{path.name}`\n")
         handle.write("\n## FINAL STATUS\n\n")
-        final = "LEGACY_STAGE6_PREVIEW_READY" if preview_output and action_counts.get("BLOCKED_CONFLICT", 0) == 0 and action_counts.get("NO_SOURCE", 0) == 0 else "LEGACY_STAGE6_ADAPTER_BLOCKED"
         handle.write(f"**{final}**\n")
     print(json.dumps({
         "status": final, "candidates": len(candidate_output),
         "provenance_status": dict(status_counts), "previewed": len(preview_output),
         "stage6": dict(action_counts), "readiness": dict(readiness_counts),
+        "candidate_total": candidate_total, "eligible": eligible_count,
+        "excluded": excluded_count, "blocked": blocked_count,
+        "git_provenance": git_info,
         "report": str(report_path), "outputs": {key: str(value) for key, value in output_paths.items()},
     }, ensure_ascii=False))
     return 0
