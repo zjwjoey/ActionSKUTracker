@@ -6,8 +6,10 @@ import yaml
 
 from action_tracker.config import load_settings
 from action_tracker.localization.contracts import source_hash
+from action_tracker.localization.engine import LocalizationEngine
 from action_tracker.localization.registry.repository import LocalizationRegistry
 from action_tracker.localization.resolver import TranslationResolver
+from action_tracker.translation.service import apply_zh_formal
 
 
 def _record(*, name: str = "Producto desconocido", spec: str = "medida rara", desc: str = "texto raro", details: str = "Dato raro") -> dict[str, str]:
@@ -51,6 +53,20 @@ def test_missing_approved_translation_is_pending_and_never_spanish():
         assert result.source == "missing"
         assert result.value != record[source_field]
         assert "NO_APPROVED_RESOLUTION" in result.review_reasons
+
+
+def test_formal_missing_translation_is_marked_and_export_is_not_ready():
+    record = _record()
+    record.update({"name_zh": "", "spec_zh": "", "desc_zh": "", "details_zh": ""})
+    formal = apply_zh_formal(record)
+    assert formal["translation_status"] == "PENDING"
+    assert formal["translation_missing_fields"] == ("name_zh", "spec_zh", "desc_zh", "details_zh", "cat1_zh", "cat2_zh")
+    assert formal["display_fallback"] == "ES"
+    assert all(formal[field] != record[source] for field, source in (("name_zh", "name_es"), ("spec_zh", "spec_es"), ("desc_zh", "desc_es"), ("details_zh", "details_es")))
+
+    plan = LocalizationEngine().primary_export_plan({**record, "zh_review_status": "PENDING", "zh_freshness_status": "CURRENT"})
+    assert plan.readiness == "REVIEW_REQUIRED"
+    assert all(field.status == "REVIEW_REQUIRED" for field in plan.fields.values() if field.source != "official_unit_price")
 
 
 def test_approved_translation_is_returned_for_current_source(tmp_path: Path):
