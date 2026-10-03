@@ -10,7 +10,7 @@
 - 基线 main：`b47e4c56a0274fdddceff347e2571d77c1476014`。
 - 闭环分支从该基线创建，未使用旧 integration 分支的 dirty state。
 - `git fetch --all --prune` 已通过临时清除 Git proxy 配置成功；`origin/main` 仍为上述基线。
-- 主线合并 CI run `37125971802`、闭环 `37128907845`、Stage6 `37128907786`、Scrapling `37128908030` 均为 Windows/Ubuntu 成功。
+- 主线合并 CI run `37125971802`、闭环 `37128907845`/`37129203699`、Stage6 `37128907786`、Scrapling `37128908030` 均为 Windows/Ubuntu 成功。
 
 ## B. AGENTS 与架构契约
 
@@ -80,7 +80,7 @@ Base main:
 b47e4c56a0274fdddceff347e2571d77c1476014
 Closure branch:
 chore/repository-consolidation-closure-v1
-7b53dbe (audit tip before this evidence refresh)
+be05e10 (remote tip verified before this final audit commit)
 Full pytest:
 688 passed / 0 failures
 CI-safe:

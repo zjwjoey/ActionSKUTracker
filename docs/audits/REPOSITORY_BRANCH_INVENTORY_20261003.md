@@ -6,7 +6,7 @@
 | branch | head | merge-base | behind/ahead | unique patch | category | recommended_action | safe_to_delete | recovery_tag |
 |---|---|---|---:|---:|---|---|---|---|
 | main | b47e4c5 | b47e4c5 | 0/0 | 0 | CURRENT_MAIN | retain | NO | pre-consolidation-main-20261003 |
-| chore/repository-consolidation-closure-v1 | 7b53dbe | b47e4c5 | 0/4 | 4 | CURRENT_CLOSURE_CANDIDATE | owner review; do not merge automatically | NO | — |
+| chore/repository-consolidation-closure-v1 | be05e10 | b47e4c5 | 0/5 | 5 | CURRENT_CLOSURE_CANDIDATE | owner review; do not merge automatically | NO | — |
 | fix/stage6-provenance-v2 | 47971fd | b47e4c5 | 0/2 | 2 | CURRENT_STAGE6_CANDIDATE | owner review; keep isolated | NO | — |
 | experiment/scrapling-detail-shadow-v3 | c1a3ffc | b47e4c5 | 0/1 | 1 | CURRENT_EXPERIMENT | owner review; keep shadow-only | NO | — |
 | feat/translation-registry-qwen-mt-v1 | ffc6ba0 | ffc6ba0 | 18/0 | 0 | SUPERSEDED_AFTER_CONSOLIDATION | DELETE_AFTER_OWNER_CONFIRMATION | OWNER_CONFIRMATION_REQUIRED | — |
