@@ -88,3 +88,11 @@ requirements.
 
 `READY_FOR_MERGE_PHASE`: the integration branch is tested and ready for an
 owner-reviewed PR. Old branches remain available; no deletion was performed.
+
+## Remote artifacts
+
+| artifact | remote ref / SHA |
+|---|---|
+| integration branch | `integrate/repository-consolidation-v1` / `93b476d4b836c6ab7a9d7d6200d2407727eb49a5` |
+| Scrapling v2 branch | `experiment/scrapling-detail-shadow-v2` / `6a8ffe328ca1a299a5c5859ab674c1fa2c149e65` |
+| Stage6 provenance branch | `fix/legacy-artifact-stage6-provenance` / `add8734aaa72c8794a72de97bf893312bda9e5e5` |
