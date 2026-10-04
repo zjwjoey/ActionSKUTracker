@@ -155,6 +155,9 @@ def _persist_fatal_run_evidence(cfg: dict[str, Any], context: dict, error: BaseE
     finished = madrid_now().isoformat()
     report = {
         "run_id": context["run_id"], "run_date": context["run_date"],
+        "business_date": context.get("business_date") or context["run_date"],
+        "parent_workflow_run_id": context.get("parent_workflow_run_id"),
+        "collection_run_id": context.get("collection_run_id") or context["run_id"],
         "dry_run": context["dry_run"], "started_at": context["started_at"],
         "finished_at": finished, "run_mode": "dry-run" if context["dry_run"] else "formal",
         "git_commit": git_commit_info(), "working_tree_dirty": git_commit_info().endswith("-dirty"),
@@ -179,13 +182,20 @@ def _finalized_run(fn):
         # lock behavior for direct daily-run callers, but allow one explicit
         # internal hand-off to avoid nested self-locking.
         skip_lock = bool(kwargs.pop("_skip_lock", False))
+        provided_business_date = kwargs.pop("business_date", None)
+        parent_workflow_run_id = kwargs.pop("workflow_run_id", None)
         start_dt = madrid_now()
-        run_date = observation_date()
-        run_id = f"{run_date}_{start_dt.strftime('%H%M%S')}"
+        # Legacy callers resolve the Madrid date here. Workflow V2 injects
+        # the date and parent run identity created by its context.
+        run_date = str(provided_business_date or observation_date())
+        run_id = str(parent_workflow_run_id or f"{run_date}_{start_dt.strftime('%H%M%S')}")
         paths: dict[str, Path] = cfg["paths"]
         lock = RunLock(paths["state"], stale_minutes=cfg["run"].get("lock_stale_minutes", 180))
-        context = {"run_id": run_id, "run_date": run_date, "started_at": start_dt.isoformat(),
-                   "dry_run": dry_run, "snap_dir": paths["snapshots"] / run_date / run_id}
+        context = {"run_id": run_id, "run_date": run_date, "business_date": run_date,
+                   "started_at": start_dt.isoformat(), "dry_run": dry_run,
+                   "parent_workflow_run_id": parent_workflow_run_id,
+                   "collection_run_id": run_id,
+                   "snap_dir": paths["snapshots"] / run_date / run_id}
         if not skip_lock:
             lock.acquire(run_id, command="daily-run --dry-run" if dry_run else "daily-run")
         context["snap_dir"].mkdir(parents=True, exist_ok=True)
@@ -587,13 +597,19 @@ def run_daily(
 
     run_report["commit_status"] = commit_status
     run_report["sqlite"] = sqlite_diagnostics
+    run_report["business_date"] = run_date
+    run_report["parent_workflow_run_id"] = _run_context.get("parent_workflow_run_id")
+    run_report["collection_run_id"] = _run_context.get("collection_run_id") or run_id
     run_report["finished_at"] = madrid_now().isoformat()
     run_report["cleanup_status"] = "lock_release_pending"
     # Commit status and completion time are produced after the main snapshot.
     # Rewrite this small, atomic report independently of QA outcome.
     write_snapshot(cfg, run_date, {"run_report": run_report})
     _print_report(run_report, qa)
-    return {"run_id": run_id, "run_report": run_report, "qa": qa.to_dict(),
+    return {"run_id": run_id, "run_date": run_date, "business_date": run_date,
+            "parent_workflow_run_id": _run_context.get("parent_workflow_run_id"),
+            "collection_run_id": _run_context.get("collection_run_id") or run_id,
+            "run_report": run_report, "qa": qa.to_dict(),
             "commit_status": commit_status, "commit_id": sqlite_diagnostics.get("commit_id"),
             "snapshot_dir": str(snap_dir)}
 

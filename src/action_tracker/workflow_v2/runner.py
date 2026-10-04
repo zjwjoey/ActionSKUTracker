@@ -69,6 +69,8 @@ class WorkflowV2Runner:
         self.production_primary = bool(production_apply or production_mode)
         self.temp_db = Path(temp_db) if temp_db else self.directory / "workflow_v2.sqlite3"
         self.cfg = dict(cfg or {})
+        if not self.context.config_evidence:
+            self.context.config_evidence = dict(self.cfg.get("_config_evidence") or {})
         self.detail_adapter = detail_adapter
         self.extraction_adapter = extraction_adapter
         self.allow_high_risk_auto_approval = bool(allow_high_risk_auto_approval)
@@ -92,6 +94,11 @@ class WorkflowV2Runner:
             state_path = self.directory / "workflow_state.json"
         if resume and state_path.exists():
             prior = json.loads(state_path.read_text(encoding="utf-8"))
+            prior_evidence = dict((prior.get("context") or {}).get("config_evidence") or {})
+            current_hash = str((self.context.config_evidence or {}).get("effective_config_hash") or "")
+            prior_hash = str(prior_evidence.get("effective_config_hash") or "")
+            if prior_hash and current_hash and prior_hash != current_hash:
+                raise ValueError("CONFIG_CHANGED_SINCE_RUN")
             if prior.get("context"):
                 self.context = WorkflowContext.from_dict(prior["context"])
                 if self.context.database_path:
@@ -129,6 +136,18 @@ class WorkflowV2Runner:
                             "translation_state": "PASS" if self.context.translation_ready else ("REVIEW_REQUIRED" if self.context.review_required else ("PENDING" if self.context.translation_pending else "BLOCKED")),
                             "localization_state": "PASS" if self.context.localization_commit_id else "PENDING",
                             "export_state": "PASS" if self.context.export_ready else ("PENDING" if self.context.export_pending else "BLOCKED"),
+                            "workflow_run_id": self.context.workflow_run_id,
+                            "business_date": self.context.business_date,
+                            "source_commit_id": self.context.source_commit_id,
+                            "production_mode": self.context.production_mode,
+                            "production_apply": self.context.production_apply,
+                            "config_evidence": dict(self.context.config_evidence or {}),
+                            "translation_batch_limit": int((self.cfg.get("workflow_v2") or {}).get("translation_batch_limit", 50) or 50),
+                            "processed_units": sum(1 for item in self.translation_results if item.get("status") == "PASS"),
+                            "remaining_units": max(0, len(self.translation_plan) - sum(1 for item in self.translation_results if item.get("status") == "PASS")),
+                            "review_required": self.context.review_required,
+                            "localization_apply": "enabled" if self.production_apply else "disabled",
+                            "export_publish": "enabled" if self.production_apply and self.auto_export else "disabled",
                             "FINAL_STATUS": state})
         self._stage("REPORT", lambda: StageResult("PASS", self.report))
         payload = _state_payload(self.context, self.stages, state, self.report)
@@ -294,6 +313,8 @@ class WorkflowV2Runner:
                                      "model": ai.get("model", getattr(self.provider, "model", "")), "auto_policy": self.auto_policy,
                                      "auto_export": self.auto_export, "production_apply": self.production_apply,
                                      "business_date": self.context.business_date, "database_path": str(self.temp_db),
+                                     "config_evidence": dict(self.context.config_evidence or {}),
+                                     "production_mode": self.context.production_mode,
                                      "real_qwen": bool(self.provider is None and self.auto_translation and ai.get("enabled") and configured_qwen),
                                      "production_primary": self.production_primary})
     def _backup(self) -> StageResult:
@@ -320,8 +341,13 @@ class WorkflowV2Runner:
                 extracted = adapter(cfg=self.cfg, business_date=self.context.business_date,
                                     workflow_run_id=self.context.workflow_run_id)
             except Exception as exc:
+                if "EXTRACTION_BUSINESS_DATE_MISMATCH" in str(exc):
+                    return StageResult("BLOCKED", {"reason": "EXTRACTION_BUSINESS_DATE_MISMATCH", "error": str(exc)}, "EXTRACTION_BUSINESS_DATE_MISMATCH")
                 return StageResult("BLOCKED", {"reason": "EXTRACTION_ADAPTER_FAILED", "error": str(exc)}, "EXTRACTION_ADAPTER_FAILED")
             metadata = dict(extracted) if isinstance(extracted, Mapping) else {}
+            extracted_date = metadata.get("business_date") or metadata.get("observation_date")
+            if extracted_date and str(extracted_date) != self.context.business_date:
+                return StageResult("BLOCKED", {"expected": self.context.business_date, "actual": str(extracted_date)}, "EXTRACTION_BUSINESS_DATE_MISMATCH")
             candidate_records = metadata.get("records") if metadata else extracted
             if not isinstance(candidate_records, list):
                 return StageResult("BLOCKED", {"reason": "EXTRACTION_RECORDS_INVALID"}, "EXTRACTION_RECORDS_INVALID")
@@ -335,6 +361,10 @@ class WorkflowV2Runner:
             extraction_run_id = str(metadata.get("extraction_run_id") or "")
             if extraction_run_id:
                 self.context.extraction_run_id = extraction_run_id
+            collection_run_id = str(metadata.get("collection_run_id") or "")
+            if collection_run_id:
+                self.context.collection_run_id = collection_run_id
+            self.context.parent_workflow_run_id = str(metadata.get("parent_workflow_run_id") or self.context.workflow_run_id)
         if self.records is None:
             return StageResult("BLOCKED", {"reason": "NO_EXTRACTION_ADAPTER_OR_FIXTURE"}, "EXTRACTION_NOT_CONFIGURED")
         self.records = [dict(row) for row in self.records]; _write_json(self.directory / "records.json", self.records)
@@ -355,7 +385,13 @@ class WorkflowV2Runner:
         """
         from ..orchestrator.daily import run_daily
 
-        result = run_daily(dict(cfg), dry_run=True, fetch_details=True)
+        result = run_daily(
+            dict(cfg), dry_run=True, fetch_details=True,
+            business_date=business_date, workflow_run_id=workflow_run_id,
+        )
+        extracted_date = result.get("business_date") or result.get("run_date") or (result.get("run_report") or {}).get("run_date")
+        if str(extracted_date or "") != str(business_date):
+            raise ValueError(f"EXTRACTION_BUSINESS_DATE_MISMATCH: expected={business_date} actual={extracted_date}")
         snapshot_dir = Path(str(result.get("snapshot_dir") or ""))
         records_path = snapshot_dir / "products_normalized.csv"
         if not records_path.exists():
@@ -373,6 +409,9 @@ class WorkflowV2Runner:
             "expected_new_skus": [str(row.get("sku") or "") for row in delta if str(row.get("status") or "").upper() == "NEW"],
             "expected_reappeared_skus": [str(row.get("sku") or "") for row in delta if str(row.get("status") or "").upper() == "REAPPEARED"],
             "extraction_run_id": str(result.get("run_id") or workflow_run_id),
+            "collection_run_id": str(result.get("collection_run_id") or result.get("run_id") or workflow_run_id),
+            "parent_workflow_run_id": workflow_run_id,
+            "business_date": str(extracted_date),
             "snapshot": str(snapshot_dir),
         }
     def _source_audit(self) -> StageResult:
@@ -396,6 +435,7 @@ class WorkflowV2Runner:
         if self.production_primary and not self.temp_db.exists():
             return StageResult("BLOCKED", {"reason": "PRODUCTION_PRIMARY_MISSING", "database": str(self.temp_db)}, "PRODUCTION_PRIMARY_MISSING")
         from ..database.production import CommitBundle, ProductionWriter
+        from ..services.hashing import localization_field_source_hashes, localization_source_hash
         self.temp_db.parent.mkdir(parents=True, exist_ok=True)
         fact_issues = {(str(item.get("sku") or ""), str(item.get("field") or ""))
                        for item in self.source_readiness.get("fact_missing_required", [])}
@@ -419,8 +459,15 @@ class WorkflowV2Runner:
             if row.get("_historical_minimal"):
                 continue
             source_row = commit_by_sku.get(sku, row)
-            localization.append({"sku": sku, "language": "es", "name": source_row.get("name_es", ""), "cat1": source_row.get("cat1_es", ""), "cat2": source_row.get("cat2_es", ""), "spec": source_row.get("spec_es", ""), "description": source_row.get("desc_es", ""), "details": source_row.get("details_es", ""), "source": "OFFICIAL_FACT", "review_status": "VERIFIED"})
-            localization.append({"sku": sku, "language": "zh", "name": "", "cat1": "", "cat2": "", "spec": "", "description": "", "details": "", "source": "PENDING", "review_status": "PENDING"})
+            source_binding = {
+                "name_es": source_row.get("name_es"), "cat1_es": source_row.get("cat1_es"),
+                "cat2_es": source_row.get("cat2_es"), "spec_es": source_row.get("spec_es"),
+                "desc_es": source_row.get("desc_es"), "details_es": source_row.get("details_es"),
+            }
+            aggregate_source_hash = localization_source_hash(source_binding)
+            field_source_hashes = localization_field_source_hashes(source_binding)
+            localization.append({"sku": sku, "language": "es", "name": source_row.get("name_es", ""), "cat1": source_row.get("cat1_es", ""), "cat2": source_row.get("cat2_es", ""), "spec": source_row.get("spec_es", ""), "description": source_row.get("desc_es", ""), "details": source_row.get("details_es", ""), "source": "OFFICIAL_FACT", "review_status": "VERIFIED", "source_hash": aggregate_source_hash, **{f"{field}_source_hash": value for field, value in field_source_hashes.items()}})
+            localization.append({"sku": sku, "language": "zh", "name": "", "cat1": "", "cat2": "", "spec": "", "description": "", "details": "", "source": "PENDING", "review_status": "PENDING", "freshness_status": "PENDING", "source_hash": aggregate_source_hash, **{f"{field}_source_hash": value for field, value in field_source_hashes.items()}, **{f"{field}_freshness_status": "PENDING" for field in field_source_hashes}})
             source_versions.append({"sku": sku, "run_id": self.context.workflow_run_id, "observed_at": self.context.business_date, "source_name": "workflow_v2", "facts": {"name": {"raw": source_row.get("name_es"), "normalized": source_row.get("name_es")}, "cat1": {"raw": source_row.get("cat1_es"), "normalized": source_row.get("cat1_es")}, "cat2": {"raw": source_row.get("cat2_es"), "normalized": source_row.get("cat2_es")}, "spec": {"raw": source_row.get("spec_es"), "normalized": source_row.get("spec_es")}, "description": {"raw": source_row.get("desc_es"), "normalized": source_row.get("desc_es")}, "details": {"raw": source_row.get("details_es"), "normalized": source_row.get("details_es")}}})
         bundle = CommitBundle(run_id=self.context.workflow_run_id, observation_date=self.context.business_date, qa_state="PASS", current_products=products, localization_updates=tuple(localization), source_fact_versions=tuple(source_versions), observations=observations, run_record={"dry_run": False, "run_id": self.context.workflow_run_id}, requires_collection_integrity=False)
         self.context.source_commit_id = ProductionWriter(self.temp_db, role="PRIMARY").commit(bundle)
@@ -899,6 +946,14 @@ def run_workflow_v2(cfg: Mapping[str, Any], *, business_date: str | None = None,
                     allow_high_risk_auto_approval: bool = False) -> dict[str, Any]:
     root = Path(cfg.get("project_root") or ".") / "runtime" / "reports" / "workflow_v2"
     options = dict(cfg.get("workflow_v2") or {})
+    from ..config import config_evidence, validate_phase1_profile
+    evidence = config_evidence(dict(cfg))
+    if production_mode:
+        if not evidence.get("profile_path"):
+            raise ValueError("PRODUCTION_TRANSLATION_PROFILE_REQUIRED")
+        invalid = validate_phase1_profile(dict(cfg))
+        if invalid:
+            raise ValueError("PRODUCTION_TRANSLATION_PROFILE_INVALID:" + ",".join(invalid))
     if resume and (not run_id or not business_date):
         candidates = sorted(root.glob(f"*/{run_id or '*'}")) if root.exists() else []
         candidates = [path for path in candidates if (path / "workflow_state.json").exists()]
@@ -910,6 +965,10 @@ def run_workflow_v2(cfg: Mapping[str, Any], *, business_date: str | None = None,
         if not business_date:
             business_date = candidates[0].parent.name
     context = new_context(root, business_date=business_date, run_id=run_id)
+    context.config_evidence = evidence
+    context.production_mode = "translation" if production_mode else ("apply" if production_apply else None)
+    context.production_apply = bool(production_apply)
+    context.parent_workflow_run_id = context.workflow_run_id
     from ..database.integration import database_path, storage_mode
     configured_primary = Path(database_path(cfg)).resolve()
     if production_apply or production_mode:
