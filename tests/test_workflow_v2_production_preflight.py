@@ -6,6 +6,7 @@ import yaml
 
 from action_tracker.database.connection import connect
 from action_tracker.database.schema import migrate_v2
+from action_tracker.config import config_evidence, load_settings
 from scripts.workflow_v2_production_preflight import run
 
 
@@ -110,3 +111,15 @@ def test_preflight_expected_ref_reports_audited_head(tmp_path, monkeypatch):
     assert report["status"] == "PASS"
     assert report["audited_ref"] == "HEAD"
     assert report["audited_content_head"] == head
+
+
+def test_preflight_effective_config_hash_matches_runtime(tmp_path, monkeypatch):
+    _valid_environment(tmp_path)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
+    profile = _profile(tmp_path)
+    report = run(_args(tmp_path, profile))
+    runtime_cfg = load_settings(overlay_paths=[profile])
+    runtime_evidence = config_evidence(runtime_cfg)
+    assert report["effective_config_hash"] == runtime_evidence["effective_config_hash"]
+    assert report["base_config_sha256"] == runtime_evidence["base_config_sha256"]
+    assert report["profile_sha256"] == runtime_evidence["profile_sha256"]

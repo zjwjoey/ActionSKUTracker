@@ -18,6 +18,17 @@ def test_workflow_v2_cli_exposes_explicit_production_apply():
     assert args.dry_run is False
 
 
+def test_workflow_v2_cli_exposes_profile_and_translation_mode():
+    parser = build_parser()
+    args = parser.parse_args([
+        "data-update-v2", "--profile", "config/workflow_v2_production_profile.yaml",
+        "--production-translation", "--no-dry-run",
+    ])
+    assert args.profile.endswith("workflow_v2_production_profile.yaml")
+    assert args.production_translation is True
+    assert args.production_apply is False
+
+
 def test_workflow_v2_cli_scopes_fixture_high_risk_auto_approval_to_canary():
     parser = build_parser()
     args = parser.parse_args([

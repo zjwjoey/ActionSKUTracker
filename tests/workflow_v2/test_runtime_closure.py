@@ -76,12 +76,22 @@ def test_default_settings_remain_fail_closed():
 
 
 def test_profile_overlay_deep_merge_and_evidence():
-    cfg = load_settings(overlay_paths=[Path("config/workflow_v2_production_profile.yaml")])
+    import yaml
+
+    base = Path("tests") / "_runtime_base.yaml"
+    profile = Path("tests") / "_runtime_profile.yaml"
+    base.write_text(yaml.safe_dump({"workflow_v2": {"enabled": False, "detail_retry": {"enabled": True}}, "localization": {"ai": {"enabled": False}}}), encoding="utf-8")
+    profile.write_text(yaml.safe_dump({"workflow_v2": {"enabled": True, "translation_batch_limit": 50, "detail_retry": {"enabled": False}, "auto_translation": {"enabled": True, "provider": "qwen_mt"}, "auto_policy_approval": {"enabled": False}, "auto_export": {"enabled": False}}, "localization": {"ai": {"enabled": True, "provider": "qwen_mt"}, "production_apply_enabled": False}, "knowledge": {"production_apply_enabled": False, "fallback_to_spanish": False}}), encoding="utf-8")
+    try:
+        cfg = load_settings(path=base, overlay_paths=[profile])
+    finally:
+        base.unlink(missing_ok=True)
+        profile.unlink(missing_ok=True)
     assert validate_phase1_profile(cfg) == []
     assert cfg["workflow_v2"]["translation_batch_limit"] == 50
     assert cfg["workflow_v2"]["detail_retry"]["enabled"] is False
     evidence = config_evidence(cfg)
-    assert evidence["profile_path"].endswith("workflow_v2_production_profile.yaml")
+    assert evidence["profile_path"].endswith("_runtime_profile.yaml")
     assert all(evidence[key] for key in ("base_config_sha256", "profile_sha256", "effective_config_hash"))
     assert "DASHSCOPE_API_KEY" not in evidence
 
@@ -168,6 +178,67 @@ def test_changed_es_name_stales_only_name_and_preserves_zh(tmp_path):
     assert fields["name"] == ("旧商品", "STALE")
     assert fields["cat1"][1] == "CURRENT"
     assert fields["spec"][1] == "CURRENT"
+
+
+def test_changed_es_spec_stales_only_spec_and_preserves_other_fields(tmp_path):
+    db = tmp_path / "freshness-spec.sqlite3"
+    old = _source(spec="10 cm")
+    es, zh = _localization_rows(old)
+    first = ProductionWriter(db).commit(_bundle("r1", old, (es, zh)))
+    new = _source(spec="20 cm")
+    new_es, new_zh = _localization_rows(new, zh_values={key: "" for key in ("name", "cat1", "cat2", "spec", "description", "details")}, freshness="PENDING")
+    ProductionWriter(db).commit(_bundle("r2", new, (new_es, new_zh), base=first))
+    with connect(db) as conn:
+        fields = {row[0]: (row[1], row[2]) for row in conn.execute("SELECT field_name,value,freshness_status FROM localization_fields WHERE official_sku='100' AND language='zh'")}
+    assert fields["spec"] == ("10 厘米", "STALE")
+    assert fields["name"] == ("旧商品", "CURRENT")
+    assert fields["description"] == ("红色桌子", "CURRENT")
+
+
+def test_registry_and_projection_freshness_match(tmp_path):
+    db = tmp_path / "freshness-parity.sqlite3"
+    old = _source(name="Producto viejo")
+    es, zh = _localization_rows(old)
+    first = ProductionWriter(db).commit(_bundle("r1", old, (es, zh)))
+    new = _source(name="Producto nuevo")
+    new_es, new_zh = _localization_rows(new, zh_values={key: "" for key in ("name", "cat1", "cat2", "spec", "description", "details")}, freshness="PENDING")
+    ProductionWriter(db).commit(_bundle("r2", new, (new_es, new_zh), base=first))
+    with connect(db) as conn:
+        projection = conn.execute("SELECT freshness_status FROM product_localizations WHERE official_sku='100' AND language='zh'").fetchone()[0]
+        registry = {row[0]: row[1] for row in conn.execute("SELECT field_name,freshness_status FROM localization_fields WHERE official_sku='100' AND language='zh'")}
+    assert projection == "STALE"
+    assert registry["name"] == "STALE"
+    assert registry["cat1"] == "CURRENT"
+
+
+def test_explicit_historical_business_date_reaches_fact_registry_and_export(tmp_path):
+    context = new_context(tmp_path / "reports", business_date="2026-10-03", run_id="historical-1")
+    result = WorkflowV2Runner(root=tmp_path / "reports", context=context, cfg=_cfg(tmp_path), records=[_source()]).run()
+    assert result.context.business_date == "2026-10-03"
+    assert result.report["business_date"] == "2026-10-03"
+    with connect(Path(result.context.database_path)) as conn:
+        assert conn.execute("SELECT observation_date FROM observations WHERE run_id=?", (result.context.workflow_run_id,)).fetchone()[0] == "2026-10-03"
+        assert conn.execute("SELECT observed_at FROM translation_source_versions WHERE source_run_id=?", (result.context.workflow_run_id,)).fetchone()[0] == "2026-10-03"
+
+
+def test_cross_midnight_does_not_change_business_date(tmp_path, monkeypatch):
+    import action_tracker.workflow_v2.context as context_module
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    before = datetime(2026, 10, 3, 23, 59, 59, tzinfo=ZoneInfo("Europe/Madrid"))
+    after = datetime(2026, 10, 4, 0, 0, 5, tzinfo=ZoneInfo("Europe/Madrid"))
+    monkeypatch.setattr(context_module, "madrid_now", lambda: before)
+    context = new_context(tmp_path / "reports", run_id="midnight-1")
+
+    def extraction(**kwargs):
+        monkeypatch.setattr(context_module, "madrid_now", lambda: after)
+        assert kwargs["business_date"] == "2026-10-03"
+        return {"records": [_source()], "business_date": kwargs["business_date"]}
+
+    result = WorkflowV2Runner(root=tmp_path / "reports", context=context, cfg=_cfg(tmp_path), records=None, extraction_adapter=extraction).run()
+    assert result.context.business_date == "2026-10-03"
+    assert result.report["business_date"] == "2026-10-03"
 
 
 def test_unchanged_es_keeps_approved_zh_current(tmp_path):
