@@ -1,63 +1,68 @@
-# Workflow V2 生产部署说明
+# Workflow V2 Phase 1 生产部署说明
 
-## 发布对象
+## 候选边界
 
-本次部署只发布经过验证的部署分支：
+- 部署分支：`deploy/workflow-v2-production-20261004`
+- 不可变候选：`production/workflow-v2-phase1-rc4`
+- 默认 `config/settings.yaml` 保持 fail-closed；生产 profile 是 partial overlay，不能单独作为完整 settings 文件加载。
+- 本文示例不引用旧的 `75b01acc`、RC3 或 branch HEAD。
 
-- 分支：`deploy/workflow-v2-production-20261004`
-- 代码：`2cac2b7e60e01d6468af21ec3eb9caafab6777ac`
-- audited deployment head：`75b01acc9818717c5959c83cdddcb92a59d25442`
-- 基线生产分支：`fix/naming-history-export-20260917`，旧 head：`3a9df7af807875b97d4eab1b5d3bb57c69f5c041`
+## Phase 1 运行契约
 
-部署分支直接从已验证的 Workflow V2 feature head 创建。不得把 feature 分支合并到命名历史分支，也不得 cherry-pick 命名历史分支。
+运行时将 base settings 与显式 profile deep-merge，并在每次 run evidence 中记录：base/profile 路径、两个 SHA-256 和 effective config hash。API key 只记录 `SET` / `NOT_SET`，不记录值。
 
-## 生产开关
+Phase 1 只允许 PRIMARY 西语事实、registry ingest、Qwen 翻译、QA 和 review state。以下开关必须关闭：
 
-部署配置开启 Workflow V2、只读 shadow preflight 和 Qwen MT 翻译。模型调用入口为 `localization.ai`，provider 为 `qwen_mt`，model 为 `qwen-mt-flash`，密钥只从 `DASHSCOPE_API_KEY` 读取。同步翻译批次上限为 50。
+- `workflow_v2.auto_policy_approval.enabled`
+- `workflow_v2.auto_export.enabled`
+- `localization.production_apply_enabled`
+- `knowledge.production_apply_enabled`
+- `knowledge.fallback_to_spanish`
 
-以下开关保持关闭：`auto_policy_approval`、`auto_export`、`detail_retry`、旧 `translation.qwen_mt` 入口，以及西语回填。自动审批和自动发布必须另行授权。
-
-第一阶段还保持 `knowledge.production_apply_enabled`、`localization.production_apply_enabled` 和 `dictionary_apply.production_enabled` 的现有安全门禁关闭。Qwen 结果进入 QA/Review 状态，不直接覆盖正式中文投影；需要正式 Apply 时另行审计授权。
-
-## 上线前操作
-
-1. 在部署分支运行完整 pytest 和 Workflow V2 fixture canary。
-2. 运行只读预检（不会调用 Qwen，也不会写 PRIMARY）：
-
-   ```powershell
-   $env:PYTHONPATH='F:\ActionSKUTracker_workflow_v2\src'
-   python scripts/workflow_v2_production_preflight.py `
-     --source-root F:\ActionSKUTracker_workflow_v2 `
-     --config F:\ActionSKUTracker_workflow_v2\config\workflow_v2_production_profile.yaml `
-     --data-root F:\ActionSKUTracker `
-     --expected-branch deploy/workflow-v2-production-20261004 `
-     --expected-head 75b01acc9818717c5959c83cdddcb92a59d25442 `
-     --json
-   ```
-
-3. 确认预检为 `PASS` 后，由 Owner 执行代码目录切换，并采用该 profile 的生产配置。切换动作不复制、不重建、不替换 `F:\ActionSKUTracker\runtime`。仓库默认 `settings.yaml` 保持 fail-closed，避免普通开发命令隐式调用 Qwen。
-4. 切换后先执行一轮小批量生产验证；不得直接运行全量历史翻译队列，不得打开自动审批或自动导出。
-
-## 备份与数据边界
-
-部署前备份清单位于：
-`F:\ActionSKUTracker\runtime\backups\workflow_v2_production_20261004\deployment-manifest.json`。
-
-同目录包含 SQLite PRIMARY 的一致性备份、生产配置备份、源数据库和配置 SHA-256。生产数据库仍是唯一 PRIMARY；历史队列保留在库内，由运行时按当前日优先和每批 50 条隔离处理。
-
-本次收尾没有执行真实详情抓取、真实 Qwen 请求、生产导出或生产代码目录切换。
-
-## 唯一生产入口
-
-代码切换并由 Owner 单独开启生产 Apply 门禁后，Workflow V2 的唯一生产入口为：
+### 唯一 Phase 1 命令
 
 ```powershell
-python -m action_tracker data-update-v2 --date YYYY-MM-DD --production-apply
+python -m action_tracker data-update-v2 `
+  --date YYYY-MM-DD `
+  --profile config/workflow_v2_production_profile.yaml `
+  --production-translation `
+  --no-dry-run
 ```
 
-本次闭环不执行该命令；`production-run` 和 `data-update` 保留为旧日常链路兼容入口，不作为 Workflow V2 的生产入口。`data-update-v2` 的 `--fixture`、`--fake-provider`、`--canary` 组合只用于隔离验收。
+`--production-translation` 必须有显式 `--profile`，或由已审计的 `ACTION_TRACKER_CONFIG_PROFILE` 提供。显式 CLI 参数优先于环境变量。Phase 1 **DO NOT USE `--production-apply`**；不得执行 localization apply、auto approval 或 formal export publish。
 
-## 发布结果标记
+`--production-apply` 仅属于后续独立授权的 Phase 2，且必须同时打开 knowledge/localization apply gates。它不是 Phase 1 的替代参数。
 
-- `PRODUCTION_CODE_CUTOVER`: 只有预检、备份、测试和 CI 均通过后才标记 `READY`。
-- `PRODUCTION_FULL_AUTOMATION`: 在自动审批和自动导出保持关闭期间标记 `NOT_YET`。
+## 生产运行前置顺序
+
+1. 备份 PRIMARY。
+2. 使用 RC4 做 production preflight。
+3. 核对 audited ref、base/profile SHA 和 effective config hash。
+4. 确认 `DASHSCOPE_API_KEY` 为 `SET`。
+5. 执行上面的 Phase 1 translation-only 命令。
+6. 检查 fact commit、registry、queue、provider calls、QA 和 review evidence。
+7. 确认 `localization_apply=disabled`、`export_publish=disabled`；不得自动 Apply/Export。
+
+## 只读 preflight
+
+```powershell
+$env:PYTHONPATH='F:\ActionSKUTracker_workflow_v2\src'
+python scripts/workflow_v2_production_preflight.py `
+  --source-root F:\ActionSKUTracker_workflow_v2 `
+  --profile F:\ActionSKUTracker_workflow_v2\config\workflow_v2_production_profile.yaml `
+  --data-root F:\ActionSKUTracker `
+  --expected-branch deploy/workflow-v2-production-20261004 `
+  --expected-ref production/workflow-v2-phase1-rc4 `
+  --json
+```
+
+Preflight 与正式命令必须使用同一 base settings、同一 profile 和同一 effective config hash。Preflight 是只读的，不调用 Qwen、不 claim queue、不写 PRIMARY。
+
+## 数据和恢复边界
+
+生产数据库仍是唯一 PRIMARY。验证只能使用 temporary SQLite、fixture、Fake Provider 和 mock environment；不得清空历史 queue、调用真实 Qwen、执行全量 Action 采集或发布 Excel。Resume 必须沿用原 run 的 business date、source commit 和 config hash；profile 改变时阻断并报告 `CONFIG_CHANGED_SINCE_RUN`。
+
+## 发布标记
+
+- `PRODUCTION_CODE_CUTOVER`: preflight、备份、完整测试和 RC4 exact-head CI 全部通过后才可标记 `READY`。
+- `PRODUCTION_FULL_AUTOMATION`: auto approval 和 auto export 关闭期间保持 `NOT_YET`。

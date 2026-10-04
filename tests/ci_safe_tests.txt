@@ -89,3 +89,4 @@ tests/workflow_v2/test_translation_readiness.py
 tests/workflow_v2/test_workflow_fail_closed.py
 tests/workflow_v2/test_workflow_resume.py
 tests/workflow_v2/test_production_phase1_state_machine.py
+tests/workflow_v2/test_runtime_closure.py
