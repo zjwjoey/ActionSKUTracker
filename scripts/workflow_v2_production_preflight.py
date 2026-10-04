@@ -204,6 +204,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             db_report.update({"integrity_check": integrity, "foreign_key_errors": foreign_keys[:10], "foreign_key_error_count": len(foreign_keys)})
             checks.append(_check("primary_database_role", metadata.get("database_role") == "PRIMARY", metadata.get("database_role"), "database_role must remain PRIMARY"))
             checks.append(_check("database_schema_family", metadata.get("schema_family") == "ACTION_SQLITE_DATA", metadata.get("schema_family")))
+            checks.append(_check("database_schema_version", metadata.get("schema_version") == "2.0.0", metadata.get("schema_version"), "expected compatible schema_version 2.0.0"))
             checks.append(_check("database_integrity", integrity == "ok" and not foreign_keys, {"integrity": integrity, "foreign_key_error_count": len(foreign_keys)}))
             db_report["queue"] = _queue_stats(db, latest_run_id)
             queue_columns = {str(row[1]) for row in db.execute("PRAGMA table_info(translation_queue)")} if "translation_queue" in tables else set()
@@ -213,7 +214,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 rows = db.execute("SELECT status, COUNT(*) FROM export_sync GROUP BY status ORDER BY status").fetchall()
                 db_report["export_sync_by_status"] = {str(row[0]): int(row[1]) for row in rows}
     else:
-        checks.extend([_check("database_required_tables", False), _check("commit_batches_latest", False), _check("products_readable", False), _check("product_localizations_readable", False), _check("translation_registry_readable", False), _check("queue_scheduling_contract", False), _check("primary_database_role", False, None, "database is missing"), _check("database_schema_family", False), _check("database_integrity", False)])
+        checks.extend([_check("database_required_tables", False), _check("commit_batches_latest", False), _check("products_readable", False), _check("product_localizations_readable", False), _check("translation_registry_readable", False), _check("queue_scheduling_contract", False), _check("primary_database_role", False, None, "database is missing"), _check("database_schema_family", False), _check("database_schema_version", False), _check("database_integrity", False)])
 
     dirs = [data_root / Path(str(value)) for key, value in (raw.get("paths") or {}).items() if key != "master" and isinstance(value, str) and not Path(value).is_absolute()]
     missing_dirs = [str(path) for path in dirs if not path.exists()]
