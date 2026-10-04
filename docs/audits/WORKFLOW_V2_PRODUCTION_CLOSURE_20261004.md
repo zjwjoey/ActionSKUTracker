@@ -17,7 +17,7 @@
 - isolated Workflow V2 full canary: `SUCCESS`
 - canary stages: source/fact commit、QWEN_TRANSLATE（fake provider）、translation QA、scoped fixture policy、translation apply、export audit、export write 全部通过
 - canary export 写入临时 staging，`production_primary=false`
-- GitHub Actions run `37195834887`: Ubuntu 和 Windows 均 `SUCCESS`
+- GitHub Actions run `37198175506` for deployment head: Ubuntu 和 Windows 均 `SUCCESS`
 - production preflight: `PASS`
 - preflight database: `ACTION_SQLITE_DATA`, schema `2.0.0`, role `PRIMARY`, integrity `ok`, foreign-key errors `0`
 - preflight Qwen: provider/model 配置通过；密钥只记录 `SET/NOT_SET`
