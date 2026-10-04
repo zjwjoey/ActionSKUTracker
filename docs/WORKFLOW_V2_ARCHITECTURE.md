@@ -16,6 +16,17 @@ settings keep `workflow_v2.enabled`, automatic translation, policy approval and
 automatic export disabled. A future production adapter must pass the source,
 fact commit and translation source gates before constructing a provider.
 
+The isolated Apply canary is:
+
+```powershell
+python -m action_tracker workflow-v2-local-canary --fixture fixture.json --output runtime/canary
+```
+
+It creates a temporary SQLite database, commits fixture Spanish facts through
+`ProductionWriter`, registers a Translation System V1 source/revision, approves
+the fixture revision, and applies it through the existing immutable patch
+coordinator. It never resolves or mutates the configured production database.
+
 Stages are explicit: `PREFLIGHT`, `BACKUP`, `EXTRACT`, `SOURCE_AUDIT`,
 `SOURCE_CLEAN`, `SOURCE_REAUDIT`, `FACT_COMMIT`, `DETAIL_PLAN`,
 `DETAIL_ENRICH`, `TRANSLATION_SOURCE_AUDIT`, `REGISTRY_INGEST`,

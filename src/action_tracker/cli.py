@@ -265,6 +265,9 @@ def build_parser() -> argparse.ArgumentParser:
     ws.add_argument("--legacy", required=True, help="旧链路 JSON fixture")
     ws.add_argument("--workflow-v2", dest="workflow_v2_fixture", required=True, help="Workflow V2 JSON fixture")
     ws.add_argument("--output", required=True)
+    wc = sub.add_parser("workflow-v2-local-canary", help="在临时 SQLite 上运行 Workflow V2 local canary")
+    wc.add_argument("--fixture", required=True, help="包含 records 和 fake_translations 的 JSON fixture")
+    wc.add_argument("--output", required=True)
     ops = sub.add_parser("ops", help="本机运营状态/控制台")
     ops_sub = ops.add_subparsers(dest="ops_command", required=True)
     ops_sub.add_parser("status"); ops_sub.add_parser("health"); ops_sub.add_parser("runs"); ops_run = ops_sub.add_parser("run"); ops_run.add_argument("run_id")
@@ -1124,6 +1127,16 @@ def main(argv=None) -> int:
         result = compare_shadow_payloads(legacy, workflow_v2_payload)
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(result, ensure_ascii=False)); return 0 if result["status"] == "PASS" else 20
+    if args.command == "workflow-v2-local-canary":
+        from .workflow_v2.canary import run_local_canary
+        from .localization.providers.base import FakeTranslationProvider
+        fixture = json.loads(Path(args.fixture).read_text(encoding="utf-8"))
+        records = fixture if isinstance(fixture, list) else fixture.get("records") or []
+        if not records:
+            print(json.dumps({"status": "BLOCKED", "reason": "FIXTURE_RECORD_MISSING"}, ensure_ascii=False)); return 20
+        provider = FakeTranslationProvider(mapping=(fixture.get("fake_translations") or {}) if isinstance(fixture, dict) else {})
+        result = run_local_canary(record=records[0], provider=provider, output_dir=Path(args.output))
         print(json.dumps(result, ensure_ascii=False)); return 0 if result["status"] == "PASS" else 20
     if args.command in ("production-run", "data-update"):
         from .operations.entry import run_production

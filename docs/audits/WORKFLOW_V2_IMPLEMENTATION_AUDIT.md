@@ -13,6 +13,7 @@
 - Offline ES audit, ZH audit and ES/ZH identity parity audit.
 - Resumable state and required report artifacts.
 - Development CLI `data-update-v2` with fixture and fake-provider switches.
+- Isolated SQLite local canary covering registry approval and immutable Apply.
 
 ## Deliberately not enabled
 
