@@ -104,6 +104,56 @@ def test_registry_ingest_is_shadow_and_queues_field_units(tmp_path: Path):
         assert db.execute("SELECT COUNT(*) FROM product_localizations").fetchone()[0] == 0
 
 
+def test_workflow_queue_claim_is_scoped_to_run_id(tmp_path: Path):
+    db_path = tmp_path / "registry.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c2','654321','ACTIVE')")
+    registry.ingest_records(
+        [{"sku": "123456", "name_es": "Producto uno", "cat1_es": "Hogar", "cat2_es": "Cocina", "spec_es": "10 cm", "desc_es": "Rojo", "details_es": "Número: 123456"}],
+        source_run_id="old-run", observed_at="2026-10-03",
+    )
+    registry.ingest_records(
+        [{"sku": "654321", "name_es": "Producto dos", "cat1_es": "Hogar", "cat2_es": "Cocina", "spec_es": "20 cm", "desc_es": "Azul", "details_es": "Número: 654321"}],
+        source_run_id="current-run", observed_at="2026-10-04",
+    )
+    claimed = registry.claim_queue(limit=100, worker_id="workflow-v2:current-run", run_id="current-run")
+    assert claimed
+    assert {str(row["run_id"]) for row in claimed} == {"current-run"}
+    with connect(db_path) as db:
+        old_statuses = {str(row[0]) for row in db.execute("SELECT DISTINCT status FROM translation_queue WHERE run_id='old-run'").fetchall()}
+    assert old_statuses == {"PENDING"}
+
+
+def test_workflow_registry_apply_staging_is_scoped_to_source_run(tmp_path: Path):
+    db_path = tmp_path / "registry.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c2','654321','ACTIVE')")
+    record = {"sku": "123456", "name_es": "Producto uno", "cat1_es": "Hogar", "cat2_es": "Cocina", "spec_es": "10 cm", "desc_es": "Rojo", "details_es": "Número: 123456"}
+    other = {**record, "sku": "654321", "name_es": "Producto dos", "details_es": "Número: 654321"}
+    registry.ingest_records([record], source_run_id="old-run", observed_at="2026-10-03")
+    registry.ingest_records([other], source_run_id="current-run", observed_at="2026-10-04")
+    from action_tracker.localization.providers.base import FakeTranslationProvider
+    resolver = TranslationResolver(db_path=db_path, registry=registry, provider=FakeTranslationProvider({"name": "商品", "cat1": "家居", "cat2": "厨房", "spec": "10 厘米", "description": "红色", "details": "编号：123456"}))
+    worker = TranslationQueueWorker(registry, resolver)
+    assert worker.process_once(limit=20, worker_id="workflow-v2:current-run", run_id="current-run").completed >= 1
+    from action_tracker.knowledge.storage import KnowledgeStore
+    store = KnowledgeStore(db_path, role="SHADOW")
+    with connect(db_path) as db:
+        revision_ids = [str(row[0]) for row in db.execute(
+            "SELECT r.revision_id FROM translation_revisions r JOIN translation_units u ON u.current_revision_id=r.revision_id JOIN translation_source_versions s ON s.source_version_id=u.source_version_id WHERE s.source_run_id='current-run' AND r.qa_status='PASS'"
+        ).fetchall()]
+    for revision_id in revision_ids:
+        registry.approve_revision(revision_id, actor="human:test")
+    staged = store.stage_approved_registry_patches(expected_base_commit_id="BASE", actor="human:test", source_run_id="current-run")
+    assert staged["patch_ids"]
+    with connect(db_path) as db:
+        assert db.execute("SELECT COUNT(*) FROM localization_patches WHERE official_sku='123456'").fetchone()[0] == 0
+
+
 def test_registry_response_creates_revision_and_findings(tmp_path: Path):
     db_path = tmp_path / "registry.sqlite"
     registry = LocalizationRegistry(db_path)

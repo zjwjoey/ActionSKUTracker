@@ -294,8 +294,26 @@ class ProductionWriter:
             for db_field, incoming_field in field_pairs:
                 old_count = sum(1 for (sku, lang), row in existing.items()
                                 if lang == language and row[2 + field_pairs.index((db_field, incoming_field))] not in (None, ""))
-                new_count = sum(1 for (sku, lang), row in incoming.items()
-                                if lang == language and row.get(incoming_field) not in (None, ""))
+                # The localization upsert has field-preserving semantics for
+                # an existing Chinese row: a daily fact observation carries
+                # an empty zh placeholder, but it must retain the previously
+                # approved/current Chinese value.  Coverage validation must
+                # evaluate the effective post-merge value, rather than count
+                # only non-empty incoming placeholders (which made every
+                # production Workflow V2 fact commit look like a wipe).
+                field_index = 2 + field_pairs.index((db_field, incoming_field))
+                new_count = 0
+                for sku in current_skus:
+                    prior = existing.get((sku, language))
+                    candidate = incoming.get((sku, language))
+                    if candidate is None:
+                        value = prior[field_index] if prior is not None else None
+                    elif language == "zh" and prior is not None:
+                        value = prior[field_index]
+                    else:
+                        value = candidate.get(incoming_field)
+                    if value not in (None, ""):
+                        new_count += 1
                 if old_count and (old_count - new_count) / old_count > self.localization_drop_threshold:
                     raise ProductionDatabaseError(
                         f"DB_LOCALIZATION_COVERAGE_REGRESSION:{language}.{db_field}:{old_count}->{new_count}"

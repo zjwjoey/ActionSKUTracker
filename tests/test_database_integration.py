@@ -284,6 +284,21 @@ def test_primary_writer_blocks_catastrophic_localization_coverage_drop(tmp_path:
         commit_daily_bundle(cfg, second, mode="SQLITE_PRIMARY")
 
 
+def test_primary_writer_preserves_existing_zh_when_daily_bundle_has_blank_placeholder(tmp_path: Path):
+    cfg = _cfg(tmp_path, mode="SQLITE_PRIMARY")
+    commit_daily_bundle(cfg, _bundle(cfg, run_id="2026-08-29_010000"), mode="SQLITE_PRIMARY")
+    with connect(cfg["storage"]["db_path"]) as db:
+        db.execute(
+            "UPDATE product_localizations SET name='商品',cat1='家居',cat2='清洁',spec='1件',description='说明',details='详情',source_hash='stable-zh' WHERE official_sku='1001' AND language='zh'"
+        )
+    commit_daily_bundle(cfg, _bundle(cfg, run_id="2026-08-30_010000"), mode="SQLITE_PRIMARY")
+    with connect(cfg["storage"]["db_path"]) as db:
+        row = db.execute(
+            "SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku='1001' AND language='zh'"
+        ).fetchone()
+    assert tuple(row) == ("商品", "家居", "清洁", "1件", "说明", "详情")
+
+
 def test_bundle_preserves_last_run_id_for_untouched_historical_rows(tmp_path: Path):
     cfg = _cfg(tmp_path, mode="SQLITE_SHADOW")
     statuses = {"1001": _status("1001", "ACTIVE")}

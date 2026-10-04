@@ -482,7 +482,15 @@ class WorkflowV2Runner:
         if self.translation_runtime is None: self._registry_ingest()
         from ..database.connection import connect
         with connect(self.temp_db) as db:
-            rows = [dict(row) for row in db.execute("SELECT official_sku AS sku, requested_fields, source_hash, reason FROM translation_queue WHERE status IN ('PENDING','RETRY') ORDER BY created_at").fetchall()]
+            # A production registry is a durable queue shared by many runs.
+            # Workflow V2 must consume only work created by this source run;
+            # selecting every PENDING row would turn a one-SKU smoke into an
+            # unbounded historical Qwen batch and claim unrelated work.
+            rows = [dict(row) for row in db.execute(
+                "SELECT official_sku AS sku, requested_fields, source_hash, reason "
+                "FROM translation_queue WHERE run_id=? AND status IN ('PENDING','RETRY') ORDER BY created_at",
+                (self.context.workflow_run_id,),
+            ).fetchall()]
         self.translation_plan = rows
         _write_json(self.directory / "translation_plan.json", rows); _write_csv(self.directory / "translation_plan.csv", rows)
         return StageResult("PASS", {"queued": len(rows), "registry_queue": True})
@@ -498,7 +506,11 @@ class WorkflowV2Runner:
             return StageResult("BLOCKED", {"reason": "PROVIDER_NOT_CONFIGURED"}, "TRANSLATION_PROVIDER_MISSING")
         self.translation_runtime.resolver.provider = provider
         self.translation_runtime.worker.resolver.provider = provider
-        result = self.translation_runtime.worker.process_once(limit=max(50, len(self.translation_plan)), worker_id=f"workflow-v2:{self.context.workflow_run_id}")
+        result = self.translation_runtime.worker.process_once(
+            limit=max(50, len(self.translation_plan)),
+            worker_id=f"workflow-v2:{self.context.workflow_run_id}",
+            run_id=self.context.workflow_run_id,
+        )
         from ..database.connection import connect
         canonical_to_field = {"name": "name", "cat1": "cat1", "cat2": "cat2", "spec": "spec", "description": "description", "details": "details"}
         grouped: dict[str, dict[str, Any]] = {}
@@ -566,7 +578,11 @@ class WorkflowV2Runner:
             self._registry_ingest()
         from ..knowledge.storage import KnowledgeStore
         store = KnowledgeStore(self.temp_db, role="PRIMARY")
-        staged = store.stage_approved_registry_patches(expected_base_commit_id=self.context.source_commit_id, actor="human:workflow-v2-local-canary")
+        staged = store.stage_approved_registry_patches(
+            expected_base_commit_id=self.context.source_commit_id,
+            actor="human:workflow-v2-local-canary",
+            source_run_id=self.context.workflow_run_id,
+        )
         from ..database.production import apply_approved_localization_patches
         applied = apply_approved_localization_patches(self.temp_db, patch_ids=staged["patch_ids"], expected_base_commit_id=self.context.source_commit_id, actor="service:workflow-v2-local-canary", run_id=f"{self.context.workflow_run_id}-localization-apply") if staged["patch_ids"] else {"applied_fields": 0}
         # The apply coordinator creates a real immutable commit batch.  Keep

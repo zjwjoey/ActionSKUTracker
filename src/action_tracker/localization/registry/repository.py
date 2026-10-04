@@ -334,13 +334,20 @@ class LocalizationRegistry:
             rows = db.execute(f"SELECT source_text,target_text,field_name,context_key,source_hash FROM (SELECT source_text,target_text,field_name,context_key,source_hash,approval_status FROM translation_memory_entries UNION ALL SELECT source_text,target_text,field_name,context_key,source_hash,approval_status FROM translation_memory_scoped_entries) tm WHERE approval_status='APPROVED' AND source_hash IN ({placeholders})", hashes).fetchall()
         return [dict(row) for row in rows]
 
-    def claim_queue(self, *, limit: int = 50, worker_id: str = "localization-worker") -> list[dict[str, Any]]:
-        """Atomically claim pending/retry units so a worker cannot double-consume."""
+    def claim_queue(self, *, limit: int = 50, worker_id: str = "localization-worker", run_id: str | None = None) -> list[dict[str, Any]]:
+        """Atomically claim pending/retry units so a worker cannot double-consume.
+
+        Workflow V2 passes its run id so a bounded run cannot claim durable
+        queue work belonging to another extraction.  The default remains
+        global for the standalone translation worker.
+        """
         now = _now()
         claimed: list[dict[str, Any]] = []
         with connect(self.path) as db:
             db.execute("BEGIN IMMEDIATE")
-            rows = db.execute("SELECT queue_id,official_sku,language,source_hash,requested_fields,retry_count,run_id FROM translation_queue WHERE status IN ('PENDING','RETRY') ORDER BY CASE priority WHEN 'HIGH' THEN 0 WHEN 'NORMAL' THEN 1 ELSE 2 END,created_at LIMIT ?", (int(limit),)).fetchall()
+            where = "run_id=? AND status IN ('PENDING','RETRY')" if run_id else "status IN ('PENDING','RETRY')"
+            params = (run_id, int(limit)) if run_id else (int(limit),)
+            rows = db.execute(f"SELECT queue_id,official_sku,language,source_hash,requested_fields,retry_count,run_id FROM translation_queue WHERE {where} ORDER BY CASE priority WHEN 'HIGH' THEN 0 WHEN 'NORMAL' THEN 1 ELSE 2 END,created_at LIMIT ?", params).fetchall()
             for row in rows:
                 cur = db.execute("UPDATE translation_queue SET status='CLAIMED',claimed_at=?,last_error=? WHERE queue_id=? AND status IN ('PENDING','RETRY')", (now, worker_id, row[0]))
                 if cur.rowcount == 1:
