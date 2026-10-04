@@ -65,6 +65,19 @@ operations:
   # Minimum free space required on every production data volume.
   min_free_disk_bytes: 2147483648
 
+# Workflow V2 is deliberately opt-in during the parallel validation period.
+# CI/fixtures may enable each stage through run_workflow_v2 arguments; these
+# production defaults never call a provider or publish an export.
+workflow_v2:
+  enabled: false
+  auto_translation:
+    enabled: false
+    provider: qwen_mt
+  auto_policy_approval:
+    enabled: false
+  auto_export:
+    enabled: false
+
 images:
   enabled: false
   # Only official Action CDN hosts may be fetched by the optional image job.

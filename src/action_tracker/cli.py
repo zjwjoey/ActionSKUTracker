@@ -257,6 +257,10 @@ def build_parser() -> argparse.ArgumentParser:
     du = sub.add_parser("data-update", help="每日数据更新主链（production-run 兼容别名）")
     du.add_argument("--date"); du.add_argument("--resume", action="store_true"); du.add_argument("--run-id")
     du.add_argument("--dry-run", action="store_true"); du.add_argument("--no-network", action="store_true")
+    w2 = sub.add_parser("data-update-v2", help="Workflow V2 实验入口（默认不调用真实 Provider/PRIMARY）")
+    w2.add_argument("--date"); w2.add_argument("--resume", action="store_true"); w2.add_argument("--run-id")
+    w2.add_argument("--dry-run", action="store_true", default=True); w2.add_argument("--no-network", action="store_true")
+    w2.add_argument("--fake-provider", action="store_true"); w2.add_argument("--fixture", help="离线 JSON fixture")
     ops = sub.add_parser("ops", help="本机运营状态/控制台")
     ops_sub = ops.add_subparsers(dest="ops_command", required=True)
     ops_sub.add_parser("status"); ops_sub.add_parser("health"); ops_sub.add_parser("runs"); ops_run = ops_sub.add_parser("run"); ops_run.add_argument("run_id")
@@ -1088,6 +1092,27 @@ def main(argv=None) -> int:
             print(_json.dumps(ArtifactService(database_path(cfg)).build_csv(args.selection_id, Path(args.output)), ensure_ascii=False)); return 0
         payload = _json.loads(Path(args.query_json).read_text(encoding="utf-8") if Path(args.query_json).exists() else args.query_json)
         print(_json.dumps(svc.create(args.name, payload, description=args.description, view_id=args.view_id), ensure_ascii=False)); return 0
+    if args.command == "data-update-v2":
+        from .workflow_v2.runner import run_workflow_v2
+        from .services.runtime import observation_date
+        records = None; expected = new_skus = reappeared = None; fake_mapping = {}
+        if args.fixture:
+            fixture_path = Path(args.fixture)
+            fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+            if isinstance(fixture, list): records = fixture
+            else:
+                records = fixture.get("records") or []
+                expected = fixture.get("authoritative_skus"); new_skus = fixture.get("expected_new_skus"); reappeared = fixture.get("expected_reappeared_skus")
+                fake_mapping = fixture.get("fake_translations") or {}
+        provider = None
+        if args.fake_provider:
+            from .localization.providers.base import FakeTranslationProvider
+            provider = FakeTranslationProvider(mapping=fake_mapping)
+        result = run_workflow_v2(cfg, business_date=args.date or observation_date(), run_id=args.run_id, resume=args.resume,
+                                 records=records, provider=provider, expected_skus=expected, expected_new_skus=new_skus,
+                                 expected_reappeared_skus=reappeared, dry_run=True, auto_translation=bool(args.fake_provider),
+                                 auto_policy=bool(args.fake_provider), auto_export=bool(args.fake_provider), apply_enabled=bool(args.fake_provider))
+        print(json.dumps(result, ensure_ascii=False)); return 0 if result.get("state") in {"SUCCESS", "DEGRADED"} else 20
     if args.command in ("production-run", "data-update"):
         from .operations.entry import run_production
         from .services.runtime import observation_date
