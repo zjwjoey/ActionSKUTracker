@@ -51,9 +51,11 @@ The development path does not call the Action website or real Qwen API by
 default. Canary execution requires an explicit temporary database and
 `--canary`. An explicitly gated `production_apply` call now resolves only the
 configured SQLite PRIMARY, creates a verified SQLite backup before writes, and
-records the real localization commit ID. The configuration switches remain
-disabled by default; formal export publication still requires its own
-reviewed rollout.
+records the real localization commit ID. Its export stage also rebuilds the
+PRIMARY compatibility projection against the current localization head and
+publishes the validated ES/ZH formal pair with rollback of the previous pair
+on failure. The configuration switches remain disabled by default and still
+require a reviewed rollout.
 
 The established daily collector is now available through the default
 read-only extraction adapter. When explicitly enabled, the existing detail

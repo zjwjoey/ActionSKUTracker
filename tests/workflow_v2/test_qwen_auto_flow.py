@@ -115,3 +115,29 @@ def test_production_apply_rejects_dry_run_before_creating_local_db(tmp_path):
     }
     with pytest.raises(ValueError, match="WORKFLOW_V2_PRODUCTION_REQUIRES_NO_DRY_RUN"):
         run_workflow_v2(cfg, production_apply=True)
+
+
+def test_production_formal_export_pair_is_published_to_configured_root(tmp_path):
+    from action_tracker.workflow_v2.runner import WorkflowV2Runner
+
+    export_root = tmp_path / "exports"
+    formal_root = tmp_path / "formal"
+    formal_root.mkdir()
+    files = {
+        "es": (formal_root / "es.xlsx", formal_root / "es.manifest.json"),
+        "zh": (formal_root / "zh.xlsx", formal_root / "zh.manifest.json"),
+    }
+    for output, manifest in files.values():
+        output.write_bytes(output.name.encode())
+        manifest.write_text("{}", encoding="utf-8")
+    runner = WorkflowV2Runner(
+        root=tmp_path / "reports", context=new_context(tmp_path / "reports", business_date="2026-10-04"),
+        production_apply=True, cfg={"paths": {"exports": export_root}},
+    )
+    runner._publish_formal_exports({
+        language: {"output": str(output), "manifest": str(manifest)}
+        for language, (output, manifest) in files.items()
+    })
+    assert sorted(path.name for path in export_root.iterdir()) == [
+        "es.manifest.json", "es.xlsx", "zh.manifest.json", "zh.xlsx",
+    ]

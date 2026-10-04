@@ -662,7 +662,10 @@ class WorkflowV2Runner:
         _write_json(self.directory / "export_readiness.json", ready); _write_csv(self.directory / "export_es_audit.csv", [{"status": es_audit["status"], "missing": json.dumps(es_audit.get("missing_required"), ensure_ascii=False)}]); _write_csv(self.directory / "export_zh_audit.csv", [{"status": zh_audit["status"], "issues": json.dumps(zh_audit.get("issues"), ensure_ascii=False)}]); _write_csv(self.directory / "export_parity_audit.csv", [{"status": parity["status"], "issues": json.dumps(parity.get("issues"), ensure_ascii=False)}])
         return StageResult("PASS" if self.context.export_ready else "BLOCKED", ready, "EXPORT_NOT_READY" if not self.context.export_ready else None)
     def _export_write(self) -> StageResult:
-        if not self.auto_export: return StageResult("SKIPPED", {"reason": "AUTO_EXPORT_DISABLED"})
+        if not self.auto_export:
+            if self.production_apply:
+                return StageResult("BLOCKED", {"reason": "PRODUCTION_EXPORT_REQUIRED"}, "PRODUCTION_EXPORT_REQUIRED", retryable=True)
+            return StageResult("SKIPPED", {"reason": "AUTO_EXPORT_DISABLED"})
         if not self.context.export_ready: return StageResult("BLOCKED", {"reason": "EXPORT_GATE_BLOCKED"}, "EXPORT_GATE_BLOCKED")
         staging = self.directory / "staging"; staging.mkdir(exist_ok=True)
         pending = staging / ".pending"
@@ -671,6 +674,7 @@ class WorkflowV2Runner:
         pending.mkdir()
         published = False
         formal_exports: dict[str, Any] = {}
+        compatibility_sync: dict[str, Any] | None = None
         try:
             _write_json(pending / "es.json", self.es_projection)
             _write_json(pending / "zh.json", self.zh_projection)
@@ -688,13 +692,28 @@ class WorkflowV2Runner:
                         formal_cfg, language=language, export_date=self.context.business_date,
                         no_images=True, run_id=self.context.workflow_run_id,
                     )
+            if self.production_apply:
+                # The database commit and its compatibility projections must
+                # advance together.  The localization apply creates a new
+                # immutable head, so sync against that exact head rather than
+                # the earlier fact commit.
+                from ..database.integration import regenerate_compatibility_exports
+                head = self.context.localization_commit_id or self.context.source_commit_id
+                if not head:
+                    return StageResult("BLOCKED", {"reason": "PRODUCTION_EXPORT_HEAD_MISSING"}, "PRODUCTION_EXPORT_HEAD_MISSING", retryable=True)
+                try:
+                    compatibility_sync = regenerate_compatibility_exports(self.cfg, commit_id=head)
+                except Exception as exc:
+                    return StageResult("BLOCKED", {"reason": "PRODUCTION_COMPATIBILITY_EXPORT_FAILED", "error": str(exc), "commit_id": head}, "PRODUCTION_COMPATIBILITY_EXPORT_FAILED", retryable=True)
+                if formal_exports:
+                    self._publish_formal_exports(formal_exports)
             os.replace(pending / "es.json", staging / "es.json")
             os.replace(pending / "zh.json", staging / "zh.json")
             if (pending / "formal").exists():
                 if (staging / "formal").exists():
                     shutil.rmtree(staging / "formal")
                 os.replace(pending / "formal", staging / "formal")
-            _write_json(pending / "publish_manifest.json", {"status": "PUBLISHED", "files": ["es.json", "zh.json"], "formal_exports": formal_exports})
+            _write_json(pending / "publish_manifest.json", {"status": "PUBLISHED", "files": ["es.json", "zh.json"], "formal_exports": formal_exports, "compatibility_sync": compatibility_sync})
             os.replace(pending / "publish_manifest.json", staging / "publish_manifest.json")
             published = True
         finally:
@@ -706,7 +725,49 @@ class WorkflowV2Runner:
                         path.unlink()
                 if (staging / "formal").exists():
                     shutil.rmtree(staging / "formal")
-        return StageResult("PASS", {"staging": str(staging), "atomic": published, "existing_exporter": True, "formal_exports": formal_exports, "es_rows": len(self.es_projection), "zh_rows": len(self.zh_projection)})
+        return StageResult("PASS", {"staging": str(staging), "atomic": published, "existing_exporter": True, "formal_exports": formal_exports, "compatibility_sync": compatibility_sync, "es_rows": len(self.es_projection), "zh_rows": len(self.zh_projection)})
+
+    def _publish_formal_exports(self, formal_exports: Mapping[str, Any]) -> None:
+        """Publish both formal language files as one recoverable pair.
+
+        ``export_catalog`` validates each language independently in its own
+        staging root.  Production V2 adds the bilingual pair boundary here:
+        copy each validated file into a same-directory temporary path, replace
+        both targets, and restore the previous bytes if the second replacement
+        fails.
+        """
+        raw_export_root = (self.cfg.get("paths") or {}).get("exports")
+        if not raw_export_root:
+            raise ValueError("PRODUCTION_EXPORT_PATH_MISSING")
+        export_root = Path(raw_export_root)
+        export_root.mkdir(parents=True, exist_ok=True)
+        replacements: list[tuple[Path, Path]] = []
+        for result in formal_exports.values():
+            source = Path(str(result.get("output") or ""))
+            manifest = Path(str(result.get("manifest") or ""))
+            if not source.exists() or not manifest.exists():
+                raise ValueError("PRODUCTION_EXPORT_ARTIFACT_MISSING")
+            replacements.extend(((source, export_root / source.name), (manifest, export_root / manifest.name)))
+        previous = {target: (target.read_bytes() if target.exists() else None) for _, target in replacements}
+        temporary: list[Path] = []
+        try:
+            for source, target in replacements:
+                tmp = target.with_name(f".{target.name}.{self.context.workflow_run_id}.publish")
+                shutil.copyfile(source, tmp)
+                temporary.append(tmp)
+            for tmp, (_, target) in zip(temporary, replacements):
+                os.replace(tmp, target)
+        except Exception:
+            for tmp in temporary:
+                tmp.unlink(missing_ok=True)
+            for target, payload in previous.items():
+                if payload is None:
+                    target.unlink(missing_ok=True)
+                else:
+                    restore = target.with_name(f".{target.name}.{self.context.workflow_run_id}.restore")
+                    restore.write_bytes(payload)
+                    os.replace(restore, target)
+            raise
     def _final_state(self) -> str:
         blockers = [item for item in self.stages.values() if item.status in {"BLOCKED", "FAILED", "BLOCKED_BY_DEPENDENCY"}]
         if any(item.status == "FAILED" for item in blockers): return "FAILED"
