@@ -70,6 +70,11 @@ operations:
 # production defaults never call a provider or publish an export.
 workflow_v2:
   enabled: false
+  # Read-only comparison of the existing daily record set against the
+  # deterministic Workflow V2 source gate. Enable only after reviewing the
+  # generated run evidence; a failed comparison blocks formal publication.
+  shadow_preflight:
+    enabled: false
   auto_translation:
     enabled: false
     provider: qwen_mt

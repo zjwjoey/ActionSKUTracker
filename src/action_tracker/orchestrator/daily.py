@@ -96,6 +96,33 @@ def _evaluate_daily_collection_quality(cfg: Mapping[str, Any], run_id: str,
         })
 
 
+def _evaluate_workflow_v2_shadow(cfg: Mapping[str, Any], run_id: str,
+                                  records: list[Mapping[str, Any]],
+                                  run_report: dict[str, Any]) -> None:
+    """Run the opt-in, read-only Workflow V2 preflight before publication.
+
+    The default is disabled so existing daily runs keep their established
+    behavior until the gate has been enabled in configuration.  When enabled,
+    the result is attached to the run evidence and a failed comparison is
+    fail-closed by ``_should_commit`` for formal runs.
+    """
+    options = dict((cfg.get("workflow_v2") or {}).get("shadow_preflight") or {})
+    if not bool(options.get("enabled", False)):
+        run_report["workflow_v2_shadow"] = {"status": "DISABLED", "read_only": True}
+        return
+    try:
+        from ..workflow_v2.shadow import audit_records_preflight
+
+        result = audit_records_preflight(records)
+        result["run_id"] = run_id
+        run_report["workflow_v2_shadow"] = result
+    except Exception as exc:
+        run_report["workflow_v2_shadow"] = {
+            "status": "BLOCKED", "run_id": run_id, "read_only": True,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+
 def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
                  in_nuevo: bool = False, in_promo: bool = False) -> None:
     """把 listing 轻量字段合并进今日记录。
@@ -481,6 +508,7 @@ def run_daily(
     # Evaluate Collection Integrity before snapshot and commit decision. This
     # result is passed through the report and bundle; the writer validates it
     # but does not recalculate it.
+    _evaluate_workflow_v2_shadow(cfg, run_id, products_for_qa, run_report)
     _evaluate_daily_collection_quality(cfg, run_id, run_report, dry_run=dry_run)
     data = {
         "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",
@@ -537,6 +565,7 @@ def run_daily(
                           qa_state=qa.state, collection_quality_state=run_report.get("collection_quality_state"),
                           collection_quality_override=bool(run_report.get("collection_quality_override", False)),
                           collection_quality_override_evidence=run_report.get("collection_quality_override_evidence"),
+                          workflow_v2_shadow_state=(run_report.get("workflow_v2_shadow") or {}).get("status"),
                           requires_collection_integrity=True):
             run_log_row = _run_log_row(run_id, run_date, start_time, counts, qa, dry_run,
                                        sitemap_count=len(sitemap_skus), listing_count=len(today_light))
@@ -548,7 +577,12 @@ def run_daily(
                 baseline=baseline, today_set=today_set, observation_complete=observation_complete,
                 snapshot_path=snap_dir, sqlite_diagnostics=sqlite_diagnostics, run_report=run_report)
         else:
-            commit_status = "COLLECTION_BLOCKED" if str(run_report.get("collection_quality_state") or "").upper() == "COLLECTION_BLOCKED" else "QA_FAIL"
+            shadow_status = str((run_report.get("workflow_v2_shadow") or {}).get("status") or "").upper()
+            commit_status = (
+                "WORKFLOW_V2_SHADOW_BLOCKED" if shadow_status == "BLOCKED"
+                else "COLLECTION_BLOCKED" if str(run_report.get("collection_quality_state") or "").upper() == "COLLECTION_BLOCKED"
+                else "QA_FAIL"
+            )
             log.error("QA 未通过（%s），禁止写 Master / known_skus / offline_skus", qa.state)
 
     run_report["commit_status"] = commit_status
@@ -734,8 +768,9 @@ def _build_lifecycle_events(statuses: dict, run_date: str, run_id: str) -> list[
 def _should_commit(dry_run: bool, qa_passed: bool, access_state: str = "NORMAL", qa_state: str = "PASS",
                    collection_quality_state: str | None = None, collection_quality_override: bool = False,
                    requires_collection_integrity: bool = False,
-                   collection_quality_override_evidence: Mapping[str, Any] | None = None) -> bool:
-    """提交门禁：完整 QA 或受控 Sitemap Presence 回退才可正式提交。"""
+                   collection_quality_override_evidence: Mapping[str, Any] | None = None,
+                   workflow_v2_shadow_state: str | None = None) -> bool:
+    """提交门禁：QA、质量与可选 Workflow V2 Shadow 均通过才可提交。"""
     access_ok = access_state == "NORMAL" or qa_state == "PASS_PRESENCE_ONLY"
     quality = str(collection_quality_state or "").upper()
     from ..data_quality.collection.gates import collection_commit_allowed
@@ -747,7 +782,9 @@ def _should_commit(dry_run: bool, qa_passed: bool, access_state: str = "NORMAL",
         metrics_hash=str(evidence.get("metrics_hash") or "") or None,
         requires_collection_integrity=requires_collection_integrity,
     )
-    return (not dry_run) and qa_passed and access_ok and quality_ok
+    shadow_state = str(workflow_v2_shadow_state or "DISABLED").upper()
+    shadow_ok = shadow_state in {"DISABLED", "PASS"}
+    return (not dry_run) and qa_passed and access_ok and quality_ok and shadow_ok
 
 
 def _commit_phase(

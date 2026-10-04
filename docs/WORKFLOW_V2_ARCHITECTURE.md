@@ -38,6 +38,24 @@ and `REPORT`.
 same run id, source snapshot and commit ids. State and audit artifacts are
 written under `runtime/reports/workflow_v2/<business_date>/<workflow_run_id>`.
 
+## Daily-run Shadow preflight
+
+The established `daily-run` chain can opt into a read-only preflight with:
+
+```yaml
+workflow_v2:
+  shadow_preflight:
+    enabled: true
+```
+
+The preflight compares the exact in-memory daily records with Workflow V2's
+deterministic source cleanup and re-audit output. It checks SKU identity,
+prices, status, presence source, URL and Spanish fact fields. It does not call
+the browser, a translation provider, a database writer or an export writer.
+The result is embedded in `run_report.workflow_v2_shadow`; `BLOCKED` is
+fail-closed for formal publication while dry-run remains evidence-only. The
+default is disabled until the generated evidence has been reviewed.
+
 Spanish fact commit and translation are separate stages. A provider failure
 can leave `FACT_COMMITTED` intact and make the run `DEGRADED` or `BLOCKED`.
 Translation candidates are not approved by the provider; apply remains an
