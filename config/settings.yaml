@@ -65,18 +65,17 @@ operations:
   # Minimum free space required on every production data volume.
   min_free_disk_bytes: 2147483648
 
-# Workflow V2 is deliberately opt-in during the parallel validation period.
-# CI/fixtures may enable each stage through run_workflow_v2 arguments; these
-# production defaults never call a provider or publish an export.
+# Workflow V2 is the controlled production write path. Translation remains
+# bounded and publication stays operator controlled until cutover approval.
 workflow_v2:
-  enabled: false
+  enabled: true
   # Read-only comparison of the existing daily record set against the
   # deterministic Workflow V2 source gate. Enable only after reviewing the
   # generated run evidence; a failed comparison blocks formal publication.
   shadow_preflight:
-    enabled: false
+    enabled: true
   auto_translation:
-    enabled: false
+    enabled: true
     provider: qwen_mt
   # Daily fact commits must not wait on the whole historical translation queue.
   translation_batch_limit: 50
@@ -163,8 +162,8 @@ dictionary_apply:
   require_confirmed_brands_for_apply: true
 
 # ---- Knowledge Production V1（P3-P6）----
-# Contracts and offline preview may be used during development; production
-# localization writes and model/auto-approval paths stay explicitly closed.
+# Phase 1 keeps approved-localization writes behind the existing safety gate;
+# Workflow V2 may queue and QA model output without auto-approval or publish.
 knowledge:
   production_apply_enabled: false
   fallback_to_spanish: false
@@ -179,10 +178,11 @@ localization:
   auto_approval_enabled: false
   formal_daily_chain: true
   ai:
+    # Default checkout remains fail-closed. The production deployment profile
+    # enables this bounded provider explicitly at cutover time.
     enabled: false
-    # Dedicated Alibaba Qwen MT adapter.  Keep disabled until an explicit
-    # operator enables a shadow translation run; secrets are never stored in
-    # this file.
+    # Dedicated Alibaba Qwen MT adapter. Phase 1 allows bounded translation
+    # candidates; apply and publication remain separately gated.
     provider: qwen_mt
     base_url: null
     model: qwen-mt-flash

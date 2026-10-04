@@ -1,0 +1,35 @@
+# Explicit Phase 1 production overlay. Apply only during an Owner-authorized
+# code cutover; the repository default settings.yaml remains fail-closed.
+workflow_v2:
+  enabled: true
+  shadow_preflight:
+    enabled: true
+  auto_translation:
+    enabled: true
+    provider: qwen_mt
+  translation_batch_limit: 50
+  auto_policy_approval:
+    enabled: false
+  auto_export:
+    enabled: false
+  detail_retry:
+    enabled: false
+
+knowledge:
+  production_apply_enabled: false
+  fallback_to_spanish: false
+
+localization:
+  production_apply_enabled: false
+  auto_approval_enabled: false
+  ai:
+    enabled: true
+    provider: qwen_mt
+    model: qwen-mt-flash
+    api_key_env: DASHSCOPE_API_KEY
+
+translation:
+  ai_enabled: false
+  auto_approval_enabled: false
+  qwen_mt:
+    enabled: false
