@@ -228,6 +228,33 @@ class WorkflowV2Runner:
             merged.append(item)
         return merged
 
+    def _records_for_registry(self) -> list[dict[str, Any]]:
+        """Build translation input from fields ready in *this* observation.
+
+        ``_records_with_preserved_es`` is intentionally used by fact commit so
+        a pending detail page cannot erase a previously committed source.  It
+        must not also be used as translation input: a missing current fact
+        (for example ``name_es``) would otherwise be silently restored and
+        sent to the provider.  Registry ingestion receives the preserved row
+        only for persistence, while fields that are not ready in the current
+        source are omitted from the translation source version.
+        """
+        merged = self._records_with_preserved_es()
+        missing = {
+            (str(item.get("sku") or ""), str(item.get("field") or ""))
+            for item in self.source_readiness.get("fact_missing_required", [])
+        }
+        pending_detail = {
+            (str(item.get("sku") or ""), str(item.get("field") or ""))
+            for item in self.stages.get("TRANSLATION_SOURCE_AUDIT", StageResult()).details.get("pending_fields", [])
+        }
+        for item in merged:
+            sku = str(item.get("sku") or item.get("official_sku") or "")
+            for field in ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es"):
+                if (sku, field) in missing or (sku, field) in pending_detail:
+                    item[field] = None
+        return merged
+
     def _preflight(self) -> StageResult:
         options = dict(self.cfg.get("workflow_v2") or {})
         ai = dict((self.cfg.get("localization") or {}).get("ai") or {})
@@ -335,7 +362,7 @@ class WorkflowV2Runner:
     def _registry_ingest(self) -> StageResult:
         from ..localization.runtime_builder import build_translation_runtime
         self.translation_runtime = build_translation_runtime(self._runtime_cfg(), db_path=self.temp_db, allow_provider=False)
-        result = self.translation_runtime.registry.ingest_records(self._records_with_preserved_es(), source_run_id=self.context.workflow_run_id, observed_at=self.context.business_date)
+        result = self.translation_runtime.registry.ingest_records(self._records_for_registry(), source_run_id=self.context.workflow_run_id, observed_at=self.context.business_date)
         return StageResult("PASS", {"registry": "TranslationRegistryV1", **result, "production_registry_write": False})
     def _translation_plan(self) -> StageResult:
         if self.translation_runtime is None: self._registry_ingest()
@@ -459,7 +486,44 @@ class WorkflowV2Runner:
         self.zh_projection, _ = build_zh_rows_from_localized_source(zh)
         validate_output_rows(self.es_projection)
         validate_output_rows(self.zh_projection)
-        es_audit = audit_es(es); zh_audit = audit_zh(zh); parity = audit_parity(es, zh)
+        # Audit the rows that will actually be published.  The row builders
+        # use frozen Chinese headers, while the audit contract uses canonical
+        # field names, so join each projection back to its source metadata
+        # before running the field and parity gates.
+        projection_by_sku = lambda rows: {
+            str(row.get("编号") or ""): dict(row) for row in rows
+        }
+        es_projected = projection_by_sku(self.es_projection)
+        zh_projected = projection_by_sku(self.zh_projection)
+        es_audit_rows: list[dict[str, Any]] = []
+        zh_audit_rows: list[dict[str, Any]] = []
+        zh_source_by_sku = {
+            str(row.get("sku") or row.get("official_sku") or ""): dict(row)
+            for row in zh
+        }
+        for source in es:
+            sku = str(source.get("sku") or source.get("official_sku") or "")
+            es_row = dict(source)
+            projected = es_projected.get(sku, {})
+            es_row.update({
+                "name_es": projected.get("标题"), "cat1_es": projected.get("分类1"),
+                "cat2_es": projected.get("分类2"), "spec_es": projected.get("规格"),
+                "unit_price": projected.get("单价"), "desc_es": projected.get("描述"),
+                "details_es": projected.get("产品详情"),
+            })
+            es_audit_rows.append(es_row)
+            zh_row = dict(zh_source_by_sku.get(sku, source))
+            projected = zh_projected.get(sku, {})
+            zh_row.update({
+                "name_zh": projected.get("标题"), "cat1_zh": projected.get("分类1"),
+                "cat2_zh": projected.get("分类2"), "spec_zh": projected.get("规格"),
+                "unit_price_zh": projected.get("单价"), "desc_zh": projected.get("描述"),
+                "details_zh": projected.get("产品详情"),
+            })
+            zh_audit_rows.append(zh_row)
+        es_audit = audit_es(es_audit_rows)
+        zh_audit = audit_zh(zh_audit_rows)
+        parity = audit_parity(es_audit_rows, zh_audit_rows)
         ready = export_readiness(source_ready=self.context.source_ready, fact_committed=bool(self.context.source_commit_id), translation_ready=self.context.translation_ready, es_audit=es_audit, zh_audit=zh_audit, parity=parity)
         self.context.export_ready = bool(ready["export_ready"]); self.report.update({"ES audit": es_audit, "ZH audit": zh_audit, "Parity audit": parity})
         _write_json(self.directory / "export_readiness.json", ready); _write_csv(self.directory / "export_es_audit.csv", [{"status": es_audit["status"], "missing": json.dumps(es_audit.get("missing_required"), ensure_ascii=False)}]); _write_csv(self.directory / "export_zh_audit.csv", [{"status": zh_audit["status"], "issues": json.dumps(zh_audit.get("issues"), ensure_ascii=False)}]); _write_csv(self.directory / "export_parity_audit.csv", [{"status": parity["status"], "issues": json.dumps(parity.get("issues"), ensure_ascii=False)}])
@@ -494,6 +558,8 @@ class WorkflowV2Runner:
             os.replace(pending / "es.json", staging / "es.json")
             os.replace(pending / "zh.json", staging / "zh.json")
             if (pending / "formal").exists():
+                if (staging / "formal").exists():
+                    shutil.rmtree(staging / "formal")
                 os.replace(pending / "formal", staging / "formal")
             _write_json(pending / "publish_manifest.json", {"status": "PUBLISHED", "files": ["es.json", "zh.json"], "formal_exports": formal_exports})
             os.replace(pending / "publish_manifest.json", staging / "publish_manifest.json")
@@ -505,6 +571,8 @@ class WorkflowV2Runner:
                 for path in (staging / "es.json", staging / "zh.json", staging / "publish_manifest.json"):
                     if path.exists():
                         path.unlink()
+                if (staging / "formal").exists():
+                    shutil.rmtree(staging / "formal")
         return StageResult("PASS", {"staging": str(staging), "atomic": published, "existing_exporter": True, "formal_exports": formal_exports, "es_rows": len(self.es_projection), "zh_rows": len(self.zh_projection)})
     def _final_state(self) -> str:
         blockers = [item for item in self.stages.values() if item.status in {"BLOCKED", "FAILED", "BLOCKED_BY_DEPENDENCY"}]

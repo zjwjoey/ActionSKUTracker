@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from action_tracker.workflow_v2.runner import WorkflowV2Runner
 from action_tracker.workflow_v2.context import new_context
 from action_tracker.database.connection import connect
@@ -28,6 +30,30 @@ def test_presence_only_commit_preserves_existing_fact(workflow_root, source_row,
     assert second.stages["FACT_COMMIT"].details["presence_only_rows"] == 1
     with connect(db) as handle:
         assert handle.execute("SELECT name_es FROM products WHERE official_sku='100'").fetchone()[0] == "Mesa"
+
+
+def test_fact_missing_field_is_not_sent_to_translation(workflow_root, source_row, fake_provider, tmp_path):
+    db = tmp_path / "fact-gate-translation.sqlite3"
+    WorkflowV2Runner(
+        root=workflow_root / "first", context=new_context(workflow_root / "first", business_date="2026-10-04", run_id="first-fact-gate"),
+        records=[source_row], expected_skus={"100"}, temp_db=db,
+        provider=fake_provider, auto_translation=True, auto_policy=True, apply_enabled=True,
+    ).run()
+    partial = dict(source_row)
+    partial["name_es"] = ""
+    second_provider = type(fake_provider)(mapping=fake_provider.mapping)
+    second = WorkflowV2Runner(
+        root=workflow_root / "second", context=new_context(workflow_root / "second", business_date="2026-10-04", run_id="second-fact-gate"),
+        records=[partial], expected_skus={"100"}, temp_db=db,
+        provider=second_provider, auto_translation=True, auto_policy=True, apply_enabled=True,
+    ).run()
+    assert second.context.fact_ready is False
+    ready_fields = {item["field"] for item in second.stages["TRANSLATION_SOURCE_AUDIT"].details["ready_fields"]}
+    assert "name_es" not in ready_fields
+    with connect(Path(second.context.database_path)) as handle:
+        queued_fields = [str(row[0]) for row in handle.execute("SELECT requested_fields FROM translation_queue WHERE run_id=?", (second.context.workflow_run_id,)).fetchall()]
+    assert all("name" not in field for field in queued_fields)
+    assert second_provider.calls <= 5
 
 
 def test_pending_detail_does_not_erase_existing_es_localization(workflow_root, source_row, tmp_path):
