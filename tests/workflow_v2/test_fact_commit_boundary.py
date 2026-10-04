@@ -82,6 +82,7 @@ def test_export_staging_publishes_one_complete_set(workflow_root, source_row, fa
         root=workflow_root, context=new_context(workflow_root, business_date="2026-10-04"),
         records=[source_row], expected_skus={"100"}, provider=fake_provider,
         auto_translation=True, auto_policy=True, apply_enabled=True, auto_export=True,
+        allow_high_risk_auto_approval=True,
     ).run()
     assert result.stages["EXPORT_WRITE"].status == "PASS"
     staging = workflow_root / "2026-10-04" / result.context.workflow_run_id / "staging"

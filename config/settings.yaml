@@ -82,6 +82,10 @@ workflow_v2:
     enabled: false
   auto_export:
     enabled: false
+  detail_retry:
+    # Reuse the established browser retry/apply contract only when an
+    # operator explicitly enables the isolated canary path.
+    enabled: false
 
 images:
   enabled: false

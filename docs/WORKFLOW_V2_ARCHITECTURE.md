@@ -34,7 +34,11 @@ Stages are explicit: `PREFLIGHT`, `BACKUP`, `EXTRACT`, `SOURCE_AUDIT`,
 `TRANSLATION_POLICY`, `TRANSLATION_APPLY`, `EXPORT_AUDIT`, `EXPORT_WRITE`,
 and `REPORT`.
 
-The V1 integration boundary is deliberately adapter-shaped:
+The V1 integration boundary is deliberately adapter-shaped. With no fixture,
+the default extraction adapter runs the established daily collector in
+dry-run snapshot mode; an explicitly enabled `workflow_v2.detail_retry`
+section reuses the existing detail-retry/apply contract against the isolated
+canary database.
 
 ```text
 Extraction result

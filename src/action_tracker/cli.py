@@ -1125,8 +1125,11 @@ def main(argv=None) -> int:
         try:
             result = run_workflow_v2(cfg, business_date=args.date if args.date else (None if args.resume else observation_date()), run_id=args.run_id, resume=args.resume,
                                      records=records, provider=provider, expected_skus=expected, expected_new_skus=new_skus,
-                                     expected_reappeared_skus=reappeared, dry_run=args.dry_run, auto_translation=bool(args.fake_provider),
-                                     auto_policy=bool(args.fake_provider), auto_export=bool(args.fake_provider), apply_enabled=bool(args.canary and args.fake_provider),
+                                     expected_reappeared_skus=reappeared, dry_run=args.dry_run,
+                                     auto_translation=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_translation", {}).get("enabled", False)),
+                                     auto_policy=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_policy_approval", {}).get("enabled", False)),
+                                     auto_export=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_export", {}).get("enabled", False)),
+                                     apply_enabled=bool(args.canary and (args.fake_provider or (cfg.get("workflow_v2") or {}).get("enabled", False))),
                                      temp_db=Path(args.temp_db) if args.temp_db else None)
         except ValueError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr); return 20

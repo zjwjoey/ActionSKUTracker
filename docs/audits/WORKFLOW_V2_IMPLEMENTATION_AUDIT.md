@@ -52,7 +52,9 @@ never resolves the configured production SQLite path. Non-dry execution
 requires an explicit temporary database and `--canary`; production apply and
 formal export publication remain disabled.
 
-The remaining integration is the real-site extraction adapter. Detail retry is
-an injected adapter contract; the default local path remains read-only and
-does not open a browser. Template 1 publication remains outside the canary
-because formal production artifacts are still disabled.
+The established daily collector is now available through the default
+read-only extraction adapter. When explicitly enabled, the existing detail
+retry/apply contract can enrich the isolated canary database. The adapter
+still never targets the configured production database. Template 1
+publication remains outside the canary because formal production artifacts
+are still disabled.
