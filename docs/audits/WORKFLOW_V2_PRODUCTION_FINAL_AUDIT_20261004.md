@@ -5,17 +5,17 @@
 - Branch: `deploy/workflow-v2-production-20261004`
 - Audited ref: `production/workflow-v2-phase1-rc4`
 - Audited content head: `16c626f1063ba3757b93368ee76869545a5f83ad`
-- Publication metadata head: `7c16323b2d0a1ff682ec86b8959c6d05a6d133a4`
+- Publication metadata head: `9021a9a5146d058c042dae80df5cfa31f7ea83cc`
 
 The immutable RC4 tag is the code boundary. This report records evidence by audited head and publication metadata; it does not follow later report-only commits by current SHA.
 
 ## Test and CI evidence
 
-- `python -m pytest -q`: **762 passed**
+- `python -m pytest -q`: **768 passed**
 - CI-safe allowlist: **762 passed locally**
 - RC4 exact-head CI: run `37206480278`, Ubuntu and Windows **SUCCESS**
-- Deployment publication head exact-head CI: run `37206473760`, Ubuntu and Windows **SUCCESS**
-- Preflight and runtime closure tests cover profile gates, business-date propagation, config hash resume guard, localization freshness, and stale export blocking.
+- Deployment publication head exact-head CI: run `37209417046`, Ubuntu and Windows **SUCCESS**
+- Preflight and runtime closure tests cover profile gates, preflight/runtime hash parity, historical/cross-midnight business-date propagation, config hash resume guard, field-level localization freshness, and stale export blocking.
 
 ## Acceptance matrix
 
@@ -38,7 +38,9 @@ The immutable RC4 tag is the code boundary. This report records evidence by audi
 | PRODUCTION_PREFLIGHT | PASS |
 | FULL_PYTEST | PASS |
 | CI_SAFE | PASS |
-| EXACT_HEAD_CI | PASS (runs 37206480278 and 37206473760) |
+| PREFLIGHT_RUNTIME_HASH_PARITY | PASS |
+| HISTORICAL_AND_CROSS_MIDNIGHT_DATE | PASS |
+| EXACT_HEAD_CI | PASS (runs 37206480278 and 37209417046) |
 
 ## Safety record
 
@@ -53,3 +55,5 @@ MAIN_MODIFIED                          NO
 ```text
 READY_FOR_PHASE1_REAL_PRIMARY_CANARY  YES
 ```
+
+
