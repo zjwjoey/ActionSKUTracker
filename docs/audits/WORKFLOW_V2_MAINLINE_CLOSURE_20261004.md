@@ -2,7 +2,7 @@
 
 ## Scope
 
-This branch is the selective generic backport from
+This branch is a clean selective generic backport from
 `feature/workflow-v2-auto-translate-export`. It is intended for a pull request
 to `main`; it has not been merged into `main` and it does not contain the
 production-only deployment profile, preflight evidence, production paths, or
@@ -10,13 +10,13 @@ deployment runbooks.
 
 | Item | Value |
 |---|---|
-| Base feature head | `2cac2b7e60e01d6468af21ec3eb9caafab6777ac` |
-| Mainline candidate head | `ffed8882704f7408ca66ef30e8222ec8915b5c8d` |
+| Base feature snapshot | `2cac2b7e60e01d6468af21ec3eb9caafab6777ac` |
+| Candidate code head | `9f238da16302bf28147a9af67327bdb7201b08dc` |
 | Main used for merge simulation | `b47e4c56a0274fdddceff347e2571d77c1476014` |
 | Merge simulation | `git merge-tree --write-tree origin/main HEAD` — no conflicts |
 | Local full suite | `754 passed` |
 | Local CI-safe allowlist | `754 passed` |
-| Exact-head CI | run `37207164279`, Ubuntu and Windows successful |
+| Exact-head CI | run `37208054071`, Ubuntu and Windows successful |
 
 ## Backported generic behavior
 
@@ -45,3 +45,4 @@ The following remain deployment-branch-only and were not backported:
 `READY_FOR_MAIN_MERGE = YES`, subject to the repository's normal GitHub main
 branch protection and reviewer approval. No merge or production mutation was
 performed by this audit.
+
