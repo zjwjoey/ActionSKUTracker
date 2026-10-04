@@ -265,6 +265,8 @@ def build_parser() -> argparse.ArgumentParser:
     w2.add_argument("--temp-db", help="本地 canary 临时 SQLite 路径；production-apply 不使用")
     w2.add_argument("--no-network", action="store_true")
     w2.add_argument("--fake-provider", action="store_true"); w2.add_argument("--fixture", help="离线 JSON fixture")
+    w2.add_argument("--fixture-auto-approve-high-risk", action="store_true",
+                    help="仅 Fake Provider + --canary + 临时 SQLite 的本地验收可自动批准高风险字段")
     ws = sub.add_parser("workflow-v2-shadow-compare", help="离线比较旧链路与 Workflow V2 fixture")
     ws.add_argument("--legacy", required=True, help="旧链路 JSON fixture")
     ws.add_argument("--workflow-v2", dest="workflow_v2_fixture", required=True, help="Workflow V2 JSON fixture")
@@ -1109,6 +1111,8 @@ def main(argv=None) -> int:
         from .services.runtime import observation_date
         if args.production_apply and (args.canary or args.temp_db or args.fake_provider or args.fixture):
             print(json.dumps({"error": "WORKFLOW_V2_PRODUCTION_FLAGS_CONFLICT"}, ensure_ascii=False), file=sys.stderr); return 2
+        if args.fixture_auto_approve_high_risk and not (args.fake_provider and args.fixture and args.canary and args.temp_db and not args.production_apply):
+            print(json.dumps({"error": "WORKFLOW_V2_FIXTURE_AUTO_APPROVAL_REQUIRES_ISOLATED_CANARY"}, ensure_ascii=False), file=sys.stderr); return 2
         records = None; expected = new_skus = reappeared = None; fake_mapping = {}
         if args.fixture:
             fixture_path = Path(args.fixture)
@@ -1135,7 +1139,8 @@ def main(argv=None) -> int:
                                      auto_export=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_export", {}).get("enabled", False)),
                                      apply_enabled=bool((args.canary or args.production_apply) and (args.fake_provider or (cfg.get("workflow_v2") or {}).get("enabled", False))),
                                      production_apply=bool(args.production_apply),
-                                     temp_db=Path(args.temp_db) if args.temp_db else None)
+                                     temp_db=Path(args.temp_db) if args.temp_db else None,
+                                     allow_high_risk_auto_approval=bool(args.fixture_auto_approve_high_risk))
         except ValueError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr); return 20
         print(json.dumps(result, ensure_ascii=False)); return 0 if result.get("state") in {"SUCCESS", "DEGRADED"} else 20

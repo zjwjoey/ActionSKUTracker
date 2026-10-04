@@ -194,6 +194,27 @@ class WorkflowV2Runner:
         cfg["storage"] = {**dict(cfg.get("storage") or {}), "db_path": str(self.temp_db)}
         return cfg
 
+    def _export_source_run_id(self) -> str:
+        """Return the commit-head run consumed by the existing exporter.
+
+        A localization Apply creates its own immutable commit after the fact
+        commit.  Exporting with the earlier workflow run id makes
+        ``resolve_formal_source`` reject the temporary SQLite database as a
+        stale head.  Resolve the run id from the recorded localization commit
+        so the exporter reads the exact, current canary projection.
+        """
+        if not self.context.localization_commit_id or not self.temp_db.exists():
+            return self.context.workflow_run_id
+        try:
+            with sqlite3.connect(self.temp_db) as db:
+                row = db.execute(
+                    "SELECT run_id FROM commit_batches WHERE commit_id=? AND status='COMMITTED'",
+                    (self.context.localization_commit_id,),
+                ).fetchone()
+            return str(row[0]) if row and row[0] else self.context.workflow_run_id
+        except sqlite3.OperationalError:
+            return self.context.workflow_run_id
+
     def _records_with_preserved_es(self) -> list[dict[str, Any]]:
         """Keep reliable ES fields when a detail page is still pending.
 
@@ -707,10 +728,11 @@ class WorkflowV2Runner:
                 formal_root = pending / "formal"
                 formal_cfg = self._runtime_cfg()
                 formal_cfg["paths"] = {**dict(self.cfg.get("paths") or {}), "exports": str(formal_root)}
+                export_run_id = self._export_source_run_id()
                 for language in ("es", "zh"):
                     formal_exports[language] = export_catalog(
                         formal_cfg, language=language, export_date=self.context.business_date,
-                        no_images=True, run_id=self.context.workflow_run_id,
+                        no_images=True, run_id=export_run_id,
                     )
             if self.production_apply:
                 # The database commit and its compatibility projections must

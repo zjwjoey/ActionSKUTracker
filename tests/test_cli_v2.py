@@ -16,3 +16,12 @@ def test_workflow_v2_cli_exposes_explicit_production_apply():
     args = parser.parse_args(["data-update-v2", "--no-dry-run", "--production-apply"])
     assert args.production_apply is True
     assert args.dry_run is False
+
+
+def test_workflow_v2_cli_scopes_fixture_high_risk_auto_approval_to_canary():
+    parser = build_parser()
+    args = parser.parse_args([
+        "data-update-v2", "--no-dry-run", "--canary", "--temp-db", "canary.sqlite3",
+        "--fixture", "fixture.json", "--fake-provider", "--fixture-auto-approve-high-risk",
+    ])
+    assert args.fixture_auto_approve_high_risk is True

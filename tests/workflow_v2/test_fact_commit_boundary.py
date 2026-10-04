@@ -89,3 +89,27 @@ def test_export_staging_publishes_one_complete_set(workflow_root, source_row, fa
     assert (staging / "publish_manifest.json").exists()
     assert (staging / "es.json").exists()
     assert (staging / "zh.json").exists()
+
+
+def test_existing_exporter_uses_localization_apply_commit_head(monkeypatch, workflow_root, source_row, fake_provider):
+    calls = []
+
+    def fake_export_catalog(cfg, *, language, export_date, no_images, run_id=None, **_kwargs):
+        calls.append((language, run_id, str(cfg["storage"]["db_path"])))
+        return {"output": f"{language}.xlsx", "manifest": f"{language}.manifest.json"}
+
+    monkeypatch.setattr("action_tracker.exporting.service.export_catalog", fake_export_catalog)
+    run_id = "export-head"
+    runner = WorkflowV2Runner(
+        root=workflow_root,
+        context=new_context(workflow_root, business_date="2026-10-04", run_id=run_id),
+        records=[source_row], expected_skus={"100"}, provider=fake_provider,
+        auto_translation=True, auto_policy=True, apply_enabled=True, auto_export=True,
+        allow_high_risk_auto_approval=True,
+        cfg={"paths": {"exports": workflow_root / "exports"}},
+    )
+    result = runner.run()
+    assert result.stages["EXPORT_WRITE"].status == "PASS"
+    assert [run for _language, run, _path in calls] == [
+        f"{run_id}-localization-apply", f"{run_id}-localization-apply",
+    ]

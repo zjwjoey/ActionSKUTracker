@@ -40,6 +40,9 @@
   supplied, `export_catalog()` also runs against the isolated canary DB and
   writes its formal files into the pending staging directory. Bilingual audits
   and parity checks run before that manifest is written.
+- The exporter resolves the immutable localization-Apply commit head in the
+  temporary SQLite database, so its formal-source guard reads the current
+  canary projection rather than the earlier fact-commit run.
 - Workflow V2 tests, including the provider/QA failure matrix, are listed in
   `tests/ci_safe_tests.txt`.
 

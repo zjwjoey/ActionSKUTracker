@@ -27,6 +27,21 @@ It creates a temporary SQLite database, commits fixture Spanish facts through
 the fixture revision, and applies it through the existing immutable patch
 coordinator. It never resolves or mutates the configured production database.
 
+For the full fixture path, including the existing exporter writing only to the
+workflow staging directory, use an explicit temporary database and the scoped
+fixture approval switch:
+
+```powershell
+python -m action_tracker data-update-v2 --date YYYY-MM-DD --fixture fixture.json `
+  --fake-provider --canary --temp-db runtime/temp/workflow_v2_canary.sqlite3 `
+  --fixture-auto-approve-high-risk --no-dry-run
+```
+
+`--fixture-auto-approve-high-risk` is rejected unless all of `--fixture`,
+`--fake-provider`, `--canary`, and `--temp-db` are present. It exists only to
+exercise the isolated fixture Apply and export chain; production Apply cannot
+use it.
+
 Stages are explicit: `PREFLIGHT`, `BACKUP`, `EXTRACT`, `SOURCE_AUDIT`,
 `SOURCE_CLEAN`, `SOURCE_REAUDIT`, `FACT_COMMIT`, `DETAIL_PLAN`,
 `DETAIL_ENRICH`, `TRANSLATION_SOURCE_AUDIT`, `REGISTRY_INGEST`,
