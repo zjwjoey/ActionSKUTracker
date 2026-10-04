@@ -115,6 +115,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     base = yaml.safe_load(base_config_path.read_text(encoding="utf-8")) or {}
     overlay = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     raw = _deep_merge(base, overlay) if config_path != base_config_path else base
+    try:
+        from action_tracker.config import config_evidence, load_settings
+        effective_cfg = load_settings(overlay_paths=([config_path] if config_path != base_config_path else ()))
+        effective_evidence = config_evidence(effective_cfg)
+    except Exception as exc:
+        effective_evidence = {"error": f"CONFIG_EVIDENCE_ERROR:{type(exc).__name__}:{exc}"}
     expected_ref = getattr(args, "expected_ref", None)
     expected_head = args.expected_head
     if expected_ref:
@@ -249,6 +255,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "source_root": str(source_root),
         "data_root": str(data_root),
         "config": str(config_path),
+        "config_evidence": effective_evidence,
+        "base_config_path": effective_evidence.get("base_config_path"),
+        "profile_path": effective_evidence.get("profile_path"),
+        "base_config_sha256": effective_evidence.get("base_config_sha256"),
+        "profile_sha256": effective_evidence.get("profile_sha256"),
+        "effective_config_hash": effective_evidence.get("effective_config_hash"),
         "audited_ref": expected_ref,
         "audited_content_head": actual_head,
         "database": db_report,
@@ -263,7 +275,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path, default=Path.cwd())
     parser.add_argument("--data-root", type=Path, required=True)
-    parser.add_argument("--config", type=Path, help="explicit deployment profile overlay")
+    parser.add_argument("--config", "--profile", dest="config", type=Path, help="explicit deployment profile overlay")
     parser.add_argument("--expected-branch", required=True)
     parser.add_argument("--expected-head")
     parser.add_argument("--expected-ref", help="git ref/tag whose resolved commit is the audited content head")
