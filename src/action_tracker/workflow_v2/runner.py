@@ -777,16 +777,31 @@ class WorkflowV2Runner:
             # redirect its output into the pending directory.  Fixture tests
             # without export configuration retain the row-builder contract.
             if self.cfg.get("paths"):
-                from ..exporting.service import export_catalog
+                from ..exporting.service import ExportValidationError, export_catalog
                 formal_root = pending / "formal"
                 formal_cfg = self._runtime_cfg()
                 formal_cfg["paths"] = {**dict(self.cfg.get("paths") or {}), "exports": str(formal_root)}
                 export_run_id = self._export_source_run_id()
                 for language in ("es", "zh"):
-                    formal_exports[language] = export_catalog(
-                        formal_cfg, language=language, export_date=self.context.business_date,
-                        no_images=True, run_id=export_run_id,
-                    )
+                    try:
+                        formal_exports[language] = export_catalog(
+                            formal_cfg, language=language, export_date=self.context.business_date,
+                            no_images=True, run_id=export_run_id,
+                        )
+                    except ExportValidationError as exc:
+                        # A local canary may intentionally have no legacy
+                        # operations run for the synthetic workflow id.  The
+                        # V2 row-builder artifact is still valid and should
+                        # not turn a committed fact/translation run into a
+                        # failure.  Formal production publication remains
+                        # fail-closed and re-raises this condition below.
+                        if self.production_apply or "FORMAL_RUN_NOT_FOUND" not in str(exc):
+                            raise
+                        formal_exports[language] = {
+                            "status": "SKIPPED",
+                            "reason": "FORMAL_RUN_NOT_FOUND",
+                            "run_id": export_run_id,
+                        }
             if self.production_apply:
                 # The database commit and its compatibility projections must
                 # advance together.  The localization apply creates a new
