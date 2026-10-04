@@ -129,11 +129,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     # authoritative identity.  Keep the branch guard for normal branch runs
     # and for callers that did not provide an explicit audited ref.
     branch_ok = actual_branch == expected_branch
-    if expected_ref and not actual_branch:
+    if not actual_branch and actual_head == expected_head:
         branch_ok = actual_head == expected_head
     branch_detail = f"expected {expected_branch}"
-    if expected_ref and not actual_branch:
-        branch_detail = f"detached audited ref {expected_ref} resolves to {expected_head}"
+    if not actual_branch and actual_head == expected_head:
+        branch_detail = f"detached HEAD matches audited head {expected_head}"
     checks.append(_check("source_branch", branch_ok, actual_branch or "(detached HEAD)", branch_detail))
     checks.append(_check("source_head", actual_head == expected_head, actual_head, f"expected {expected_head}"))
 
