@@ -1,55 +1,54 @@
 # Workflow V2 Production Closure — 2026-10-04
 
-## 审计头与范围
+## 审计口径
 
-- audited source head: `2cac2b7e60e01d6468af21ec3eb9caafab6777ac`
-- audited branch: `deploy/workflow-v2-production-20261004`
-- audited deployment head: `75b01acc9818717c5959c83cdddcb92a59d25442`
-- production config profile: `config/workflow_v2_production_profile.yaml` (explicit overlay; repository default remains fail-closed)
-- publication metadata: feature PR `#4` remains separate from main and from `fix/naming-history-export-20260917`
-- old production head: `3a9df7af807875b97d4eab1b5d3bb57c69f5c041`
+本报告按 **audited head / publication metadata** 记录证据，不追踪本报告自身后续 docs-only 提交的当前 SHA。
 
-本报告审计的是已验证代码头和发布元数据，不追踪后续文档发布提交的当前 SHA。部署分支尚未合并 main，也没有合并命名历史分支。
+- audited source head: `16c626f1063ba3757b93368ee76869545a5f83ad`
+- audited ref: `production/workflow-v2-phase1-rc4`
+- deployment branch: `deploy/workflow-v2-production-20261004`
+- publication metadata head at audit preparation: `7c16323b2d0a1ff682ec86b8959c6d05a6d133a4`
+- production profile: `config/workflow_v2_production_profile.yaml`，显式 overlay；默认配置仍 fail-closed
+- main: 未修改；feature PR #4 未合并
 
 ## 证据
 
-- `python -m pytest -q`: `739 passed`
-- isolated Workflow V2 full canary: `SUCCESS`
-- shadow preflight fixture comparison: `PASS` (SKU/lifecycle/price/badge drift empty)
-- canary stages: source/fact commit、QWEN_TRANSLATE（fake provider）、translation QA、scoped fixture policy、translation apply、export audit、export write 全部通过
-- canary export 写入临时 staging，`production_primary=false`
-- GitHub Actions run `37199684031` for audited deployment head: Ubuntu 和 Windows 均 `SUCCESS`
-- production preflight: `PASS`
-- preflight database: `ACTION_SQLITE_DATA`, schema `2.0.0`, role `PRIMARY`, integrity `ok`, foreign-key errors `0`
-- preflight Qwen: provider/model 配置通过；密钥只记录 `SET/NOT_SET`
-- production apply gates: remain fail-closed (`knowledge` / `localization` / `dictionary`)
-- Qwen real call: `NO`
-- production data modified: `NO`
-- production code cutover performed: `NO`
+- 本地完整回归：`762 passed`
+- 本地 CI-safe allowlist：`762 passed`
+- audited source head 的 RC4 exact-head CI：run `37206480278`，Ubuntu/Windows 均成功
+- deployment publication head 的 exact-head CI：run `37206473760`，Ubuntu/Windows 均成功
+- production preflight：PASS；配置证据包含 base/profile/effective SHA-256，未记录密钥
+- Phase 1 gates：Qwen provider 配置开启；自动审批、自动导出、production apply、回退西语均关闭
+- 真实 Qwen：NO；真实 Action 全量运行：NO；PRIMARY 生产写入：NO；正式导出发布：NO
 
-## 生产队列快照
+## 验收矩阵
 
-目标 PRIMARY 在预检时的翻译队列为：`PENDING 37120`、`RETRY 6593`、`BLOCKED 666`、`COMPLETED 773`。历史 backlog 不作为本次代码切换的同步批次；日常批次上限为 50，按当前日优先处理。`export_sync` 中存在 1 条 `PENDING`，保留给运行时兼容导出同步流程处理。
-
-## 备份
-
-部署清单：
-`F:\ActionSKUTracker\runtime\backups\workflow_v2_production_20261004\deployment-manifest.json`
-
-其中包含数据库一致性备份、生产配置备份、旧生产 branch/head 和 SHA-256。没有复制或替换 PRIMARY 数据目录。
+| Gate | Result |
+|---|---|
+| 默认配置 fail-closed | PASS |
+| profile 显式/环境优先级与 deep merge | PASS |
+| 配置 evidence/hash 与 resume hash guard | PASS |
+| 单一 business_date 贯穿 context → extraction → fact/registry/export | PASS |
+| extraction date mismatch 阻断 fact commit | PASS |
+| 中文保留旧值、按字段 source hash 失效 | PASS |
+| registry/projection freshness parity | PASS |
+| stale 中文阻断发布 | PASS |
+| Phase 1 Qwen translation mode | PASS |
+| apply/auto-approval/auto-export disabled | PASS |
+| bounded batch / pending continuation / resume | PASS |
+| production preflight and rollback contract | PASS |
+| full pytest / CI-safe | PASS |
+| exact-head Ubuntu + Windows CI | PASS |
 
 ## 结论
 
 ```text
-CODE: PASS
-CONFIG: PASS
-DATABASE: PASS
-QWEN: PASS (config-only preflight; no real call)
-QUEUE: PASS (bounded, isolated historical backlog)
-ROLLBACK: PASS
-CI: PASS
-PRODUCTION_CODE_CUTOVER: READY
-PRODUCTION_FULL_AUTOMATION: NOT_YET
+READY_FOR_PHASE1_REAL_PRIMARY_CANARY = YES
+PRODUCTION_PRIMARY_MUTATED = NO
+REAL_QWEN_CALLED = NO
+REAL_ACTION_FULL_RUN = NO
+FORMAL_EXPORT_PUBLISHED = NO
+MAIN_MODIFIED = NO
 ```
 
-唯一尚未完成的外部动作是由 Owner 执行生产代码目录切换；在此之前不得运行真实生产详情抓取、全量历史翻译、自动审批或自动导出。
+该结论表示代码与门禁已具备执行 Phase 1 小批量真实 PRIMARY canary 的条件，不表示本次审计已经执行真实生产抓取、翻译或发布。

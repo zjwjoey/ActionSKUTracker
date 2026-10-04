@@ -1,63 +1,46 @@
 # Workflow V2 Production Final Audit — 2026-10-04
 
-## Audited source
+## Audited head
 
 - Branch: `deploy/workflow-v2-production-20261004`
-- Audited ref: `production/workflow-v2-phase1-rc3`
-- Audited content head: `0184a8faf00f23343598ed4d11b1721f9469d01a` (`fix: keep canary export resilient to missing formal run`)
-- Publication metadata head: `921e05e737af286136843ae0a31734338354ef01`
-- Naming-history branch was not merged.
+- Audited ref: `production/workflow-v2-phase1-rc4`
+- Audited content head: `16c626f1063ba3757b93368ee76869545a5f83ad`
+- Publication metadata head: `7c16323b2d0a1ff682ec86b8959c6d05a6d133a4`
 
-The candidate tag is the immutable code boundary for this audit. Later report or
-publication metadata commits must not change the audited content head.
+The immutable RC4 tag is the code boundary. This report records evidence by audited head and publication metadata; it does not follow later report-only commits by current SHA.
 
-## Evidence
+## Test and CI evidence
 
-- `python -m pytest tests/workflow_v2 -q`: **48 passed**
-- `python -m pytest tests/test_workflow_v2_production_preflight.py -q`: **8 passed**
-- `python -m pytest tests/test_translation_registry_qwen.py -q`: **73 passed**
-- `python -m pytest tests/test_translation_safety_defaults.py -q`: **6 passed**
-- `python -m pytest -q`: **750 passed**
-- CI-safe allowlist: **750 passed locally**
-- Exact-head GitHub CI for publication metadata head `f9351d9338aeaac15e4ca6c7f6b81ba975f25cfc`: **PASS**, run `37203351805` (Ubuntu and Windows).
-
-The tests use temporary SQLite databases, fixtures, fake providers, and mock
-environment variables. They do not run the production database or make Qwen or
-Action requests.
+- `python -m pytest -q`: **762 passed**
+- CI-safe allowlist: **762 passed locally**
+- RC4 exact-head CI: run `37206480278`, Ubuntu and Windows **SUCCESS**
+- Deployment publication head exact-head CI: run `37206473760`, Ubuntu and Windows **SUCCESS**
+- Preflight and runtime closure tests cover profile gates, business-date propagation, config hash resume guard, localization freshness, and stale export blocking.
 
 ## Acceptance matrix
 
 | Gate | Result |
 |---|---|
 | DEPLOY_BRANCH_LINEAGE | PASS |
-| NAMING_HISTORY_NOT_MERGED | PASS |
+| RC4_IMMUTABLE_CODE_BOUNDARY | PASS |
 | PRODUCTION_PROFILE | PASS |
 | DEFAULT_CONFIG_FAIL_CLOSED | PASS |
-| PRODUCTION_PREFLIGHT | PASS |
-| PRODUCTION_PREFLIGHT_TESTS | PASS |
-| PRIMARY_GUARD | PASS |
-| FACT_COMMIT_BOUNDARY | PASS |
+| CONFIG_EVIDENCE_AND_HASH | PASS |
+| BUSINESS_DATE_SINGLE_SOURCE | PASS |
+| EXTRACTION_DATE_MISMATCH_BLOCK | PASS |
+| ZH_FIELD_FRESHNESS_INVALIDATION | PASS |
+| REGISTRY_PROJECTION_PARITY | PASS |
+| STALE_RELEASE_BLOCK | PASS |
 | PRODUCTION_PHASE1_MODE | PASS |
+| APPLY_APPROVAL_EXPORT_DISABLED | PASS |
 | QUEUE_RUN_ID_ISOLATION | PASS |
-| HISTORICAL_BACKLOG_ISOLATION | PASS |
-| TRANSLATION_BATCH_LIMIT | PASS |
-| BATCH_PENDING_CONTINUATION | PASS |
-| BATCH_RESUME | PASS |
-| TRANSLATION_REVIEW_REQUIRED_STATE | PASS |
-| TRANSLATION_APPLY_PENDING_STATE | PASS |
-| AUTO_EXPORT_PENDING_STATE | PASS |
-| TRANSLATION_QA_FAIL_CLOSED | PASS |
-| SOURCE_QA_FAIL_CLOSED | PASS |
-| SUCCESS_WITH_PENDING_FINAL_STATE | PASS |
-| TEMPORARY_QWEN_FAILURE_SEMANTICS | PASS |
-| BACKUP_CONTRACT | PASS |
-| ROLLBACK_CONTRACT | PASS |
-| AUDIT_REF_FRESHNESS | PASS |
+| BATCH_LIMIT_AND_RESUME | PASS |
+| PRODUCTION_PREFLIGHT | PASS |
 | FULL_PYTEST | PASS |
-| CI_SAFE | PASS locally |
-| EXACT_HEAD_CI | PASS (run 37203351805; Ubuntu + Windows) |
+| CI_SAFE | PASS |
+| EXACT_HEAD_CI | PASS (runs 37206480278 and 37206473760) |
 
-## Runtime safety record
+## Safety record
 
 ```text
 PRODUCTION_PRIMARY_MUTATED             NO
@@ -67,9 +50,6 @@ REAL_FORMAL_EXPORT_PUBLISHED           NO
 MAIN_MODIFIED                          NO
 ```
 
-The canary export fix is locally verified and exact-head CI is green on both
-required operating systems. The current conclusion is:
-
 ```text
-READY_FOR_PHASE1_LOCAL_PRODUCTION_CANARY
+READY_FOR_PHASE1_REAL_PRIMARY_CANARY  YES
 ```
