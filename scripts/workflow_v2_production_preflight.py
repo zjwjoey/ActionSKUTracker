@@ -124,7 +124,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
     actual_branch = _git(source_root, "branch", "--show-current")
     actual_head = _git(source_root, "rev-parse", "HEAD")
-    checks.append(_check("source_branch", actual_branch == expected_branch, actual_branch, f"expected {expected_branch}"))
+    # GitHub checks out immutable tags in detached-HEAD mode.  In that mode
+    # there is no branch name to compare, so the resolved ref/head pair is the
+    # authoritative identity.  Keep the branch guard for normal branch runs
+    # and for callers that did not provide an explicit audited ref.
+    branch_ok = actual_branch == expected_branch
+    if expected_ref and not actual_branch:
+        branch_ok = actual_head == expected_head
+    branch_detail = f"expected {expected_branch}"
+    if expected_ref and not actual_branch:
+        branch_detail = f"detached audited ref {expected_ref} resolves to {expected_head}"
+    checks.append(_check("source_branch", branch_ok, actual_branch or "(detached HEAD)", branch_detail))
     checks.append(_check("source_head", actual_head == expected_head, actual_head, f"expected {expected_head}"))
 
     workflow = raw.get("workflow_v2") or {}
