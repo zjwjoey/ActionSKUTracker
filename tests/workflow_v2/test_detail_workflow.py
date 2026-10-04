@@ -20,3 +20,17 @@ def test_detail_freshness_is_independent_of_presence(tmp_path):
     mark_detail_success(db, "100", run_id="r1", source_hash="h", at="2026-10-01T00:00:00+00:00")
     assert detail_is_stale(db, "100", now=datetime(2026, 10, 2, tzinfo=timezone.utc), max_age_days=7) is False
     assert detail_is_stale(db, "100", now=datetime(2026, 10, 10, tzinfo=timezone.utc), max_age_days=7) is True
+
+
+def test_translation_source_audit_is_field_scoped_for_pending_detail(workflow_root, source_row):
+    source_row = dict(source_row)
+    source_row["detail_status"] = "DETAIL_PENDING"
+    source_row["details_es"] = ""
+    result = WorkflowV2Runner(
+        root=workflow_root,
+        context=new_context(workflow_root, business_date="2026-10-04"),
+        records=[source_row], expected_skus={"100"},
+    ).run()
+    audit = result.stages["TRANSLATION_SOURCE_AUDIT"].details
+    assert {item["field"] for item in audit["ready_fields"]} >= {"name_es", "desc_es"}
+    assert {item["field"] for item in audit["pending_fields"]} == {"details_es"}

@@ -115,14 +115,14 @@ def audit_source_records(
         for row in rows
         if str(row.get("event") or row.get("lifecycle_event") or row.get("change_type") or "").upper() in {"NEW", "FIRST_SEEN"}
     }
-    extra_new = sorted(actual_new - new_expected) if actual_new and new_expected else []
+    extra_new = sorted(actual_new - new_expected)
     actual_reappeared = {
         str(row.get("sku") or row.get("official_sku") or "").strip()
         for row in rows
         if str(row.get("event") or row.get("lifecycle_event") or row.get("change_type") or "").upper() == "REAPPEARED"
     }
     missing_reappeared = sorted(reappeared - normalized)
-    extra_reappeared = sorted(actual_reappeared - reappeared) if actual_reappeared and reappeared else []
+    extra_reappeared = sorted(actual_reappeared - reappeared)
     blocked = bool(required_issues or missing or extra or missing_new or extra_new or missing_reappeared or extra_reappeared or duplicate_count)
     return {
         "status": "FAIL" if blocked else "PASS",

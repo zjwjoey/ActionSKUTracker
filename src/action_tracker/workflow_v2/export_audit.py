@@ -37,6 +37,8 @@ def audit_es(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
 def audit_zh(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     values = [dict(row) for row in rows]
     issues: list[dict[str, Any]] = []
+    from ..localization.contracts import SourceFacts
+    from ..localization.qa import audit_translation
     for row in values:
         sku = str(row.get("sku") or row.get("official_sku") or "")
         if str(row.get("translation_status") or "").upper() not in {"APPROVED", "AUTO_VALIDATED", "HUMAN_APPROVED", "PASS"}:
@@ -50,6 +52,21 @@ def audit_zh(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         provenance = row.get("zh_field_provenance") or {}
         if provenance and any(str((provenance.get(field.replace("_zh", "")) or {}).get("freshness_status") or "").upper() == "STALE" for field in ZH_FIELDS):
             issues.append({"sku": sku, "code": "STALE_TRANSLATION"})
+        if str(row.get("translation_freshness") or "").upper() == "STALE":
+            issues.append({"sku": sku, "code": "STALE_TRANSLATION"})
+        source_hash = str(row.get("source_hash") or "")
+        translation_hash = str(row.get("translation_source_hash") or "")
+        if source_hash and translation_hash and source_hash != translation_hash:
+            issues.append({"sku": sku, "code": "SOURCE_HASH_MISMATCH"})
+        source = SourceFacts.from_record(row)
+        targets = {
+            "name": row.get("name_zh"), "cat1": row.get("cat1_zh"),
+            "cat2": row.get("cat2_zh"), "spec": row.get("spec_zh"),
+            "description": row.get("desc_zh"), "details": row.get("details_zh"),
+        }
+        findings = audit_translation(source, targets, tuple(targets))
+        issues.extend({"sku": sku, "field": finding.field_name, "code": finding.rule_id,
+                       "evidence": dict(finding.evidence)} for finding in findings if finding.blocking)
     return {"status": "PASS" if not issues else "FAIL", "rows": len(values), "issues": issues, "sku_set": sorted({str(row.get("sku") or row.get("official_sku") or "") for row in values})}
 
 

@@ -23,6 +23,10 @@
   `WorkflowContext` and translation artifacts and can locate a run by `run_id`.
 - Strict SKU completeness including `extra_skus`, plus separate Presence and
   Fact readiness states.
+- Presence-only commits preserve existing reliable product and ES detail facts;
+  incomplete listing fields cannot overwrite them with empty values.
+- Detail-pending translation readiness is field scoped, and the export audit
+  reuses Translation V1 Typed QA for Spanish residue, numeric and unit checks.
 - Workflow execution uses the existing Translation System V1 Registry,
   `TranslationQueueWorker`, `TranslationResolver`, typed/canonical QA and
   immutable localization patch apply. The old direct-provider helpers remain
@@ -31,7 +35,9 @@
   an isolated temporary SQLite PRIMARY-like database.
 - Detail planning consumes `product_detail_state` freshness and source hashes.
 - Existing exporter row builders produce independent ES and ZH staging
-  projections, followed by bilingual audits and parity checks.
+  projections, validate the existing output-row contract, and publish them
+  only behind a complete ES/ZH manifest. Bilingual audits and parity checks
+  run before that manifest is written.
 - Workflow V2 tests, including the provider/QA failure matrix, are listed in
   `tests/ci_safe_tests.txt`.
 
@@ -44,6 +50,7 @@ never resolves the configured production SQLite path. Non-dry execution
 requires an explicit temporary database and `--canary`; production apply and
 formal export publication remain disabled.
 
-The remaining adapter is real-site extraction: the existing daily collector is
-not invoked as the V2 `EXTRACT` stage. The V2 runner accepts extracted records
-or a reviewed adapter result and is ready for an isolated local canary.
+The remaining integrations are the real-site extraction adapter, runtime detail
+retry/apply wiring, and formal `export_catalog()`/Template 1 publication. The
+V2 runner accepts extracted records or a reviewed adapter result and keeps those
+production entry points disabled for the local canary.
