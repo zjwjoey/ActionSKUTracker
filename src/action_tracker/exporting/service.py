@@ -297,7 +297,8 @@ def _reuse_source_bound_localizations(
             output.append(hydrated)
             continue
         source_bound_fields: list[str] = []
-        provenance = reference.get("zh_field_provenance") or {}
+        from ..localization.provenance import coerce_field_provenance
+        provenance = coerce_field_provenance(reference.get("zh_field_provenance"))
         for source_field, target_field in _HISTORICAL_LOCALIZATION_FIELDS:
             historical_source = _normalized_source_identity(record.get(source_field))
             current_source = _normalized_source_identity(reference.get(source_field))

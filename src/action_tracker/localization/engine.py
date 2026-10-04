@@ -6,6 +6,7 @@ from typing import Any, Iterable
 from .contracts import LOCALIZATION_FIELDS, CANONICAL_TO_ZH, ZH_TO_CANONICAL, LocalizationField, LocalizationPlan, SourceFacts
 from .formatter import format_unit_price
 from .planner import plan_localization
+from .provenance import coerce_field_provenance
 from .semantic import parse_semantic_facts
 from .validator import LocalizationValidation, validate_plan
 
@@ -101,7 +102,7 @@ class LocalizationEngine:
         for output_key, _ in mapping:
             value = str(record.get(output_key) or (format_unit_price(str(record.get("unit_price") or "")) if output_key == "unit_price_zh" else "") or "").strip()
             canonical = ZH_TO_CANONICAL[output_key]
-            metadata = (record.get("zh_field_provenance") or {}).get(canonical) or {}
+            metadata = coerce_field_provenance(record.get("zh_field_provenance")).get(canonical) or {}
             source_name = "official_unit_price" if output_key == "unit_price_zh" else str(metadata.get("source") or record.get("zh_" + canonical + "_source") or "primary_localization")
             freshness = str(metadata.get("freshness_status") or record.get("zh_freshness_status") or "CURRENT").upper()
             review = str(metadata.get("review_status") or record.get("zh_review_status") or "").upper()

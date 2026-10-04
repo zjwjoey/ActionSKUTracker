@@ -39,6 +39,7 @@ def audit_zh(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     issues: list[dict[str, Any]] = []
     from ..localization.contracts import SourceFacts
     from ..localization.qa import audit_translation
+    from ..localization.provenance import coerce_field_provenance
     for row in values:
         sku = str(row.get("sku") or row.get("official_sku") or "")
         if str(row.get("translation_status") or "").upper() not in {"APPROVED", "AUTO_VALIDATED", "HUMAN_APPROVED", "PASS"}:
@@ -49,7 +50,7 @@ def audit_zh(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
             value = str(row.get(field) or "")
             if "\x00" in value or re.search(r"<[^>]+>", value):
                 issues.append({"sku": sku, "field": field, "code": "ZH_GARBLED_OR_HTML"})
-        provenance = row.get("zh_field_provenance") or {}
+        provenance = coerce_field_provenance(row.get("zh_field_provenance"))
         if provenance and any(str((provenance.get(field.replace("_zh", "")) or {}).get("freshness_status") or "").upper() == "STALE" for field in ZH_FIELDS):
             issues.append({"sku": sku, "code": "STALE_TRANSLATION"})
         if str(row.get("translation_freshness") or "").upper() == "STALE":

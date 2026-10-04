@@ -121,7 +121,8 @@ def audit_research_release(
 
     for row in rows:
         sku = str(row.get("sku") or row.get("official_sku") or "").strip() or "<EMPTY>"
-        field_provenance = row.get("zh_field_provenance") or {}
+        from .provenance import coerce_field_provenance
+        field_provenance = coerce_field_provenance(row.get("zh_field_provenance"))
         missing = []
         for field in REQUIRED_ZH_FIELDS:
             if str(row.get(field) or "").strip():
