@@ -9,3 +9,10 @@ def test_saved_view_cli_exposes_update_and_delete():
     assert delete.saved_view_command == "delete" and delete.view_id == "view_1"
     run = parser.parse_args(["saved-view", "run", "view_1", "--json"])
     assert run.saved_view_command == "run" and run.json is True
+
+
+def test_workflow_v2_cli_exposes_explicit_production_apply():
+    parser = build_parser()
+    args = parser.parse_args(["data-update-v2", "--no-dry-run", "--production-apply"])
+    assert args.production_apply is True
+    assert args.dry_run is False

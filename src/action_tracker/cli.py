@@ -261,7 +261,8 @@ def build_parser() -> argparse.ArgumentParser:
     w2.add_argument("--date"); w2.add_argument("--resume", action="store_true"); w2.add_argument("--run-id")
     w2.add_argument("--dry-run", action="store_true", default=True); w2.add_argument("--no-dry-run", dest="dry_run", action="store_false")
     w2.add_argument("--canary", action="store_true", help="允许仅针对显式临时 SQLite 的本地 apply")
-    w2.add_argument("--temp-db", help="本地 canary 临时 SQLite 路径；正式模式必填")
+    w2.add_argument("--production-apply", action="store_true", help="在全部生产开关开启后写入配置的 SQLite PRIMARY")
+    w2.add_argument("--temp-db", help="本地 canary 临时 SQLite 路径；production-apply 不使用")
     w2.add_argument("--no-network", action="store_true")
     w2.add_argument("--fake-provider", action="store_true"); w2.add_argument("--fixture", help="离线 JSON fixture")
     ws = sub.add_parser("workflow-v2-shadow-compare", help="离线比较旧链路与 Workflow V2 fixture")
@@ -1105,6 +1106,8 @@ def main(argv=None) -> int:
     if args.command == "data-update-v2":
         from .workflow_v2.runner import run_workflow_v2
         from .services.runtime import observation_date
+        if args.production_apply and (args.canary or args.temp_db or args.fake_provider or args.fixture):
+            print(json.dumps({"error": "WORKFLOW_V2_PRODUCTION_FLAGS_CONFLICT"}, ensure_ascii=False), file=sys.stderr); return 2
         records = None; expected = new_skus = reappeared = None; fake_mapping = {}
         if args.fixture:
             fixture_path = Path(args.fixture)
@@ -1118,9 +1121,9 @@ def main(argv=None) -> int:
         if args.fake_provider:
             from .localization.providers.base import FakeTranslationProvider
             provider = FakeTranslationProvider(mapping=fake_mapping)
-        if not args.dry_run and not args.temp_db:
+        if not args.dry_run and not args.temp_db and not args.production_apply:
             print(json.dumps({"error": "WORKFLOW_V2_TEMP_DB_REQUIRED"}, ensure_ascii=False), file=sys.stderr); return 2
-        if not args.dry_run and not args.canary:
+        if not args.dry_run and not args.canary and not args.production_apply:
             print(json.dumps({"error": "WORKFLOW_V2_CANARY_FLAG_REQUIRED"}, ensure_ascii=False), file=sys.stderr); return 2
         try:
             result = run_workflow_v2(cfg, business_date=args.date if args.date else (None if args.resume else observation_date()), run_id=args.run_id, resume=args.resume,
@@ -1129,7 +1132,8 @@ def main(argv=None) -> int:
                                      auto_translation=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_translation", {}).get("enabled", False)),
                                      auto_policy=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_policy_approval", {}).get("enabled", False)),
                                      auto_export=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_export", {}).get("enabled", False)),
-                                     apply_enabled=bool(args.canary and (args.fake_provider or (cfg.get("workflow_v2") or {}).get("enabled", False))),
+                                     apply_enabled=bool((args.canary or args.production_apply) and (args.fake_provider or (cfg.get("workflow_v2") or {}).get("enabled", False))),
+                                     production_apply=bool(args.production_apply),
                                      temp_db=Path(args.temp_db) if args.temp_db else None)
         except ValueError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr); return 20

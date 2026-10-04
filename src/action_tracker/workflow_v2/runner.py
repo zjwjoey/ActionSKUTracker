@@ -270,7 +270,21 @@ class WorkflowV2Runner:
                                      "real_qwen": bool(self.provider is None and self.auto_translation and ai.get("enabled") and configured_qwen),
                                      "production_primary": False})
     def _backup(self) -> StageResult:
-        return StageResult("PASS", {"mode": "fixture_or_external_adapter", "production_primary_modified": False})
+        if not self.production_apply:
+            return StageResult("PASS", {"mode": "fixture_or_external_adapter", "production_primary_modified": False})
+        # A production-targeted run must leave a verified rollback artifact
+        # before the first write.  The backup API reopens the copy and checks
+        # integrity, foreign keys and database identity; a plain file copy is
+        # not sufficient for a live SQLite database.
+        from ..operations.backup import backup_sqlite
+        backup_root = Path((self.cfg.get("paths") or {}).get("backups") or self.root / "backups")
+        backup_path = backup_root / "workflow_v2" / self.context.business_date / f"{self.context.workflow_run_id}.sqlite3"
+        try:
+            evidence = backup_sqlite(self.temp_db, backup_path, run_id=self.context.workflow_run_id)
+        except Exception as exc:
+            return StageResult("BLOCKED", {"reason": "PRODUCTION_BACKUP_FAILED", "error": str(exc)}, "PRODUCTION_BACKUP_FAILED")
+        _write_json(self.directory / "production_backup.json", evidence)
+        return StageResult("PASS", {"mode": "production_primary", "production_primary_modified": False, **evidence})
     def _extract(self) -> StageResult:
         adapter = self.extraction_adapter
         if self.records is None:
@@ -352,7 +366,8 @@ class WorkflowV2Runner:
         return StageResult("PASS" if self.context.source_ready else "BLOCKED", result, "SOURCE_REAUDIT_FAILED" if not self.context.source_ready else None)
     def _fact_commit(self) -> StageResult:
         if not self.context.source_ready: return StageResult("BLOCKED", {"reason": "SOURCE_NOT_READY"}, "SOURCE_NOT_READY")
-        if self.production_apply and not self.temp_db: return StageResult("BLOCKED", {"reason": "TEMP_DB_REQUIRED"}, "WORKFLOW_V2_PRODUCTION_NOT_ENABLED")
+        if self.production_apply and not self.temp_db.exists():
+            return StageResult("BLOCKED", {"reason": "PRODUCTION_PRIMARY_MISSING", "database": str(self.temp_db)}, "PRODUCTION_PRIMARY_MISSING")
         from ..database.production import CommitBundle, ProductionWriter
         self.temp_db.parent.mkdir(parents=True, exist_ok=True)
         fact_issues = {(str(item.get("sku") or ""), str(item.get("field") or ""))
@@ -382,7 +397,7 @@ class WorkflowV2Runner:
             source_versions.append({"sku": sku, "run_id": self.context.workflow_run_id, "observed_at": self.context.business_date, "source_name": "workflow_v2", "facts": {"name": {"raw": source_row.get("name_es"), "normalized": source_row.get("name_es")}, "cat1": {"raw": source_row.get("cat1_es"), "normalized": source_row.get("cat1_es")}, "cat2": {"raw": source_row.get("cat2_es"), "normalized": source_row.get("cat2_es")}, "spec": {"raw": source_row.get("spec_es"), "normalized": source_row.get("spec_es")}, "description": {"raw": source_row.get("desc_es"), "normalized": source_row.get("desc_es")}, "details": {"raw": source_row.get("details_es"), "normalized": source_row.get("details_es")}}})
         bundle = CommitBundle(run_id=self.context.workflow_run_id, observation_date=self.context.business_date, qa_state="PASS", current_products=products, localization_updates=tuple(localization), source_fact_versions=tuple(source_versions), observations=observations, run_record={"dry_run": False, "run_id": self.context.workflow_run_id}, requires_collection_integrity=False)
         self.context.source_commit_id = ProductionWriter(self.temp_db, role="PRIMARY").commit(bundle)
-        return StageResult("PASS", {"state": "TEMP_SQLITE_COMMITTED", "commit_id": self.context.source_commit_id, "database": str(self.temp_db), "fact_ready": self.context.fact_ready, "presence_only_rows": sum(1 for row in products if row.get("_historical_minimal"))})
+        return StageResult("PASS", {"state": "PRIMARY_SQLITE_COMMITTED" if self.production_apply else "TEMP_SQLITE_COMMITTED", "commit_id": self.context.source_commit_id, "database": str(self.temp_db), "fact_ready": self.context.fact_ready, "presence_only_rows": sum(1 for row in products if row.get("_historical_minimal"))})
     def _detail_plan(self) -> StageResult:
         from .detail_stage import plan_detail_refresh
         planned = plan_detail_refresh(self.records or [], db_path=self.temp_db, max_age_days=int((self.cfg.get("workflow_v2") or {}).get("detail_max_age_days", 7)))
@@ -554,7 +569,12 @@ class WorkflowV2Runner:
         staged = store.stage_approved_registry_patches(expected_base_commit_id=self.context.source_commit_id, actor="human:workflow-v2-local-canary")
         from ..database.production import apply_approved_localization_patches
         applied = apply_approved_localization_patches(self.temp_db, patch_ids=staged["patch_ids"], expected_base_commit_id=self.context.source_commit_id, actor="service:workflow-v2-local-canary", run_id=f"{self.context.workflow_run_id}-localization-apply") if staged["patch_ids"] else {"applied_fields": 0}
-        self.context.localization_commit_id = f"localization-{self.context.workflow_run_id}"
+        # The apply coordinator creates a real immutable commit batch.  Keep
+        # that exact ID in the workflow context so export provenance and
+        # resume/report consumers never have to infer or reconstruct it.
+        self.context.localization_commit_id = str(
+            applied.get("commit_id") or self.context.source_commit_id or ""
+        ) or None
         return StageResult("PASS", {"changed_fields": applied.get("applied_fields", 0), "commit_id": self.context.localization_commit_id, "patches": staged.get("patch_ids", [])})
     def _export_audit(self) -> StageResult:
         es = [dict(row) for row in self.records or []]
@@ -717,11 +737,28 @@ def run_workflow_v2(cfg: Mapping[str, Any], *, business_date: str | None = None,
         if not business_date:
             business_date = candidates[0].parent.name
     context = new_context(root, business_date=business_date, run_id=run_id)
-    if production_apply and not options.get("enabled", False):
-        raise ValueError("WORKFLOW_V2_PRODUCTION_NOT_ENABLED")
-    if temp_db is not None:
-        from ..database.integration import database_path
-        if Path(temp_db).resolve() == Path(database_path(cfg)).resolve():
-            raise ValueError("WORKFLOW_V2_PRODUCTION_DB_FORBIDDEN")
+    from ..database.integration import database_path, storage_mode
+    configured_primary = Path(database_path(cfg)).resolve()
+    if production_apply:
+        # Production mode is intentionally multi-gated.  It must target the
+        # configured PRIMARY database and cannot be combined with the canary
+        # temp-db path.  The old behavior silently created a workflow-local
+        # SQLite file, which looked like a successful production commit while
+        # leaving PRIMARY unchanged.
+        if dry_run:
+            raise ValueError("WORKFLOW_V2_PRODUCTION_REQUIRES_NO_DRY_RUN")
+        if not options.get("enabled", False):
+            raise ValueError("WORKFLOW_V2_PRODUCTION_NOT_ENABLED")
+        if storage_mode(cfg) != "SQLITE_PRIMARY":
+            raise ValueError("WORKFLOW_V2_PRODUCTION_REQUIRES_SQLITE_PRIMARY")
+        knowledge = dict(cfg.get("knowledge") or {})
+        localization = dict(cfg.get("localization") or {})
+        if not bool(knowledge.get("production_apply_enabled")) or not bool(localization.get("production_apply_enabled")):
+            raise ValueError("WORKFLOW_V2_PRODUCTION_APPLY_DISABLED")
+        if temp_db is not None and Path(temp_db).resolve() != configured_primary:
+            raise ValueError("WORKFLOW_V2_PRODUCTION_DB_MUST_BE_CONFIGURED_PRIMARY")
+        temp_db = configured_primary
+    elif temp_db is not None and Path(temp_db).resolve() == configured_primary:
+        raise ValueError("WORKFLOW_V2_PRODUCTION_DB_FORBIDDEN")
     runner = WorkflowV2Runner(root=root, context=context, records=records, expected_skus=expected_skus, expected_new_skus=expected_new_skus, expected_reappeared_skus=expected_reappeared_skus, provider=provider, auto_translation=options.get("auto_translation", {}).get("enabled", False) if auto_translation is None else auto_translation, auto_policy=options.get("auto_policy_approval", {}).get("enabled", False) if auto_policy is None else auto_policy, auto_export=options.get("auto_export", {}).get("enabled", False) if auto_export is None else auto_export, apply_enabled=apply_enabled, dry_run=dry_run, production_apply=production_apply, temp_db=temp_db, cfg=cfg, detail_adapter=detail_adapter, extraction_adapter=extraction_adapter, allow_high_risk_auto_approval=allow_high_risk_auto_approval)
     return runner.run(resume=resume).as_dict()

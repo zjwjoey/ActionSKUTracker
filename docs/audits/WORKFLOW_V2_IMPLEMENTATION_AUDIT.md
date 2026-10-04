@@ -47,10 +47,13 @@
 
 ## Fixture-only / production-disabled
 
-The development path does not call the Action website or real Qwen API and
-never resolves the configured production SQLite path. Non-dry execution
-requires an explicit temporary database and `--canary`; production apply and
-formal export publication remain disabled.
+The development path does not call the Action website or real Qwen API by
+default. Canary execution requires an explicit temporary database and
+`--canary`. An explicitly gated `production_apply` call now resolves only the
+configured SQLite PRIMARY, creates a verified SQLite backup before writes, and
+records the real localization commit ID. The configuration switches remain
+disabled by default; formal export publication still requires its own
+reviewed rollout.
 
 The established daily collector is now available through the default
 read-only extraction adapter. When explicitly enabled, the existing detail
