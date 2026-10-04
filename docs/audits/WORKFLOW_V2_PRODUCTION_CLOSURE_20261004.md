@@ -15,6 +15,7 @@
 
 - `python -m pytest -q`: `739 passed`
 - isolated Workflow V2 full canary: `SUCCESS`
+- shadow preflight fixture comparison: `PASS` (SKU/lifecycle/price/badge drift empty)
 - canary stages: source/fact commit、QWEN_TRANSLATE（fake provider）、translation QA、scoped fixture policy、translation apply、export audit、export write 全部通过
 - canary export 写入临时 staging，`production_primary=false`
 - GitHub Actions run `37198368107` for deployment head: Ubuntu 和 Windows 均 `SUCCESS`
