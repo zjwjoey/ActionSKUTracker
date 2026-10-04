@@ -32,6 +32,7 @@ STAGES = tuple(item.value for item in Stage)
 # Critical boundaries are explicit so a later stage cannot accidentally
 # overwrite an earlier source/translation/export blocker with a PASS.
 STAGE_DEPENDENCIES: dict[str, tuple[str, ...]] = {
+    "SOURCE_AUDIT": ("EXTRACT",),
     "SOURCE_CLEAN": ("SOURCE_AUDIT",),
     "SOURCE_REAUDIT": ("SOURCE_CLEAN",),
     "FACT_COMMIT": ("SOURCE_REAUDIT",),
@@ -51,6 +52,7 @@ STAGE_DEPENDENCIES: dict[str, tuple[str, ...]] = {
 
 class WorkflowState(str, Enum):
     SUCCESS = "SUCCESS"
+    SUCCESS_WITH_PENDING = "SUCCESS_WITH_PENDING"
     DEGRADED = "DEGRADED"
     BLOCKED = "BLOCKED"
     FAILED = "FAILED"
@@ -78,11 +80,16 @@ class WorkflowContext:
     business_date: str
     started_at: str
     extraction_run_id: str | None = None
+    collection_run_id: str | None = None
+    parent_workflow_run_id: str | None = None
     source_commit_id: str | None = None
     detail_commit_id: str | None = None
     localization_commit_id: str | None = None
     source_snapshot: str | None = None
     database_path: str | None = None
+    config_evidence: dict[str, Any] = field(default_factory=dict)
+    production_mode: str | None = None
+    production_apply: bool = False
     authoritative_skus: set[str] = field(default_factory=set)
     new_skus: set[str] = field(default_factory=set)
     reappeared_skus: set[str] = field(default_factory=set)
@@ -91,6 +98,11 @@ class WorkflowContext:
     presence_ready: bool = False
     translation_ready: bool = False
     export_ready: bool = False
+    detail_pending: bool = False
+    translation_pending: bool = False
+    review_required: bool = False
+    apply_pending: bool = False
+    export_pending: bool = False
     blockers: list[WorkflowBlocker] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -130,6 +142,11 @@ class StageResult:
     @property
     def passed(self) -> bool:
         return self.status in {"PASS", "SKIPPED", "NOT_REQUIRED"}
+
+
+DEPENDENCY_SATISFIED = frozenset({"PASS", "SKIPPED", "NOT_REQUIRED"})
+DEPENDENCY_CONTINUABLE = frozenset({"PENDING", "REVIEW_REQUIRED", "DEGRADED"})
+DEPENDENCY_BLOCKING = frozenset({"BLOCKED", "FAILED", "BLOCKED_BY_DEPENDENCY"})
 
 
 @dataclass

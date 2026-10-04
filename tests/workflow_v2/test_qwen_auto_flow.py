@@ -141,3 +141,25 @@ def test_production_formal_export_pair_is_published_to_configured_root(tmp_path)
     assert sorted(path.name for path in export_root.iterdir()) == [
         "es.manifest.json", "es.xlsx", "zh.manifest.json", "zh.xlsx",
     ]
+
+
+def test_canary_export_does_not_fail_without_legacy_formal_run(tmp_path, monkeypatch):
+    from action_tracker.exporting.service import ExportValidationError
+
+    runner = WorkflowV2Runner(
+        root=tmp_path / "reports",
+        context=new_context(tmp_path / "reports", business_date="2026-10-04"),
+        auto_export=True,
+        cfg={"paths": {"exports": tmp_path / "exports"}},
+    )
+    runner.context.export_ready = True
+    runner.es_projection = [{"编号": "100"}]
+    runner.zh_projection = [{"编号": "100"}]
+
+    def missing_formal_run(*args, **kwargs):
+        raise ExportValidationError("FORMAL_RUN_NOT_FOUND: synthetic")
+
+    monkeypatch.setattr("action_tracker.exporting.service.export_catalog", missing_formal_run)
+    result = runner._export_write()
+    assert result.status == "PASS"
+    assert result.details["formal_exports"]["es"]["status"] == "SKIPPED"
