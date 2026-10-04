@@ -194,6 +194,17 @@ translation:
   max_retries: 3
   auto_approval_enabled: false
   auto_approval_policy: auto_approval_v1
+  # Detail-stage translation only.  The provider reads the key and endpoint
+  # from the process environment; no credential is stored in this file.
+  qwen_mt:
+    enabled: true
+    model: qwen-mt-flash
+    endpoint: null
+    api_key_env: DASHSCOPE_API_KEY
+    timeout: 60
+    max_retries: 3
+    backoff_seconds: 5
+    rate_limit_per_second: 0.5
 
 # ---- AI（预留）：后续翻译用 AI API 配置，不接外部翻译服务 ----
 # 密钥不落盘：运行时从环境变量 ACTION_AI_API_KEY 读取

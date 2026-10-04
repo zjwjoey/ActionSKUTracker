@@ -1,8 +1,9 @@
 """每日运行编排（规范 §55-§57）。
 
 流程：
-    sitemap + listing -> SKU Monitor -> Product Updater(可选详情) -> 变化事件
-    -> 翻译 fallback -> QA Gate -> Snapshot + Staging -> 日报
+    sitemap + listing -> SKU Monitor -> Product Updater(可选详情)
+    -> Qwen-MT（详情完成 SKU）-> 翻译 fallback -> 变化事件 -> QA Gate
+    -> Snapshot + Staging -> 日报
 
 dry-run 只做以上全部但【禁止修改 Master 与状态文件】。
 """
@@ -35,7 +36,7 @@ from ..services.hashing import content_hash
 from ..services.review import add_review_item
 from ..services.category_consistency import load_primary_category_map
 from ..snapshot import write_snapshot, write_staging
-from ..translation.service import apply_zh
+from ..translation.service import apply_zh, build_qwen_provider, translate_records_with_qwen
 from ..localization.shadow_audit import run_shadow_audit
 
 log = logging.getLogger(__name__)
@@ -351,6 +352,32 @@ def run_daily(
         rec["last_seen"] = run_date
         updated[sku] = rec
 
+    # ---- 详情完成后翻译（仅 Qwen-MT；清洗/审核由后续流程负责） ----
+    qwen_translation_report: dict[str, Any] = {
+        "enabled": False,
+        "status": "DISABLED",
+        "eligible_skus": 0,
+        "translated_skus": 0,
+        "field_calls": 0,
+        "field_successes": 0,
+        "field_failures": 0,
+        "failed_fields": [],
+    }
+    qwen_updates: list[dict[str, Any]] = []
+    qwen_cfg = ((cfg.get("translation") or {}).get("qwen_mt") or {})
+    if bool(qwen_cfg.get("enabled", False)):
+        qwen_translation_report.update({"enabled": True, "status": "SKIPPED_NO_CREDENTIALS"})
+        qwen_provider = build_qwen_provider(qwen_cfg)
+        if qwen_provider is not None and detail_completed_skus:
+            updated, qwen_updates, qwen_translation_report = translate_records_with_qwen(
+                updated, qwen_provider, eligible_skus=set(detail_completed_skus))
+            qwen_translation_report["status"] = "COMPLETED"
+        elif qwen_provider is not None:
+            qwen_translation_report.update({
+                "status": "NO_COMPLETED_DETAILS",
+                "eligible_skus": 0,
+            })
+
     # ---- 变化事件 ----
     price_events, badge_events, content_events, anomalies, review_rows = [], [], [], [], []
     for sku, rec in updated.items():
@@ -389,8 +416,8 @@ def run_daily(
                       if not (e.get("事件类型") == "FIRST_SEEN" and e.get("SKU") in reappeared_skus)]
     event_events = badge_events + content_events + lifecycle_events
 
-    # ---- 翻译 fallback ----
-    translation_updates = []
+    # ---- 翻译结果与 fallback ----
+    translation_updates = list(qwen_updates)
     for sku, rec in updated.items():
         before_zh = rec.get("name_zh")
         rec = apply_zh(rec)
@@ -482,6 +509,7 @@ def run_daily(
                              sitemap_only=len(set(sitemap_skus) - set(today_light)),
                              listing_only=len(set(today_light) - set(sitemap_skus)),
                              both_sources=len(set(sitemap_skus) & set(today_light)))
+    run_report["qwen_translation"] = qwen_translation_report
     data = {
         "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",
         "sitemap_skus": sitemap_skus,
@@ -515,6 +543,7 @@ def run_daily(
                              "need_detail": p["need_detail"],
                              "detail_selected": p["sku"] in detail_selected_skus} for p in plans],
         "translation_updates": translation_updates,
+        "qwen_translation": qwen_translation_report,
         "localization_shadow_audit": localization_shadow,
         "qa_report": qa.to_dict(),
         "run_report": run_report,
