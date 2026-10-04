@@ -546,7 +546,8 @@ def main(argv=None) -> int:
     if args.command in {"localization-ai-status", "localization-ai-check"}:
         from .localization.ai import provider_from_config, provider_health, validate_ai_response
         from .localization.contracts import SourceFacts
-        ai_cfg = ((cfg.get("localization") or {}).get("ai") or {})
+        from .localization.runtime_builder import effective_ai_config
+        ai_cfg = effective_ai_config(cfg)
         provider = provider_from_config(ai_cfg)
         health = provider_health(provider)
         result = {"provider": getattr(provider, "provider", type(provider).__name__),

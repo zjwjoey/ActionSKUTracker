@@ -32,6 +32,7 @@ from action_tracker.localization.semantic import parse_semantic_facts
 from action_tracker.localization.repair import repair_field
 from action_tracker.localization.worker import TranslationQueueWorker
 from action_tracker.localization.runtime_builder import build_translation_runtime
+from action_tracker.localization.runtime_builder import effective_ai_config
 from action_tracker.database.schema import migrate_v2
 from action_tracker.knowledge.storage import KnowledgeStore
 from action_tracker.exporting.dictionary_join import build_zh_rows_from_localized_source
@@ -124,6 +125,19 @@ def test_workflow_queue_claim_is_scoped_to_run_id(tmp_path: Path):
     with connect(db_path) as db:
         old_statuses = {str(row[0]) for row in db.execute("SELECT DISTINCT status FROM translation_queue WHERE run_id='old-run'").fetchall()}
     assert old_statuses == {"PENDING"}
+
+
+def test_legacy_qwen_profile_bridges_only_when_v1_profile_is_missing(monkeypatch):
+    monkeypatch.setenv("QWEN_MT_BASE_URL", "https://example.test/compatible-mode/v1")
+    legacy = {"translation": {"qwen_mt": {"enabled": True, "model": "qwen-mt-flash"}}, "localization": {}}
+    bridged = effective_ai_config(legacy)
+    assert bridged["enabled"] is True
+    assert bridged["provider"] == "qwen_mt"
+    assert bridged["base_url"] == "https://example.test/compatible-mode/v1"
+    explicit_off = {"translation": {"qwen_mt": {"enabled": True}}, "localization": {"ai": {"enabled": False, "provider": "qwen_mt"}}}
+    assert effective_ai_config(explicit_off)["enabled"] is False
+    defaults_only = {"translation": {"qwen_mt": {"enabled": True}}, "localization": {"ai": {"enabled": False}}}
+    assert effective_ai_config(defaults_only)["provider"] == "qwen_mt"
 
 
 def test_workflow_registry_apply_staging_is_scoped_to_source_run(tmp_path: Path):
