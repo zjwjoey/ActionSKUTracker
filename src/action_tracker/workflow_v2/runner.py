@@ -566,8 +566,8 @@ class WorkflowV2Runner:
             ).fetchone()[0])
         details = {"called": len({str(row.get('sku') or '') for row in self.records or []}), "provider_calls": result.completed + result.retried + result.failed + result.blocked, "batch_limit": batch_limit, "queued": len(self.translation_plan), "remaining": remaining, "worker": result.as_dict()}
         if remaining:
-            status = "PENDING" if result.failed == 0 else "DEGRADED"
-            details["reason"] = "TRANSLATION_BATCH_REMAINS"
+            status = "DEGRADED" if result.retried else ("PENDING" if result.failed == 0 else "DEGRADED")
+            details["reason"] = "TRANSLATION_PROVIDER_RETRY" if result.retried else "TRANSLATION_BATCH_REMAINS"
         elif result.failed:
             status = "FAILED"
         else:
