@@ -274,6 +274,15 @@ CREATE TABLE IF NOT EXISTS detail_corrections (
  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
  FOREIGN KEY (official_sku) REFERENCES products(official_sku)
 );
+CREATE TABLE IF NOT EXISTS product_detail_state (
+ official_sku TEXT PRIMARY KEY,
+ detail_last_success_at TEXT,
+ detail_last_success_run_id TEXT,
+ detail_source_hash TEXT,
+ detail_status TEXT NOT NULL DEFAULT 'PENDING',
+ updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (official_sku) REFERENCES products(official_sku)
+);
 CREATE VIEW IF NOT EXISTS events AS
  SELECT id,canonical_id,official_sku,occurred_at,event_type,old_value,new_value,run_id,evidence,event_key
  FROM event_history;
