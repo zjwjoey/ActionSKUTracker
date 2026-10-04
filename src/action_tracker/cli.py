@@ -261,6 +261,10 @@ def build_parser() -> argparse.ArgumentParser:
     w2.add_argument("--date"); w2.add_argument("--resume", action="store_true"); w2.add_argument("--run-id")
     w2.add_argument("--dry-run", action="store_true", default=True); w2.add_argument("--no-network", action="store_true")
     w2.add_argument("--fake-provider", action="store_true"); w2.add_argument("--fixture", help="离线 JSON fixture")
+    ws = sub.add_parser("workflow-v2-shadow-compare", help="离线比较旧链路与 Workflow V2 fixture")
+    ws.add_argument("--legacy", required=True, help="旧链路 JSON fixture")
+    ws.add_argument("--workflow-v2", dest="workflow_v2_fixture", required=True, help="Workflow V2 JSON fixture")
+    ws.add_argument("--output", required=True)
     ops = sub.add_parser("ops", help="本机运营状态/控制台")
     ops_sub = ops.add_subparsers(dest="ops_command", required=True)
     ops_sub.add_parser("status"); ops_sub.add_parser("health"); ops_sub.add_parser("runs"); ops_run = ops_sub.add_parser("run"); ops_run.add_argument("run_id")
@@ -1113,6 +1117,14 @@ def main(argv=None) -> int:
                                  expected_reappeared_skus=reappeared, dry_run=True, auto_translation=bool(args.fake_provider),
                                  auto_policy=bool(args.fake_provider), auto_export=bool(args.fake_provider), apply_enabled=bool(args.fake_provider))
         print(json.dumps(result, ensure_ascii=False)); return 0 if result.get("state") in {"SUCCESS", "DEGRADED"} else 20
+    if args.command == "workflow-v2-shadow-compare":
+        from .workflow_v2.shadow import compare_shadow_payloads
+        legacy = json.loads(Path(args.legacy).read_text(encoding="utf-8"))
+        workflow_v2_payload = json.loads(Path(args.workflow_v2_fixture).read_text(encoding="utf-8"))
+        result = compare_shadow_payloads(legacy, workflow_v2_payload)
+        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(result, ensure_ascii=False)); return 0 if result["status"] == "PASS" else 20
     if args.command in ("production-run", "data-update"):
         from .operations.entry import run_production
         from .services.runtime import observation_date

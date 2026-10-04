@@ -1,7 +1,7 @@
 # Workflow V2 migration plan
 
 1. Run the fixture workflow with `FakeTranslationProvider` in CI.
-2. Run shadow comparison against the established `run_daily()` chain for
+2. Run `workflow-v2-shadow-compare` against the established `run_daily()` chain for
    Presence, lifecycle, facts and price events.
 3. Add a production extraction adapter that returns `ExtractionResult` and
    passes its `CommitBundle` to the existing writer.
@@ -13,3 +13,11 @@
 
 No migration step enables real Qwen, real PRIMARY apply, or final export by
 default.
+
+The local canary entry point remains fixture-only until the production
+extraction adapter is reviewed:
+
+```powershell
+python -m action_tracker data-update-v2 --date YYYY-MM-DD --fixture fixture.json --fake-provider
+python -m action_tracker workflow-v2-shadow-compare --legacy old.json --workflow-v2 v2.json --output shadow.json
+```
