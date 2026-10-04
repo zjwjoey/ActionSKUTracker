@@ -5,7 +5,7 @@
 - Branch: `deploy/workflow-v2-production-20261004`
 - Audited ref: `production/workflow-v2-phase1-rc2`
 - Audited content head: `2146e716aa13d63726b6657adba8cc13ada70704` (`fix: mark retryable provider failures degraded`)
-- Publication metadata head: recorded separately after the final docs commit
+- Publication metadata head: `d4ff91bfc8c1fae76774026237e97b792354f759`
 - Naming-history branch was not merged.
 
 The candidate tag is the immutable code boundary for this audit. Later report or
@@ -19,7 +19,7 @@ publication metadata commits must not change the audited content head.
 - `python -m pytest tests/test_translation_safety_defaults.py -q`: **6 passed**
 - `python -m pytest -q`: **750 passed**
 - CI-safe allowlist: **750 passed locally**
-- Exact-head GitHub CI for `c38a424`: **PENDING**; the current environment could not connect to GitHub during push.
+- Exact-head GitHub CI for publication metadata head `d4ff91bfc8c1fae76774026237e97b792354f759`: **PASS**, run `37202632255` (Ubuntu and Windows).
 
 The tests use temporary SQLite databases, fixtures, fake providers, and mock
 environment variables. They do not run the production database or make Qwen or
@@ -55,7 +55,7 @@ Action requests.
 | AUDIT_REF_FRESHNESS | PASS |
 | FULL_PYTEST | PASS |
 | CI_SAFE | PASS locally |
-| EXACT_HEAD_CI | PENDING external verification |
+| EXACT_HEAD_CI | PASS (run 37202632255; Ubuntu + Windows) |
 
 ## Runtime safety record
 
@@ -67,10 +67,9 @@ REAL_FORMAL_EXPORT_PUBLISHED           NO
 MAIN_MODIFIED                          NO
 ```
 
-The remaining external step is to push the branch and candidate tag, then
-record Ubuntu and Windows exact-head CI for the audited content head. Until
-that evidence is available, the production conclusion remains:
+The audited branch and candidate tags are pushed. Exact-head CI is green on
+both required operating systems. The production conclusion is:
 
 ```text
-NOT_READY_FOR_PHASE1_PRODUCTION
+READY_FOR_PHASE1_LOCAL_PRODUCTION_CANARY
 ```
