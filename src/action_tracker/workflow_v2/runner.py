@@ -511,6 +511,8 @@ class WorkflowV2Runner:
         return StageResult("PASS" if passed else "BLOCKED", {"passed": passed, "rows": rows}, "TRANSLATION_QA_FAILED" if not passed else None)
     def _translation_policy(self) -> StageResult:
         if not self.translation_results: self.context.translation_ready = not self.translation_plan; return StageResult("SKIPPED", {"reason": "NO_RESULTS"})
+        if self.translation_runtime is None:
+            self._registry_ingest()
         from ..database.connection import connect
         from ..knowledge.approval import LOW_RISK_FIELDS
         field_map = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}
@@ -527,18 +529,26 @@ class WorkflowV2Runner:
                          and str(row[6] or "NOT_RUN").upper() in {"PASS", "NOT_REQUIRED"})
             canonical_field = field_map.get(str(row[1]), str(row[1]))
             auto_allowed = canonical_field in LOW_RISK_FIELDS or self.allow_high_risk_auto_approval
-            decision = "AUTO_VALIDATED" if ready and self.auto_policy and auto_allowed else "REVIEW_REQUIRED"
+            human_approved = ready and str(row[7] or "").upper() in {"APPROVED", "HUMAN_APPROVED", "HUMAN_REVIEWED", "LOCKED"}
+            decision = (
+                "HUMAN_APPROVED" if human_approved else
+                "AUTO_VALIDATED" if ready and self.auto_policy and auto_allowed else
+                "REVIEW_REQUIRED"
+            )
             decisions.append({"decision_id": f"{row[3]}:QWEN_AUTO_VALIDATE_V1", "revision_id": row[3], "unit_id": row[2], "sku": row[0], "field": row[1], "fields": [row[1]], "decision": decision, "policy_id": "QWEN_AUTO_VALIDATE_V1", "policy_version": "QWEN_AUTO_VALIDATE_V1", "source_hash": row[4], "qa_status": row[5], "canonical_qa_status": row[6], "rules_passed": ["SOURCE_READY", "FACT_COMMITTED", "TYPED_QA_PASS", "CANONICAL_QA_PASS" if str(row[6]).upper() == "PASS" else "CANONICAL_QA_NOT_REQUIRED"], "rules_failed": [] if ready else ["AUTO_POLICY_GATE"]})
-            self.translation_runtime.registry.record_policy_decision(str(row[3]), decision=decision, policy_id="QWEN_AUTO_VALIDATE_V1", policy_version="QWEN_AUTO_VALIDATE_V1", evidence={"sku": row[0], "field": row[1], "source_hash": row[4], "qa_status": row[5], "canonical_qa_status": row[6], "decision_id": f"{row[3]}:QWEN_AUTO_VALIDATE_V1"})
+            if human_approved:
+                decisions[-1]["rules_passed"].append("HUMAN_APPROVAL_PRESENT")
+            self.translation_runtime.registry.record_policy_decision(str(row[3]), decision=decision, policy_id="QWEN_AUTO_VALIDATE_V1", policy_version="QWEN_AUTO_VALIDATE_V1", evidence={"sku": row[0], "field": row[1], "source_hash": row[4], "qa_status": row[5], "canonical_qa_status": row[6], "review_status": row[7], "decision_id": f"{row[3]}:QWEN_AUTO_VALIDATE_V1"})
             if decision == "AUTO_VALIDATED":
                 self.translation_runtime.registry.approve_revision(str(row[3]), actor="human:workflow-v2-auto-policy")
         self.policy_results = decisions
         _write_json(self.directory / "translation_policy.json", self.policy_results); _write_csv(self.directory / "translation_policy.csv", self.policy_results)
-        self.context.translation_ready = all(row["decision"] == "AUTO_VALIDATED" for row in self.policy_results); return StageResult("PASS" if self.context.translation_ready else "BLOCKED", {"decisions": self.policy_results}, "AUTO_POLICY_BLOCKED" if not self.context.translation_ready else None)
+        self.context.translation_ready = all(row["decision"] in {"AUTO_VALIDATED", "HUMAN_APPROVED"} for row in self.policy_results); return StageResult("PASS" if self.context.translation_ready else "BLOCKED", {"decisions": self.policy_results}, "AUTO_POLICY_BLOCKED" if not self.context.translation_ready else None)
     def _translation_apply(self) -> StageResult:
         if not self.apply_enabled: return StageResult("SKIPPED", {"reason": "TRANSLATION_APPLY_DISABLED"})
         if not self.context.translation_ready: return StageResult("BLOCKED", {"reason": "TRANSLATION_NOT_READY"}, "TRANSLATION_APPLY_BLOCKED")
-        if self.translation_runtime is None: return StageResult("BLOCKED", {"reason": "TRANSLATION_RUNTIME_MISSING"}, "TRANSLATION_RUNTIME_MISSING")
+        if self.translation_runtime is None:
+            self._registry_ingest()
         from ..knowledge.storage import KnowledgeStore
         store = KnowledgeStore(self.temp_db, role="PRIMARY")
         staged = store.stage_approved_registry_patches(expected_base_commit_id=self.context.source_commit_id, actor="human:workflow-v2-local-canary")
