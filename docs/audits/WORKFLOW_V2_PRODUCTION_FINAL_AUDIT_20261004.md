@@ -19,7 +19,7 @@ publication metadata commits must not change the audited content head.
 - `python -m pytest tests/test_translation_safety_defaults.py -q`: **6 passed**
 - `python -m pytest -q`: **750 passed**
 - CI-safe allowlist: **750 passed locally**
-- Exact-head GitHub CI for the previous publication metadata head `921e05e737af286136843ae0a31734338354ef01`: **PASS**, run `37202816201` (Ubuntu and Windows). The new candidate commit requires one fresh exact-head CI run after push.
+- Exact-head GitHub CI for publication metadata head `f9351d9338aeaac15e4ca6c7f6b81ba975f25cfc`: **PASS**, run `37203351805` (Ubuntu and Windows).
 
 The tests use temporary SQLite databases, fixtures, fake providers, and mock
 environment variables. They do not run the production database or make Qwen or
@@ -55,7 +55,7 @@ Action requests.
 | AUDIT_REF_FRESHNESS | PASS |
 | FULL_PYTEST | PASS |
 | CI_SAFE | PASS locally |
-| EXACT_HEAD_CI | PENDING fresh run for rc3 |
+| EXACT_HEAD_CI | PASS (run 37203351805; Ubuntu + Windows) |
 
 ## Runtime safety record
 
@@ -67,10 +67,9 @@ REAL_FORMAL_EXPORT_PUBLISHED           NO
 MAIN_MODIFIED                          NO
 ```
 
-The code fix is locally verified and will remain not ready for a new canary
-until exact-head CI for rc3 is green on both required operating systems. The
-current conclusion is:
+The canary export fix is locally verified and exact-head CI is green on both
+required operating systems. The current conclusion is:
 
 ```text
-NOT_READY_FOR_PHASE1_PRODUCTION
+READY_FOR_PHASE1_LOCAL_PRODUCTION_CANARY
 ```
