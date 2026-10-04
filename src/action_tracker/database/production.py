@@ -19,7 +19,7 @@ from typing import Any, Iterable, Mapping
 
 from .connection import connect
 from .schema import migrate_v2
-from ..services.hashing import localization_source_hash
+from ..services.hashing import localization_field_source_hashes, localization_source_hash
 from ..services.normalization import normalize_official_text
 
 
@@ -294,8 +294,26 @@ class ProductionWriter:
             for db_field, incoming_field in field_pairs:
                 old_count = sum(1 for (sku, lang), row in existing.items()
                                 if lang == language and row[2 + field_pairs.index((db_field, incoming_field))] not in (None, ""))
-                new_count = sum(1 for (sku, lang), row in incoming.items()
-                                if lang == language and row.get(incoming_field) not in (None, ""))
+                # The localization upsert has field-preserving semantics for
+                # an existing Chinese row: a daily fact observation carries
+                # an empty zh placeholder, but it must retain the previously
+                # approved/current Chinese value.  Coverage validation must
+                # evaluate the effective post-merge value, rather than count
+                # only non-empty incoming placeholders (which made every
+                # production Workflow V2 fact commit look like a wipe).
+                field_index = 2 + field_pairs.index((db_field, incoming_field))
+                new_count = 0
+                for sku in current_skus:
+                    prior = existing.get((sku, language))
+                    candidate = incoming.get((sku, language))
+                    if candidate is None:
+                        value = prior[field_index] if prior is not None else None
+                    elif language == "zh" and prior is not None:
+                        value = prior[field_index]
+                    else:
+                        value = candidate.get(incoming_field)
+                    if value not in (None, ""):
+                        new_count += 1
                 if old_count and (old_count - new_count) / old_count > self.localization_drop_threshold:
                     raise ProductionDatabaseError(
                         f"DB_LOCALIZATION_COVERAGE_REGRESSION:{language}.{db_field}:{old_count}->{new_count}"
@@ -377,12 +395,17 @@ class ProductionWriter:
                 continue
             item_sku = str(item.get("official_sku") or item.get("sku") or "").strip()
             if item_sku:
-                same_batch_es[item_sku] = {
+                source = {
                     "name_es": item.get("name"), "cat1_es": item.get("cat1"),
                     "cat2_es": item.get("cat2"),
                     "spec_es": normalize_official_text(item.get("spec"), field="spec"),
                     "desc_es": normalize_official_text(item.get("description"), field="description"),
                     "details_es": normalize_official_text(item.get("details"), field="details"),
+                }
+                same_batch_es[item_sku] = {
+                    **source,
+                    "source_hash": localization_source_hash(source),
+                    **{f"{field}_source_hash": value for field, value in localization_field_source_hashes(source).items()},
                 }
         for r in materialized:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
@@ -400,6 +423,24 @@ class ProductionWriter:
                     "details_es": incoming.get("details"),
                 })
             if language == "zh":
+                source = same_batch_es.get(sku)
+                if source is None:
+                    es_row = db.execute(
+                        "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+                        "WHERE official_sku=? AND language='es'", (sku,),
+                    ).fetchone()
+                    if es_row is not None:
+                        source = {
+                            "name_es": es_row[0], "cat1_es": es_row[1], "cat2_es": es_row[2],
+                            "spec_es": es_row[3], "desc_es": es_row[4], "details_es": es_row[5],
+                        }
+                        source["source_hash"] = localization_source_hash(source)
+                        source.update({f"{field}_source_hash": value for field, value in localization_field_source_hashes(source).items()})
+                if source is not None:
+                    incoming["source_hash"] = incoming.get("source_hash") or source.get("source_hash")
+                    for field in ("name", "cat1", "cat2", "spec", "description", "details"):
+                        key = f"{field}_source_hash"
+                        incoming[key] = incoming.get(key) or source.get(key)
                 existing_row = db.execute(
                     "SELECT name,cat1,cat2,spec,unit_price,description,details,source,review_status,source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,unit_price_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id,last_commit_id,updated_at FROM product_localizations WHERE official_sku=? AND language='zh'",
                     (sku,),
@@ -408,25 +449,53 @@ class ProductionWriter:
                     existing = dict(existing_row)
                     incoming_hash = str(incoming.get("source_hash") or "")
                     existing_hash = str(existing.get("source_hash") or "")
-                    # Daily observation is not a localization Apply.  When
-                    # official Spanish facts changed, retain the last known
-                    # Chinese text and provenance and mark it STALE.  When
-                    # facts did not change, preserve approval/LOCK metadata.
-                    if existing_hash and incoming_hash and existing_hash != incoming_hash:
-                        for key in ("name", "cat1", "cat2", "spec", "description", "details", "source_hash", "resolution_status", "name_source", "cat1_source", "cat2_source", "spec_source", "description_source", "details_source", "approved_by", "approved_at", "applied_commit_id", "last_commit_id", "updated_at"):
-                            if key in existing:
-                                incoming[key] = existing[key]
-                        incoming["freshness_status"] = "STALE"
-                        incoming["review_status"] = existing.get("review_status") or "STALE"
-                        for field in ("name", "cat1", "cat2", "spec", "description", "details"):
-                            if existing.get(field) is not None:
-                                incoming[f"{field}_freshness_status"] = "STALE"
-                    else:
-                        for key in ("name", "cat1", "cat2", "spec", "description", "details", "source_hash", "resolution_status", "review_status", "name_source", "cat1_source", "cat2_source", "spec_source", "description_source", "details_source", "approved_by", "approved_at", "applied_commit_id", "last_commit_id", "updated_at"):
-                            if existing.get(key) is not None:
-                                incoming[key] = existing[key]
-                        if str(existing.get("freshness_status") or "").upper() == "STALE":
-                            incoming["freshness_status"] = "STALE"
+                    field_state: dict[str, dict[str, Any]] = {}
+                    for provenance_table in ("localization_fields", "localization_field_provenance"):
+                        try:
+                            rows = db.execute(
+                                f"SELECT field_name,source_hash,freshness_status,review_status FROM {provenance_table} "
+                                "WHERE official_sku=? AND language='zh'", (sku,),
+                            ).fetchall()
+                        except sqlite3.OperationalError:
+                            rows = []
+                        for row in rows:
+                            field_state.setdefault(str(row[0]), {
+                                "source_hash": row[1], "freshness_status": row[2], "review_status": row[3],
+                            })
+                        if field_state:
+                            break
+                    fields = ("name", "cat1", "cat2", "spec", "description", "details")
+                    changed_fields: list[str] = []
+                    for field in fields:
+                        current_field_hash = str(incoming.get(f"{field}_source_hash") or "")
+                        old_field_hash = str((field_state.get(field) or {}).get("source_hash") or "")
+                        if current_field_hash and old_field_hash:
+                            if current_field_hash != old_field_hash:
+                                changed_fields.append(field)
+                        elif existing_hash and incoming_hash and existing_hash != incoming_hash:
+                            # Legacy rows without field-scoped provenance use
+                            # the safe aggregate fallback.
+                            changed_fields.append(field)
+                    # Daily fact commit is not a localization Apply. Preserve
+                    # Chinese text and historical approval evidence, while
+                    # binding the current projection to today's ES source.
+                    for key in ("name", "cat1", "cat2", "spec", "description", "details", "resolution_status", "review_status", "name_source", "cat1_source", "cat2_source", "spec_source", "unit_price_source", "description_source", "details_source", "approved_by", "approved_at", "applied_commit_id", "last_commit_id", "updated_at"):
+                        if existing.get(key) is not None:
+                            incoming[key] = existing[key]
+                    if source is not None and incoming_hash:
+                        incoming["source_hash"] = incoming_hash
+                    elif source is None and existing_hash:
+                        # Legacy/manual localization-only bundles do not carry
+                        # an authoritative ES row. Preserve their established
+                        # aggregate binding while keeping the stale marker.
+                        incoming["source_hash"] = existing_hash
+                    for field in fields:
+                        prior = field_state.get(field) or {}
+                        incoming[f"{field}_freshness_status"] = (
+                            "STALE" if field in changed_fields else
+                            prior.get("freshness_status") or ("STALE" if str(existing.get("freshness_status") or "").upper() == "STALE" else "CURRENT")
+                        )
+                    incoming["freshness_status"] = "STALE" if changed_fields or str(existing.get("freshness_status") or "").upper() == "STALE" else "CURRENT"
             db.execute(
                 """INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,unit_price,description,details,source,review_status,updated_at,last_commit_id,
                  source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,unit_price_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)

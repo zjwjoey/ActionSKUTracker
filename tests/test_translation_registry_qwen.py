@@ -32,6 +32,7 @@ from action_tracker.localization.semantic import parse_semantic_facts
 from action_tracker.localization.repair import repair_field
 from action_tracker.localization.worker import TranslationQueueWorker
 from action_tracker.localization.runtime_builder import build_translation_runtime
+from action_tracker.localization.runtime_builder import effective_ai_config
 from action_tracker.database.schema import migrate_v2
 from action_tracker.knowledge.storage import KnowledgeStore
 from action_tracker.exporting.dictionary_join import build_zh_rows_from_localized_source
@@ -102,6 +103,69 @@ def test_registry_ingest_is_shadow_and_queues_field_units(tmp_path: Path):
         # create translation work items.
         assert db.execute("SELECT COUNT(*) FROM translation_queue").fetchone()[0] == 5
         assert db.execute("SELECT COUNT(*) FROM product_localizations").fetchone()[0] == 0
+
+
+def test_workflow_queue_claim_is_scoped_to_run_id(tmp_path: Path):
+    db_path = tmp_path / "registry.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c2','654321','ACTIVE')")
+    registry.ingest_records(
+        [{"sku": "123456", "name_es": "Producto uno", "cat1_es": "Hogar", "cat2_es": "Cocina", "spec_es": "10 cm", "desc_es": "Rojo", "details_es": "Número: 123456"}],
+        source_run_id="old-run", observed_at="2026-10-03",
+    )
+    registry.ingest_records(
+        [{"sku": "654321", "name_es": "Producto dos", "cat1_es": "Hogar", "cat2_es": "Cocina", "spec_es": "20 cm", "desc_es": "Azul", "details_es": "Número: 654321"}],
+        source_run_id="current-run", observed_at="2026-10-04",
+    )
+    claimed = registry.claim_queue(limit=100, worker_id="workflow-v2:current-run", run_id="current-run")
+    assert claimed
+    assert {str(row["run_id"]) for row in claimed} == {"current-run"}
+    with connect(db_path) as db:
+        old_statuses = {str(row[0]) for row in db.execute("SELECT DISTINCT status FROM translation_queue WHERE run_id='old-run'").fetchall()}
+    assert old_statuses == {"PENDING"}
+
+
+def test_legacy_qwen_profile_bridges_only_when_v1_profile_is_missing(monkeypatch):
+    monkeypatch.setenv("QWEN_MT_BASE_URL", "https://example.test/compatible-mode/v1")
+    legacy = {"translation": {"qwen_mt": {"enabled": True, "model": "qwen-mt-flash"}}, "localization": {}}
+    bridged = effective_ai_config(legacy)
+    assert bridged["enabled"] is True
+    assert bridged["provider"] == "qwen_mt"
+    assert bridged["base_url"] == "https://example.test/compatible-mode/v1"
+    explicit_off = {"translation": {"qwen_mt": {"enabled": True}}, "localization": {"ai": {"enabled": False, "provider": "qwen_mt"}}}
+    assert effective_ai_config(explicit_off)["enabled"] is False
+    defaults_only = {"translation": {"qwen_mt": {"enabled": True}}, "localization": {"ai": {"enabled": False}}}
+    assert effective_ai_config(defaults_only)["provider"] == "qwen_mt"
+
+
+def test_workflow_registry_apply_staging_is_scoped_to_source_run(tmp_path: Path):
+    db_path = tmp_path / "registry.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c2','654321','ACTIVE')")
+    record = {"sku": "123456", "name_es": "Producto uno", "cat1_es": "Hogar", "cat2_es": "Cocina", "spec_es": "10 cm", "desc_es": "Rojo", "details_es": "Número: 123456"}
+    other = {**record, "sku": "654321", "name_es": "Producto dos", "details_es": "Número: 654321"}
+    registry.ingest_records([record], source_run_id="old-run", observed_at="2026-10-03")
+    registry.ingest_records([other], source_run_id="current-run", observed_at="2026-10-04")
+    from action_tracker.localization.providers.base import FakeTranslationProvider
+    resolver = TranslationResolver(db_path=db_path, registry=registry, provider=FakeTranslationProvider({"name": "商品", "cat1": "家居", "cat2": "厨房", "spec": "10 厘米", "description": "红色", "details": "编号：123456"}))
+    worker = TranslationQueueWorker(registry, resolver)
+    assert worker.process_once(limit=20, worker_id="workflow-v2:current-run", run_id="current-run").completed >= 1
+    from action_tracker.knowledge.storage import KnowledgeStore
+    store = KnowledgeStore(db_path, role="SHADOW")
+    with connect(db_path) as db:
+        revision_ids = [str(row[0]) for row in db.execute(
+            "SELECT r.revision_id FROM translation_revisions r JOIN translation_units u ON u.current_revision_id=r.revision_id JOIN translation_source_versions s ON s.source_version_id=u.source_version_id WHERE s.source_run_id='current-run' AND r.qa_status='PASS'"
+        ).fetchall()]
+    for revision_id in revision_ids:
+        registry.approve_revision(revision_id, actor="human:test")
+    staged = store.stage_approved_registry_patches(expected_base_commit_id="BASE", actor="human:test", source_run_id="current-run")
+    assert staged["patch_ids"]
+    with connect(db_path) as db:
+        assert db.execute("SELECT COUNT(*) FROM localization_patches WHERE official_sku='123456'").fetchone()[0] == 0
 
 
 def test_registry_response_creates_revision_and_findings(tmp_path: Path):

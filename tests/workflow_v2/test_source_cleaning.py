@@ -1,0 +1,15 @@
+from action_tracker.workflow_v2.source_audit import clean_source_record
+
+
+def test_cleaning_keeps_numbers(source_row):
+    source_row["desc_es"] = "<b>Mesa</b> 10 cm"
+    cleaned, audit = clean_source_record(source_row)
+    assert cleaned["desc_es"] == "Mesa 10 cm"
+    assert audit[-1]["blocked"] is False
+
+
+def test_cleaning_blocks_html_that_joins_protected_facts(source_row):
+    source_row["desc_es"] = "Medida 10<span></span>20 cm"
+    cleaned, audit = clean_source_record(source_row)
+    assert audit[4]["blocked"] is True
+    assert audit[4]["review_required"] is True

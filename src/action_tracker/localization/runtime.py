@@ -50,6 +50,19 @@ def _write_report(output_dir: Path, summary: Mapping[str, Any], rows: list[Mappi
 def shadow_run(records: Iterable[Mapping[str, Any]], *, output_dir: Path, run_id: str | None = None,
                resolver: TranslationResolver | None = None, db_path=None,
                allow_provider: bool = False) -> dict[str, Any]:
+    resolver = resolver or TranslationResolver(db_path=db_path)
+    try:
+        return _shadow_run(records, output_dir=output_dir, run_id=run_id, resolver=resolver,
+                           db_path=db_path, allow_provider=allow_provider)
+    finally:
+        close = getattr(resolver, "close", None)
+        if callable(close):
+            close()
+
+
+def _shadow_run(records: Iterable[Mapping[str, Any]], *, output_dir: Path, run_id: str | None = None,
+                resolver: TranslationResolver | None = None, db_path=None,
+                allow_provider: bool = False) -> dict[str, Any]:
     # Direct library callers may provide the PRIMARY/Shadow DB without having
     # to construct the resolver themselves.  The CLI already injects the
     # resolver explicitly; this prevents silent zero-hit reports in scripts.
@@ -119,6 +132,10 @@ def canary(records: Iterable[Mapping[str, Any]], *, output_dir: Path, skus: Iter
             def __init__(self, wrapped): self.wrapped = wrapped
             def resolve(self, record, *, allow_provider: bool = False):
                 return {field_name: self.wrapped.resolve_field(record, field_name, allow_provider=allow_provider)}
+            def close(self):
+                close = getattr(self.wrapped, "close", None)
+                if callable(close):
+                    close()
         resolver = OneField(resolver or TranslationResolver(db_path=db_path))
     return shadow_run(selected, output_dir=output_dir, run_id=_now_id("canary"), resolver=resolver,
                       db_path=db_path, allow_provider=allow_provider)

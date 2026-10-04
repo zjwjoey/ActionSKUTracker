@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -27,7 +28,20 @@ class LocalizationRegistry:
 
     def __init__(self, path: Path, *, role: str = "SHADOW"):
         self.path = Path(path)
+        self._read_conn: sqlite3.Connection | None = None
         migrate_v2(self.path, role=role)
+
+    def _read_connection(self) -> sqlite3.Connection:
+        if self._read_conn is None:
+            self._read_conn = sqlite3.connect(self.path, timeout=10)
+            self._read_conn.row_factory = sqlite3.Row
+            self._read_conn.execute("PRAGMA query_only = ON")
+        return self._read_conn
+
+    def close(self) -> None:
+        if self._read_conn is not None:
+            self._read_conn.close()
+            self._read_conn = None
 
     def register_source(self, official_sku: str, fields: Mapping[str, Any], source_hash: str, *, observed_at: str, source_run_id: str | None = None, hash_contract_version: str = SOURCE_HASH_CONTRACT_VERSION, raw_fields: Mapping[str, Any] | None = None, normalized_fields: Mapping[str, Any] | None = None, source_quality_status: str = "UNKNOWN") -> str:
         source_id = str(uuid.uuid4())
@@ -165,6 +179,16 @@ class LocalizationRegistry:
         with connect(self.path) as db:
             db.execute("INSERT INTO translation_revision_events(event_id,revision_id,event_type,actor,evidence_json,occurred_at) VALUES(?,?,?,?,?,?)", (str(uuid.uuid4()), revision_id, event_type, actor, json.dumps(dict(evidence or {}), ensure_ascii=False, sort_keys=True, default=str), _now()))
 
+    def record_policy_decision(self, revision_id: str, *, decision: str, policy_id: str,
+                               policy_version: str, evidence: Mapping[str, Any] | None = None) -> None:
+        """Persist auto-validation provenance in the existing revision log."""
+        self._revision_event(
+            revision_id,
+            "AUTO_VALIDATED" if decision == "AUTO_VALIDATED" else "POLICY_REVIEW_REQUIRED",
+            "workflow-v2:auto-policy",
+            {"decision": decision, "policy_id": policy_id, "policy_version": policy_version, **dict(evidence or {})},
+        )
+
     def approve_revision(self, revision_id: str, *, actor: str, auto: bool = False) -> bool:
         if auto:
             with connect(self.path) as db:
@@ -195,8 +219,8 @@ class LocalizationRegistry:
 
     def get_current_approved_revision(self, official_sku: str, field_name: str, source_hash: str) -> dict[str, Any] | None:
         canonical = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field_name, field_name)
-        with connect(self.path) as db:
-            row = db.execute("""SELECT r.* FROM translation_revisions r JOIN translation_units u ON u.unit_id=r.unit_id
+        db = self._read_connection()
+        row = db.execute("""SELECT r.* FROM translation_revisions r JOIN translation_units u ON u.unit_id=r.unit_id
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
                 WHERE s.official_sku=? AND u.field_name IN (?,?) AND r.source_hash=?
                   AND u.freshness_status='FRESH'
@@ -324,13 +348,33 @@ class LocalizationRegistry:
             rows = db.execute(f"SELECT source_text,target_text,field_name,context_key,source_hash FROM (SELECT source_text,target_text,field_name,context_key,source_hash,approval_status FROM translation_memory_entries UNION ALL SELECT source_text,target_text,field_name,context_key,source_hash,approval_status FROM translation_memory_scoped_entries) tm WHERE approval_status='APPROVED' AND source_hash IN ({placeholders})", hashes).fetchall()
         return [dict(row) for row in rows]
 
-    def claim_queue(self, *, limit: int = 50, worker_id: str = "localization-worker") -> list[dict[str, Any]]:
-        """Atomically claim pending/retry units so a worker cannot double-consume."""
+    def claim_queue(self, *, limit: int = 50, worker_id: str = "localization-worker", run_id: str | None = None) -> list[dict[str, Any]]:
+        """Atomically claim pending/retry units so a worker cannot double-consume.
+
+        Workflow V2 passes its run id so a bounded run cannot claim durable
+        queue work belonging to another extraction.  The default remains
+        global for the standalone translation worker.
+        """
         now = _now()
+        stale_before = (datetime.now(timezone.utc) - timedelta(minutes=15)).isoformat()
         claimed: list[dict[str, Any]] = []
         with connect(self.path) as db:
             db.execute("BEGIN IMMEDIATE")
-            rows = db.execute("SELECT queue_id,official_sku,language,source_hash,requested_fields,retry_count,run_id FROM translation_queue WHERE status IN ('PENDING','RETRY') ORDER BY CASE priority WHEN 'HIGH' THEN 0 WHEN 'NORMAL' THEN 1 ELSE 2 END,created_at LIMIT ?", (int(limit),)).fetchall()
+            # A worker can be interrupted after claiming rows but before it
+            # records a result.  Requeue only old claims so a resumed run can
+            # recover them without two live workers processing the same unit.
+            stale_where = "status='CLAIMED' AND claimed_at IS NOT NULL AND claimed_at<?"
+            stale_params: tuple[Any, ...] = (stale_before,)
+            if run_id:
+                stale_where += " AND run_id=?"
+                stale_params += (run_id,)
+            db.execute(
+                f"UPDATE translation_queue SET status='RETRY',last_error=? WHERE {stale_where}",
+                ("STALE_CLAIM_RECOVERED", *stale_params),
+            )
+            where = "run_id=? AND status IN ('PENDING','RETRY')" if run_id else "status IN ('PENDING','RETRY')"
+            params = (run_id, int(limit)) if run_id else (int(limit),)
+            rows = db.execute(f"SELECT queue_id,official_sku,language,source_hash,requested_fields,retry_count,run_id FROM translation_queue WHERE {where} ORDER BY CASE priority WHEN 'HIGH' THEN 0 WHEN 'NORMAL' THEN 1 ELSE 2 END,created_at LIMIT ?", params).fetchall()
             for row in rows:
                 cur = db.execute("UPDATE translation_queue SET status='CLAIMED',claimed_at=?,last_error=? WHERE queue_id=? AND status IN ('PENDING','RETRY')", (now, worker_id, row[0]))
                 if cur.rowcount == 1:
