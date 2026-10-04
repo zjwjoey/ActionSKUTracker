@@ -4,6 +4,7 @@
 
 - audited source head: `2cac2b7e60e01d6468af21ec3eb9caafab6777ac`
 - audited branch: `deploy/workflow-v2-production-20261004`
+- deployment head: `639a46f37607a0653a3de7b86a5bd7d3c7d7131b`
 - production config profile: `config/workflow_v2_production_profile.yaml` (explicit overlay; repository default remains fail-closed)
 - publication metadata: feature PR `#4` remains separate from main and from `fix/naming-history-export-20260917`
 - old production head: `3a9df7af807875b97d4eab1b5d3bb57c69f5c041`
