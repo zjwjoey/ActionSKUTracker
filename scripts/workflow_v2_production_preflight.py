@@ -189,7 +189,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             metadata = {str(row[0]): str(row[1]) for row in db.execute("SELECT key,value FROM schema_metadata")} if "schema_metadata" in tables else {}
             latest = db.execute("SELECT commit_id,run_id,committed_at,status FROM commit_batches ORDER BY committed_at DESC LIMIT 1").fetchone() if "commit_batches" in tables else None
             latest_run_id = str(latest["run_id"]) if latest and latest["run_id"] else None
-            db_report.update({"metadata": metadata, "tables": sorted(tables), "latest_commit": dict(latest) if latest else None})
+            product_count = int(db.execute("SELECT COUNT(*) FROM products").fetchone()[0]) if "products" in tables else 0
+            localization_count = int(db.execute("SELECT COUNT(*) FROM product_localizations").fetchone()[0]) if "product_localizations" in tables else 0
+            registry_count = int(db.execute("SELECT COUNT(*) FROM translation_revisions").fetchone()[0]) if "translation_revisions" in tables else 0
+            db_report.update({"metadata": metadata, "tables": sorted(tables), "latest_commit": dict(latest) if latest else None,
+                              "products": product_count, "product_localizations": localization_count,
+                              "translation_revisions": registry_count})
+            checks.append(_check("commit_batches_latest", bool(latest and latest["commit_id"] and latest["run_id"] and str(latest["status"]).upper() == "COMMITTED"), dict(latest) if latest else None, "latest commit must be readable and COMMITTED"))
+            checks.append(_check("products_readable", "products" in tables and product_count >= 0, product_count))
+            checks.append(_check("product_localizations_readable", "product_localizations" in tables and localization_count >= 0, localization_count))
+            checks.append(_check("translation_registry_readable", "translation_revisions" in tables and registry_count >= 0, registry_count))
             integrity = str(db.execute("PRAGMA integrity_check").fetchone()[0])
             foreign_keys = [dict(row) for row in db.execute("PRAGMA foreign_key_check").fetchall()]
             db_report.update({"integrity_check": integrity, "foreign_key_errors": foreign_keys[:10], "foreign_key_error_count": len(foreign_keys)})
@@ -197,11 +206,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             checks.append(_check("database_schema_family", metadata.get("schema_family") == "ACTION_SQLITE_DATA", metadata.get("schema_family")))
             checks.append(_check("database_integrity", integrity == "ok" and not foreign_keys, {"integrity": integrity, "foreign_key_error_count": len(foreign_keys)}))
             db_report["queue"] = _queue_stats(db, latest_run_id)
+            queue_columns = {str(row[1]) for row in db.execute("PRAGMA table_info(translation_queue)")} if "translation_queue" in tables else set()
+            queue_contract = {"priority", "created_at", "run_id", "status"}.issubset(queue_columns)
+            checks.append(_check("queue_scheduling_contract", queue_contract, sorted(queue_columns), "priority/run_id/created_at/status are required"))
             if "export_sync" in tables:
                 rows = db.execute("SELECT status, COUNT(*) FROM export_sync GROUP BY status ORDER BY status").fetchall()
                 db_report["export_sync_by_status"] = {str(row[0]): int(row[1]) for row in rows}
     else:
-        checks.extend([_check("database_required_tables", False), _check("primary_database_role", False, None, "database is missing"), _check("database_schema_family", False), _check("database_integrity", False)])
+        checks.extend([_check("database_required_tables", False), _check("commit_batches_latest", False), _check("products_readable", False), _check("product_localizations_readable", False), _check("translation_registry_readable", False), _check("queue_scheduling_contract", False), _check("primary_database_role", False, None, "database is missing"), _check("database_schema_family", False), _check("database_integrity", False)])
 
     dirs = [data_root / Path(str(value)) for key, value in (raw.get("paths") or {}).items() if key != "master" and isinstance(value, str) and not Path(value).is_absolute()]
     missing_dirs = [str(path) for path in dirs if not path.exists()]
