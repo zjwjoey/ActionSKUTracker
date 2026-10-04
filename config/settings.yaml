@@ -172,7 +172,8 @@ dictionary_apply:
 # localization writes and model/auto-approval paths stay explicitly closed.
 knowledge:
   production_apply_enabled: true
-  fallback_to_spanish: true
+  # 未完成中文翻译时保留 PENDING/REVIEW_REQUIRED，不用西语冒充中文。
+  fallback_to_spanish: false
 
 # Temporary explicit authorization for the reviewed registry Apply.
 localization:
@@ -182,6 +183,17 @@ localization:
   stage5_shadow_enabled: true
   candidate_generation_enabled: false
   ai_translation_enabled: false
+  # Workflow V2 唯一的模型调用入口。
+  ai:
+    enabled: true
+    provider: qwen_mt
+    base_url: null
+    model: qwen-mt-flash
+    api_key_env: DASHSCOPE_API_KEY
+    timeout: 60
+    max_retries: 3
+    backoff_seconds: 5
+    rate_limit_per_second: 0.5
 
 scoped_dictionary:
   enabled: false
@@ -197,7 +209,8 @@ translation:
   # Detail-stage translation only.  The provider reads the key and endpoint
   # from the process environment; no credential is stored in this file.
   qwen_mt:
-    enabled: true
+    # 保留兼容字段，但关闭旧入口；生产调用统一走 localization.ai。
+    enabled: false
     model: qwen-mt-flash
     endpoint: null
     api_key_env: DASHSCOPE_API_KEY
@@ -205,6 +218,24 @@ translation:
     max_retries: 3
     backoff_seconds: 5
     rate_limit_per_second: 0.5
+
+# Workflow V2 is the sole production write path.  Translation may degrade to
+# PENDING/REVIEW_REQUIRED while Spanish fact commit remains authoritative.
+workflow_v2:
+  enabled: true
+  shadow_preflight:
+    enabled: true
+  auto_translation:
+    enabled: true
+    provider: qwen_mt
+  # Bound synchronous provider work; remaining fields stay in the queue.
+  translation_batch_limit: 50
+  auto_policy_approval:
+    enabled: false
+  auto_export:
+    enabled: false
+  detail_retry:
+    enabled: false
 
 # ---- AI（预留）：后续翻译用 AI API 配置，不接外部翻译服务 ----
 # 密钥不落盘：运行时从环境变量 ACTION_AI_API_KEY 读取
