@@ -4,12 +4,12 @@
 
 - audited source head: `2cac2b7e60e01d6468af21ec3eb9caafab6777ac`
 - audited branch: `deploy/workflow-v2-production-20261004`
-- deployment head: `b25a2478c967c5b2e2fc11dcaa7d23adcf2514e3`
+- audited deployment head: `87c3c904768f00c399b5dc3d16a1c3c4fe0109a6`
 - production config profile: `config/workflow_v2_production_profile.yaml` (explicit overlay; repository default remains fail-closed)
 - publication metadata: feature PR `#4` remains separate from main and from `fix/naming-history-export-20260917`
 - old production head: `3a9df7af807875b97d4eab1b5d3bb57c69f5c041`
 
-本报告审计的是已验证代码头和发布元数据，不追踪部署后可能变化的当前 SHA。部署分支尚未合并 main，也没有合并命名历史分支。
+本报告审计的是已验证代码头和发布元数据，不追踪后续文档发布提交的当前 SHA。部署分支尚未合并 main，也没有合并命名历史分支。
 
 ## 证据
 
@@ -18,7 +18,7 @@
 - shadow preflight fixture comparison: `PASS` (SKU/lifecycle/price/badge drift empty)
 - canary stages: source/fact commit、QWEN_TRANSLATE（fake provider）、translation QA、scoped fixture policy、translation apply、export audit、export write 全部通过
 - canary export 写入临时 staging，`production_primary=false`
-- GitHub Actions run `37198368107` for deployment head: Ubuntu 和 Windows 均 `SUCCESS`
+- GitHub Actions run `37199119470` for audited deployment head: Ubuntu 和 Windows 均 `SUCCESS`
 - production preflight: `PASS`
 - preflight database: `ACTION_SQLITE_DATA`, schema `2.0.0`, role `PRIMARY`, integrity `ok`, foreign-key errors `0`
 - preflight Qwen: provider/model 配置通过；密钥只记录 `SET/NOT_SET`
