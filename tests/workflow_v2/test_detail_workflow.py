@@ -1,0 +1,54 @@
+from action_tracker.workflow_v2.runner import WorkflowV2Runner
+from action_tracker.workflow_v2.context import new_context
+from action_tracker.database.schema import migrate_v2
+from action_tracker.workflow_v2.detail_state import detail_is_stale, mark_detail_success
+from datetime import datetime, timezone
+
+
+def test_detail_pending_does_not_erase_fact_commit(workflow_root, source_row):
+    source_row["detail_status"] = "DETAIL_PENDING"
+    result = WorkflowV2Runner(root=workflow_root, context=new_context(workflow_root, business_date="2026-10-04"), records=[source_row], expected_skus={"100"}).run()
+    assert result.context.source_commit_id
+    assert result.stages["FACT_COMMIT"].status == "PASS"
+
+
+def test_detail_freshness_is_independent_of_presence(tmp_path):
+    db = tmp_path / "detail.db"; migrate_v2(db, role="SHADOW")
+    from action_tracker.database.connection import connect
+    with connect(db) as handle:
+        handle.execute("INSERT INTO products(canonical_id,official_sku,status,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP)", ("ACT0000100", "100", "CURRENT"))
+    mark_detail_success(db, "100", run_id="r1", source_hash="h", at="2026-10-01T00:00:00+00:00")
+    assert detail_is_stale(db, "100", now=datetime(2026, 10, 2, tzinfo=timezone.utc), max_age_days=7) is False
+    assert detail_is_stale(db, "100", now=datetime(2026, 10, 10, tzinfo=timezone.utc), max_age_days=7) is True
+
+
+def test_translation_source_audit_is_field_scoped_for_pending_detail(workflow_root, source_row):
+    source_row = dict(source_row)
+    source_row["detail_status"] = "DETAIL_PENDING"
+    source_row["details_es"] = ""
+    result = WorkflowV2Runner(
+        root=workflow_root,
+        context=new_context(workflow_root, business_date="2026-10-04"),
+        records=[source_row], expected_skus={"100"},
+    ).run()
+    audit = result.stages["TRANSLATION_SOURCE_AUDIT"].details
+    assert {item["field"] for item in audit["ready_fields"]} >= {"name_es", "desc_es"}
+    assert {item["field"] for item in audit["pending_fields"]} == {"details_es"}
+
+
+def test_detail_adapter_updates_records_and_commit_marker(workflow_root, source_row):
+    row = dict(source_row)
+    row["details_es"] = ""
+    row["detail_status"] = "DETAIL_PENDING"
+
+    def adapter(*, records, plan, business_date, workflow_run_id):
+        updated = [dict(item, details_es="Color: Rojo", detail_status="COMPLETE") for item in records]
+        return {"records": updated, "detail_commit_id": f"detail-{workflow_run_id}"}
+
+    result = WorkflowV2Runner(
+        root=workflow_root,
+        context=new_context(workflow_root, business_date="2026-10-04"),
+        records=[row], expected_skus={"100"}, detail_adapter=adapter,
+    ).run()
+    assert result.context.detail_commit_id.startswith("detail-")
+    assert result.stages["DETAIL_ENRICH"].details["pending"] == []

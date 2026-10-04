@@ -65,6 +65,30 @@ operations:
   # Minimum free space required on every production data volume.
   min_free_disk_bytes: 2147483648
 
+# Workflow V2 is deliberately opt-in during the parallel validation period.
+# CI/fixtures may enable each stage through run_workflow_v2 arguments; these
+# production defaults never call a provider or publish an export.
+workflow_v2:
+  enabled: false
+  # Read-only comparison of the existing daily record set against the
+  # deterministic Workflow V2 source gate. Enable only after reviewing the
+  # generated run evidence; a failed comparison blocks formal publication.
+  shadow_preflight:
+    enabled: false
+  auto_translation:
+    enabled: false
+    provider: qwen_mt
+  # Daily fact commits must not wait on the whole historical translation queue.
+  translation_batch_limit: 50
+  auto_policy_approval:
+    enabled: false
+  auto_export:
+    enabled: false
+  detail_retry:
+    # Reuse the established browser retry/apply contract only when an
+    # operator explicitly enables the isolated canary path.
+    enabled: false
+
 images:
   enabled: false
   # Only official Action CDN hosts may be fetched by the optional image job.

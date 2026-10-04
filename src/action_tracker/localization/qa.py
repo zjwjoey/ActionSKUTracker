@@ -15,7 +15,20 @@ EMPTY_SOURCE_LOCALIZATION_CONTRACT_VERSION = "EMPTY_SOURCE_LOCALIZATION_CONTRACT
 NAME_IDENTITY_FACT_PRESERVATION_VERSION = "NAME_IDENTITY_FACT_PRESERVATION_V1"
 
 
-_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|°C|℃)(?![A-Za-z0-9])", re.I)
+_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9])", re.I)
+_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|摄氏度|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
+_UNIT_ALIASES = {
+    "毫安时": "mah", "安时": "ah", "瓦时": "wh", "千瓦时": "kwh", "毫瓦": "mw", "千瓦": "kw",
+    "赫兹": "hz", "伏特": "v", "瓦": "w", "分贝": "db", "摄氏度": "°c", "厘米": "cm", "毫米": "mm",
+    "千米": "km", "米": "m", "千克": "kg", "公斤": "kg", "克": "g", "毫克": "mg", "微克": "μg",
+    "毫升": "ml", "厘升": "cl", "分升": "dl", "升": "l", "百分比": "%",
+}
+
+
+def _units(value: str) -> set[str]:
+    units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(value)}
+    units.update(_UNIT_ALIASES.get(unit, unit) for unit in _CHINESE_UNIT_RE.findall(value))
+    return units
 _STRICT_TOKEN_TYPES = {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "CAPACITY", "BATTERY_CAPACITY"}
 
 # Deterministic semantic facts use one canonical target, while natural
@@ -491,8 +504,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     findings.append(QAFinding("PROTECTED_TOKEN_MISSING", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
                 elif actual_count > expected_count:
                     findings.append(QAFinding("PROTECTED_TOKEN_DUPLICATED", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
-        source_units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(source_text)}
-        target_units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(target)}
+        source_units = _units(source_text)
+        target_units = _units(target)
         for unit in source_units:
             if unit.casefold() not in target_units:
                 findings.append(QAFinding("UNIT_DROPPED", "BLOCKER", field_name, {"unit": unit}, source=source_text, target=target, message="technical unit dropped", blocking=True))

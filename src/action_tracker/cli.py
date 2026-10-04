@@ -257,6 +257,25 @@ def build_parser() -> argparse.ArgumentParser:
     du = sub.add_parser("data-update", help="每日数据更新主链（production-run 兼容别名）")
     du.add_argument("--date"); du.add_argument("--resume", action="store_true"); du.add_argument("--run-id")
     du.add_argument("--dry-run", action="store_true"); du.add_argument("--no-network", action="store_true")
+    w2 = sub.add_parser("data-update-v2", help="Workflow V2 实验入口（默认不调用真实 Provider/PRIMARY）")
+    w2.add_argument("--date"); w2.add_argument("--resume", action="store_true"); w2.add_argument("--run-id")
+    w2.add_argument("--profile", help="显式 Workflow V2 配置 profile（base settings 的 partial overlay）")
+    w2.add_argument("--dry-run", action="store_true", default=True); w2.add_argument("--no-dry-run", dest="dry_run", action="store_false")
+    w2.add_argument("--canary", action="store_true", help="允许仅针对显式临时 SQLite 的本地 apply")
+    w2.add_argument("--production-apply", action="store_true", help="在全部生产开关开启后写入配置的 SQLite PRIMARY")
+    w2.add_argument("--production-translation", action="store_true", help="Phase 1：写入 PRIMARY 西语事实与翻译队列，但禁止 localization apply/export")
+    w2.add_argument("--temp-db", help="本地 canary 临时 SQLite 路径；production-apply 不使用")
+    w2.add_argument("--no-network", action="store_true")
+    w2.add_argument("--fake-provider", action="store_true"); w2.add_argument("--fixture", help="离线 JSON fixture")
+    w2.add_argument("--fixture-auto-approve-high-risk", action="store_true",
+                    help="仅 Fake Provider + --canary + 临时 SQLite 的本地验收可自动批准高风险字段")
+    ws = sub.add_parser("workflow-v2-shadow-compare", help="离线比较旧链路与 Workflow V2 fixture")
+    ws.add_argument("--legacy", required=True, help="旧链路 JSON fixture")
+    ws.add_argument("--workflow-v2", dest="workflow_v2_fixture", required=True, help="Workflow V2 JSON fixture")
+    ws.add_argument("--output", required=True)
+    wc = sub.add_parser("workflow-v2-local-canary", help="在临时 SQLite 上运行 Workflow V2 local canary")
+    wc.add_argument("--fixture", required=True, help="包含 records 和 fake_translations 的 JSON fixture")
+    wc.add_argument("--output", required=True)
     ops = sub.add_parser("ops", help="本机运营状态/控制台")
     ops_sub = ops.add_subparsers(dest="ops_command", required=True)
     ops_sub.add_parser("status"); ops_sub.add_parser("health"); ops_sub.add_parser("runs"); ops_run = ops_sub.add_parser("run"); ops_run.add_argument("run_id")
@@ -273,7 +292,11 @@ def main(argv=None) -> int:
     from .config import ensure_runtime_dirs, load_settings
     from .log import setup_logging
 
-    cfg = load_settings()
+    profile_value = getattr(args, "profile", None) or os.environ.get("ACTION_TRACKER_CONFIG_PROFILE")
+    profile_paths = [Path(profile_value)] if profile_value else []
+    # Keep compatibility with small test/scheduler adapters that expose the
+    # historical zero-argument loader when no profile was requested.
+    cfg = load_settings(overlay_paths=profile_paths) if profile_paths else load_settings()
     ensure_runtime_dirs(cfg)
     setup_logging(cfg["paths"]["logs"])
 
@@ -531,7 +554,8 @@ def main(argv=None) -> int:
     if args.command in {"localization-ai-status", "localization-ai-check"}:
         from .localization.ai import provider_from_config, provider_health, validate_ai_response
         from .localization.contracts import SourceFacts
-        ai_cfg = ((cfg.get("localization") or {}).get("ai") or {})
+        from .localization.runtime_builder import effective_ai_config
+        ai_cfg = effective_ai_config(cfg)
         provider = provider_from_config(ai_cfg)
         health = provider_health(provider)
         result = {"provider": getattr(provider, "provider", type(provider).__name__),
@@ -1088,6 +1112,71 @@ def main(argv=None) -> int:
             print(_json.dumps(ArtifactService(database_path(cfg)).build_csv(args.selection_id, Path(args.output)), ensure_ascii=False)); return 0
         payload = _json.loads(Path(args.query_json).read_text(encoding="utf-8") if Path(args.query_json).exists() else args.query_json)
         print(_json.dumps(svc.create(args.name, payload, description=args.description, view_id=args.view_id), ensure_ascii=False)); return 0
+    if args.command == "data-update-v2":
+        from .config import validate_phase1_profile
+        from .workflow_v2.runner import run_workflow_v2
+        if args.production_translation:
+            if not profile_paths:
+                print(json.dumps({"error": "PRODUCTION_TRANSLATION_PROFILE_REQUIRED"}, ensure_ascii=False), file=sys.stderr); return 2
+            invalid = validate_phase1_profile(cfg)
+            if invalid:
+                print(json.dumps({"error": "PRODUCTION_TRANSLATION_PROFILE_INVALID", "fields": invalid}, ensure_ascii=False), file=sys.stderr); return 2
+        if (args.production_apply or args.production_translation) and (args.canary or args.temp_db or args.fake_provider or args.fixture):
+            print(json.dumps({"error": "WORKFLOW_V2_PRODUCTION_FLAGS_CONFLICT"}, ensure_ascii=False), file=sys.stderr); return 2
+        if args.production_apply and args.production_translation:
+            print(json.dumps({"error": "WORKFLOW_V2_PRODUCTION_FLAGS_CONFLICT"}, ensure_ascii=False), file=sys.stderr); return 2
+        if args.fixture_auto_approve_high_risk and not (args.fake_provider and args.fixture and args.canary and args.temp_db and not args.production_apply):
+            print(json.dumps({"error": "WORKFLOW_V2_FIXTURE_AUTO_APPROVAL_REQUIRES_ISOLATED_CANARY"}, ensure_ascii=False), file=sys.stderr); return 2
+        records = None; expected = new_skus = reappeared = None; fake_mapping = {}
+        if args.fixture:
+            fixture_path = Path(args.fixture)
+            fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+            if isinstance(fixture, list): records = fixture
+            else:
+                records = fixture.get("records") or []
+                expected = fixture.get("authoritative_skus"); new_skus = fixture.get("expected_new_skus"); reappeared = fixture.get("expected_reappeared_skus")
+                fake_mapping = fixture.get("fake_translations") or {}
+        provider = None
+        if args.fake_provider:
+            from .localization.providers.base import FakeTranslationProvider
+            provider = FakeTranslationProvider(mapping=fake_mapping)
+        if not args.dry_run and not args.temp_db and not args.production_apply and not args.production_translation:
+            print(json.dumps({"error": "WORKFLOW_V2_TEMP_DB_REQUIRED"}, ensure_ascii=False), file=sys.stderr); return 2
+        if not args.dry_run and not args.canary and not args.production_apply and not args.production_translation:
+            print(json.dumps({"error": "WORKFLOW_V2_CANARY_FLAG_REQUIRED"}, ensure_ascii=False), file=sys.stderr); return 2
+        try:
+            result = run_workflow_v2(cfg, business_date=args.date if args.date else None, run_id=args.run_id, resume=args.resume,
+                                     records=records, provider=provider, expected_skus=expected, expected_new_skus=new_skus,
+                                     expected_reappeared_skus=reappeared, dry_run=args.dry_run,
+                                     auto_translation=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_translation", {}).get("enabled", False)),
+                                     auto_policy=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_policy_approval", {}).get("enabled", False)),
+                                     auto_export=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_export", {}).get("enabled", False)),
+                                     apply_enabled=bool((args.canary or args.production_apply) and (args.fake_provider or (cfg.get("workflow_v2") or {}).get("enabled", False))),
+                                     production_apply=bool(args.production_apply),
+                                     production_mode=bool(args.production_translation),
+                                     temp_db=Path(args.temp_db) if args.temp_db else None,
+                                     allow_high_risk_auto_approval=bool(args.fixture_auto_approve_high_risk))
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr); return 20
+        print(json.dumps(result, ensure_ascii=False)); return 0 if result.get("state") in {"SUCCESS", "SUCCESS_WITH_PENDING", "DEGRADED"} else 20
+    if args.command == "workflow-v2-shadow-compare":
+        from .workflow_v2.shadow import compare_shadow_payloads
+        legacy = json.loads(Path(args.legacy).read_text(encoding="utf-8"))
+        workflow_v2_payload = json.loads(Path(args.workflow_v2_fixture).read_text(encoding="utf-8"))
+        result = compare_shadow_payloads(legacy, workflow_v2_payload)
+        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(result, ensure_ascii=False)); return 0 if result["status"] == "PASS" else 20
+    if args.command == "workflow-v2-local-canary":
+        from .workflow_v2.canary import run_local_canary
+        from .localization.providers.base import FakeTranslationProvider
+        fixture = json.loads(Path(args.fixture).read_text(encoding="utf-8"))
+        records = fixture if isinstance(fixture, list) else fixture.get("records") or []
+        if not records:
+            print(json.dumps({"status": "BLOCKED", "reason": "FIXTURE_RECORD_MISSING"}, ensure_ascii=False)); return 20
+        provider = FakeTranslationProvider(mapping=(fixture.get("fake_translations") or {}) if isinstance(fixture, dict) else {})
+        result = run_local_canary(record=records[0], provider=provider, output_dir=Path(args.output))
+        print(json.dumps(result, ensure_ascii=False)); return 0 if result["status"] == "PASS" else 20
     if args.command in ("production-run", "data-update"):
         from .operations.entry import run_production
         from .services.runtime import observation_date

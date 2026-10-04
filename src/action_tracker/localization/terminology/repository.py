@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+import sqlite3
 
-from ...database.connection import connect
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,19 @@ class TerminologyRepository:
     def __init__(self, db_path):
         self.db_path = db_path
         self.last_conflicts: tuple[TerminologyConflict, ...] = ()
+        self._conn: sqlite3.Connection | None = None
+
+    def _connection(self) -> sqlite3.Connection:
+        if self._conn is None:
+            self._conn = sqlite3.connect(self.db_path, timeout=10)
+            self._conn.row_factory = sqlite3.Row
+            self._conn.execute("PRAGMA query_only = ON")
+        return self._conn
+
+    def close(self) -> None:
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
 
     def resolve(self, source_text: str, *, scope: str = "GLOBAL", field_name: str | None = None,
                 cat1: str | None = None, cat2: str | None = None, product_type: str | None = None,
@@ -45,8 +58,8 @@ class TerminologyRepository:
                 context_key: str | None = None, limit: int = 20) -> tuple[TermHint, ...]:
         source = str(source_text or "")
         try:
-            with connect(self.db_path) as db:
-                rows = db.execute("""SELECT term_id,source_term,target_term,scope,priority,do_not_translate,
+            db = self._connection()
+            rows = db.execute("""SELECT term_id,source_term,target_term,scope,priority,do_not_translate,
                 field_scope,cat1_scope,cat2_scope,product_type_scope,family_scope,context_key,match_mode,
                 case_sensitive,keep_original,forbidden_target FROM (SELECT term_id,source_term,target_term,scope,priority,do_not_translate,
                 field_scope,cat1_scope,cat2_scope,product_type_scope,family_scope,context_key,match_mode,

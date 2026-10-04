@@ -38,6 +38,41 @@ class TranslationRuntime:
     worker: TranslationQueueWorker
 
 
+def effective_ai_config(cfg: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the V1 AI profile, bridging older production settings safely.
+
+    Older data roots enabled the dedicated adapter under
+    ``translation.qwen_mt`` before the V1 ``localization.ai`` profile was
+    introduced.  Only a missing V1 profile is bridged; an explicit V1 profile
+    (including ``enabled: false``) remains authoritative and fail-closed.
+    """
+    localization_cfg = dict(cfg.get("localization") or {})
+    ai_cfg = dict(localization_cfg.get("ai") or {})
+    # ``load_settings`` adds ``enabled: false`` to missing profiles for
+    # fail-closed defaults.  Treat that defaults-only shape as missing; a
+    # profile with provider/model/endpoint metadata is an explicit operator
+    # choice and remains authoritative.
+    has_explicit_profile = bool(ai_cfg.get("enabled")) or any(
+        str(ai_cfg.get(key) or "").strip() for key in ("provider", "base_url", "model", "api_key_env")
+    )
+    if has_explicit_profile:
+        return ai_cfg
+    legacy = dict((cfg.get("translation") or {}).get("qwen_mt") or {})
+    if not bool(legacy.get("enabled")):
+        return ai_cfg
+    return {
+        "enabled": True,
+        "provider": "qwen_mt",
+        "base_url": legacy.get("endpoint") or legacy.get("base_url") or os.environ.get("QWEN_MT_BASE_URL") or os.environ.get("DASHSCOPE_BASE_URL"),
+        "model": legacy.get("model") or "qwen-mt-flash",
+        "api_key_env": legacy.get("api_key_env") or "DASHSCOPE_API_KEY",
+        "timeout": legacy.get("timeout") or 60,
+        "max_retries": legacy.get("max_retries") if legacy.get("max_retries") is not None else 2,
+        "backoff_seconds": legacy.get("backoff_seconds") if legacy.get("backoff_seconds") is not None else 5.0,
+        "rate_limit_per_second": legacy.get("rate_limit_per_second") if legacy.get("rate_limit_per_second") is not None else 0.5,
+    }
+
+
 def build_translation_runtime(cfg: Mapping[str, Any] | None = None, *, db_path: Path | None = None,
                               allow_provider: bool = False) -> TranslationRuntime:
     """Build Registry, knowledge, engine, provider, resolver and worker once.
@@ -53,7 +88,7 @@ def build_translation_runtime(cfg: Mapping[str, Any] | None = None, *, db_path: 
     dictionary_dir = Path((cfg.get("paths") or {}).get("dictionary") or Path(cfg["project_root"]) / "runtime" / "dictionary")
     knowledge = KnowledgeLoader(dictionary_dir).load() if dictionary_dir.exists() else {}
     localization_cfg = cfg.get("localization") or {}
-    ai_cfg = dict(localization_cfg.get("ai") or {})
+    ai_cfg = effective_ai_config(cfg)
     # An explicit provider permission is necessary but never sufficient to
     # override the production configuration gate.
     # The repository configuration keeps AI disabled by default.  A read-only

@@ -112,8 +112,8 @@ class TranslationQueueWorker:
             error_code=str(getattr(exc, "code", type(exc).__name__)),
         )
 
-    def process_once(self, *, limit: int = 50, worker_id: str = "localization-worker") -> QueueWorkerResult:
-        claimed = self.registry.claim_queue(limit=limit, worker_id=worker_id)
+    def process_once(self, *, limit: int = 50, worker_id: str = "localization-worker", run_id: str | None = None) -> QueueWorkerResult:
+        claimed = self.registry.claim_queue(limit=limit, worker_id=worker_id, run_id=run_id)
         completed = retried = failed = blocked = review_required = 0
         for item in claimed:
             queue_id = str(item["queue_id"])
