@@ -11,19 +11,21 @@ deployment runbooks.
 | Item | Value |
 |---|---|
 | Base feature snapshot | `2cac2b7e60e01d6468af21ec3eb9caafab6777ac` |
-| Candidate code head | `9f238da16302bf28147a9af67327bdb7201b08dc` |`n| Publication metadata head | `c0f7cac94af092fa63bc4e586523dc4cc80e7474` |
+| Candidate code head | `9f238da16302bf28147a9af67327bdb7201b08dc` |
+| Publication metadata head (audited) | `ba9b941001c93c55f5a2dbdffe529ec20d71059e` |
 | Main used for merge simulation | `b47e4c56a0274fdddceff347e2571d77c1476014` |
 | Merge simulation | `git merge-tree --write-tree origin/main HEAD` — no conflicts |
 | Local full suite | `754 passed` |
 | Local CI-safe allowlist | `754 passed` |
-| Exact-head CI (candidate code) | run `37208054071`, Ubuntu and Windows successful |`n| Exact-head CI (publication metadata) | run `37208253842`, Ubuntu and Windows successful |
+| Exact-head CI (candidate code) | run `37208054071`, Ubuntu and Windows successful |
+| Exact-head CI (publication metadata) | run `37208489254` / PR run `37208491850`, Ubuntu and Windows successful |
 
 ## Backported generic behavior
 
 - Explicit profile and environment fallback handling with deep merge,
   fail-closed defaults, and non-secret effective configuration evidence.
 - One workflow business date and run identity propagated through extraction;
-  extraction date mismatches block fact commit and resume rejects a changed
+  extraction mismatches block fact commit and resume rejects a changed
   effective configuration hash.
 - Source-bound localization freshness: existing Chinese text is preserved,
   only changed fields become stale, and new SKU placeholders remain pending.
@@ -45,5 +47,3 @@ The following remain deployment-branch-only and were not backported:
 `READY_FOR_MAIN_MERGE = YES`, subject to the repository's normal GitHub main
 branch protection and reviewer approval. No merge or production mutation was
 performed by this audit.
-
-
