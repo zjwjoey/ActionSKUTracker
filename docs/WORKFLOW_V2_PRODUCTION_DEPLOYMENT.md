@@ -6,6 +6,7 @@
 
 - 分支：`deploy/workflow-v2-production-20261004`
 - 代码：`2cac2b7e60e01d6468af21ec3eb9caafab6777ac`
+- audited deployment head：`75b01acc9818717c5959c83cdddcb92a59d25442`
 - 基线生产分支：`fix/naming-history-export-20260917`，旧 head：`3a9df7af807875b97d4eab1b5d3bb57c69f5c041`
 
 部署分支直接从已验证的 Workflow V2 feature head 创建。不得把 feature 分支合并到命名历史分支，也不得 cherry-pick 命名历史分支。
@@ -30,7 +31,7 @@
      --config F:\ActionSKUTracker_workflow_v2\config\workflow_v2_production_profile.yaml `
      --data-root F:\ActionSKUTracker `
      --expected-branch deploy/workflow-v2-production-20261004 `
-     --expected-head 2cac2b7e60e01d6468af21ec3eb9caafab6777ac `
+     --expected-head 75b01acc9818717c5959c83cdddcb92a59d25442 `
      --json
    ```
 
@@ -45,6 +46,16 @@
 同目录包含 SQLite PRIMARY 的一致性备份、生产配置备份、源数据库和配置 SHA-256。生产数据库仍是唯一 PRIMARY；历史队列保留在库内，由运行时按当前日优先和每批 50 条隔离处理。
 
 本次收尾没有执行真实详情抓取、真实 Qwen 请求、生产导出或生产代码目录切换。
+
+## 唯一生产入口
+
+代码切换并由 Owner 单独开启生产 Apply 门禁后，Workflow V2 的唯一生产入口为：
+
+```powershell
+python -m action_tracker data-update-v2 --date YYYY-MM-DD --production-apply
+```
+
+本次闭环不执行该命令；`production-run` 和 `data-update` 保留为旧日常链路兼容入口，不作为 Workflow V2 的生产入口。`data-update-v2` 的 `--fixture`、`--fake-provider`、`--canary` 组合只用于隔离验收。
 
 ## 发布结果标记
 
