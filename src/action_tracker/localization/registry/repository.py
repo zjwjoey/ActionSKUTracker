@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,7 +28,20 @@ class LocalizationRegistry:
 
     def __init__(self, path: Path, *, role: str = "SHADOW"):
         self.path = Path(path)
+        self._read_conn: sqlite3.Connection | None = None
         migrate_v2(self.path, role=role)
+
+    def _read_connection(self) -> sqlite3.Connection:
+        if self._read_conn is None:
+            self._read_conn = sqlite3.connect(self.path, timeout=10)
+            self._read_conn.row_factory = sqlite3.Row
+            self._read_conn.execute("PRAGMA query_only = ON")
+        return self._read_conn
+
+    def close(self) -> None:
+        if self._read_conn is not None:
+            self._read_conn.close()
+            self._read_conn = None
 
     def register_source(self, official_sku: str, fields: Mapping[str, Any], source_hash: str, *, observed_at: str, source_run_id: str | None = None, hash_contract_version: str = SOURCE_HASH_CONTRACT_VERSION, raw_fields: Mapping[str, Any] | None = None, normalized_fields: Mapping[str, Any] | None = None, source_quality_status: str = "UNKNOWN") -> str:
         source_id = str(uuid.uuid4())
@@ -205,8 +219,8 @@ class LocalizationRegistry:
 
     def get_current_approved_revision(self, official_sku: str, field_name: str, source_hash: str) -> dict[str, Any] | None:
         canonical = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field_name, field_name)
-        with connect(self.path) as db:
-            row = db.execute("""SELECT r.* FROM translation_revisions r JOIN translation_units u ON u.unit_id=r.unit_id
+        db = self._read_connection()
+        row = db.execute("""SELECT r.* FROM translation_revisions r JOIN translation_units u ON u.unit_id=r.unit_id
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
                 WHERE s.official_sku=? AND u.field_name IN (?,?) AND r.source_hash=?
                   AND u.freshness_status='FRESH'

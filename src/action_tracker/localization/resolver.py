@@ -8,6 +8,7 @@ an unapproved fallback from silently becoming production Chinese.
 from __future__ import annotations
 
 import re
+import sqlite3
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
@@ -81,6 +82,7 @@ class TranslationResolver:
         self.provider = provider
         self.engine = engine or LocalizationEngine()
         self.manual_locks = dict(manual_locks or {})
+        self._registry_conn: sqlite3.Connection | None = None
         self._registry_tables_available = False
         if self.db_path:
             try:
@@ -93,16 +95,35 @@ class TranslationResolver:
         self.tm = TranslationMemoryRepository(self.db_path) if self.db_path and "translation_memory_entries" in locals().get("tables", set()) else None
         self.terminology = TerminologyRepository(self.db_path) if self.db_path and "terminology_entries" in locals().get("tables", set()) else None
 
+    def _registry_connection(self) -> sqlite3.Connection:
+        if self._registry_conn is None:
+            self._registry_conn = sqlite3.connect(self.db_path, timeout=10)
+            self._registry_conn.row_factory = sqlite3.Row
+            self._registry_conn.execute("PRAGMA query_only = ON")
+        return self._registry_conn
+
+    def close(self) -> None:
+        if self.tm is not None:
+            self.tm.close()
+        if self.terminology is not None:
+            self.terminology.close()
+        if self.registry is not None:
+            close = getattr(self.registry, "close", None)
+            if callable(close):
+                close()
+        if self._registry_conn is not None:
+            self._registry_conn.close()
+            self._registry_conn = None
+
     def _approved_revision(self, sku: str, field_name: str, source_hash_value: str) -> str | None:
         if self.registry is not None:
             row = self.registry.get_current_approved_revision(sku, field_name, source_hash_value)
             return str(row.get("target_text")) if row else None
         if not self.db_path or not self._registry_tables_available:
             return None
-        from ..database.connection import connect
         try:
-            with connect(self.db_path) as db:
-                row = db.execute("""SELECT r.target_text FROM translation_revisions r
+            db = self._registry_connection()
+            row = db.execute("""SELECT r.target_text FROM translation_revisions r
                 JOIN translation_units u ON u.unit_id=r.unit_id
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
                 WHERE s.official_sku=? AND u.field_name IN (?,?)
