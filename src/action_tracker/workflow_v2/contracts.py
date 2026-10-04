@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import MISSING, dataclass, field
 from enum import Enum
 from typing import Any, Mapping
 
@@ -29,12 +29,47 @@ class Stage(str, Enum):
 
 STAGES = tuple(item.value for item in Stage)
 
+# Critical boundaries are explicit so a later stage cannot accidentally
+# overwrite an earlier source/translation/export blocker with a PASS.
+STAGE_DEPENDENCIES: dict[str, tuple[str, ...]] = {
+    "SOURCE_CLEAN": ("SOURCE_AUDIT",),
+    "SOURCE_REAUDIT": ("SOURCE_CLEAN",),
+    "FACT_COMMIT": ("SOURCE_REAUDIT",),
+    "DETAIL_PLAN": ("FACT_COMMIT",),
+    "DETAIL_ENRICH": ("DETAIL_PLAN",),
+    "TRANSLATION_SOURCE_AUDIT": ("FACT_COMMIT",),
+    "REGISTRY_INGEST": ("TRANSLATION_SOURCE_AUDIT",),
+    "TRANSLATION_PLAN": ("REGISTRY_INGEST",),
+    "QWEN_TRANSLATE": ("TRANSLATION_PLAN",),
+    "TRANSLATION_QA": ("QWEN_TRANSLATE",),
+    "TRANSLATION_POLICY": ("TRANSLATION_QA",),
+    "TRANSLATION_APPLY": ("TRANSLATION_POLICY",),
+    "EXPORT_AUDIT": ("FACT_COMMIT", "TRANSLATION_APPLY"),
+    "EXPORT_WRITE": ("EXPORT_AUDIT",),
+}
+
 
 class WorkflowState(str, Enum):
     SUCCESS = "SUCCESS"
     DEGRADED = "DEGRADED"
     BLOCKED = "BLOCKED"
     FAILED = "FAILED"
+
+
+@dataclass(frozen=True)
+class WorkflowBlocker:
+    stage: str
+    code: str
+    sku: str | None = None
+    field_name: str | None = None
+    severity: str = "BLOCKER"
+    details: Mapping[str, Any] = field(default_factory=dict)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "stage": self.stage, "code": self.code, "sku": self.sku,
+            "field": self.field_name, "severity": self.severity, "details": dict(self.details),
+        }
 
 
 @dataclass
@@ -47,17 +82,22 @@ class WorkflowContext:
     detail_commit_id: str | None = None
     localization_commit_id: str | None = None
     source_snapshot: str | None = None
+    database_path: str | None = None
     authoritative_skus: set[str] = field(default_factory=set)
     new_skus: set[str] = field(default_factory=set)
     reappeared_skus: set[str] = field(default_factory=set)
     source_ready: bool = False
+    fact_ready: bool = False
+    presence_ready: bool = False
     translation_ready: bool = False
     export_ready: bool = False
+    blockers: list[WorkflowBlocker] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         result = dict(self.__dict__)
         for key in ("authoritative_skus", "new_skus", "reappeared_skus"):
             result[key] = sorted(result[key])
+        result["blockers"] = [item.as_dict() if isinstance(item, WorkflowBlocker) else dict(item) for item in result.get("blockers", [])]
         return result
 
     @classmethod
@@ -65,7 +105,19 @@ class WorkflowContext:
         data = dict(value)
         for key in ("authoritative_skus", "new_skus", "reappeared_skus"):
             data[key] = set(str(item) for item in data.get(key, ()))
-        return cls(**{key: data.get(key) for key in cls.__dataclass_fields__})
+        data["blockers"] = [item if isinstance(item, WorkflowBlocker) else WorkflowBlocker(
+            stage=str(item.get("stage") or "UNKNOWN"), code=str(item.get("code") or "UNKNOWN"),
+            sku=item.get("sku"), field_name=item.get("field"), severity=str(item.get("severity") or "BLOCKER"),
+            details=dict(item.get("details") or {})) for item in data.get("blockers", [])]
+        kwargs = {}
+        for key, definition in cls.__dataclass_fields__.items():
+            if key in data:
+                kwargs[key] = data[key]
+            elif definition.default is not MISSING:
+                kwargs[key] = definition.default
+            elif definition.default_factory is not MISSING:  # type: ignore[comparison-overlap]
+                kwargs[key] = definition.default_factory()
+        return cls(**kwargs)
 
 
 @dataclass(frozen=True)

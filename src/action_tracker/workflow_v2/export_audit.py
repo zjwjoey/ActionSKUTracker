@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from collections import Counter
+import re
 from typing import Any, Iterable, Mapping
+from urllib.parse import urlparse
+
 
 ES_REQUIRED = ("sku", "name_es", "cat1_es", "product_url", "current_price", "status")
 ZH_FIELDS = ("name_zh", "cat1_zh", "cat2_zh", "spec_zh", "desc_zh", "details_zh")
@@ -13,9 +16,22 @@ def audit_es(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     values = [dict(row) for row in rows]
     skus = [str(row.get("sku") or row.get("official_sku") or "").strip() for row in values]
     missing = [{"sku": sku, "field": field} for row, sku in zip(values, skus) for field in ES_REQUIRED if row.get(field) in (None, "")]
+    issues: list[dict[str, Any]] = []
+    for row, sku in zip(values, skus):
+        if str(row.get("status") or "").upper() != "CURRENT": issues.append({"sku": sku, "code": "INVALID_STATUS"})
+        try:
+            if float(row.get("current_price")) <= 0: issues.append({"sku": sku, "code": "INVALID_PRICE"})
+        except (TypeError, ValueError): issues.append({"sku": sku, "code": "INVALID_PRICE"})
+        url = str(row.get("product_url") or "")
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc: issues.append({"sku": sku, "code": "INVALID_URL"})
+        for field in ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es"):
+            value = str(row.get(field) or "")
+            if "\x00" in value or re.search(r"<[^>]+>", value): issues.append({"sku": sku, "field": field, "code": "SOURCE_CONTAMINATION"})
+        if not row.get("presence_source"): issues.append({"sku": sku, "code": "SOURCE_PROVENANCE_MISSING"})
     duplicates = [sku for sku, count in Counter(skus).items() if sku and count > 1]
-    return {"status": "PASS" if not missing and not duplicates and all(skus) else "FAIL", "rows": len(values),
-            "missing_required": missing, "duplicate_skus": duplicates, "sku_set": sorted(set(skus))}
+    return {"status": "PASS" if not missing and not duplicates and not issues and all(skus) else "FAIL", "rows": len(values),
+            "missing_required": missing, "duplicate_skus": duplicates, "issues": issues, "sku_set": sorted(set(skus))}
 
 
 def audit_zh(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
@@ -28,6 +44,12 @@ def audit_zh(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         for field in ZH_FIELDS:
             if row.get(field) in (None, "") and str(row.get(field.replace("_zh", "_es")) or ""):
                 issues.append({"sku": sku, "field": field, "code": "MISSING_ZH"})
+            value = str(row.get(field) or "")
+            if "\x00" in value or re.search(r"<[^>]+>", value):
+                issues.append({"sku": sku, "field": field, "code": "ZH_GARBLED_OR_HTML"})
+        provenance = row.get("zh_field_provenance") or {}
+        if provenance and any(str((provenance.get(field.replace("_zh", "")) or {}).get("freshness_status") or "").upper() == "STALE" for field in ZH_FIELDS):
+            issues.append({"sku": sku, "code": "STALE_TRANSLATION"})
     return {"status": "PASS" if not issues else "FAIL", "rows": len(values), "issues": issues, "sku_set": sorted({str(row.get("sku") or row.get("official_sku") or "") for row in values})}
 
 

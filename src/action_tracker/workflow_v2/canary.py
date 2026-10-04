@@ -10,9 +10,8 @@ from ..database.connection import connect
 from ..database.production import CommitBundle, ProductionWriter, apply_approved_localization_patches
 from ..knowledge.storage import KnowledgeStore
 from ..localization.contracts import SourceFacts
-from ..localization.providers.base import TranslationRequest
-from ..localization.qa import guard_translation
 from ..localization.registry.repository import LocalizationRegistry
+from ..localization.runtime_builder import build_translation_runtime
 
 
 def run_local_canary(*, record: Mapping[str, Any], provider: Any, output_dir: Path) -> dict[str, Any]:
@@ -41,20 +40,17 @@ def run_local_canary(*, record: Mapping[str, Any], provider: Any, output_dir: Pa
     )
     commit_id = ProductionWriter(db_path, role="PRIMARY").commit(bundle)
     registry = LocalizationRegistry(db_path, role="PRIMARY")
-    registry.register_source(sku, fields, facts.source_hash, observed_at=now, source_run_id=source_run_id,
-                             raw_fields=fields, normalized_fields=fields, source_quality_status="PASS")
-    request = TranslationRequest(sku=sku, fields=facts.as_record(), requested_fields=("name", "cat1", "cat2", "spec", "description", "details"), source_hash=facts.source_hash, request_id=f"canary:{sku}")
-    response = provider.translate(request)
-    qa = guard_translation(facts, response.fields, request.requested_fields)
-    # No product-family context is supplied by this minimal fixture. The
-    # canonical layer is therefore explicitly not required, rather than left
-    # as NOT_RUN (which must never be approvable).
-    if qa.get("canonical_status") == "NOT_RUN":
-        qa["canonical_status"] = "NOT_REQUIRED"
-        qa["canonical_qa_status"] = "NOT_REQUIRED"
-    recorded = registry.record_response(official_sku=sku, source_fields=fields, source_hash_value=facts.source_hash,
-                                         observed_at=now, source_run_id=source_run_id, response=response, qa=qa)
-    approved = [revision_id for revision_id in recorded["revision_ids"] if registry.approve_revision(revision_id, actor="human:workflow-v2-canary")]
+    runtime = build_translation_runtime({"project_root": output_dir, "storage": {"db_path": str(db_path)}, "paths": {}, "localization": {"ai": {"enabled": False}}}, db_path=db_path)
+    runtime.resolver.provider = provider
+    runtime.worker.resolver.provider = provider
+    registry_result = registry.ingest_records([dict(record)], source_run_id=source_run_id, observed_at=now)
+    worker_result = runtime.worker.process_once(limit=50, worker_id="workflow-v2-canary")
+    with connect(db_path) as db:
+        revisions = [str(row[0]) for row in db.execute("""SELECT r.revision_id FROM translation_revisions r
+            JOIN translation_units u ON u.current_revision_id=r.revision_id
+            JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
+            WHERE s.source_run_id=? AND r.qa_status='PASS'""", (source_run_id,)).fetchall()]
+    approved = [revision_id for revision_id in revisions if registry.approve_revision(revision_id, actor="human:workflow-v2-canary")]
     store = KnowledgeStore(db_path, role="PRIMARY")
     preview = store.preview_approved_registry_apply()
     staged = store.stage_approved_registry_patches(expected_base_commit_id=commit_id, actor="human:workflow-v2-canary")
@@ -62,10 +58,10 @@ def run_local_canary(*, record: Mapping[str, Any], provider: Any, output_dir: Pa
                                                   actor="service:workflow-v2-canary", run_id=f"{source_run_id}-apply") if staged["patch_ids"] else {"status": "NOOP", "applied_fields": 0}
     with connect(db_path) as db:
         zh = db.execute("SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone()
-    result = {"status": "PASS" if qa.get("overall_ready") and len(approved) == len(recorded["revision_ids"]) and applied.get("applied_fields", 0) == len(approved) and zh else "FAIL",
+    result = {"status": "PASS" if worker_result.failed == 0 and worker_result.blocked == 0 and len(approved) == len(revisions) and applied.get("applied_fields", 0) == len(approved) and zh else "FAIL",
               "database": str(db_path), "source_commit_id": commit_id, "source_hash": facts.source_hash,
-              "provider": getattr(response, "provider", "unknown"), "model": getattr(response, "model", "unknown"),
-              "qa": qa, "revision_ids": recorded["revision_ids"], "approved_revision_count": len(approved),
+              "provider": getattr(provider, "provider", "unknown"), "model": getattr(provider, "model", "unknown"),
+              "registry": registry_result, "worker": worker_result.as_dict(), "revision_ids": revisions, "approved_revision_count": len(approved),
               "preview_count": len(preview), "staged_fields": staged["staged_fields"], "applied": applied,
               "zh_present": bool(zh)}
     (output_dir / "canary_report.json").write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str), encoding="utf-8")

@@ -165,6 +165,16 @@ class LocalizationRegistry:
         with connect(self.path) as db:
             db.execute("INSERT INTO translation_revision_events(event_id,revision_id,event_type,actor,evidence_json,occurred_at) VALUES(?,?,?,?,?,?)", (str(uuid.uuid4()), revision_id, event_type, actor, json.dumps(dict(evidence or {}), ensure_ascii=False, sort_keys=True, default=str), _now()))
 
+    def record_policy_decision(self, revision_id: str, *, decision: str, policy_id: str,
+                               policy_version: str, evidence: Mapping[str, Any] | None = None) -> None:
+        """Persist auto-validation provenance in the existing revision log."""
+        self._revision_event(
+            revision_id,
+            "AUTO_VALIDATED" if decision == "AUTO_VALIDATED" else "POLICY_REVIEW_REQUIRED",
+            "workflow-v2:auto-policy",
+            {"decision": decision, "policy_id": policy_id, "policy_version": policy_version, **dict(evidence or {})},
+        )
+
     def approve_revision(self, revision_id: str, *, actor: str, auto: bool = False) -> bool:
         if auto:
             with connect(self.path) as db:

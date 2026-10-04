@@ -7,8 +7,13 @@ import re
 from typing import Any, Iterable, Mapping
 
 from ..services.hashing import localization_source_hash
+from ..localization.protection.tokens import protect_text
 
-REQUIRED_FIELDS = ("sku", "canonical_id", "name_es", "cat1_es", "product_url", "current_price", "status", "presence_source")
+# Presence is an observation contract.  Product facts are a separate gate and
+# may remain pending while the authoritative SKU is safely committed.
+PRESENCE_REQUIRED_FIELDS = ("sku", "canonical_id", "status", "presence_source")
+FACT_REQUIRED_FIELDS = ("name_es", "cat1_es", "product_url", "current_price")
+REQUIRED_FIELDS = PRESENCE_REQUIRED_FIELDS + FACT_REQUIRED_FIELDS
 OPTIONAL_SOURCE_FIELDS = ("cat2_es", "spec_es", "desc_es", "details_es", "image_url")
 TEXT_FIELDS = ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -21,7 +26,12 @@ def _hash(value: Any) -> str:
 
 
 def _protected_tokens(value: Any) -> tuple[str, ...]:
-    return tuple(_NUMBER_RE.findall(str(value or "")))
+    # Compare the shared typed token contract used by Translation V1.  HTML
+    # tags become boundaries so ordinary markup stripping is harmless, while
+    # ``10<span></span>20`` cannot silently become the new fact ``1020``.
+    text = re.sub(r"<[^>]+>", " ", str(value or ""))
+    protected = protect_text(text)
+    return tuple(f"{kind}:{token}" for kind, token in zip(protected.token_types, protected.tokens))
 
 
 def clean_source_record(record: Mapping[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -79,31 +89,62 @@ def audit_source_records(
     reappeared = {str(item).strip() for item in (expected_reappeared_skus or ()) if str(item).strip()}
     duplicate_count = len([str(row.get("sku") or row.get("official_sku") or "") for row in rows]) - len(normalized)
     required_issues: list[dict[str, Any]] = []
+    fact_issues: list[dict[str, Any]] = []
     field_statuses: list[dict[str, Any]] = []
     for row in rows:
         sku = str(row.get("sku") or row.get("official_sku") or "")
-        for field in REQUIRED_FIELDS:
+        for field in PRESENCE_REQUIRED_FIELDS:
             status = _field_status(row, field, required=True)
             field_statuses.append({"sku": sku, "field": field, "status": status})
             if status == "MISSING_REQUIRED": required_issues.append({"sku": sku, "field": field})
+        for field in FACT_REQUIRED_FIELDS:
+            status = _field_status(row, field, required=True)
+            field_statuses.append({"sku": sku, "field": field, "status": status, "gate": "FACT"})
+            if status == "MISSING_REQUIRED": fact_issues.append({"sku": sku, "field": field})
         for field in OPTIONAL_SOURCE_FIELDS:
             field_statuses.append({"sku": sku, "field": field, "status": _field_status(row, field, required=False)})
     missing = sorted(expected - normalized)
     extra = sorted(normalized - expected) if expected else []
     missing_new = sorted(new_expected - normalized)
-    extra_new = sorted(normalized & new_expected - new_expected) if new_expected else []
+    # ``expected_new_skus`` is the authoritative lifecycle result.  We do not
+    # infer NEW from an arbitrary row field; when a record carries an explicit
+    # lifecycle marker, compare that actual set as well.  The old expression
+    # ``(normalized & new_expected) - new_expected`` was tautologically empty.
+    actual_new = {
+        str(row.get("sku") or row.get("official_sku") or "").strip()
+        for row in rows
+        if str(row.get("event") or row.get("lifecycle_event") or row.get("change_type") or "").upper() in {"NEW", "FIRST_SEEN"}
+    }
+    extra_new = sorted(actual_new - new_expected) if actual_new and new_expected else []
+    actual_reappeared = {
+        str(row.get("sku") or row.get("official_sku") or "").strip()
+        for row in rows
+        if str(row.get("event") or row.get("lifecycle_event") or row.get("change_type") or "").upper() == "REAPPEARED"
+    }
     missing_reappeared = sorted(reappeared - normalized)
-    blocked = bool(required_issues or missing or missing_new or missing_reappeared or duplicate_count)
+    extra_reappeared = sorted(actual_reappeared - reappeared) if actual_reappeared and reappeared else []
+    blocked = bool(required_issues or missing or extra or missing_new or extra_new or missing_reappeared or extra_reappeared or duplicate_count)
     return {
         "status": "FAIL" if blocked else "PASS",
         "source_ready": not blocked,
+        "presence_ready": not blocked,
+        "fact_ready": not fact_issues,
+        "fact_missing_required": fact_issues,
+        "presence_state": "PASS" if not blocked else "BLOCKED",
+        "fact_state": "PASS" if not fact_issues else "FACT_REFRESH_NOT_READY",
         "normalized_skus": sorted(normalized),
         "authoritative_skus": sorted(expected),
+        "expected_sku_count": len(expected), "actual_sku_count": len(normalized),
+        "missing_sku_count": len(missing), "extra_sku_count": len(extra),
         "source_sku_completeness": "PASS" if not missing and not extra else "FAIL",
         "new_sku_completeness": "PASS" if not missing_new and not extra_new else "FAIL",
+        "expected_new_count": len(new_expected), "actual_new_count": len(actual_new),
         "new_sku_expected_count": len(new_expected), "new_sku_normalized_count": len(normalized & new_expected),
         "new_sku_missing_count": len(missing_new), "new_sku_extra_count": len(extra_new),
+        "expected_reappeared_count": len(reappeared), "actual_reappeared_count": len(actual_reappeared),
+        "missing_reappeared_count": len(missing_reappeared), "extra_reappeared_count": len(extra_reappeared),
         "missing_new_skus": missing_new, "missing_reappeared_skus": missing_reappeared,
+        "extra_new_skus": extra_new, "extra_reappeared_skus": extra_reappeared,
         "missing_required": required_issues, "missing_skus": missing, "extra_skus": extra,
         "duplicate_sku_count": duplicate_count, "field_statuses": field_statuses,
     }

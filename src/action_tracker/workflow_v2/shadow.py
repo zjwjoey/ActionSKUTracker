@@ -1,6 +1,7 @@
 """Offline comparison helper for old-chain and Workflow V2 fixtures."""
 from __future__ import annotations
 
+import json
 from typing import Any, Iterable, Mapping
 
 
@@ -61,8 +62,14 @@ def compare_shadow_payloads(legacy: Mapping[str, Any], workflow_v2: Mapping[str,
     for key in ("new_skus", "reappeared_skus", "missing_skus", "offline_skus", "price_events", "badge_events"):
         old_value = legacy.get(key, [])
         new_value = workflow_v2.get(key, [])
-        old_norm = sorted(str(item.get("sku") or item.get("official_sku") or item) if isinstance(item, Mapping) else str(item) for item in old_value)
-        new_norm = sorted(str(item.get("sku") or item.get("official_sku") or item) if isinstance(item, Mapping) else str(item) for item in new_value)
+        def normalize(item: Any) -> str:
+            if not isinstance(item, Mapping): return str(item)
+            if key in {"price_events", "badge_events"}:
+                payload = {field: item.get(field) for field in ("sku", "official_sku", "event_type", "事件类型", "change_type", "变化类型", "old_value", "旧值", "new_value", "新值", "business_date", "日期") if field in item}
+                return json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+            return str(item.get("sku") or item.get("official_sku") or item)
+        old_norm = sorted(normalize(item) for item in old_value)
+        new_norm = sorted(normalize(item) for item in new_value)
         checks[key] = {"status": "PASS" if old_norm == new_norm else "FAIL", "legacy": old_norm, "workflow_v2": new_norm}
     failed = [key for key, value in checks.items() if value.get("status") != "PASS"]
     return {"status": "PASS" if not failed else "FAIL", "failed_checks": failed, "checks": checks}

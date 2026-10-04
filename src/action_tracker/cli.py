@@ -259,7 +259,10 @@ def build_parser() -> argparse.ArgumentParser:
     du.add_argument("--dry-run", action="store_true"); du.add_argument("--no-network", action="store_true")
     w2 = sub.add_parser("data-update-v2", help="Workflow V2 实验入口（默认不调用真实 Provider/PRIMARY）")
     w2.add_argument("--date"); w2.add_argument("--resume", action="store_true"); w2.add_argument("--run-id")
-    w2.add_argument("--dry-run", action="store_true", default=True); w2.add_argument("--no-network", action="store_true")
+    w2.add_argument("--dry-run", action="store_true", default=True); w2.add_argument("--no-dry-run", dest="dry_run", action="store_false")
+    w2.add_argument("--canary", action="store_true", help="允许仅针对显式临时 SQLite 的本地 apply")
+    w2.add_argument("--temp-db", help="本地 canary 临时 SQLite 路径；正式模式必填")
+    w2.add_argument("--no-network", action="store_true")
     w2.add_argument("--fake-provider", action="store_true"); w2.add_argument("--fixture", help="离线 JSON fixture")
     ws = sub.add_parser("workflow-v2-shadow-compare", help="离线比较旧链路与 Workflow V2 fixture")
     ws.add_argument("--legacy", required=True, help="旧链路 JSON fixture")
@@ -1115,10 +1118,18 @@ def main(argv=None) -> int:
         if args.fake_provider:
             from .localization.providers.base import FakeTranslationProvider
             provider = FakeTranslationProvider(mapping=fake_mapping)
-        result = run_workflow_v2(cfg, business_date=args.date or observation_date(), run_id=args.run_id, resume=args.resume,
-                                 records=records, provider=provider, expected_skus=expected, expected_new_skus=new_skus,
-                                 expected_reappeared_skus=reappeared, dry_run=True, auto_translation=bool(args.fake_provider),
-                                 auto_policy=bool(args.fake_provider), auto_export=bool(args.fake_provider), apply_enabled=bool(args.fake_provider))
+        if not args.dry_run and not args.temp_db:
+            print(json.dumps({"error": "WORKFLOW_V2_TEMP_DB_REQUIRED"}, ensure_ascii=False), file=sys.stderr); return 2
+        if not args.dry_run and not args.canary:
+            print(json.dumps({"error": "WORKFLOW_V2_CANARY_FLAG_REQUIRED"}, ensure_ascii=False), file=sys.stderr); return 2
+        try:
+            result = run_workflow_v2(cfg, business_date=args.date if args.date else (None if args.resume else observation_date()), run_id=args.run_id, resume=args.resume,
+                                     records=records, provider=provider, expected_skus=expected, expected_new_skus=new_skus,
+                                     expected_reappeared_skus=reappeared, dry_run=args.dry_run, auto_translation=bool(args.fake_provider),
+                                     auto_policy=bool(args.fake_provider), auto_export=bool(args.fake_provider), apply_enabled=bool(args.canary and args.fake_provider),
+                                     temp_db=Path(args.temp_db) if args.temp_db else None)
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr); return 20
         print(json.dumps(result, ensure_ascii=False)); return 0 if result.get("state") in {"SUCCESS", "DEGRADED"} else 20
     if args.command == "workflow-v2-shadow-compare":
         from .workflow_v2.shadow import compare_shadow_payloads

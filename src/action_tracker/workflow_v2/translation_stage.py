@@ -1,12 +1,17 @@
-"""Translation V1 planning, provider calls and field-level QA adapters."""
+"""Deprecated V0.1 fixture helpers.
+
+Workflow V2 V1 no longer imports this module.  Production-shaped execution
+must use ``LocalizationRegistry`` -> ``TranslationQueueWorker`` ->
+``TranslationResolver`` -> the existing QA and immutable apply path.  The
+helpers remain only as a migration reference for old offline fixtures and are
+not a second queue, registry, provider or apply implementation.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
 from ..localization.contracts import SourceFacts, field_source_hash
-from ..localization.providers.base import TranslationRequest
-from ..localization.qa import guard_translation
 
 SOURCE_BY_FIELD = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}
 
@@ -42,33 +47,7 @@ def plan_translations(records: Iterable[Mapping[str, Any]], *, approved: Mapping
 
 
 def translate_plan(records: Iterable[Mapping[str, Any]], plan: Iterable[TranslationPlanItem], provider: Any) -> list[dict[str, Any]]:
-    by_sku = {str(row.get("sku") or row.get("official_sku") or ""): dict(row) for row in records}
-    grouped: dict[str, list[TranslationPlanItem]] = {}
-    for item in plan:
-        grouped.setdefault(item.sku, []).append(item)
-    results: list[dict[str, Any]] = []
-    for sku, items in grouped.items():
-        row = by_sku[sku]
-        source = SourceFacts.from_record(row)
-        fields = tuple(item.field_name for item in items)
-        request = TranslationRequest(sku=sku, fields=source.as_record(), requested_fields=fields, source_hash=source.source_hash, request_id=f"workflow-v2:{sku}:{source.source_hash[:12]}")
-        try:
-            response = provider.translate(request)
-            candidate = dict(getattr(response, "fields", {}) or {})
-            qa = guard_translation(source, candidate, fields, production=False)
-            status = "PASS" if qa.get("overall_ready") else "REVIEW_REQUIRED"
-            results.append({"sku": sku, "source_hash": source.source_hash, "requested_fields": list(fields),
-                            "fields": candidate, "status": status, "qa": qa,
-                            "provider": getattr(response, "provider", getattr(provider, "provider", "unknown")),
-                            "model": getattr(response, "model", getattr(provider, "model", "unknown")),
-                            "request_id": getattr(response, "request_id", request.request_id)})
-        except Exception as exc:
-            results.append({"sku": sku, "source_hash": source.source_hash, "requested_fields": list(fields),
-                            "fields": {}, "status": "RETRY" if getattr(exc, "retryable", False) else "FAILED",
-                            "qa": {"status": "NOT_RUN", "overall_ready": False, "error": str(exc)},
-                            "provider": getattr(provider, "provider", "unknown"), "model": getattr(provider, "model", "unknown"),
-                            "error": str(exc)})
-    return results
+    raise RuntimeError("WORKFLOW_V2_V01_TRANSLATION_STAGE_DEPRECATED_USE_TRANSLATION_QUEUE_WORKER")
 
 
 def auto_validate(results: Iterable[Mapping[str, Any]], *, source_ready: bool, fact_committed: bool) -> list[dict[str, Any]]:
@@ -83,16 +62,4 @@ def auto_validate(results: Iterable[Mapping[str, Any]], *, source_ready: bool, f
 
 
 def apply_to_fixture(records: list[dict[str, Any]], results: Iterable[Mapping[str, Any]], decisions: Iterable[Mapping[str, Any]]) -> int:
-    allowed = {str(item.get("sku")) for item in decisions if item.get("decision") == "AUTO_VALIDATED"}
-    by_sku = {str(row.get("sku") or row.get("official_sku")): row for row in records}
-    changed = 0
-    for result in results:
-        if str(result.get("sku")) not in allowed:
-            continue
-        row = by_sku.get(str(result.get("sku")))
-        if not row: continue
-        for field, value in (result.get("fields") or {}).items():
-            row[{"description": "desc_zh", "details": "details_zh", "name": "name_zh", "cat1": "cat1_zh", "cat2": "cat2_zh", "spec": "spec_zh"}.get(field, f"{field}_zh")] = value
-            changed += 1
-        row["translation_status"] = "AUTO_VALIDATED"
-    return changed
+    raise RuntimeError("WORKFLOW_V2_V01_APPLY_DEPRECATED_USE_IMMUTABLE_LOCALIZATION_PATCH")

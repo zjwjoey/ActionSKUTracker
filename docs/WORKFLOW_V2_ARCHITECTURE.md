@@ -34,6 +34,21 @@ Stages are explicit: `PREFLIGHT`, `BACKUP`, `EXTRACT`, `SOURCE_AUDIT`,
 `TRANSLATION_POLICY`, `TRANSLATION_APPLY`, `EXPORT_AUDIT`, `EXPORT_WRITE`,
 and `REPORT`.
 
+The V1 integration boundary is deliberately adapter-shaped:
+
+```text
+Extraction result
+  -> Presence / Source gates -> Cleaning / Reaudit
+  -> CommitBundle -> ProductionWriter(temp SQLite)
+  -> product_detail_state plan / existing detail retry adapter
+  -> LocalizationRegistry V1 -> TranslationQueueWorker
+  -> TranslationResolver -> Fake Qwen provider (canary only)
+  -> Typed QA + Canonical QA + policy provenance
+  -> immutable localization patch / Apply (temp SQLite only)
+  -> independent ES and ZH projections
+  -> bilingual audit / parity -> existing exporter row builders (staging)
+```
+
 `WorkflowContext` creates the Madrid business date once. All stages share the
 same run id, source snapshot and commit ids. State and audit artifacts are
 written under `runtime/reports/workflow_v2/<business_date>/<workflow_run_id>`.
