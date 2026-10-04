@@ -46,7 +46,8 @@ Extraction result
   -> Typed QA + Canonical QA + policy provenance
   -> immutable localization patch / Apply (temp SQLite only)
   -> independent ES and ZH projections
-  -> bilingual audit / parity -> existing exporter row builders (staging)
+  -> bilingual audit / parity -> existing exporter row builders and, when
+     configured, `export_catalog()` into pending staging
 ```
 
 `WorkflowContext` creates the Madrid business date once. All stages share the

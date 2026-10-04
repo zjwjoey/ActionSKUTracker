@@ -36,8 +36,10 @@
 - Detail planning consumes `product_detail_state` freshness and source hashes.
 - Existing exporter row builders produce independent ES and ZH staging
   projections, validate the existing output-row contract, and publish them
-  only behind a complete ES/ZH manifest. Bilingual audits and parity checks
-  run before that manifest is written.
+  only behind a complete ES/ZH manifest. When normal project paths are
+  supplied, `export_catalog()` also runs against the isolated canary DB and
+  writes its formal files into the pending staging directory. Bilingual audits
+  and parity checks run before that manifest is written.
 - Workflow V2 tests, including the provider/QA failure matrix, are listed in
   `tests/ci_safe_tests.txt`.
 
@@ -50,7 +52,7 @@ never resolves the configured production SQLite path. Non-dry execution
 requires an explicit temporary database and `--canary`; production apply and
 formal export publication remain disabled.
 
-The remaining integrations are the real-site extraction adapter, runtime detail
-retry/apply wiring, and formal `export_catalog()`/Template 1 publication. The
-V2 runner accepts extracted records or a reviewed adapter result and keeps those
-production entry points disabled for the local canary.
+The remaining integration is the real-site extraction adapter. Detail retry is
+an injected adapter contract; the default local path remains read-only and
+does not open a browser. Template 1 publication remains outside the canary
+because formal production artifacts are still disabled.

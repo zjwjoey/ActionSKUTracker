@@ -51,7 +51,7 @@ class WorkflowV2Runner:
                  approved: Mapping[str, Mapping[str, str]] | None = None, auto_translation: bool = False,
                  auto_policy: bool = False, auto_export: bool = False, apply_enabled: bool = False,
                  dry_run: bool = False, production_apply: bool = False, temp_db: Path | None = None,
-                 cfg: Mapping[str, Any] | None = None):
+                 cfg: Mapping[str, Any] | None = None, detail_adapter: Any = None):
         self.root = Path(root); self.context = context; self.directory = run_directory(self.root, context)
         self.records = records
         self.expected_skus = set(str(item) for item in (expected_skus or ()))
@@ -62,6 +62,7 @@ class WorkflowV2Runner:
         self.apply_enabled = apply_enabled; self.dry_run = dry_run; self.production_apply = production_apply
         self.temp_db = Path(temp_db) if temp_db else self.directory / "workflow_v2.sqlite3"
         self.cfg = dict(cfg or {})
+        self.detail_adapter = detail_adapter
         self.context.database_path = str(self.temp_db)
         self.translation_runtime = None
         self.stages: dict[str, StageResult] = {}; self.report: dict[str, Any] = {}
@@ -302,7 +303,21 @@ class WorkflowV2Runner:
     def _detail_enrich(self) -> StageResult:
         from .detail_stage import classify_detail_outcome
         pending = [str(row.get("sku") or row.get("official_sku")) for row in self.records or [] if classify_detail_outcome(row) == "DETAIL_PENDING"]
-        return StageResult("PASS", {"completed": len(self.records or []) - len(pending), "pending": pending, "adapter": "existing-detail-retry-contract"})
+        plan = self._load_json_artifact("detail_plan.json", [])
+        adapter_result: Mapping[str, Any] = {}
+        if plan and self.detail_adapter is not None:
+            adapter_result = dict(self.detail_adapter(
+                records=[dict(row) for row in (self.records or [])],
+                plan=list(plan), business_date=self.context.business_date,
+                workflow_run_id=self.context.workflow_run_id,
+            ) or {})
+            updated = adapter_result.get("records")
+            if isinstance(updated, list):
+                self.records = [dict(row) for row in updated]
+                _write_json(self.directory / "records.json", self.records)
+            self.context.detail_commit_id = str(adapter_result.get("detail_commit_id") or "") or self.context.detail_commit_id
+            pending = [str(row.get("sku") or row.get("official_sku")) for row in self.records or [] if classify_detail_outcome(row) == "DETAIL_PENDING"]
+        return StageResult("PASS", {"completed": len(self.records or []) - len(pending), "pending": pending, "adapter": "injected-existing-detail-retry-contract" if self.detail_adapter else "existing-detail-retry-contract", "adapter_result": dict(adapter_result)})
     def _translation_source_audit(self) -> StageResult:
         if not self.context.source_ready: return StageResult("BLOCKED", {"reason": "SOURCE_NOT_READY"}, "TRANSLATION_SOURCE_NOT_READY")
         pending_fields = []
@@ -458,12 +473,29 @@ class WorkflowV2Runner:
             shutil.rmtree(pending)
         pending.mkdir()
         published = False
+        formal_exports: dict[str, Any] = {}
         try:
             _write_json(pending / "es.json", self.es_projection)
             _write_json(pending / "zh.json", self.zh_projection)
+            # When the caller supplies the normal project configuration, run
+            # the existing formal exporter against the isolated canary DB and
+            # redirect its output into the pending directory.  Fixture tests
+            # without export configuration retain the row-builder contract.
+            if self.cfg.get("paths"):
+                from ..exporting.service import export_catalog
+                formal_root = pending / "formal"
+                formal_cfg = self._runtime_cfg()
+                formal_cfg["paths"] = {**dict(self.cfg.get("paths") or {}), "exports": str(formal_root)}
+                for language in ("es", "zh"):
+                    formal_exports[language] = export_catalog(
+                        formal_cfg, language=language, export_date=self.context.business_date,
+                        no_images=True, run_id=self.context.workflow_run_id,
+                    )
             os.replace(pending / "es.json", staging / "es.json")
             os.replace(pending / "zh.json", staging / "zh.json")
-            _write_json(pending / "publish_manifest.json", {"status": "PUBLISHED", "files": ["es.json", "zh.json"]})
+            if (pending / "formal").exists():
+                os.replace(pending / "formal", staging / "formal")
+            _write_json(pending / "publish_manifest.json", {"status": "PUBLISHED", "files": ["es.json", "zh.json"], "formal_exports": formal_exports})
             os.replace(pending / "publish_manifest.json", staging / "publish_manifest.json")
             published = True
         finally:
@@ -473,7 +505,7 @@ class WorkflowV2Runner:
                 for path in (staging / "es.json", staging / "zh.json", staging / "publish_manifest.json"):
                     if path.exists():
                         path.unlink()
-        return StageResult("PASS", {"staging": str(staging), "atomic": published, "existing_exporter": True, "es_rows": len(self.es_projection), "zh_rows": len(self.zh_projection)})
+        return StageResult("PASS", {"staging": str(staging), "atomic": published, "existing_exporter": True, "formal_exports": formal_exports, "es_rows": len(self.es_projection), "zh_rows": len(self.zh_projection)})
     def _final_state(self) -> str:
         blockers = [item for item in self.stages.values() if item.status in {"BLOCKED", "FAILED", "BLOCKED_BY_DEPENDENCY"}]
         if any(item.status == "FAILED" for item in blockers): return "FAILED"
@@ -488,7 +520,7 @@ def run_workflow_v2(cfg: Mapping[str, Any], *, business_date: str | None = None,
                     expected_reappeared_skus: Iterable[str] | None = None, dry_run: bool = True,
                     auto_translation: bool | None = None, auto_policy: bool | None = None, auto_export: bool | None = None,
                     apply_enabled: bool = False, production_apply: bool = False,
-                    temp_db: Path | None = None) -> dict[str, Any]:
+                    temp_db: Path | None = None, detail_adapter: Any = None) -> dict[str, Any]:
     root = Path(cfg.get("project_root") or ".") / "runtime" / "reports" / "workflow_v2"
     options = dict(cfg.get("workflow_v2") or {})
     if resume and (not run_id or not business_date):
@@ -508,5 +540,5 @@ def run_workflow_v2(cfg: Mapping[str, Any], *, business_date: str | None = None,
         from ..database.integration import database_path
         if Path(temp_db).resolve() == Path(database_path(cfg)).resolve():
             raise ValueError("WORKFLOW_V2_PRODUCTION_DB_FORBIDDEN")
-    runner = WorkflowV2Runner(root=root, context=context, records=records, expected_skus=expected_skus, expected_new_skus=expected_new_skus, expected_reappeared_skus=expected_reappeared_skus, provider=provider, auto_translation=options.get("auto_translation", {}).get("enabled", False) if auto_translation is None else auto_translation, auto_policy=options.get("auto_policy_approval", {}).get("enabled", False) if auto_policy is None else auto_policy, auto_export=options.get("auto_export", {}).get("enabled", False) if auto_export is None else auto_export, apply_enabled=apply_enabled, dry_run=dry_run, production_apply=production_apply, temp_db=temp_db, cfg=cfg)
+    runner = WorkflowV2Runner(root=root, context=context, records=records, expected_skus=expected_skus, expected_new_skus=expected_new_skus, expected_reappeared_skus=expected_reappeared_skus, provider=provider, auto_translation=options.get("auto_translation", {}).get("enabled", False) if auto_translation is None else auto_translation, auto_policy=options.get("auto_policy_approval", {}).get("enabled", False) if auto_policy is None else auto_policy, auto_export=options.get("auto_export", {}).get("enabled", False) if auto_export is None else auto_export, apply_enabled=apply_enabled, dry_run=dry_run, production_apply=production_apply, temp_db=temp_db, cfg=cfg, detail_adapter=detail_adapter)
     return runner.run(resume=resume).as_dict()

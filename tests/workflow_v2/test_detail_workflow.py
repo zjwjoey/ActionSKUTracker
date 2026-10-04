@@ -34,3 +34,21 @@ def test_translation_source_audit_is_field_scoped_for_pending_detail(workflow_ro
     audit = result.stages["TRANSLATION_SOURCE_AUDIT"].details
     assert {item["field"] for item in audit["ready_fields"]} >= {"name_es", "desc_es"}
     assert {item["field"] for item in audit["pending_fields"]} == {"details_es"}
+
+
+def test_detail_adapter_updates_records_and_commit_marker(workflow_root, source_row):
+    row = dict(source_row)
+    row["details_es"] = ""
+    row["detail_status"] = "DETAIL_PENDING"
+
+    def adapter(*, records, plan, business_date, workflow_run_id):
+        updated = [dict(item, details_es="Color: Rojo", detail_status="COMPLETE") for item in records]
+        return {"records": updated, "detail_commit_id": f"detail-{workflow_run_id}"}
+
+    result = WorkflowV2Runner(
+        root=workflow_root,
+        context=new_context(workflow_root, business_date="2026-10-04"),
+        records=[row], expected_skus={"100"}, detail_adapter=adapter,
+    ).run()
+    assert result.context.detail_commit_id.startswith("detail-")
+    assert result.stages["DETAIL_ENRICH"].details["pending"] == []
