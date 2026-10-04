@@ -262,6 +262,7 @@ def build_parser() -> argparse.ArgumentParser:
     w2.add_argument("--dry-run", action="store_true", default=True); w2.add_argument("--no-dry-run", dest="dry_run", action="store_false")
     w2.add_argument("--canary", action="store_true", help="允许仅针对显式临时 SQLite 的本地 apply")
     w2.add_argument("--production-apply", action="store_true", help="在全部生产开关开启后写入配置的 SQLite PRIMARY")
+    w2.add_argument("--production-translation", action="store_true", help="Phase 1：写入 PRIMARY 西语事实与翻译队列，但禁止 localization apply/export")
     w2.add_argument("--temp-db", help="本地 canary 临时 SQLite 路径；production-apply 不使用")
     w2.add_argument("--no-network", action="store_true")
     w2.add_argument("--fake-provider", action="store_true"); w2.add_argument("--fixture", help="离线 JSON fixture")
@@ -1109,7 +1110,9 @@ def main(argv=None) -> int:
     if args.command == "data-update-v2":
         from .workflow_v2.runner import run_workflow_v2
         from .services.runtime import observation_date
-        if args.production_apply and (args.canary or args.temp_db or args.fake_provider or args.fixture):
+        if (args.production_apply or args.production_translation) and (args.canary or args.temp_db or args.fake_provider or args.fixture):
+            print(json.dumps({"error": "WORKFLOW_V2_PRODUCTION_FLAGS_CONFLICT"}, ensure_ascii=False), file=sys.stderr); return 2
+        if args.production_apply and args.production_translation:
             print(json.dumps({"error": "WORKFLOW_V2_PRODUCTION_FLAGS_CONFLICT"}, ensure_ascii=False), file=sys.stderr); return 2
         if args.fixture_auto_approve_high_risk and not (args.fake_provider and args.fixture and args.canary and args.temp_db and not args.production_apply):
             print(json.dumps({"error": "WORKFLOW_V2_FIXTURE_AUTO_APPROVAL_REQUIRES_ISOLATED_CANARY"}, ensure_ascii=False), file=sys.stderr); return 2
@@ -1126,9 +1129,9 @@ def main(argv=None) -> int:
         if args.fake_provider:
             from .localization.providers.base import FakeTranslationProvider
             provider = FakeTranslationProvider(mapping=fake_mapping)
-        if not args.dry_run and not args.temp_db and not args.production_apply:
+        if not args.dry_run and not args.temp_db and not args.production_apply and not args.production_translation:
             print(json.dumps({"error": "WORKFLOW_V2_TEMP_DB_REQUIRED"}, ensure_ascii=False), file=sys.stderr); return 2
-        if not args.dry_run and not args.canary and not args.production_apply:
+        if not args.dry_run and not args.canary and not args.production_apply and not args.production_translation:
             print(json.dumps({"error": "WORKFLOW_V2_CANARY_FLAG_REQUIRED"}, ensure_ascii=False), file=sys.stderr); return 2
         try:
             result = run_workflow_v2(cfg, business_date=args.date if args.date else (None if args.resume else observation_date()), run_id=args.run_id, resume=args.resume,
@@ -1139,11 +1142,12 @@ def main(argv=None) -> int:
                                      auto_export=bool(args.fake_provider) or bool((cfg.get("workflow_v2") or {}).get("auto_export", {}).get("enabled", False)),
                                      apply_enabled=bool((args.canary or args.production_apply) and (args.fake_provider or (cfg.get("workflow_v2") or {}).get("enabled", False))),
                                      production_apply=bool(args.production_apply),
+                                     production_mode=bool(args.production_translation),
                                      temp_db=Path(args.temp_db) if args.temp_db else None,
                                      allow_high_risk_auto_approval=bool(args.fixture_auto_approve_high_risk))
         except ValueError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr); return 20
-        print(json.dumps(result, ensure_ascii=False)); return 0 if result.get("state") in {"SUCCESS", "DEGRADED"} else 20
+        print(json.dumps(result, ensure_ascii=False)); return 0 if result.get("state") in {"SUCCESS", "SUCCESS_WITH_PENDING", "DEGRADED"} else 20
     if args.command == "workflow-v2-shadow-compare":
         from .workflow_v2.shadow import compare_shadow_payloads
         legacy = json.loads(Path(args.legacy).read_text(encoding="utf-8"))

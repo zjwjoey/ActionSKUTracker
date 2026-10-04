@@ -65,6 +65,7 @@ tests/test_translation_registry_qwen.py
 tests/test_translation_system_v1_completion.py
 tests/test_translation_v1_final_guarantees.py
 tests/test_translation_safety_defaults.py
+tests/test_workflow_v2_production_preflight.py
 tests/test_product_family_governance.py
 tests/test_retranslation_batch.py
 tests/test_correction_wave_gate.py
@@ -87,3 +88,4 @@ tests/workflow_v2/test_translation_plan.py
 tests/workflow_v2/test_translation_readiness.py
 tests/workflow_v2/test_workflow_fail_closed.py
 tests/workflow_v2/test_workflow_resume.py
+tests/workflow_v2/test_production_phase1_state_machine.py

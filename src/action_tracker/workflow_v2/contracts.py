@@ -51,6 +51,7 @@ STAGE_DEPENDENCIES: dict[str, tuple[str, ...]] = {
 
 class WorkflowState(str, Enum):
     SUCCESS = "SUCCESS"
+    SUCCESS_WITH_PENDING = "SUCCESS_WITH_PENDING"
     DEGRADED = "DEGRADED"
     BLOCKED = "BLOCKED"
     FAILED = "FAILED"
@@ -91,6 +92,11 @@ class WorkflowContext:
     presence_ready: bool = False
     translation_ready: bool = False
     export_ready: bool = False
+    detail_pending: bool = False
+    translation_pending: bool = False
+    review_required: bool = False
+    apply_pending: bool = False
+    export_pending: bool = False
     blockers: list[WorkflowBlocker] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -130,6 +136,11 @@ class StageResult:
     @property
     def passed(self) -> bool:
         return self.status in {"PASS", "SKIPPED", "NOT_REQUIRED"}
+
+
+DEPENDENCY_SATISFIED = frozenset({"PASS", "SKIPPED", "NOT_REQUIRED"})
+DEPENDENCY_CONTINUABLE = frozenset({"PENDING", "REVIEW_REQUIRED", "DEGRADED"})
+DEPENDENCY_BLOCKING = frozenset({"BLOCKED", "FAILED", "BLOCKED_BY_DEPENDENCY"})
 
 
 @dataclass

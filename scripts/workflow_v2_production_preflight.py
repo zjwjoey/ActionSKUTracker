@@ -115,7 +115,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     base = yaml.safe_load(base_config_path.read_text(encoding="utf-8")) or {}
     overlay = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     raw = _deep_merge(base, overlay) if config_path != base_config_path else base
+    expected_ref = getattr(args, "expected_ref", None)
     expected_head = args.expected_head
+    if expected_ref:
+        expected_head = _git(source_root, "rev-parse", f"{expected_ref}^{{commit}}")
     expected_branch = args.expected_branch
     checks: list[dict[str, Any]] = []
 
@@ -180,7 +183,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     checks.append(_check("primary_database_path", db_path.exists(), str(db_path)))
     db_report: dict[str, Any] = {"path": str(db_path), "sha256": _sha256(db_path)}
     latest_run_id: str | None = None
-    if db_path.exists():
+    # Reject a truncated/non-SQLite file before opening it so preflight emits
+    # a normal NOT_READY report instead of exposing a traceback.
+    sqlite_header_ok = db_path.exists() and db_path.read_bytes()[:16] == b"SQLite format 3\x00"
+    if sqlite_header_ok:
         with sqlite3.connect(db_path) as db:
             db.row_factory = sqlite3.Row
             tables = {str(row[0]) for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -233,6 +239,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "source_root": str(source_root),
         "data_root": str(data_root),
         "config": str(config_path),
+        "audited_ref": expected_ref,
+        "audited_content_head": actual_head,
         "database": db_report,
         "checks": checks,
         "qwen_call_performed": False,
@@ -247,9 +255,12 @@ def main() -> int:
     parser.add_argument("--data-root", type=Path, required=True)
     parser.add_argument("--config", type=Path, help="explicit deployment profile overlay")
     parser.add_argument("--expected-branch", required=True)
-    parser.add_argument("--expected-head", required=True)
+    parser.add_argument("--expected-head")
+    parser.add_argument("--expected-ref", help="git ref/tag whose resolved commit is the audited content head")
     parser.add_argument("--json", action="store_true", help="emit JSON only")
     args = parser.parse_args()
+    if not args.expected_head and not args.expected_ref:
+        parser.error("one of --expected-head or --expected-ref is required")
     try:
         report = run(args)
     except Exception as exc:  # preflight must return an actionable report, not a traceback

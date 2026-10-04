@@ -68,14 +68,14 @@ operations:
 # Workflow V2 is the controlled production write path. Translation remains
 # bounded and publication stays operator controlled until cutover approval.
 workflow_v2:
-  enabled: true
+  enabled: false
   # Read-only comparison of the existing daily record set against the
   # deterministic Workflow V2 source gate. Enable only after reviewing the
   # generated run evidence; a failed comparison blocks formal publication.
   shadow_preflight:
-    enabled: true
+    enabled: false
   auto_translation:
-    enabled: true
+    enabled: false
     provider: qwen_mt
   # Daily fact commits must not wait on the whole historical translation queue.
   translation_batch_limit: 50
