@@ -78,6 +78,8 @@ workflow_v2:
   auto_translation:
     enabled: false
     provider: qwen_mt
+  # Daily fact commits must not wait on the whole historical translation queue.
+  translation_batch_limit: 50
   auto_policy_approval:
     enabled: false
   auto_export:

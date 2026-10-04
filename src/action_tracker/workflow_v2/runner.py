@@ -506,8 +506,11 @@ class WorkflowV2Runner:
             return StageResult("BLOCKED", {"reason": "PROVIDER_NOT_CONFIGURED"}, "TRANSLATION_PROVIDER_MISSING")
         self.translation_runtime.resolver.provider = provider
         self.translation_runtime.worker.resolver.provider = provider
+        options = dict(self.cfg.get("workflow_v2") or {})
+        configured_limit = int(options.get("translation_batch_limit") or 50)
+        batch_limit = max(1, min(len(self.translation_plan), configured_limit))
         result = self.translation_runtime.worker.process_once(
-            limit=max(50, len(self.translation_plan)),
+            limit=batch_limit,
             worker_id=f"workflow-v2:{self.context.workflow_run_id}",
             run_id=self.context.workflow_run_id,
         )
@@ -527,8 +530,9 @@ class WorkflowV2Runner:
         for item in self.translation_results: item.setdefault("worker", result.as_dict())
         _write_json(self.directory / "translation_result.json", self.translation_results)
         _write_csv(self.directory / "translation_result.csv", self.translation_results)
-        status = "PASS" if result.failed == 0 and result.blocked == 0 and result.retried == 0 else ("DEGRADED" if result.retried else "BLOCKED")
-        return StageResult(status, {"called": len({str(row.get('sku') or '') for row in self.records or []}), "provider_calls": result.completed + result.retried + result.failed + result.blocked, "worker": result.as_dict()})
+        remaining = max(0, len(self.translation_plan) - (result.completed + result.retried + result.failed + result.blocked))
+        status = "PASS" if remaining == 0 and result.failed == 0 and result.blocked == 0 and result.retried == 0 else ("DEGRADED" if result.retried == 0 else "BLOCKED")
+        return StageResult(status, {"called": len({str(row.get('sku') or '') for row in self.records or []}), "provider_calls": result.completed + result.retried + result.failed + result.blocked, "batch_limit": batch_limit, "queued": len(self.translation_plan), "remaining": remaining, "worker": result.as_dict()})
     def _translation_qa(self) -> StageResult:
         if not self.translation_results:
             self.context.translation_ready = not self.translation_plan

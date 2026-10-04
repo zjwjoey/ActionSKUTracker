@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -356,9 +356,22 @@ class LocalizationRegistry:
         global for the standalone translation worker.
         """
         now = _now()
+        stale_before = (datetime.now(timezone.utc) - timedelta(minutes=15)).isoformat()
         claimed: list[dict[str, Any]] = []
         with connect(self.path) as db:
             db.execute("BEGIN IMMEDIATE")
+            # A worker can be interrupted after claiming rows but before it
+            # records a result.  Requeue only old claims so a resumed run can
+            # recover them without two live workers processing the same unit.
+            stale_where = "status='CLAIMED' AND claimed_at IS NOT NULL AND claimed_at<?"
+            stale_params: tuple[Any, ...] = (stale_before,)
+            if run_id:
+                stale_where += " AND run_id=?"
+                stale_params += (run_id,)
+            db.execute(
+                f"UPDATE translation_queue SET status='RETRY',last_error=? WHERE {stale_where}",
+                ("STALE_CLAIM_RECOVERED", *stale_params),
+            )
             where = "run_id=? AND status IN ('PENDING','RETRY')" if run_id else "status IN ('PENDING','RETRY')"
             params = (run_id, int(limit)) if run_id else (int(limit),)
             rows = db.execute(f"SELECT queue_id,official_sku,language,source_hash,requested_fields,retry_count,run_id FROM translation_queue WHERE {where} ORDER BY CASE priority WHEN 'HIGH' THEN 0 WHEN 'NORMAL' THEN 1 ELSE 2 END,created_at LIMIT ?", params).fetchall()
