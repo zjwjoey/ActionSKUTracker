@@ -3,9 +3,9 @@
 ## Audited source
 
 - Branch: `deploy/workflow-v2-production-20261004`
-- Audited ref: `production/workflow-v2-phase1-rc2`
-- Audited content head: `2146e716aa13d63726b6657adba8cc13ada70704` (`fix: mark retryable provider failures degraded`)
-- Publication metadata head: `d4ff91bfc8c1fae76774026237e97b792354f759`
+- Audited ref: `production/workflow-v2-phase1-rc3`
+- Audited content head: `0184a8faf00f23343598ed4d11b1721f9469d01a` (`fix: keep canary export resilient to missing formal run`)
+- Publication metadata head: `921e05e737af286136843ae0a31734338354ef01`
 - Naming-history branch was not merged.
 
 The candidate tag is the immutable code boundary for this audit. Later report or
@@ -19,7 +19,7 @@ publication metadata commits must not change the audited content head.
 - `python -m pytest tests/test_translation_safety_defaults.py -q`: **6 passed**
 - `python -m pytest -q`: **750 passed**
 - CI-safe allowlist: **750 passed locally**
-- Exact-head GitHub CI for publication metadata head `d4ff91bfc8c1fae76774026237e97b792354f759`: **PASS**, run `37202632255` (Ubuntu and Windows).
+- Exact-head GitHub CI for the previous publication metadata head `921e05e737af286136843ae0a31734338354ef01`: **PASS**, run `37202816201` (Ubuntu and Windows). The new candidate commit requires one fresh exact-head CI run after push.
 
 The tests use temporary SQLite databases, fixtures, fake providers, and mock
 environment variables. They do not run the production database or make Qwen or
@@ -55,7 +55,7 @@ Action requests.
 | AUDIT_REF_FRESHNESS | PASS |
 | FULL_PYTEST | PASS |
 | CI_SAFE | PASS locally |
-| EXACT_HEAD_CI | PASS (run 37202632255; Ubuntu + Windows) |
+| EXACT_HEAD_CI | PENDING fresh run for rc3 |
 
 ## Runtime safety record
 
@@ -67,9 +67,10 @@ REAL_FORMAL_EXPORT_PUBLISHED           NO
 MAIN_MODIFIED                          NO
 ```
 
-The audited branch and candidate tags are pushed. Exact-head CI is green on
-both required operating systems. The production conclusion is:
+The code fix is locally verified and will remain not ready for a new canary
+until exact-head CI for rc3 is green on both required operating systems. The
+current conclusion is:
 
 ```text
-READY_FOR_PHASE1_LOCAL_PRODUCTION_CANARY
+NOT_READY_FOR_PHASE1_PRODUCTION
 ```
