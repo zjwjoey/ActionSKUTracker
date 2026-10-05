@@ -51,8 +51,17 @@ class LocalizationRegistry:
         raw_hash = value_hash(raw_payload) if raw_payload is not None else None
         normalized_hash = value_hash(normalized_payload)
         with connect(self.path) as db:
-            row = db.execute("SELECT source_version_id FROM translation_source_versions WHERE official_sku=? AND source_hash=? AND hash_contract_version=?", (official_sku, source_hash, hash_contract_version)).fetchone()
-            if row:
+            row = db.execute(
+                "SELECT source_version_id,source_run_id FROM translation_source_versions "
+                "WHERE official_sku=? AND source_hash=? AND hash_contract_version=? "
+                "ORDER BY created_at DESC LIMIT 1",
+                (official_sku, source_hash, hash_contract_version),
+            ).fetchone()
+            # Preserve idempotency within one observation run.  A later run
+            # with the same source hash still needs its own immutable source
+            # version so queue revisions, approvals and Apply evidence all
+            # point at the current run instead of an older run's record.
+            if row and (not source_run_id or str(row[1] or "") == str(source_run_id)):
                 return str(row[0])
             # Freshness is field-level.  A changed spec must not invalidate an
             # already approved name/category translation.  Capture the latest
