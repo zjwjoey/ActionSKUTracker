@@ -297,7 +297,7 @@ class LocalizationRegistry:
         This is an explicit shadow operation. It never updates product facts,
         localizations, Master or dictionary files.
         """
-        source_count = unit_count = queue_count = skipped = 0
+        source_count = unit_count = queue_count = queue_rebound = skipped = 0
         for record in records:
             facts = SourceFacts.from_record(record)
             if not facts.sku:
@@ -326,8 +326,21 @@ class LocalizationRegistry:
                     canonical = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}.get(str(unit["field_name"]), str(unit["field_name"]))
                     queue_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"translation:{facts.sku}:{source_hash(facts.as_record())}:{canonical}"))
                     db.execute("INSERT OR IGNORE INTO translation_queue(queue_id,official_sku,language,source_hash,requested_fields,reason,priority,status,run_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", (queue_id, facts.sku, "zh", source_hash(facts.as_record()), canonical, "SOURCE_VERSION_NEW_OR_CHANGED", "NORMAL", "PENDING", source_run_id, _now()))
+                    # A durable queue item is keyed by SKU/source hash/field,
+                    # so an unresolved item created by an older run survives
+                    # unchanged-source re-ingestion with its original run_id.
+                    # Rebind only open work to the current authoritative run;
+                    # claimed/completed/failed/blocked items remain isolated.
+                    # This lets a bounded production run repair historical
+                    # backlog without allowing it to claim active work from a
+                    # different run or bypass terminal review states.
+                    rebound = db.execute(
+                        "UPDATE translation_queue SET run_id=? WHERE queue_id=? AND status IN ('PENDING','RETRY') AND COALESCE(run_id,'')<>?",
+                        (source_run_id, queue_id, source_run_id),
+                    )
+                    queue_rebound += int(rebound.rowcount or 0)
                     queue_count += 1
-        return {"source_versions": source_count, "units": unit_count, "queue_insert_attempts": queue_count, "skipped": skipped}
+        return {"source_versions": source_count, "units": unit_count, "queue_insert_attempts": queue_count, "queue_rebound": queue_rebound, "skipped": skipped}
 
     def approved_terms(self, *, source_terms: Iterable[str] | None = None) -> list[dict[str, Any]]:
         with connect(self.path) as db:
