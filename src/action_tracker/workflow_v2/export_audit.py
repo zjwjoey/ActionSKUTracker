@@ -42,7 +42,7 @@ def audit_zh(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     from ..localization.provenance import coerce_field_provenance
     for row in values:
         sku = str(row.get("sku") or row.get("official_sku") or "")
-        if str(row.get("translation_status") or "").upper() not in {"APPROVED", "AUTO_VALIDATED", "HUMAN_APPROVED", "PASS"}:
+        if str(row.get("translation_status") or "").upper() not in {"APPROVED", "AUTO_VALIDATED", "HUMAN_APPROVED", "PASS", "LEGACY_CURRENT"}:
             issues.append({"sku": sku, "code": "TRANSLATION_NOT_READY", "status": row.get("translation_status")})
         for field in ZH_FIELDS:
             if row.get(field) in (None, "") and str(row.get(field.replace("_zh", "_es")) or ""):

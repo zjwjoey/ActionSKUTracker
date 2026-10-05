@@ -745,6 +745,26 @@ class WorkflowV2Runner:
                     row["translation_status"] = "APPROVED" if required_fields.issubset(approved_fields.get(sku, set())) else (loc.get("review_status") or "")
                     row["translation_source_hash"] = approved_hash.get(sku) or loc.get("source_hash") or ""
                     row["translation_freshness"] = loc.get("freshness_status") or ""
+                    # Older catalog rows predate the Registry approval model.
+                    # If their current source hash, aggregate freshness and
+                    # required field values are all valid, audit the actual
+                    # field content instead of treating a legacy row label
+                    # (PENDING/FALLBACK_ES) as a missing translation.
+                    current_source_hash = str(row.get("source_hash") or "")
+                    localized_source_hash = str(loc.get("source_hash") or "")
+                    required_values_present = all(
+                        str(row.get({"name": "name_zh", "cat1": "cat1_zh", "cat2": "cat2_zh",
+                                     "spec": "spec_zh", "description": "desc_zh", "details": "details_zh"}[field]) or "").strip()
+                        for field in required_fields
+                    )
+                    if (not required_fields.issubset(approved_fields.get(sku, set()))
+                            and required_values_present
+                            and current_source_hash
+                            and localized_source_hash == current_source_hash
+                            and str(loc.get("freshness_status") or "").upper() == "CURRENT"):
+                        row["translation_status"] = "LEGACY_CURRENT"
+                        row["translation_source_hash"] = localized_source_hash
+                        row["translation_freshness"] = "CURRENT"
         # The two projections are separate objects even when a fixture has no
         # localization rows yet; parity is evaluated across their identities.
         from ..exporting.service import build_es_rows, validate_output_rows
