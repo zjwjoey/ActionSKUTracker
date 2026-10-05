@@ -590,11 +590,12 @@ class WorkflowV2Runner:
         canonical_to_field = {"name": "name", "cat1": "cat1", "cat2": "cat2", "spec": "spec", "description": "description", "details": "details"}
         grouped: dict[str, dict[str, Any]] = {}
         with connect(self.temp_db) as db:
-            revisions = db.execute("""SELECT s.official_sku,u.field_name,r.revision_id,r.target_text,
+            revisions = db.execute("""SELECT DISTINCT s.official_sku,u.field_name,r.revision_id,r.target_text,
                 r.source_hash,r.qa_status,r.canonical_qa_status,r.review_status
                 FROM translation_revisions r JOIN translation_units u ON u.current_revision_id=r.revision_id
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
-                WHERE s.source_run_id=?""", (self.context.workflow_run_id,)).fetchall()
+                JOIN translation_queue q ON q.official_sku=s.official_sku AND q.source_hash=s.source_hash
+                WHERE q.run_id=? AND q.status='COMPLETED'""", (self.context.workflow_run_id,)).fetchall()
         for row in revisions:
             item = grouped.setdefault(str(row[0]), {"sku": str(row[0]), "status": "PASS", "fields": {}, "source_hash": str(row[4]), "qa": {"status": str(row[5]), "overall_ready": True}})
             item["fields"][canonical_to_field.get(str(row[1]), str(row[1]))] = str(row[3] or "")
@@ -649,11 +650,12 @@ class WorkflowV2Runner:
         field_map = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}
         decisions = []
         with connect(self.temp_db) as db:
-            rows = db.execute("""SELECT s.official_sku,u.field_name,u.unit_id,r.revision_id,r.source_hash,
+            rows = db.execute("""SELECT DISTINCT s.official_sku,u.field_name,u.unit_id,r.revision_id,r.source_hash,
                 r.qa_status,r.canonical_qa_status,r.review_status,r.target_text
                 FROM translation_revisions r JOIN translation_units u ON u.current_revision_id=r.revision_id
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
-                WHERE s.source_run_id=?""", (self.context.workflow_run_id,)).fetchall()
+                JOIN translation_queue q ON q.official_sku=s.official_sku AND q.source_hash=s.source_hash
+                WHERE q.run_id=? AND q.status='COMPLETED'""", (self.context.workflow_run_id,)).fetchall()
         for row in rows:
             ready = bool(self.context.source_ready and self.context.source_commit_id
                          and str(row[5] or "").upper() == "PASS"
@@ -696,7 +698,7 @@ class WorkflowV2Runner:
         staged = store.stage_approved_registry_patches(
             expected_base_commit_id=self.context.source_commit_id,
             actor="human:workflow-v2-local-canary",
-            source_run_id=self.context.workflow_run_id,
+            queue_run_id=self.context.workflow_run_id,
         )
         from ..database.production import apply_approved_localization_patches
         applied = apply_approved_localization_patches(self.temp_db, patch_ids=staged["patch_ids"], expected_base_commit_id=self.context.source_commit_id, actor="service:workflow-v2-local-canary", run_id=f"{self.context.workflow_run_id}-localization-apply") if staged["patch_ids"] else {"applied_fields": 0}
