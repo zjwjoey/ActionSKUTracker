@@ -135,6 +135,13 @@ def test_export_cli_exposes_explicit_research_release_mode():
     assert args.research_release is True
 
 
+def test_template1_cli_exposes_explicit_research_release_mode():
+    args = build_parser().parse_args([
+        "export-template1", "--date", "2026-09-08", "--research-release",
+    ])
+    assert args.research_release is True
+
+
 def test_formal_export_blocks_non_sqlite_source_in_research_release(monkeypatch, tmp_path):
     profile = SimpleNamespace(language="zh", profile_id="full_zh_no_images")
     source = SimpleNamespace(kind="FORMAL_SNAPSHOT", source_commit_id=None, run_id="r1", records=tuple(),

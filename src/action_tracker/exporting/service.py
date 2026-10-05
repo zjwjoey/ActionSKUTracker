@@ -28,12 +28,31 @@ from .dictionary_join import (
     load_dictionary_context,
     unresolved_brand_ids_for_records,
 )
+from .repair import ExportRepairEngine, default_overrides_path
+from .repair_report import ExportRepairReport, audit_repaired_rows
 from .excel_writer import write_catalog_xlsx
 from .profiles import ExportProfile, ExportProfileError, load_profile
 
 
 class ExportValidationError(ValueError):
     """正式导出来源或记录不满足冻结契约。"""
+
+
+def _export_repair_allowed_tokens(dictionary: Any) -> set[str]:
+    """Return the reviewed display-token allowlist used by repair and audit."""
+    from ..dictionary import is_confirmed_brand_record
+    from ..localization.release_gate import load_allowed_tokens
+
+    tokens = set(load_allowed_tokens(Path(dictionary.directory)))
+    for row in dictionary.brand_by_id.values():
+        if not is_confirmed_brand_record(row):
+            continue
+        for value in (row.get("canonical_name"), row.get("brand_id")):
+            if value:
+                tokens.add(str(value).strip())
+        aliases = str(row.get("aliases_es") or "")
+        tokens.update(piece.strip() for piece in re.split(r"[,;|]", aliases) if piece.strip())
+    return tokens
 
 
 def _database_path(cfg: dict[str, Any]) -> Path:
@@ -105,19 +124,25 @@ def export_catalog(
     fallback_counts: dict[str, int] = {}
     unresolved_brand_ids: list[str] = []
     historical_localization_reuse: dict[str, Any] = {}
+    repair_report: ExportRepairReport | None = None
+    repair_allowed_tokens: set[str] = set()
     if language == "es":
         validate_spanish_source_fields(source.records)
         rows = build_es_rows(source.records)
     elif language == "zh" and source.kind == "SQLITE_CURRENT":
+        repair_report = ExportRepairReport(run_id=source.run_id, rule_version=ExportRepairEngine.VERSION)
         try:
             dictionary = load_dictionary_context(cfg)
             rows, fallback_counts = build_zh_rows_from_localized_source(
-                source.records, category_context=dictionary,
+                source.records, category_context=dictionary, repair_report=repair_report,
+                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
             )
             dictionary_hash = dictionary.content_hash
+            repair_allowed_tokens = _export_repair_allowed_tokens(dictionary)
         except DictionaryJoinError as exc:
             raise ExportValidationError(str(exc)) from exc
     elif language == "zh":
+        repair_report = ExportRepairReport(run_id=source.run_id, rule_version=ExportRepairEngine.VERSION)
         try:
             dictionary = load_dictionary_context(cfg)
             zh_records = source.records
@@ -125,8 +150,12 @@ def export_catalog(
                 zh_records, historical_localization_reuse = _reuse_source_bound_localizations(
                     cfg, source.records,
                 )
-            rows, fallback_counts = build_zh_rows(zh_records, dictionary)
+            rows, fallback_counts = build_zh_rows(
+                zh_records, dictionary, repair_report=repair_report,
+                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
+            )
             dictionary_hash = dictionary.content_hash
+            repair_allowed_tokens = _export_repair_allowed_tokens(dictionary)
             unresolved_brand_ids = unresolved_brand_ids_for_records(source.records, dictionary)
         except DictionaryJoinError as exc:
             raise ExportValidationError(str(exc)) from exc
@@ -134,6 +163,28 @@ def export_catalog(
     else:
         raise ExportValidationError(f"EXPORT_LANGUAGE_UNSUPPORTED: {language}")
     validate_output_rows(rows)
+    repair_audit: dict[str, Any] | None = None
+    repair_report_path: Path | None = None
+    if language == "zh" and repair_report is not None:
+        repair_audit = audit_repaired_rows(
+            source.records, rows, allowed_tokens=repair_allowed_tokens,
+        )
+        unresolved_blocking = sum(1 for item in repair_report.unresolved if item.blocking)
+        repair_audit["unresolved_blocking_count"] = unresolved_blocking
+        repair_audit["release_ready"] = bool(repair_audit.get("release_ready")) and unresolved_blocking == 0
+        repair_report.set_audit(repair_audit)
+        repair_report.finalize(
+            source.records, rows, source_hash=canonical_source_hash(source.records),
+            sku_set_hash=_sku_set_hash(str(row["编号"]) for row in rows),
+        )
+        if research_release and not bool(repair_audit.get("release_ready")):
+            raise ExportValidationError(
+                "EXPORT_REPAIR_GATE_FAILED:"
+                f"p0={repair_audit.get('p0_findings', 0)};"
+                f"affected_fields={repair_audit.get('blocking_affected_fields', 0)};"
+                f"unresolved={repair_audit.get('unresolved_blocking_count', 0)};"
+                f"field_pass_rate={repair_audit.get('field_pass_rate', 0):.4f}"
+            )
     if research_release:
         from ..localization.release_gate import audit_research_release, load_allowed_tokens, load_explicit_exceptions
         master_quality = None
@@ -216,7 +267,21 @@ def export_catalog(
             manifest["dictionary_unresolved_brand_ids"] = unresolved_brand_ids
             if historical_localization_reuse:
                 manifest["historical_localization_reuse"] = historical_localization_reuse
+            manifest["export_repair"] = {
+                "engine_version": ExportRepairEngine.VERSION,
+                "audit_findings": int((repair_audit or {}).get("audit_findings") or 0),
+                "affected_fields": int((repair_audit or {}).get("affected_fields") or 0),
+                "affected_skus": int((repair_audit or {}).get("affected_skus") or 0),
+                "field_pass_rate": float((repair_audit or {}).get("field_pass_rate") or 0),
+                "p0_findings": int((repair_audit or {}).get("p0_findings") or 0),
+                "unresolved_blocking_count": int((repair_audit or {}).get("unresolved_blocking_count") or 0),
+                "release_ready": bool((repair_audit or {}).get("release_ready")),
+                "repair_count": len(repair_report.events) if repair_report else 0,
+            }
         manifest_path = output_path.with_suffix(".manifest.json")
+        if repair_report is not None:
+            repair_report_path = output_path.with_suffix(".repair-report.json")
+            _write_json_atomic(repair_report_path, repair_report.as_dict())
         _publish_export_pair(preview_path, output_path, manifest_path, manifest)
         if selection_id:
             from ..delivery.artifacts import ArtifactService
@@ -245,6 +310,8 @@ def export_catalog(
         "selection_id": selection_id,
         "artifact_source_commit_id": artifact_source_commit_id,
         "release_mode": "research_release" if research_release else "preview",
+        "repair_report": str(repair_report_path) if repair_report_path else None,
+        "repair_audit": repair_audit,
     }
 
 

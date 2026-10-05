@@ -72,6 +72,7 @@ tests/test_correction_wave_gate.py
 tests/test_action_localization_lite.py
 tests/test_action_localization_lite_v2_review.py
 tests/test_action_localization_lite_v3_review.py
+tests/test_export_repair.py
 tests/workflow_v2/test_detail_workflow.py
 tests/workflow_v2/test_failure_matrix.py
 tests/workflow_v2/test_export_audit_es.py

@@ -198,7 +198,10 @@ class OperationsService:
             return export_catalog(cfg, language=language, export_date=export_date, no_images=not kind.endswith("_IMAGES"), selection_id=selection_id)
         if kind == "TEMPLATE1":
             from ..exporting.template1_service import export_template1
-            return export_template1(cfg, export_date=export_date, selection_id=selection_id, with_images=False)
+            return export_template1(
+                cfg, export_date=export_date, selection_id=selection_id,
+                with_images=False, research_release=True,
+            )
         if kind == "IMAGE_ZIP":
             from ..delivery.artifacts import ArtifactService
             image_root = Path(cfg.get("paths", {}).get("images") or self.db_path.parent.parent / "images") / "derivatives" / "excel_250"

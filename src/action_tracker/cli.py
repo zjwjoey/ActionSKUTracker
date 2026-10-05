@@ -90,6 +90,7 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--date", required=True, help="导出业务日期（YYYY-MM-DD）")
     t.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
     t.add_argument("--selection-id", help="可选：仅导出已保存 Selection 的 SKU")
+    t.add_argument("--research-release", action="store_true", help="启用严格中文修复发布门禁")
     he = sub.add_parser("export-history", help="导出历史 Presence 上下架矩阵")
     he.add_argument("--date", required=True, help="导出标记日期（YYYY-MM-DD）")
     ims = sub.add_parser("image-sync", help="同步正式 CURRENT 的本地图片资产")
@@ -363,6 +364,7 @@ def main(argv=None) -> int:
             result = export_template1(
                 cfg, export_date=args.date, run_id=args.run_id,
                 with_images=bool(args.with_images), selection_id=args.selection_id,
+                research_release=bool(args.research_release),
             )
         except (ValueError, OSError) as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)

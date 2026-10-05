@@ -27,6 +27,18 @@ from ..dictionary import (
 from ..services.normalization import parse_bool_zh, parse_price
 from ..localization.policy import OMIT_BRAND_FROM_CHINESE_DISPLAY
 from ..localization.formatter import format_spec
+from .repair import ExportRepairEngine
+from .repair_report import ExportRepairReport
+from .repair_rules import (
+    repair_description,
+    repair_details,
+    repair_details_with_context,
+    repair_spec,
+    repair_title,
+    repair_title_with_context,
+    repair_unit_price,
+    repair_content_with_context,
+)
 
 
 class DictionaryJoinError(ValueError):
@@ -123,10 +135,33 @@ def load_dictionary_context(cfg: dict[str, Any]) -> DictionaryContext:
     )
 
 
-def build_zh_rows(records: Iterable[dict[str, Any]], context: DictionaryContext) -> tuple[list[dict[str, Any]], dict[str, int]]:
+def _confirmed_display_brand_tokens(context: DictionaryContext | None) -> set[str]:
+    if context is None:
+        return set()
+    tokens: set[str] = set()
+    for row in context.brand_by_id.values():
+        if not is_confirmed_brand_record(row):
+            continue
+        for value in (row.get("canonical_name"), row.get("brand_id")):
+            if value:
+                tokens.add(str(value).strip())
+        aliases = str(row.get("aliases_es") or "")
+        tokens.update(piece.strip() for piece in re.split(r"[,;|]", aliases) if piece.strip())
+    return tokens
+
+
+def build_zh_rows(
+    records: Iterable[dict[str, Any]], context: DictionaryContext, *,
+    repair_report: ExportRepairReport | None = None,
+    repair_overrides_path: Path | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """按冻结优先级生成中文导出行，并返回逐字段 fallback 统计。"""
     rows: list[dict[str, Any]] = []
     fallback_counts: dict[str, int] = {}
+    repair_engine = ExportRepairEngine(
+        report=repair_report, overrides_path=repair_overrides_path,
+        excluded_display_tokens=_confirmed_display_brand_tokens(context),
+    ) if repair_report is not None else None
     for record in sorted(records, key=_sku_sort_key):
         sku = _text(record.get("sku"))
         product = context.product_by_sku.get(sku, {})
@@ -187,23 +222,64 @@ def build_zh_rows(records: Iterable[dict[str, Any]], context: DictionaryContext)
         # same source-bound export repairs as the SQLite PRIMARY path so a
         # dated on-sale export cannot regress after the current run path was
         # fixed.
-        title = _repair_export_title(title, _none_or_text(record.get("name_es")))
+        if repair_engine is not None:
+            title = repair_engine.apply(
+                sku=sku, field="name_zh", value=title, source_field="name_es",
+                source=record.get("name_es"), source_hash=source_hash,
+                rule="TITLE_SOURCE_TOKEN", repairer=lambda value, source: repair_title_with_context(
+                    value, source, excluded_tokens=repair_engine.excluded_display_tokens,
+                ),
+            )
+            title = repair_engine.apply_override(
+                sku=sku, field="name_zh", value=title, record=record, source_field="name_es",
+            )
+        else:
+            title = repair_title(title, _none_or_text(record.get("name_es")))
         # A current model/manual value is already a reviewed translation.  The
         # source formatter is only allowed to rebuild a stale/missing value;
         # otherwise a valid value such as “模型规格” gets replaced by the raw
         # quantity extracted from Spanish.
-        spec = _repair_export_spec(
-            spec,
-            _none_or_text(record.get("spec_es")),
-            force_source_facts=spec_fallback,
-        )
-        unit_price = _repair_export_unit_price(unit_price)
-        description = _repair_export_description(
-            description, _none_or_text(record.get("desc_es"))
-        )
-        details = _repair_export_details(
-            details, _none_or_text(record.get("details_es"))
-        )
+        if repair_engine is not None:
+            spec = repair_engine.apply(
+                sku=sku, field="spec_zh", value=spec, source_field="spec_es",
+                source=record.get("spec_es"), source_hash=source_hash,
+                rule="SPEC_SOURCE_FACTS", repairer=lambda value, source: repair_spec(
+                    value, source, force_source_facts=spec_fallback,
+                ),
+            )
+            spec = repair_engine.apply_override(
+                sku=sku, field="spec_zh", value=spec, record=record, source_field="spec_es",
+            )
+            unit_price = repair_engine.apply(
+                sku=sku, field="unit_price_zh", value=unit_price, source_field="unit_price",
+                source=record.get("unit_price"), source_hash=source_hash,
+                rule="UNIT_PRICE_NORMALIZE", repairer=repair_unit_price,
+            )
+            description = repair_engine.apply(
+                sku=sku, field="desc_zh", value=description, source_field="desc_es",
+                source=record.get("desc_es"), source_hash=source_hash,
+                rule="DESCRIPTION_SOURCE_FACTS", repairer=lambda value, source: repair_content_with_context(
+                    value, source, excluded_tokens=repair_engine.excluded_display_tokens,
+                ),
+            )
+            description = repair_engine.apply_override(
+                sku=sku, field="desc_zh", value=description, record=record, source_field="desc_es",
+            )
+            details = repair_engine.apply(
+                sku=sku, field="details_zh", value=details, source_field="details_es",
+                source=record.get("details_es"), source_hash=source_hash,
+                rule="DETAILS_SOURCE_FACTS", repairer=lambda value, source: repair_details_with_context(
+                    value, source, excluded_tokens=repair_engine.excluded_display_tokens,
+                ),
+            )
+            details = repair_engine.apply_override(
+                sku=sku, field="details_zh", value=details, record=record, source_field="details_es",
+            )
+        else:
+            spec = repair_spec(spec, _none_or_text(record.get("spec_es")), force_source_facts=spec_fallback)
+            unit_price = repair_unit_price(unit_price)
+            description = repair_description(description, _none_or_text(record.get("desc_es")))
+            details = repair_details(details, _none_or_text(record.get("details_es")))
 
         for item in fallbacks:
             fallback_counts[item] = fallback_counts.get(item, 0) + 1
@@ -230,6 +306,8 @@ def build_zh_rows_from_localized_source(
     records: Iterable[dict[str, Any]],
     *,
     category_context: DictionaryContext | None = None,
+    repair_report: ExportRepairReport | None = None,
+    repair_overrides_path: Path | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """Build Chinese rows from SQLite ``product_localizations`` values.
 
@@ -242,6 +320,10 @@ def build_zh_rows_from_localized_source(
     engine = LocalizationEngine()
     rows: list[dict[str, Any]] = []
     fallback_counts: dict[str, int] = {}
+    repair_engine = ExportRepairEngine(
+        report=repair_report, overrides_path=repair_overrides_path,
+        excluded_display_tokens=_confirmed_display_brand_tokens(category_context),
+    ) if repair_report is not None else None
     for record in sorted(records, key=_sku_sort_key):
         sku = _text(record.get("sku"))
         fallbacks: list[str] = []
@@ -290,23 +372,64 @@ def build_zh_rows_from_localized_source(
                     ).strip()
         # Normalize deterministic adapter regressions even when the stored
         # PRIMARY value predates the current formatter policy.
-        resolved["unit_price_zh"] = _repair_export_unit_price(
-            _none_or_text(record.get("unit_price_raw")) or resolved.get("unit_price_zh")
-        )
-        resolved["name_zh"] = _repair_export_title(
-            resolved.get("name_zh"), _none_or_text(record.get("name_es"))
-        )
-        resolved["spec_zh"] = _repair_export_spec(
-            resolved.get("spec_zh"),
-            _none_or_text(record.get("spec_es")),
-            force_source_facts=plan.fields["spec_zh"].status != "READY",
-        )
-        resolved["desc_zh"] = _repair_export_description(
-            resolved.get("desc_zh"), _none_or_text(record.get("desc_es"))
-        )
-        resolved["details_zh"] = _repair_export_details(
-            resolved.get("details_zh"), _none_or_text(record.get("details_es"))
-        )
+        source_hash = _fact_source_hash(record)
+        if repair_engine is not None:
+            resolved["unit_price_zh"] = repair_engine.apply(
+                sku=sku, field="unit_price_zh", value=_none_or_text(record.get("unit_price_raw")) or resolved.get("unit_price_zh"),
+                source_field="unit_price", source=record.get("unit_price"), source_hash=source_hash,
+                rule="UNIT_PRICE_NORMALIZE", repairer=repair_unit_price,
+            )
+            resolved["name_zh"] = repair_engine.apply(
+                sku=sku, field="name_zh", value=resolved.get("name_zh"), source_field="name_es",
+                source=record.get("name_es"), source_hash=source_hash,
+                rule="TITLE_SOURCE_TOKEN", repairer=lambda value, source: repair_title_with_context(
+                    value, source, excluded_tokens=repair_engine.excluded_display_tokens,
+                ),
+            )
+            resolved["name_zh"] = repair_engine.apply_override(
+                sku=sku, field="name_zh", value=resolved.get("name_zh"), record=record, source_field="name_es",
+            )
+            resolved["spec_zh"] = repair_engine.apply(
+                sku=sku, field="spec_zh", value=resolved.get("spec_zh"), source_field="spec_es",
+                source=record.get("spec_es"), source_hash=source_hash,
+                rule="SPEC_SOURCE_FACTS", repairer=lambda value, source: repair_spec(
+                    value, source, force_source_facts=plan.fields["spec_zh"].status != "READY",
+                ),
+            )
+            resolved["spec_zh"] = repair_engine.apply_override(
+                sku=sku, field="spec_zh", value=resolved.get("spec_zh"), record=record, source_field="spec_es",
+            )
+            resolved["desc_zh"] = repair_engine.apply(
+                sku=sku, field="desc_zh", value=resolved.get("desc_zh"), source_field="desc_es",
+                source=record.get("desc_es"), source_hash=source_hash,
+                rule="DESCRIPTION_SOURCE_FACTS", repairer=lambda value, source: repair_content_with_context(
+                    value, source, excluded_tokens=repair_engine.excluded_display_tokens,
+                ),
+            )
+            resolved["desc_zh"] = repair_engine.apply_override(
+                sku=sku, field="desc_zh", value=resolved.get("desc_zh"), record=record, source_field="desc_es",
+            )
+            resolved["details_zh"] = repair_engine.apply(
+                sku=sku, field="details_zh", value=resolved.get("details_zh"), source_field="details_es",
+                source=record.get("details_es"), source_hash=source_hash,
+                rule="DETAILS_SOURCE_FACTS", repairer=lambda value, source: repair_details_with_context(
+                    value, source, excluded_tokens=repair_engine.excluded_display_tokens,
+                ),
+            )
+            resolved["details_zh"] = repair_engine.apply_override(
+                sku=sku, field="details_zh", value=resolved.get("details_zh"), record=record, source_field="details_es",
+            )
+        else:
+            resolved["unit_price_zh"] = repair_unit_price(
+                _none_or_text(record.get("unit_price_raw")) or resolved.get("unit_price_zh")
+            )
+            resolved["name_zh"] = repair_title(resolved.get("name_zh"), _none_or_text(record.get("name_es")))
+            resolved["spec_zh"] = repair_spec(
+                resolved.get("spec_zh"), _none_or_text(record.get("spec_es")),
+                force_source_facts=plan.fields["spec_zh"].status != "READY",
+            )
+            resolved["desc_zh"] = repair_description(resolved.get("desc_zh"), _none_or_text(record.get("desc_es")))
+            resolved["details_zh"] = repair_details(resolved.get("details_zh"), _none_or_text(record.get("details_es")))
         source_by_field = {
             "name_zh": "name_es", "cat1_zh": "cat1_es", "cat2_zh": "cat2_es",
             "spec_zh": "spec_es", "desc_zh": "desc_es", "details_zh": "details_es",
@@ -673,6 +796,30 @@ def _repair_export_title(value: str | None, source: str | None) -> str | None:
     for token in dict.fromkeys(tokens):
         if token.casefold() not in text.casefold():
             text = f"{text}｜{token}"
+    # Numeric identity in a product name is source-bound.  Do not recover a
+    # brand digit such as the leading ``7`` in ``7Up`` under the no-brand
+    # display policy.
+    if not re.search(r"(?<![A-Za-z0-9])7up(?![A-Za-z0-9])", source_text, flags=re.I):
+        for number in _spec_numbers(source_text):
+            # A leading number in an alphanumeric brand/model such as ``3M``
+            # is not a standalone product quantity.  Appending the bare
+            # number would create a false fact (``相框挂条｜3``).
+            if re.search(rf"(?<![A-Za-z0-9]){re.escape(number)}[A-Za-z](?![A-Za-z0-9])", source_text):
+                continue
+            if not re.search(rf"(?<!\d){re.escape(number)}(?!\d)", text):
+                text = f"{text}｜{number}"
+    for match in re.finditer(r"(?<![A-Za-z0-9])(\d+(?:[.,]\d+)?)\s*mcg\b", source_text, flags=re.I):
+        number = match.group(1).replace(",", ".")
+        if re.search(rf"(?<!\d){re.escape(number)}\s*(?:微克|mcg)\b", text, flags=re.I):
+            continue
+        text = re.sub(rf"([｜|]\s*){re.escape(number)}\b", rf"\g<1>{number}微克", text, count=1)
+    # High-confidence title fragments that are still present as Spanish in
+    # legacy localized values.  These replacements are source-bound and do
+    # not attempt to translate free-form prose.
+    text = re.sub(r"(?i)\bcalentador\s+eléctrico\b", "电暖器", text)
+    text = re.sub(r"(?i)\bhilo\s+de\s+tejer\b", "编织线", text)
+    text = re.sub(r"(?i)\bcantimplora\s+lujosa\b", "豪华水壶", text)
+    text = re.sub(r"(?i)\ball-in-1\b", "一体式", text)
     return text
 
 
@@ -758,9 +905,22 @@ def _repair_export_spec(
         text = re.sub(r"(?i)(?<=\d)\s*lavados\b", "次洗涤", text)
     if re.search(r"\b\d+\s+en\s+\d+\b", source_text):
         text = re.sub(r"(?i)\b(\d+)\s+en\s+(\d+)\b", r"\1合\2", text)
+    # A stale dictionary fallback is intentionally kept as the original
+    # source value by the legacy export contract.  Do not rewrite that exact
+    # source text here; the source-bound repair layer can still report it for
+    # later review without changing the historical fallback output.
+    spanish_fallback = force_source_facts and text.casefold().strip() == source_text.strip()
     if "números" in source_text or "pares" in source_text:
         text = re.sub(r"(?i)\bNúmeros\b", "尺码", text)
         text = re.sub(r"(?i)\bpares?\b", "双", text)
+    text = re.sub(r"(?i)\bdiferentes\s+variantes?\b", "多种款式", text)
+    text = re.sub(r"(?i)\bvarios\s+colores?\b", "多种颜色", text)
+    text = re.sub(r"(?i)\b(\d+(?:[.,]\d+)?)\s+gramos?\b", r"\1克", text)
+    text = re.sub(r"(?i)\b(\d+(?:[.,]\d+)?)\s+comprimidos?\b", r"\1片", text)
+    text = re.sub(r"(?i)\b(\d+(?:[.,]\d+)?)\s+tabletas?\b", r"\1片", text)
+    if not spanish_fallback:
+        text = re.sub(r"(?i)\b(\d+(?:[.,]\d+)?)\s+unidades?\b", r"\1件", text)
+    text = re.sub(r"(?i)\bvarios\s+tipos\b", "多种类型", text)
     if re.search(r"\bxl\b", source_text) and "×L" in text:
         text = text.replace("×L", "XL")
     if re.search(r"\bxxl\b", source_text) and "××L" in text:
@@ -853,6 +1013,11 @@ def _repair_source_bound_content_facts(
         (r"\bxl\b", "XL", ("xl", "加大", "超大", "特大")),
     )
     for pattern, replacement, aliases in token_repairs:
+        # The generic numeric/unit pass below renders ``550 GSM``.  Adding a
+        # second standalone GSM marker here would create a duplicated
+        # protected token in the final audit.
+        if pattern == r"\bgsm\b" and re.search(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*gsm\b", source_text, flags=re.I):
+            continue
         if re.search(pattern, source_lower, flags=re.I) and not any(alias in target_lower for alias in aliases):
             text = f"{text}；{replacement}"
             target_lower = text.casefold()
@@ -906,9 +1071,11 @@ def _repair_source_bound_content_facts(
     unit_aliases = {
         "kg": "kg", "g": "g", "mg": "mg", "ml": "ml", "cl": "cl",
         "l": "L", "mah": "mAh", "mp": "MP", "hz": "Hz", "kcal": "kcal",
-        "w": "W", "v": "V", "%": "%", "°": "°",
+        "w": "W", "v": "V", "%": "%", "°": "°", "m": "m", "cm": "cm",
+        "mm": "mm", "km": "km", "ah": "Ah", "wh": "Wh", "kwh": "kWh",
+        "mw": "mW", "kw": "kW", "db": "dB", "°c": "°C",
     }
-    fact_pattern = re.compile(r"(?<![A-Za-z0-9])(\d+(?:[.,]\d+)?)\s*(kg|mg|ml|cl|mAh|MP|Hz|kcal|W|V|g|l|%|°)(?![A-Za-z0-9])", re.I)
+    fact_pattern = re.compile(r"(?<![A-Za-z0-9])(\d+(?:[.,]\d+)?)\s*(kWh|mAh|kW|mW|Ah|Wh|dB|°C|kg|mg|ml|cl|km|cm|mm|MP|Hz|kcal|W|V|g|l|m|%|°)(?![A-Za-z0-9])", re.I)
     generic_fact_source = re.sub(r"(?<=\d)[ .](?=\d{3}(?:\D|$))", "", source_text)
     for match in fact_pattern.finditer(generic_fact_source) if include_generic else ():
         number = match.group(1).replace(",", ".")
@@ -918,6 +1085,9 @@ def _repair_source_bound_content_facts(
             "kg": ("公斤", "千克"), "g": ("克",), "mg": ("毫克",), "ml": ("毫升",), "cl": ("厘升",),
             "l": ("升",), "mah": ("毫安时",), "mp": ("万像素", "万"), "hz": ("赫兹",), "kcal": ("千卡",),
             "w": ("瓦",), "v": ("伏",), "%": ("%",), "°": ("度",),
+            "m": ("米",), "cm": ("厘米",), "mm": ("毫米",), "km": ("千米",),
+            "ah": ("安时",), "wh": ("瓦时",), "kwh": ("千瓦时",),
+            "mw": ("毫瓦",), "kw": ("千瓦",), "db": ("分贝",), "°c": ("摄氏度",),
         }.get(unit.casefold(), ())
         unit_present = unit.casefold() in text.casefold() or any(alias in text for alias in aliases)
         if unit.casefold() == "mp" and number_present and re.search(rf"(?<!\d){re.escape(str(int(float(number) * 100)))}万", text):
@@ -934,6 +1104,14 @@ def _repair_source_bound_content_facts(
         if re.search(rf"(?<!\d){re.escape(number)}(?!\d)", text) and any(alias in text for alias in aliases):
             continue
         text = f"{text}；参数：{number}{aliases[0]}"
+    if include_generic and not re.search(r"número\s+del\s+artículo|código\s+del\s+artículo", source_lower):
+        for number in _spec_numbers(source_text):
+            if not re.search(rf"(?<!\d){re.escape(number)}(?!\d)", text):
+                text = f"{text}；参数：{number}"
+    # Legacy candidates sometimes glue a translated noun to a percentage
+    # (``modo95%``/``fibras100%``/``GSM100%``). Normalize the glue without
+    # changing the percentage fact itself.
+    text = re.sub(r"(?i)(?:gsm|modo|fibras)(\d+(?:[.,]\d+)?)\s*%", r"\1%", text)
     return text
 
 

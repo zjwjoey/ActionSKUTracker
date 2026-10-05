@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from .dictionary_join import build_zh_rows, build_zh_rows_from_localized_source, load_dictionary_context
+from .repair import ExportRepairEngine, default_overrides_path
+from .repair_report import ExportRepairReport, audit_repaired_rows
 from .history import HistoryExportError, build_presence_rows, load_presence_history
 from .service import (
     ExportValidationError,
@@ -20,6 +22,7 @@ from .service import (
     validate_zh_rows_against_source,
     _resolve_image_eligibility,
     _commit_id_for_run,
+    _export_repair_allowed_tokens,
 )
 from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, verify_template1_xlsx, write_template1_xlsx
 
@@ -27,6 +30,7 @@ from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, verify_template1_xlsx, 
 def export_template1(
     cfg: dict[str, Any], *, export_date: str, run_id: str | None = None,
     with_images: bool = False, selection_id: str | None = None,
+    research_release: bool = False,
 ) -> dict[str, Any]:
     """生成 Template 1 三表工作簿。
 
@@ -52,17 +56,44 @@ def export_template1(
         validate_source_records(records, export_date=export_date)
         validate_spanish_source_fields(records)
         es_rows = build_es_rows(records)
+        repair_report = ExportRepairReport(run_id=source.run_id, rule_version=ExportRepairEngine.VERSION)
+        repair_allowed_tokens: set[str] = set()
         if source.kind == "SQLITE_CURRENT":
             # SQLite PRIMARY already contains the gated localization projection;
             # do not re-join the file dictionary and risk a split-brain export.
-            zh_rows, fallback_counts = build_zh_rows_from_localized_source(records)
+            repair_dictionary = load_dictionary_context(cfg)
+            zh_rows, fallback_counts = build_zh_rows_from_localized_source(
+                records, category_context=repair_dictionary, repair_report=repair_report,
+                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
+            )
+            repair_allowed_tokens = _export_repair_allowed_tokens(repair_dictionary)
             dictionary = None
         else:
             dictionary = load_dictionary_context(cfg)
-            zh_rows, fallback_counts = build_zh_rows(records, dictionary)
+            repair_allowed_tokens = _export_repair_allowed_tokens(dictionary)
+            zh_rows, fallback_counts = build_zh_rows(
+                records, dictionary, repair_report=repair_report,
+                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
+            )
         validate_zh_rows_against_source(zh_rows, records)
         validate_output_rows(es_rows)
         validate_output_rows(zh_rows)
+        repair_audit = audit_repaired_rows(
+            records, zh_rows, allowed_tokens=repair_allowed_tokens,
+        )
+        unresolved_blocking = sum(1 for item in repair_report.unresolved if item.blocking)
+        repair_audit["unresolved_blocking_count"] = unresolved_blocking
+        repair_audit["release_ready"] = bool(repair_audit.get("release_ready")) and unresolved_blocking == 0
+        repair_report.set_audit(repair_audit)
+        repair_report.finalize(records, zh_rows)
+        if research_release and not bool(repair_audit.get("release_ready")):
+            raise ExportValidationError(
+                "TEMPLATE1_EXPORT_REPAIR_GATE_FAILED:"
+                f"p0={repair_audit.get('p0_findings', 0)};"
+                f"affected_fields={repair_audit.get('blocking_affected_fields', 0)};"
+                f"unresolved={repair_audit.get('unresolved_blocking_count', 0)};"
+                f"field_pass_rate={repair_audit.get('field_pass_rate', 0):.4f}"
+            )
         history = load_presence_history(cfg)
         history_rows = build_presence_rows(
             history, export_date=export_date, current_records=records,
@@ -115,6 +146,11 @@ def export_template1(
             temporary.unlink()
 
     manifest_path = output.with_suffix(".manifest.json")
+    repair_report_path = output.with_suffix(".repair-report.json")
+    repair_report_path.write_text(
+        json.dumps(repair_report.as_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     manifest = {
         "template_id": "action_full_template_1",
         "template_version": 1,
@@ -143,6 +179,18 @@ def export_template1(
         "history_seed_row_count": history.seed_row_count,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "validation_results": {"history": "PASS", "cross_sheet": "PASS", "workbook": "PASS"},
+        "export_repair": {
+            "engine_version": ExportRepairEngine.VERSION,
+            "audit_findings": int(repair_audit.get("audit_findings") or 0),
+            "affected_fields": int(repair_audit.get("affected_fields") or 0),
+            "affected_skus": int(repair_audit.get("affected_skus") or 0),
+            "field_pass_rate": float(repair_audit.get("field_pass_rate") or 0),
+            "p0_findings": int(repair_audit.get("p0_findings") or 0),
+            "unresolved_blocking_count": int(repair_audit.get("unresolved_blocking_count") or 0),
+            "release_ready": bool(repair_audit.get("release_ready")),
+            "repair_count": len(repair_report.events),
+            "repair_report": repair_report_path.name,
+        },
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     if selection_id:
@@ -161,6 +209,8 @@ def export_template1(
         "image_embedded_count": image_stats["embedded_count"],
         "image_missing_count": image_stats["missing_count"],
         "selection_id": selection_id,
+        "repair_report": str(repair_report_path),
+        "repair_audit": repair_audit,
     }
 
 
