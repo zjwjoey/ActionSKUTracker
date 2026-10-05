@@ -489,13 +489,22 @@ class ProductionWriter:
                         # an authoritative ES row. Preserve their established
                         # aggregate binding while keeping the stale marker.
                         incoming["source_hash"] = existing_hash
+                    aggregate_hash_unchanged = bool(
+                        source is not None and incoming_hash and existing_hash
+                        and incoming_hash == existing_hash
+                    )
                     for field in fields:
                         prior = field_state.get(field) or {}
                         incoming[f"{field}_freshness_status"] = (
                             "STALE" if field in changed_fields else
+                            "CURRENT" if aggregate_hash_unchanged else
                             prior.get("freshness_status") or ("STALE" if str(existing.get("freshness_status") or "").upper() == "STALE" else "CURRENT")
                         )
-                    incoming["freshness_status"] = "STALE" if changed_fields or str(existing.get("freshness_status") or "").upper() == "STALE" else "CURRENT"
+                    incoming["freshness_status"] = (
+                        "STALE" if changed_fields else
+                        "CURRENT" if aggregate_hash_unchanged else
+                        ("STALE" if str(existing.get("freshness_status") or "").upper() == "STALE" else "CURRENT")
+                    )
             db.execute(
                 """INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,unit_price,description,details,source,review_status,updated_at,last_commit_id,
                  source_hash,resolution_status,name_source,cat1_source,cat2_source,spec_source,unit_price_source,description_source,details_source,freshness_status,approved_by,approved_at,applied_commit_id)
