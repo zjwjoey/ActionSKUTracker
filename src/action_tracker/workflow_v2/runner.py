@@ -612,7 +612,8 @@ class WorkflowV2Runner:
                 "SELECT COUNT(*) FROM translation_queue WHERE run_id=? AND status IN ('PENDING','RETRY','CLAIMED')",
                 (self.context.workflow_run_id,),
             ).fetchone()[0])
-        details = {"called": len({str(row.get('sku') or '') for row in self.records or []}), "provider_calls": result.completed + result.retried + result.failed + result.blocked, "batch_limit": batch_limit, "queued": len(self.translation_plan), "remaining": remaining, "worker": result.as_dict()}
+        provider_calls = result.completed + result.retried + result.failed + result.blocked
+        details = {"called": provider_calls, "provider_calls": provider_calls, "batch_limit": batch_limit, "queued": len(self.translation_plan), "remaining": remaining, "worker": result.as_dict()}
         if remaining:
             status = "DEGRADED" if result.retried else ("PENDING" if result.failed == 0 else "DEGRADED")
             details["reason"] = "TRANSLATION_PROVIDER_RETRY" if result.retried else "TRANSLATION_BATCH_REMAINS"
