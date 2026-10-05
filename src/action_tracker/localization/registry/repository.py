@@ -306,7 +306,7 @@ class LocalizationRegistry:
         This is an explicit shadow operation. It never updates product facts,
         localizations, Master or dictionary files.
         """
-        source_count = unit_count = queue_count = queue_rebound = skipped = 0
+        source_count = unit_count = queue_count = queue_rebound = queue_reopened = skipped = 0
         for record in records:
             facts = SourceFacts.from_record(record)
             if not facts.sku:
@@ -348,8 +348,14 @@ class LocalizationRegistry:
                         (source_run_id, queue_id, source_run_id),
                     )
                     queue_rebound += int(rebound.rowcount or 0)
+                    reopened = db.execute(
+                        "UPDATE translation_queue SET run_id=?,status='PENDING',retry_count=0,last_error=NULL,claimed_at=NULL,completed_at=NULL "
+                        "WHERE queue_id=? AND status='COMPLETED' AND COALESCE(run_id,'')<>?",
+                        (source_run_id, queue_id, source_run_id),
+                    )
+                    queue_reopened += int(reopened.rowcount or 0)
                     queue_count += 1
-        return {"source_versions": source_count, "units": unit_count, "queue_insert_attempts": queue_count, "queue_rebound": queue_rebound, "skipped": skipped}
+        return {"source_versions": source_count, "units": unit_count, "queue_insert_attempts": queue_count, "queue_rebound": queue_rebound, "queue_reopened": queue_reopened, "skipped": skipped}
 
     def approved_terms(self, *, source_terms: Iterable[str] | None = None) -> list[dict[str, Any]]:
         with connect(self.path) as db:
