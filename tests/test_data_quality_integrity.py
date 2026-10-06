@@ -302,6 +302,24 @@ def test_master_quality_clean_fixture_is_release_ready(tmp_path: Path):
     assert result.status == "PASS"
 
 
+def test_master_quality_accepts_legacy_blank_text_original_price(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE products SET original_price='' WHERE official_sku='1001'")
+    result = audit_master_quality(path)
+    assert result.release_ready is True
+    assert result.counts.get("INVALID_ORIGINAL_PRICE", 0) == 0
+
+
+def test_master_quality_fails_closed_for_malformed_text_price(tmp_path: Path):
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE products SET original_price='not-a-price' WHERE official_sku='1001'")
+    result = audit_master_quality(path)
+    assert result.release_ready is False
+    assert result.counts["INVALID_ORIGINAL_PRICE"] == 1
+
+
 def test_master_quality_dirty_fixture_is_blocked(tmp_path: Path):
     result = audit_master_quality(_db(tmp_path, clean=False))
     assert result.release_ready is False

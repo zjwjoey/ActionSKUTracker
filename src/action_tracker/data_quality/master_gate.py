@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import math
 from pathlib import Path
 import sqlite3
 from typing import Any
@@ -15,6 +16,24 @@ from .rules import (
     promotion_text_is_contaminated,
 )
 _FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
+
+
+def _coerce_optional_price(value: Any) -> tuple[bool, float | None]:
+    """Return a numeric price or a valid absent value without raising.
+
+    SQLite PRIMARY contains a mix of legacy empty-text original prices and
+    numeric values.  An empty original price means that no formal original
+    price is available; it must not turn a read-only quality gate into a
+    ``str <= float`` exception.  Any non-empty malformed value remains a
+    fail-closed price finding.
+    """
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return True, None
+    try:
+        numeric = float(str(value).strip().replace(",", "."))
+    except (TypeError, ValueError):
+        return False, None
+    return math.isfinite(numeric), numeric if math.isfinite(numeric) else None
 
 
 def _read_only(path: Path) -> sqlite3.Connection:
@@ -93,7 +112,11 @@ def audit_master_quality(db_path: Path) -> MasterQualityResult:
 
         if {"current_price", "original_price"}.issubset(product_cols):
             for row in current_rows:
-                if row["current_price"] is not None and row["original_price"] is not None and row["original_price"] <= row["current_price"]:
+                current_valid, current_price = _coerce_optional_price(row["current_price"])
+                original_valid, original_price = _coerce_optional_price(row["original_price"])
+                if not current_valid or not original_valid:
+                    issue("INVALID_ORIGINAL_PRICE", str(row["official_sku"]))
+                elif current_price is not None and original_price is not None and original_price <= current_price:
                     issue("INVALID_ORIGINAL_PRICE", str(row["official_sku"]))
         if "raw_badges" in product_cols:
             for row in current_rows:
