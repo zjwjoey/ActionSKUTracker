@@ -629,6 +629,38 @@ def test_provider_name_applies_no_brand_display_policy_after_translation():
     assert result.value == "小型涂料滚筒"
     assert result.provenance["display_policy_profile"] == "ACTION_MASTER_NO_BRAND_V1"
     assert result.provenance["provider_raw_value"] == "Spectrum小型涂料滚筒"
+    assert result.provenance["terminology"] == [
+        {"source": "Spectrum", "target": "Spectrum", "display_omittable": True}
+    ]
+
+
+def test_guard_allows_field_scoped_brand_term_to_be_omitted_from_display():
+    source = SourceFacts.from_record({"sku": "1221001", "name_es": "Rodillos Spectrum"})
+    brand = SemanticFact("BRAND", "Spectrum", "Spectrum", "Spectrum", "name_es")
+
+    result = guard_translation(
+        source, {"name": "涂料滚筒"}, ("name",),
+        terminology=({"source": "Spectrum", "target": "Spectrum"},),
+        semantic_facts=(brand,),
+    )
+
+    assert result["status"] == "PASS"
+
+
+def test_guard_does_not_waive_an_ordinary_term_because_a_brand_is_omittable():
+    source = SourceFacts.from_record({
+        "sku": "1221001", "name_es": "Rodillos Spectrum", "desc_es": "Cepillo resistente",
+    })
+    brand = SemanticFact("BRAND", "Spectrum", "Spectrum", "Spectrum", "name_es")
+
+    result = guard_translation(
+        source, {"description": "产品描述"}, ("description",),
+        terminology=({"source": "Cepillo", "target": "刷子"},),
+        semantic_facts=(brand,),
+    )
+
+    assert result["status"] == "FAIL"
+    assert any(item["rule_id"] == "TERMINOLOGY_VIOLATION" for item in result["findings"])
 
 
 def test_guard_blocks_dropped_reviewed_product_fact():

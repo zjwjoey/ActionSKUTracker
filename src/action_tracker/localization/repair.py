@@ -63,7 +63,10 @@ def repair_field(record: Mapping[str, Any], field_name: str, candidate: str, *, 
                     continue
             else:
                 continue
-            provider_terms.append({"source": token, "target": target})
+            provider_terms.append({
+                "source": token, "target": target,
+                "display_omittable": fact_type in {"BRAND", "IP_CHARACTER"},
+            })
             existing_terms.add(token.casefold())
         request = TranslationRequest(
             source.sku,

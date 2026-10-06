@@ -110,6 +110,7 @@ class WorkflowV2Runner:
             self.source_readiness = self._load_json_artifact("source_readiness.json", {})
             if self.records is None and (self.directory / "records.json").exists(): self.records = json.loads((self.directory / "records.json").read_text(encoding="utf-8"))
             self._restore_artifacts()
+            self._prepare_translation_resume_recovery()
         self._persist_state("RUN_START")
         self._stage("PREFLIGHT", self._preflight)
         self._stage("BACKUP", self._backup)
@@ -178,6 +179,51 @@ class WorkflowV2Runner:
             self.context.blockers = [item for item in self.context.blockers if item.stage != name]
         if result.status in DEPENDENCY_BLOCKING: self._record_blocker(name, result)
         self._persist_state(name)
+
+    def _prepare_translation_resume_recovery(self) -> None:
+        """Re-run only this workflow's translation tail when queue work exists.
+
+        A deterministic QA-rule correction can explicitly requeue selected
+        items through ``LocalizationRegistry.requeue_blocked``.  Resuming the
+        workflow must then run the Qwen/QA/apply tail again; otherwise the
+        persisted prior ``QWEN_TRANSLATE=PASS`` stage would hide the newly
+        retryable rows.  The query is bounded to this workflow run and never
+        consumes historical queue work.
+        """
+        if not self.temp_db.exists():
+            return
+        try:
+            from ..database.connection import connect
+            with connect(self.temp_db) as db:
+                rows = db.execute(
+                    "SELECT queue_id,official_sku,requested_fields,status FROM translation_queue "
+                    "WHERE run_id=? AND status IN ('PENDING','RETRY') ORDER BY created_at",
+                    (self.context.workflow_run_id,),
+                ).fetchall()
+        except sqlite3.OperationalError:
+            return
+        if not rows:
+            return
+        recovery = {
+            "reason": "RUN_SCOPED_REQUEUED_TRANSLATION_WORK",
+            "queue_ids": [str(row[0]) for row in rows],
+            "skus": sorted({str(row[1]) for row in rows}),
+            "fields": sorted({str(row[2]) for row in rows}),
+            "statuses": sorted({str(row[3]) for row in rows}),
+        }
+        _write_json(self.directory / "translation_resume_recovery.json", recovery)
+        # Preserve all fact/source stages.  Only work that derives from the
+        # selected translation queues is invalidated for an actual retry.
+        for stage in (
+            "QWEN_TRANSLATE", "TRANSLATION_QA", "TRANSLATION_POLICY",
+            "TRANSLATION_APPLY", "EXPORT_AUDIT", "EXPORT_WRITE",
+        ):
+            self.stages.pop(stage, None)
+        self.context.translation_ready = False
+        self.context.translation_pending = True
+        self.context.export_ready = False
+        self.context.export_pending = True
+        self.report["translation_resume_recovery"] = recovery
 
     def _record_blocker(self, stage: str, result: StageResult) -> None:
         blocker = WorkflowBlocker(stage=stage, code=result.error_code or result.status, details=dict(result.details))

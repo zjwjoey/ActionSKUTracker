@@ -253,6 +253,29 @@ def _fact_applies_to_field(fact: Any, field_name: str) -> bool:
     return (semantic_type, source_field, placement) in _EXPLICIT_CROSS_FIELD_RELOCATIONS
 
 
+def _omittable_display_term(term: Mapping[str, Any], semantic_facts: tuple[Any, ...], field_name: str) -> bool:
+    """Return whether a reviewed term is deliberately absent from display text.
+
+    The Chinese projection has a no-brand/IP display contract.  A selected
+    terminology hint for one of those source spans remains useful to the MT
+    provider, but it must not subsequently turn the policy-required removal
+    into a ``TERMINOLOGY_VIOLATION``.  Restrict the waiver to an explicit
+    resolver marker or a field-scoped BRAND/IP semantic fact; ordinary terms
+    retain the normal terminology gate.
+    """
+    if bool(term.get("display_omittable")):
+        return True
+    source_term = str(term.get("source") or term.get("source_term") or "").strip().casefold()
+    if not source_term:
+        return False
+    return any(
+        str(getattr(fact, "semantic_type", "") or "") in {"BRAND", "IP_CHARACTER"}
+        and _fact_applies_to_field(fact, field_name)
+        and str(getattr(fact, "source_text", "") or "").strip().casefold() == source_term
+        for fact in semantic_facts
+    )
+
+
 def _is_allowed_translated_strict_token(source_text: str, token: str) -> bool:
     token_key = str(token or "").casefold()
     return any(
@@ -664,7 +687,9 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         for term in terminology:
             source_term = str(term.get("source") or term.get("source_term") or "")
             target_term = str(term.get("target") or term.get("target_term") or "")
-            if source_term and target_term and source_term.casefold() in source_text.casefold() and target_term not in target:
+            if (source_term and target_term and source_term.casefold() in source_text.casefold()
+                    and target_term not in target
+                    and not _omittable_display_term(term, semantic_facts, field_name)):
                 findings.append(QAFinding("TERMINOLOGY_VIOLATION", "ERROR", field_name, {"source": source_term, "target": target_term}, source=source_text, target=target, blocking=True))
             forbidden = str(term.get("forbidden_target") or "")
             if forbidden and forbidden in target:

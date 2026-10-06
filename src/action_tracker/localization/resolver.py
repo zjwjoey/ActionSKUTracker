@@ -239,7 +239,12 @@ class TranslationResolver:
                         continue
                 else:
                     continue
-                term_by_source.setdefault(token.casefold(), {"source": token, "target": target})
+                existing_term = term_by_source.setdefault(token.casefold(), {"source": token, "target": target})
+                if fact.semantic_type in {"BRAND", "IP_CHARACTER"}:
+                    # Keep the source-to-source term for Qwen provenance, but
+                    # carry the display policy to field QA.  Chinese output
+                    # deliberately removes identified brands/IP afterwards.
+                    existing_term["display_omittable"] = True
             family_policy = family_policy_for(context)
             if family_policy:
                 for rule in family_policy.terms_for(field_name, context.context_key):
