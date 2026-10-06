@@ -19,7 +19,9 @@ def test_phase1_manual_review_is_pending(workflow_root, source_row, fake_provide
     assert result.stages["TRANSLATION_POLICY"].status == "REVIEW_REQUIRED"
     assert result.stages["TRANSLATION_APPLY"].status == "PENDING"
     assert result.stages["EXPORT_AUDIT"].status == "PENDING"
+    assert result.stages["EXPORT_AUDIT"].details["reason"] == "LOCALIZATION_APPLY_PENDING"
     assert result.stages["EXPORT_WRITE"].status == "PENDING"
+    assert result.stages["EXPORT_WRITE"].details["reason"] == "EXPORT_GATE_PENDING"
     assert result.state == "SUCCESS_WITH_PENDING"
 
 
@@ -55,11 +57,11 @@ def test_bounded_batch_remains_resumable(workflow_root, source_row, fake_provide
     assert fake_provider.calls > calls
 
 
-def test_auto_export_false_is_operator_pending(workflow_root, source_row, fake_provider):
+def test_auto_export_false_waits_for_localization_apply_before_operator_publication(workflow_root, source_row, fake_provider):
     result = WorkflowV2Runner(
         root=workflow_root, context=new_context(workflow_root, business_date="2026-10-04"),
         records=[source_row], expected_skus={"100"}, provider=fake_provider,
         auto_translation=True, auto_policy=False, auto_export=False,
     ).run()
     assert result.stages["EXPORT_WRITE"].status == "PENDING"
-    assert result.stages["EXPORT_WRITE"].details["reason"] == "OPERATOR_PUBLICATION_REQUIRED"
+    assert result.stages["EXPORT_WRITE"].details["reason"] == "EXPORT_GATE_PENDING"

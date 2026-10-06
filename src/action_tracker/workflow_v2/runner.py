@@ -759,6 +759,23 @@ class WorkflowV2Runner:
         ) or None
         return StageResult("PASS", {"changed_fields": applied.get("applied_fields", 0), "commit_id": self.context.localization_commit_id, "patches": staged.get("patch_ids", [])})
     def _export_audit(self) -> StageResult:
+        apply_stage = self.stages.get("TRANSLATION_APPLY", StageResult())
+        if apply_stage.status not in {"PASS", "NOT_REQUIRED"}:
+            # Phase 3 consumes the PRIMARY Chinese projection created by
+            # Localization Apply.  A review-required Phase 2 is continuable
+            # for the workflow state machine, but it is not permission to
+            # construct an audited export from partially applied rows.
+            self.context.export_ready = False
+            self.context.export_pending = True
+            return StageResult(
+                "PENDING",
+                {
+                    "reason": "LOCALIZATION_APPLY_PENDING",
+                    "translation_apply_status": apply_stage.status,
+                    "production_mutation": False,
+                },
+                retryable=True,
+            )
         es = [dict(row) for row in self.records or []]
         zh = [dict(row) for row in self.records or []]
         if self.translation_runtime is not None:
@@ -899,13 +916,13 @@ class WorkflowV2Runner:
             return StageResult("PENDING", {**ready, "reason": "TRANSLATION_PENDING"}, retryable=True)
         return StageResult("BLOCKED", ready, "EXPORT_NOT_READY")
     def _export_write(self) -> StageResult:
-        if not self.auto_export:
-            self.context.export_pending = True
-            return StageResult("PENDING", {"reason": "OPERATOR_PUBLICATION_REQUIRED", "production_mutation": False}, retryable=True)
         if not self.context.export_ready:
             if self.context.export_pending:
                 return StageResult("PENDING", {"reason": "EXPORT_GATE_PENDING", "production_mutation": False}, retryable=True)
             return StageResult("BLOCKED", {"reason": "EXPORT_GATE_BLOCKED"}, "EXPORT_GATE_BLOCKED")
+        if not self.auto_export:
+            self.context.export_pending = True
+            return StageResult("PENDING", {"reason": "OPERATOR_PUBLICATION_REQUIRED", "production_mutation": False}, retryable=True)
         staging = self.directory / "staging"; staging.mkdir(exist_ok=True)
         pending = staging / ".pending"
         if pending.exists():
