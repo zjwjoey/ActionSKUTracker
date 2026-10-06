@@ -98,6 +98,10 @@ _SOURCE_BOUND_SPANISH_STOPWORDS = {
     "diferentes", "negro", "blanco", "rojo", "azul", "verde", "unidades",
 }
 _SOURCE_BOUND_SHORT_TECH = {"mbps", "gbps", "kbps", "mhz", "khz", "ghz", "hfe", "mah", "kwh", "wh", "mah"}
+_SOURCE_BOUND_EXACT_TECH = {
+    "usb", "usb-a", "usb-c", "micro-usb", "micro-sd", "hdmi", "led", "mdf",
+    "fsc", "bci", "tcx", "a4", "b5", "wifi", "magsafe", "playstation",
+}
 
 
 def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
@@ -127,14 +131,13 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
         )
         model_shape = (
             any(char.isdigit() for char in token)
-            or any(char in token for char in "-&+./")
             or (any(char.isupper() for char in token[1:]) and any(char.islower() for char in token))
             or (
                 folded in _SOURCE_BOUND_SHORT_TECH
                 and target_match is not None
                 and any(char.isupper() for char in target_match.group(0))
             )
-            or token.isupper()
+            or folded in _SOURCE_BOUND_EXACT_TECH
         )
         if model_shape:
             allowed.add(token)

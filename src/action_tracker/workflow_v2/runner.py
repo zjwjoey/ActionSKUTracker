@@ -79,6 +79,8 @@ class WorkflowV2Runner:
         self.stages: dict[str, StageResult] = {}; self.report: dict[str, Any] = {}
         self.translation_plan: list[Any] = []; self.translation_results: list[dict[str, Any]] = []; self.policy_results: list[dict[str, Any]] = []
         self.es_projection: list[dict[str, Any]] = []; self.zh_projection: list[dict[str, Any]] = []
+        self.final_zh_rows_hash: str | None = None
+        self.final_zh_repair_audit: dict[str, Any] = {}
         self.source_readiness: dict[str, Any] = {}
 
     def run(self, *, resume: bool = False) -> WorkflowResult:
@@ -767,10 +769,25 @@ class WorkflowV2Runner:
                         row["translation_freshness"] = "CURRENT"
         # The two projections are separate objects even when a fixture has no
         # localization rows yet; parity is evaluated across their identities.
-        from ..exporting.service import build_es_rows, validate_output_rows
-        from ..exporting.dictionary_join import build_zh_rows_from_localized_source
+        from ..exporting.service import (
+            ExportSource, build_es_rows, build_final_zh_projection,
+            validate_output_rows,
+        )
         self.es_projection = build_es_rows(es)
-        self.zh_projection, _ = build_zh_rows_from_localized_source(zh)
+        final_zh = build_final_zh_projection(
+            self._runtime_cfg(),
+            ExportSource(
+                export_date=self.context.business_date,
+                run_id=self._export_source_run_id(),
+                kind="SQLITE_CURRENT",
+                records=tuple(zh),
+                source_master_file_hash=None,
+                source_commit_id=self.context.localization_commit_id or self.context.source_commit_id,
+            ),
+        )
+        self.zh_projection = [dict(row) for row in final_zh.rows]
+        self.final_zh_rows_hash = final_zh.rows_hash
+        self.final_zh_repair_audit = dict(final_zh.repair_audit)
         validate_output_rows(self.es_projection)
         validate_output_rows(self.zh_projection)
         # Audit the rows that will actually be published.  The row builders
@@ -810,13 +827,25 @@ class WorkflowV2Runner:
             zh_audit_rows.append(zh_row)
         es_audit = audit_es(es_audit_rows)
         zh_audit = audit_zh(zh_audit_rows)
+        if not bool(final_zh.repair_audit.get("release_ready")):
+            zh_audit = {
+                **zh_audit,
+                "status": "FAIL",
+                "issues": list(zh_audit.get("issues") or []) + [{
+                    "code": "EXPORT_REPAIR_GATE_FAILED",
+                    "p0_findings": final_zh.repair_audit.get("p0_findings", 0),
+                    "unresolved_blocking": final_zh.repair_audit.get("unresolved_blocking_count", 0),
+                }],
+            }
         parity = audit_parity(es_audit_rows, zh_audit_rows)
         ready = export_readiness(source_ready=self.context.source_ready, fact_committed=bool(self.context.source_commit_id), translation_ready=self.context.translation_ready, es_audit=es_audit, zh_audit=zh_audit, parity=parity)
         self.context.export_ready = bool(ready["export_ready"])
         pending_translation = (not self.context.translation_ready and
                                self.stages.get("TRANSLATION_POLICY", StageResult()).status in {"PENDING", "REVIEW_REQUIRED"})
         self.context.export_pending = pending_translation or not self.auto_export
-        self.report.update({"ES audit": es_audit, "ZH audit": zh_audit, "Parity audit": parity})
+        self.report.update({"ES audit": es_audit, "ZH audit": zh_audit, "Parity audit": parity,
+                            "Export repair audit": self.final_zh_repair_audit,
+                            "audited_zh_rows_hash": self.final_zh_rows_hash})
         _write_json(self.directory / "export_readiness.json", ready); _write_csv(self.directory / "export_es_audit.csv", [{"status": es_audit["status"], "missing": json.dumps(es_audit.get("missing_required"), ensure_ascii=False)}]); _write_csv(self.directory / "export_zh_audit.csv", [{"status": zh_audit["status"], "issues": json.dumps(zh_audit.get("issues"), ensure_ascii=False)}]); _write_csv(self.directory / "export_parity_audit.csv", [{"status": parity["status"], "issues": json.dumps(parity.get("issues"), ensure_ascii=False)}])
         if self.context.export_ready:
             return StageResult("PASS", ready)
@@ -857,6 +886,7 @@ class WorkflowV2Runner:
                         formal_exports[language] = export_catalog(
                             formal_cfg, language=language, export_date=self.context.business_date,
                             no_images=True, run_id=export_run_id,
+                            release_mode="PREVIEW",
                         )
                     except ExportValidationError as exc:
                         # A local canary may intentionally have no legacy
@@ -872,6 +902,16 @@ class WorkflowV2Runner:
                             "reason": "FORMAL_RUN_NOT_FOUND",
                             "run_id": export_run_id,
                         }
+                zh_export = formal_exports.get("zh") or {}
+                if (
+                    zh_export.get("status") != "SKIPPED"
+                    and self.final_zh_rows_hash
+                    and zh_export.get("audited_zh_rows_hash") is not None
+                    and zh_export.get("audited_zh_rows_hash") != self.final_zh_rows_hash
+                ):
+                    raise ValueError("WORKFLOW_FINAL_ZH_ROWS_HASH_MISMATCH")
+                if self.production_apply and zh_export.get("status") != "SKIPPED" and not zh_export.get("audited_zh_rows_hash"):
+                    raise ValueError("WORKFLOW_FINAL_ZH_ROWS_HASH_MISSING")
             if self.production_apply:
                 # The database commit and its compatibility projections must
                 # advance together.  The localization apply creates a new
@@ -928,6 +968,12 @@ class WorkflowV2Runner:
             if not source.exists() or not manifest.exists():
                 raise ValueError("PRODUCTION_EXPORT_ARTIFACT_MISSING")
             replacements.extend(((source, export_root / source.name), (manifest, export_root / manifest.name)))
+            repair_report = result.get("repair_report")
+            if repair_report:
+                repair = Path(str(repair_report))
+                if not repair.exists():
+                    raise ValueError("PRODUCTION_EXPORT_REPAIR_REPORT_MISSING")
+                replacements.append((repair, export_root / repair.name))
         previous = {target: (target.read_bytes() if target.exists() else None) for _, target in replacements}
         temporary: list[Path] = []
         try:

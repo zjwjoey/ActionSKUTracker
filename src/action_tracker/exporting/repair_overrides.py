@@ -12,6 +12,12 @@ HEADERS = (
     "approved_by", "approved_at", "status",
 )
 
+_FIELD_TO_SOURCE = {
+    "name_zh": "name_es", "cat1_zh": "cat1_es", "cat2_zh": "cat2_es",
+    "spec_zh": "spec_es", "desc_zh": "desc_es", "details_zh": "details_es",
+    "unit_price_zh": "unit_price",
+}
+
 
 class ExportRepairOverrideError(ValueError):
     pass
@@ -37,10 +43,21 @@ def load_overrides(path: Path | None) -> dict[tuple[str, str], dict[str, str]]:
 
 
 def source_hash(fields: dict[str, Any]) -> str:
+    """Legacy aggregate hash kept only to identify rows needing reapproval."""
     payload = "\x1f".join(str(fields.get(key) or "").strip() for key in (
         "name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es", "unit_price",
     ))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def field_source_hash(record: dict[str, Any], field: str) -> str:
+    """Bind an override to its own Spanish source field, never the SKU blob."""
+    try:
+        source_field = _FIELD_TO_SOURCE[str(field)]
+    except KeyError as exc:
+        raise ExportRepairOverrideError(f"EXPORT_REPAIR_OVERRIDE_UNKNOWN_FIELD: {field}") from exc
+    value = str(record.get(source_field) or "").strip()
+    return hashlib.sha256((value + "\x1f").encode("utf-8")).hexdigest()
 
 
 def apply_override(
@@ -50,10 +67,14 @@ def apply_override(
     value: Any,
     record: dict[str, Any],
     overrides: dict[tuple[str, str], dict[str, str]],
-) -> tuple[Any, dict[str, str] | None, bool]:
+) -> tuple[Any, dict[str, str] | None, str]:
     row = overrides.get((str(sku).strip(), str(field).strip()))
     if not row:
-        return value, None, False
-    if row["source_hash"] != source_hash(record):
-        return value, row, False
-    return row["replacement"], row, True
+        return value, None, "MISSING"
+    if row["source_hash"] == field_source_hash(record, field):
+        return row["replacement"], row, "APPLIED"
+    # Aggregate-hash rows were approved under the old contract.  They cannot
+    # be safely converted because no historical field-level evidence exists.
+    if row["source_hash"] == source_hash(record):
+        return value, row, "REAPPROVAL_REQUIRED"
+    return value, row, "STALE"

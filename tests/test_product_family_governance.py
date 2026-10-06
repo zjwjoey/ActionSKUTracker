@@ -279,6 +279,28 @@ def test_worker_canonical_pass_can_be_approved_and_projected(tmp_path: Path):
     assert len(KnowledgeStore(db_path).approved_registry_projection()) == 1
 
 
+def test_approved_registry_projection_combines_all_optional_scopes(tmp_path: Path):
+    db_path, registry, record, resolver = _seed_family_worker(tmp_path, "微纤维清洁布")
+    from action_tracker.localization.worker import TranslationQueueWorker
+
+    assert TranslationQueueWorker(registry, resolver).process_once(limit=1, worker_id="family-test").completed == 1
+    with connect(db_path) as db:
+        revision_id = db.execute("SELECT revision_id FROM translation_revisions").fetchone()[0]
+        queue_run_id = db.execute("SELECT run_id FROM translation_queue").fetchone()[0]
+    assert registry.approve_revision(revision_id, actor="human:test") is True
+
+    store = KnowledgeStore(db_path)
+    assert len(store.approved_registry_projection(source_run_id="family-run")) == 1
+    assert len(store.approved_registry_projection(queue_run_id=queue_run_id)) == 1
+    assert len(store.approved_registry_projection(revision_ids=[revision_id])) == 1
+    assert len(store.approved_registry_projection(
+        source_run_id="family-run", queue_run_id=queue_run_id, revision_ids=[revision_id],
+    )) == 1
+    assert store.approved_registry_projection(
+        source_run_id="other-run", queue_run_id=queue_run_id, revision_ids=[revision_id],
+    ) == []
+
+
 def test_canonical_context_rules_cover_name_description_and_detail_material():
     record = {"sku": "x", "name_es": "Paño de microfibra", "cat1_es": "Hogar", "cat2_es": "Limpieza", "desc_es": "Paño de microfibra", "details_es": "Material: Goma"}
     plan = LocalizationEngine().resolve(record)

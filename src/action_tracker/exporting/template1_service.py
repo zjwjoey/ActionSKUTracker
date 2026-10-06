@@ -8,13 +8,18 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from .dictionary_join import build_zh_rows, build_zh_rows_from_localized_source, load_dictionary_context
-from .repair import ExportRepairEngine, default_overrides_path
-from .repair_report import ExportRepairReport, audit_repaired_rows
+import openpyxl
+
+from .dictionary_join import load_dictionary_context
+from .repair import ExportRepairEngine
 from .history import HistoryExportError, build_presence_rows, load_presence_history
 from .service import (
     ExportValidationError,
+    ExportSource,
+    PREVIEW,
     build_es_rows,
+    build_final_zh_projection,
+    canonical_export_rows_hash,
     resolve_formal_source,
     validate_output_rows,
     validate_source_records,
@@ -23,6 +28,7 @@ from .service import (
     _resolve_image_eligibility,
     _commit_id_for_run,
     _export_repair_allowed_tokens,
+    _publish_export_bundle,
 )
 from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, verify_template1_xlsx, write_template1_xlsx
 
@@ -56,36 +62,20 @@ def export_template1(
         validate_source_records(records, export_date=export_date)
         validate_spanish_source_fields(records)
         es_rows = build_es_rows(records)
-        repair_report = ExportRepairReport(run_id=source.run_id, rule_version=ExportRepairEngine.VERSION)
-        repair_allowed_tokens: set[str] = set()
-        if source.kind == "SQLITE_CURRENT":
-            # SQLite PRIMARY already contains the gated localization projection;
-            # do not re-join the file dictionary and risk a split-brain export.
-            repair_dictionary = load_dictionary_context(cfg)
-            zh_rows, fallback_counts = build_zh_rows_from_localized_source(
-                records, category_context=repair_dictionary, repair_report=repair_report,
-                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
-            )
-            repair_allowed_tokens = _export_repair_allowed_tokens(repair_dictionary)
-            dictionary = None
-        else:
-            dictionary = load_dictionary_context(cfg)
-            repair_allowed_tokens = _export_repair_allowed_tokens(dictionary)
-            zh_rows, fallback_counts = build_zh_rows(
-                records, dictionary, repair_report=repair_report,
-                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
-            )
+        template_source = ExportSource(
+            export_date=source.export_date, run_id=source.run_id, kind=source.kind,
+            records=tuple(records), source_master_file_hash=source.source_master_file_hash,
+            directory=source.directory, source_commit_id=source.source_commit_id,
+        )
+        final_zh = build_final_zh_projection(cfg, template_source, release_mode=PREVIEW)
+        zh_rows = [dict(row) for row in final_zh.rows]
+        fallback_counts = final_zh.fallback_counts
+        repair_report = final_zh.repair_report
+        repair_audit = final_zh.repair_audit
+        dictionary = load_dictionary_context(cfg) if source.kind != "SQLITE_CURRENT" else None
         validate_zh_rows_against_source(zh_rows, records)
         validate_output_rows(es_rows)
         validate_output_rows(zh_rows)
-        repair_audit = audit_repaired_rows(
-            records, zh_rows, allowed_tokens=repair_allowed_tokens,
-        )
-        unresolved_blocking = sum(1 for item in repair_report.unresolved if item.blocking)
-        repair_audit["unresolved_blocking_count"] = unresolved_blocking
-        repair_audit["release_ready"] = bool(repair_audit.get("release_ready")) and unresolved_blocking == 0
-        repair_report.set_audit(repair_audit)
-        repair_report.finalize(records, zh_rows)
         if research_release and not bool(repair_audit.get("release_ready")):
             raise ExportValidationError(
                 "TEMPLATE1_EXPORT_REPAIR_GATE_FAILED:"
@@ -140,17 +130,15 @@ def export_template1(
             temporary, export_date=export_date, current_skus=current_skus,
             expect_images=with_images, expected_image_count=image_stats["embedded_count"],
         )
-        temporary.replace(output)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
+        published_zh_rows_hash = _template1_zh_rows_hash(temporary)
+        if published_zh_rows_hash != final_zh.rows_hash:
+            raise ExportValidationError("PUBLISHED_ROWS_DIFFER_FROM_AUDITED_ROWS")
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
 
     manifest_path = output.with_suffix(".manifest.json")
     repair_report_path = output.with_suffix(".repair-report.json")
-    repair_report_path.write_text(
-        json.dumps(repair_report.as_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
     manifest = {
         "template_id": "action_full_template_1",
         "template_version": 1,
@@ -190,9 +178,18 @@ def export_template1(
             "release_ready": bool(repair_audit.get("release_ready")),
             "repair_count": len(repair_report.events),
             "repair_report": repair_report_path.name,
+            "audited_zh_rows_hash": final_zh.rows_hash,
+            "published_zh_rows_hash": published_zh_rows_hash,
         },
     }
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    try:
+        _publish_export_bundle(
+            temporary, output, manifest_path, manifest,
+            repair_report_path=repair_report_path, repair_report=repair_report.as_dict(),
+        )
+    finally:
+        if temporary.exists():
+            temporary.unlink()
     if selection_id:
         from ..delivery.artifacts import ArtifactService
         ArtifactService(_database_path(cfg)).record(
@@ -217,6 +214,20 @@ def export_template1(
 def _hash_records(records: list[dict[str, Any]]) -> str:
     payload = json.dumps(sorted(records, key=lambda row: str(row.get("sku") or "")), ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _template1_zh_rows_hash(path: Path) -> str:
+    workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    try:
+        sheet = workbook["今日中文清单"]
+        headers = [str(cell.value or "") for cell in sheet[1]]
+        rows = [
+            {header: values[index] for index, header in enumerate(headers)}
+            for values in sheet.iter_rows(min_row=2, values_only=True)
+        ]
+        return canonical_export_rows_hash(rows)
+    finally:
+        workbook.close()
 
 
 def _database_path(cfg: dict[str, Any]) -> Path:

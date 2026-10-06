@@ -900,21 +900,18 @@ def _strip_post_article_uppercase_fragments(value: str | None, source: str | Non
     if not marker:
         return text
     prefix, suffix = text[:marker.end()], text[marker.end():]
-    # Article number is the final structured detail in the Action source. Any
-    # later parser fragment (ordinary uppercase enum, residual acronym, or
-    # metadata marker) is outside the details payload. Preserve the two
-    # explicit source-anomaly markers because they are deliberate audit
-    # provenance, not parser output.
+    # Do not treat the article marker as an end-of-field marker.  It is common
+    # for valid source facts to follow it.  Only explicit legacy leakage
+    # values are removed; all other suffixes stay visible for QA/approval.
     candidate = re.sub(r"^[\s；;|｜]+", "", suffix)
     if not candidate:
         return text
     if candidate.startswith("来源异常：官网字段"):
         return text
-    # The article number is the terminal structured detail in the source.
-    # Even technical-looking fragments after it (USB-C, LPG, GSM100, etc.)
-    # are parser leakage because the same fact is already represented in the
-    # preceding translated key/value pair.
-    return prefix.rstrip("；;|｜ ")
+    leakage = candidate.strip("；;|｜ ").upper()
+    if leakage in _ORDINARY_POST_ARTICLE_UPPERCASE:
+        return prefix.rstrip("；;|｜ ")
+    return text
 
 
 def _spec_compare_text(value: str | None) -> str:

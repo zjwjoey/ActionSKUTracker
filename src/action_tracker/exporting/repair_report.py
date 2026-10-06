@@ -91,6 +91,10 @@ class RepairEvent:
     rule: str
     rule_version: str
     status: str = "AUTO_REPAIRED"
+    approval_source: str | None = None
+    approved_by: str | None = None
+    approved_at: str | None = None
+    reason: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -104,6 +108,10 @@ class RepairEvent:
             "rule": self.rule,
             "rule_version": self.rule_version,
             "status": self.status,
+            "approval_source": self.approval_source,
+            "approved_by": self.approved_by,
+            "approved_at": self.approved_at,
+            "reason": self.reason,
         }
 
 
@@ -173,11 +181,13 @@ class ExportRepairReport:
         self, *, sku: str, field: str, source_field: str, code: str,
         source: Any, target: Any, blocking: bool = True, message: str | None = None,
     ) -> None:
-        self.unresolved.append(UnresolvedFinding(
+        candidate = UnresolvedFinding(
             sku=_text(sku), field=field, source_field=source_field,
             code=code, source=_text(source) or None, target=target,
             blocking=blocking, message=message,
-        ))
+        )
+        if candidate not in self.unresolved:
+            self.unresolved.append(candidate)
 
     def finalize(
         self,
@@ -190,6 +200,7 @@ class ExportRepairReport:
         records_by_sku = {_text(row.get("sku")): row for row in records}
         rows_by_sku = {_text(row.get("编号")): row for row in rows}
         self.row_count = len(rows_by_sku)
+        self.eligible_fields = 0
         self.source_hash = source_hash
         self.sku_set_hash = sku_set_hash
         for sku, record in records_by_sku.items():
@@ -207,6 +218,10 @@ class ExportRepairReport:
                             sku=sku, field=target_field, source_field=source_field,
                             code="EMPTY_TARGET_AFTER_REPAIR", source=source, target=target,
                         )
+        # A report can be finalized after an initial audit by legacy callers.
+        # Re-apply the stored audit so newly found blockers always close its gate.
+        if self.audit:
+            self.set_audit(self.audit)
 
     def set_audit(self, audit: Mapping[str, Any]) -> None:
         value = dict(audit)
@@ -552,6 +567,7 @@ def audit_repaired_rows(
         "cm": ("厘米",), "mm": ("毫米",), "w": ("瓦",), "v": ("伏", "伏特"),
     }
     eligible = 0
+    eligible_by_field: Counter[str] = Counter()
     for sku, source in source_by_sku.items():
         output = row_by_sku.get(sku, {})
         record = dict(source)
@@ -571,6 +587,7 @@ def audit_repaired_rows(
             source_field = TARGET_TO_SOURCE[target]
             if _text(source.get(source_field)):
                 eligible += 1
+                eligible_by_field[target] += 1
         source_facts = SourceFacts.from_record(record)
         qa_findings = audit_translation(source_facts, targets, AUDIT_LOGICAL_FIELDS)
         for finding in qa_findings:
@@ -639,32 +656,13 @@ def audit_repaired_rows(
                     token for token in approved_tokens
                     if token.casefold() in source_text.casefold()
                 }
-                source_words = {
-                    word for word in re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ-]*", source_text)
-                    if word.casefold() in target_text.casefold()
-                    and (word.isupper() or word[:1].isupper() or re.search(r"\d|[-]", word))
-                    and word.upper() not in _ORDINARY_SOURCE_TOKENS
-                }
-                source_allowed.update(source_words)
                 # Keep export residual detection aligned with localization QA.
-                # Only source-bound brand/model-shaped spans may survive;
-                # ordinary Spanish remains blocking.
+                # Only confirmed brands, strict source-bound model/technical
+                # tokens, or approved allowlist entries may survive.
                 source_allowed.update(_source_bound_display_tokens(source_text, target_text))
                 source_allowed.update(
                     _source_bound_cross_field_tokens(str(source.get("name_es") or ""), target_text)
                 )
-                for phrase in _SOURCE_BOUND_DISPLAY_TOKENS:
-                    if phrase in source_text.casefold() and phrase in target_text.casefold():
-                        source_allowed.add(phrase)
-                        source_allowed.update(
-                            piece for piece in re.split(r"[\s-]+", phrase) if len(piece) > 1
-                        )
-                # ``All-in-1`` and similar series tokens are split into
-                # separate words by the residual detector. Keep the parts
-                # source-bound as well as the complete token.
-                for word in tuple(source_words):
-                    if "-" in word:
-                        source_allowed.update(piece for piece in word.split("-") if piece)
                 residual_text = target_text
                 # These two markers are deliberately retained as provenance
                 # for malformed official source keys.  Their Spanish spelling
@@ -686,6 +684,14 @@ def audit_repaired_rows(
     p0_findings = [item for item in findings if item["code"] in P0_RULES]
     p0_fields = {(item["sku"], item["field"]) for item in p0_findings}
     field_pass_rate = 1.0 if not eligible else max(0.0, 1.0 - len(affected_fields) / eligible)
+    field_error_rates = {
+        field: {
+            "eligible_fields": count,
+            "affected_fields": sum(1 for sku, affected in affected_fields if affected == field),
+            "field_error_rate": (sum(1 for sku, affected in affected_fields if affected == field) / count) if count else 0.0,
+        }
+        for field, count in sorted(eligible_by_field.items())
+    }
     counts = Counter(item["code"] for item in findings)
     return {
         "audit_findings": len(findings),
@@ -698,6 +704,7 @@ def audit_repaired_rows(
         "p0_affected_fields": len(p0_fields),
         "field_pass_rate": field_pass_rate,
         "field_error_rate": 1.0 - field_pass_rate,
+        "field_error_rates": field_error_rates,
         "target_field_pass_rate": min_field_pass_rate,
         "release_ready": not p0_findings and not affected_fields and field_pass_rate >= min_field_pass_rate,
         "findings": findings,

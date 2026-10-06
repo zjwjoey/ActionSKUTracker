@@ -216,35 +216,36 @@ class KnowledgeStore:
                 FROM translation_revisions r
                 JOIN translation_units u ON u.current_revision_id=r.revision_id
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
-                WHERE u.freshness_status='FRESH'
-                  AND r.qa_status='PASS'
-                  AND COALESCE(r.canonical_qa_status,'NOT_RUN') IN ('PASS','NOT_REQUIRED')
-                  AND r.review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED')
-                  AND NOT EXISTS (SELECT 1 FROM translation_qa_findings f
-                    WHERE f.revision_id=r.revision_id AND f.status='OPEN'
-                      AND f.severity IN ('BLOCKER','ERROR','HIGH'))
-                ORDER BY s.official_sku,u.field_name"""
-            params: tuple[Any, ...] = ()
+                """
+            where_parts = [
+                "u.freshness_status='FRESH'",
+                "r.qa_status='PASS'",
+                "COALESCE(r.canonical_qa_status,'NOT_RUN') IN ('PASS','NOT_REQUIRED')",
+                "r.review_status IN ('APPROVED','HUMAN_REVIEWED','LOCKED')",
+                "NOT EXISTS (SELECT 1 FROM translation_qa_findings f "
+                "WHERE f.revision_id=r.revision_id AND f.status='OPEN' "
+                "AND f.severity IN ('BLOCKER','ERROR','HIGH'))",
+            ]
+            params: list[Any] = []
             if source_run_id:
-                sql = sql.replace("WHERE u.freshness_status='FRESH'", "WHERE s.source_run_id=? AND u.freshness_status='FRESH'", 1)
-                params = (str(source_run_id),)
+                where_parts.append("s.source_run_id=?")
+                params.append(str(source_run_id))
             if queue_run_id:
-                sql = sql.replace(
-                    "WHERE u.freshness_status='FRESH'",
-                    "WHERE u.freshness_status='FRESH' AND EXISTS (SELECT 1 FROM translation_queue q "
+                where_parts.append(
+                    "EXISTS (SELECT 1 FROM translation_queue q "
                     "WHERE q.official_sku=s.official_sku AND q.source_hash=s.source_hash "
-                    "AND q.run_id=? AND q.status='COMPLETED')",
-                    1,
+                    "AND q.run_id=? AND q.status='COMPLETED')"
                 )
-                params = (*params, str(queue_run_id))
+                params.append(str(queue_run_id))
             selected_revision_ids = tuple(dict.fromkeys(str(item).strip() for item in (revision_ids or ()) if str(item).strip()))
             if selected_revision_ids:
                 placeholders = ",".join("?" for _ in selected_revision_ids)
-                sql = sql.replace("ORDER BY s.official_sku,u.field_name", f"AND r.revision_id IN ({placeholders}) ORDER BY s.official_sku,u.field_name", 1)
-                params = (*params, *selected_revision_ids)
+                where_parts.append(f"r.revision_id IN ({placeholders})")
+                params.extend(selected_revision_ids)
+            sql += " WHERE " + " AND ".join(where_parts) + " ORDER BY s.official_sku,u.field_name"
             if limit is not None:
-                sql += " LIMIT ?"; params = (*params, int(limit))
-            return [dict(row) for row in db.execute(sql, params).fetchall()]
+                sql += " LIMIT ?"; params.append(int(limit))
+            return [dict(row) for row in db.execute(sql, tuple(params)).fetchall()]
 
     def stage_approved_registry_patches(self, *, expected_base_commit_id: str, actor: str, limit: int | None = None, source_run_id: str | None = None, queue_run_id: str | None = None, revision_ids: Iterable[str] | None = None) -> dict[str, Any]:
         """Convert Registry-approved fields into immutable PRIMARY patches.

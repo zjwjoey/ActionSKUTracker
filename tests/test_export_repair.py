@@ -1,5 +1,5 @@
 from action_tracker.exporting.repair import ExportRepairEngine
-from action_tracker.exporting.repair_overrides import HEADERS, load_overrides, source_hash
+from action_tracker.exporting.repair_overrides import HEADERS, field_source_hash, load_overrides
 from action_tracker.exporting.repair_report import (
     ExportRepairReport,
     _numeric_addition_explained,
@@ -72,6 +72,16 @@ def test_export_audit_allows_source_bound_brand_but_not_ordinary_spanish():
     assert any(item["code"] == "SPANISH_RESIDUAL" for item in ordinary["findings"])
 
 
+def test_ordinary_hyphenated_spanish_is_never_source_bound_by_shape():
+    for residual in ("Extra-Fuerte", "Super-Limpio", "Producto-Pro", "Material-X"):
+        record = {**_record(), "desc_es": residual}
+        result = audit_repaired_rows([record], [_row(描述=residual)])
+        assert any(
+            item["code"] == "SPANISH_RESIDUAL" and item["field"] == "desc_zh"
+            for item in result["findings"]
+        ), residual
+
+
 def test_confirmed_source_token_repair_is_idempotent():
     first = repair_title("产品", "Producto TCX")
     second = repair_title(first, "Producto TCX")
@@ -139,9 +149,10 @@ def test_details_strip_ordinary_uppercase_fragment_after_article_number():
     assert _repair_export_details(
         "商品编号：2542277；MANOS", "Tipo: MANOS; Número del artículo: 2542277"
     ) == "商品编号：2542277"
+    # A real source fact after the article marker must remain visible.
     assert _repair_export_details(
         "商品编号：1001；USB-C", "Tipo: Cable; Número del artículo: 1001; USB-C"
-    ) == "商品编号：1001"
+    ) == "商品编号：1001；USB-C"
 
 
 def test_spec_rebuild_discards_cross_field_appended_segments():
@@ -162,16 +173,44 @@ def test_blocking_unresolved_finding_closes_release_gate():
     assert report.audit["release_ready"] is False
 
 
+def test_finalize_blocker_recloses_a_previously_open_release_gate():
+    report = ExportRepairReport(run_id="finalize-order")
+    report.set_audit({"release_ready": True, "p0_findings": 0})
+    report.finalize([_record()], [_row(标题="")])
+    assert report.audit["release_ready"] is False
+    assert report.audit["unresolved_blocking_count"] == 1
+
+
 def test_override_requires_exact_source_hash(tmp_path):
     record = _record()
     path = tmp_path / "export_repair_overrides.csv"
     path.write_text(
         ",".join(HEADERS) + "\n"
         + ",".join([
-            "1001", "name_zh", source_hash(record), "人工品名", "review", "1.0",
+            "1001", "name_zh", field_source_hash(record, "name_zh"), "人工品名", "review", "1.0",
             "tester", "2026-10-05", "APPROVED",
         ]) + "\n",
         encoding="utf-8",
     )
     loaded = load_overrides(path)
     assert loaded[("1001", "name_zh")]["replacement"] == "人工品名"
+
+
+def test_override_field_hash_survives_unrelated_source_change_and_records_approval(tmp_path):
+    record = _record()
+    path = tmp_path / "export_repair_overrides.csv"
+    path.write_text(
+        ",".join(HEADERS) + "\n" + ",".join([
+            "1001", "name_zh", field_source_hash(record, "name_zh"), "人工品名", "reviewed source", "2.0",
+            "human:tester", "2026-10-06", "APPROVED",
+        ]) + "\n", encoding="utf-8",
+    )
+    changed = {**record, "spec_es": "500 gramos"}
+    report = ExportRepairReport(run_id="field-hash")
+    value = ExportRepairEngine(report=report, overrides_path=path).apply_override(
+        sku="1001", field="name_zh", value="旧品名", record=changed, source_field="name_es",
+    )
+    assert value == "人工品名"
+    event = report.events[-1].as_dict()
+    assert event["approved_by"] == "human:tester"
+    assert event["reason"] == "reviewed source"

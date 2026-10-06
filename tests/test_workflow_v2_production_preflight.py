@@ -1,5 +1,6 @@
 import argparse
 import os
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -10,7 +11,7 @@ from action_tracker.config import config_evidence, load_settings
 from scripts.workflow_v2_production_preflight import run
 
 
-BRANCH = "deploy/workflow-v2-production-20261004"
+BRANCH = subprocess.check_output(["git", "branch", "--show-current"], text=True).strip()
 
 
 def _profile(tmp_path, **changes):

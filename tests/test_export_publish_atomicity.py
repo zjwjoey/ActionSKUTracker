@@ -83,3 +83,28 @@ def test_new_pair_failure_leaves_no_half_pair(tmp_path, monkeypatch):
         service._publish_export_pair(preview, output, manifest, {"x": 1})
     assert not output.exists()
     assert not manifest.exists()
+
+
+def test_repair_report_replace_failure_rolls_back_complete_chinese_bundle(tmp_path, monkeypatch):
+    preview, output, manifest = _seed_pair(tmp_path)
+    repair = tmp_path / "out.repair-report.json"
+    repair.write_text("old repair", encoding="utf-8")
+    old = (output.read_bytes(), manifest.read_bytes(), repair.read_bytes())
+    real_replace = Path.replace
+
+    failed = False
+
+    def fail_repair_replace(self, target):
+        nonlocal failed
+        if Path(target) == repair and not failed:
+            failed = True
+            raise OSError("repair replace failed")
+        return real_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", fail_repair_replace)
+    with pytest.raises(OSError):
+        service._publish_export_bundle(
+            preview, output, manifest, {"x": 1},
+            repair_report_path=repair, repair_report={"repairs": []},
+        )
+    assert (output.read_bytes(), manifest.read_bytes(), repair.read_bytes()) == old

@@ -38,6 +38,11 @@ class ExportValidationError(ValueError):
     """正式导出来源或记录不满足冻结契约。"""
 
 
+PREVIEW = "PREVIEW"
+PRODUCTION_RELEASE = "PRODUCTION_RELEASE"
+_HASHED_ZH_COLUMNS = ("编号", "标题", "分类1", "分类2", "规格", "单价", "描述", "产品详情", "折后价", "原价", "图片链接", "商品链接")
+
+
 def _export_repair_allowed_tokens(dictionary: Any) -> set[str]:
     """Return the reviewed display-token allowlist used by repair and audit."""
     from ..dictionary import is_confirmed_brand_record
@@ -71,6 +76,85 @@ class ExportSource:
     source_commit_id: str | None = None
 
 
+@dataclass(frozen=True)
+class FinalZhProjection:
+    """The sole auditable/publishable Chinese row identity for an export."""
+    rows: tuple[dict[str, Any], ...]
+    fallback_counts: dict[str, int]
+    dictionary_hash: str | None
+    unresolved_brand_ids: tuple[str, ...]
+    allowed_tokens: frozenset[str]
+    repair_report: ExportRepairReport
+    repair_audit: dict[str, Any]
+    rows_hash: str
+
+
+def build_final_zh_projection(
+    cfg: dict[str, Any], source: ExportSource, *, release_mode: str = PREVIEW,
+) -> FinalZhProjection:
+    """Build, finalize and audit final Chinese rows exactly once.
+
+    Every consumer, including Workflow V2 and Template1, must consume this
+    projection rather than reconstructing a second Chinese row set.
+    """
+    mode = _release_mode(release_mode)
+    report = ExportRepairReport(run_id=source.run_id, rule_version=ExportRepairEngine.VERSION)
+    dictionary_hash: str | None = None
+    unresolved_brand_ids: list[str] = []
+    dictionary = None
+    allowed_tokens: set[str] = set()
+    try:
+        if (cfg.get("paths") or {}).get("dictionary_baseline"):
+            dictionary = load_dictionary_context(cfg)
+            dictionary_hash = dictionary.content_hash
+            allowed_tokens = _export_repair_allowed_tokens(dictionary)
+        if source.kind == "SQLITE_CURRENT":
+            rows, fallbacks = build_zh_rows_from_localized_source(
+                source.records, category_context=dictionary, repair_report=report,
+                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
+            )
+        else:
+            if dictionary is None:
+                raise ExportValidationError("FORMAL_DICTIONARY_MISSING")
+            records = source.records
+            if source.kind == "FORMAL_SNAPSHOT":
+                records, _ = _reuse_source_bound_localizations(cfg, source.records)
+            rows, fallbacks = build_zh_rows(
+                records, dictionary, repair_report=report,
+                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
+            )
+            unresolved_brand_ids = unresolved_brand_ids_for_records(source.records, dictionary)
+    except DictionaryJoinError as exc:
+        raise ExportValidationError(str(exc)) from exc
+    validate_zh_rows_against_source(rows, source.records)
+    validate_output_rows(rows)
+    # Finalize can discover empty targets. It must run before the audit and
+    # release-ready calculation, otherwise a later blocker can be missed.
+    report.finalize(
+        source.records, rows, source_hash=canonical_source_hash(source.records),
+        sku_set_hash=_sku_set_hash(str(row["编号"]) for row in rows),
+    )
+    audit = audit_repaired_rows(source.records, rows, allowed_tokens=allowed_tokens)
+    report.set_audit(audit)
+    audit = dict(report.audit)
+    rows_hash = canonical_export_rows_hash(rows)
+    if mode == PRODUCTION_RELEASE:
+        if source.kind != "SQLITE_CURRENT":
+            raise ExportValidationError("PRODUCTION_RELEASE_REQUIRES_SQLITE_CURRENT")
+        if not bool(audit.get("release_ready")):
+            raise ExportValidationError(
+                "EXPORT_REPAIR_GATE_FAILED:"
+                f"p0={audit.get('p0_findings', 0)};"
+                f"affected_fields={audit.get('blocking_affected_fields', 0)};"
+                f"unresolved={audit.get('unresolved_blocking_count', 0)}"
+            )
+    return FinalZhProjection(
+        rows=tuple(rows), fallback_counts=dict(fallbacks), dictionary_hash=dictionary_hash,
+        unresolved_brand_ids=tuple(unresolved_brand_ids), allowed_tokens=frozenset(allowed_tokens),
+        repair_report=report, repair_audit=audit, rows_hash=rows_hash,
+    )
+
+
 _SOURCE_HASH_FIELDS = (
     "sku", "canonical_id", "name_es", "cat1_es", "cat2_es", "spec_es", "current_price",
     "original_price", "unit_price", "desc_es", "details_es", "product_url", "image_url",
@@ -89,6 +173,7 @@ def export_catalog(
     run_id: str | None = None,
     selection_id: str | None = None,
     research_release: bool = False,
+    release_mode: str = PREVIEW,
 ) -> dict[str, Any]:
     """导出一个正式全量清单；整个过程只读取来源并写入 exports 目录。"""
     _validate_date(export_date)
@@ -100,6 +185,9 @@ def export_catalog(
         raise ExportValidationError(f"EXPORT_PROFILE_LANGUAGE_MISMATCH: {profile.profile_id}")
     source = resolve_formal_source(cfg, export_date=export_date, requested_run_id=run_id, profile=profile)
     if research_release:
+        release_mode = PRODUCTION_RELEASE
+    release_mode = _release_mode(release_mode)
+    if release_mode == PRODUCTION_RELEASE:
         if language != "zh":
             raise ExportValidationError("RESEARCH_RELEASE_ZH_ONLY")
         if source.kind != "SQLITE_CURRENT":
@@ -129,63 +217,23 @@ def export_catalog(
     if language == "es":
         validate_spanish_source_fields(source.records)
         rows = build_es_rows(source.records)
-    elif language == "zh" and source.kind == "SQLITE_CURRENT":
-        repair_report = ExportRepairReport(run_id=source.run_id, rule_version=ExportRepairEngine.VERSION)
-        try:
-            dictionary = load_dictionary_context(cfg)
-            rows, fallback_counts = build_zh_rows_from_localized_source(
-                source.records, category_context=dictionary, repair_report=repair_report,
-                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
-            )
-            dictionary_hash = dictionary.content_hash
-            repair_allowed_tokens = _export_repair_allowed_tokens(dictionary)
-        except DictionaryJoinError as exc:
-            raise ExportValidationError(str(exc)) from exc
     elif language == "zh":
-        repair_report = ExportRepairReport(run_id=source.run_id, rule_version=ExportRepairEngine.VERSION)
-        try:
-            dictionary = load_dictionary_context(cfg)
-            zh_records = source.records
-            if source.kind == "FORMAL_SNAPSHOT":
-                zh_records, historical_localization_reuse = _reuse_source_bound_localizations(
-                    cfg, source.records,
-                )
-            rows, fallback_counts = build_zh_rows(
-                zh_records, dictionary, repair_report=repair_report,
-                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
-            )
-            dictionary_hash = dictionary.content_hash
-            repair_allowed_tokens = _export_repair_allowed_tokens(dictionary)
-            unresolved_brand_ids = unresolved_brand_ids_for_records(source.records, dictionary)
-        except DictionaryJoinError as exc:
-            raise ExportValidationError(str(exc)) from exc
-        validate_zh_rows_against_source(rows, source.records)
+        projection = build_final_zh_projection(cfg, source, release_mode=release_mode)
+        rows = [dict(row) for row in projection.rows]
+        fallback_counts = projection.fallback_counts
+        dictionary_hash = projection.dictionary_hash
+        unresolved_brand_ids = list(projection.unresolved_brand_ids)
+        repair_allowed_tokens = set(projection.allowed_tokens)
+        repair_report = projection.repair_report
+        repair_audit = projection.repair_audit
+        final_zh_rows_hash = projection.rows_hash
     else:
         raise ExportValidationError(f"EXPORT_LANGUAGE_UNSUPPORTED: {language}")
     validate_output_rows(rows)
-    repair_audit: dict[str, Any] | None = None
+    repair_audit: dict[str, Any] | None = locals().get("repair_audit")
     repair_report_path: Path | None = None
-    if language == "zh" and repair_report is not None:
-        repair_audit = audit_repaired_rows(
-            source.records, rows, allowed_tokens=repair_allowed_tokens,
-        )
-        unresolved_blocking = sum(1 for item in repair_report.unresolved if item.blocking)
-        repair_audit["unresolved_blocking_count"] = unresolved_blocking
-        repair_audit["release_ready"] = bool(repair_audit.get("release_ready")) and unresolved_blocking == 0
-        repair_report.set_audit(repair_audit)
-        repair_report.finalize(
-            source.records, rows, source_hash=canonical_source_hash(source.records),
-            sku_set_hash=_sku_set_hash(str(row["编号"]) for row in rows),
-        )
-        if research_release and not bool(repair_audit.get("release_ready")):
-            raise ExportValidationError(
-                "EXPORT_REPAIR_GATE_FAILED:"
-                f"p0={repair_audit.get('p0_findings', 0)};"
-                f"affected_fields={repair_audit.get('blocking_affected_fields', 0)};"
-                f"unresolved={repair_audit.get('unresolved_blocking_count', 0)};"
-                f"field_pass_rate={repair_audit.get('field_pass_rate', 0):.4f}"
-            )
-    if research_release:
+    final_zh_rows_hash = locals().get("final_zh_rows_hash")
+    if release_mode == PRODUCTION_RELEASE:
         from ..localization.release_gate import audit_research_release, load_allowed_tokens, load_explicit_exceptions
         master_quality = None
         # SQLite_CURRENT is the formal source path, so every research release
@@ -259,7 +307,7 @@ def export_catalog(
             "selection_id": selection_id,
             "selection_source_commit_id": selection_source_commit_id,
             "artifact_source_commit_id": artifact_source_commit_id,
-            "release_mode": "research_release" if research_release else "preview",
+            "release_mode": release_mode.casefold(),
         }
         if language == "zh":
             manifest["dictionary_hash"] = dictionary_hash
@@ -277,12 +325,24 @@ def export_catalog(
                 "unresolved_blocking_count": int((repair_audit or {}).get("unresolved_blocking_count") or 0),
                 "release_ready": bool((repair_audit or {}).get("release_ready")),
                 "repair_count": len(repair_report.events) if repair_report else 0,
+                "audited_zh_rows_hash": final_zh_rows_hash,
             }
         manifest_path = output_path.with_suffix(".manifest.json")
         if repair_report is not None:
             repair_report_path = output_path.with_suffix(".repair-report.json")
-            _write_json_atomic(repair_report_path, repair_report.as_dict())
-        _publish_export_pair(preview_path, output_path, manifest_path, manifest)
+            manifest["export_repair"]["repair_report"] = repair_report_path.name
+        published_zh_rows_hash = None
+        if language == "zh":
+            published_zh_rows_hash = canonical_export_rows_hash(_read_catalog_rows(preview_path, headers))
+            if published_zh_rows_hash != final_zh_rows_hash:
+                raise ExportValidationError("PUBLISHED_ROWS_DIFFER_FROM_AUDITED_ROWS")
+            manifest["export_repair"]["published_zh_rows_hash"] = published_zh_rows_hash
+            manifest["export_repair"]["release_ready"] = bool((repair_audit or {}).get("release_ready"))
+        _publish_export_bundle(
+            preview_path, output_path, manifest_path, manifest,
+            repair_report_path=repair_report_path,
+            repair_report=(repair_report.as_dict() if repair_report is not None else None),
+        )
         if selection_id:
             from ..delivery.artifacts import ArtifactService
             ArtifactService(_database_path(cfg)).record(
@@ -309,9 +369,11 @@ def export_catalog(
         "image_eligible_count": sum(1 for eligible in (image_eligibility or {}).values() if eligible),
         "selection_id": selection_id,
         "artifact_source_commit_id": artifact_source_commit_id,
-        "release_mode": "research_release" if research_release else "preview",
+        "release_mode": release_mode.casefold(),
         "repair_report": str(repair_report_path) if repair_report_path else None,
         "repair_audit": repair_audit,
+        "audited_zh_rows_hash": final_zh_rows_hash,
+        "published_zh_rows_hash": published_zh_rows_hash,
     }
 
 
@@ -691,6 +753,35 @@ def canonical_source_hash(records: Iterable[dict[str, Any]]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def canonical_export_rows_hash(rows: Iterable[dict[str, Any]]) -> str:
+    """Hash the stable, publishable Chinese projection rather than SKU count."""
+    normalized: list[dict[str, Any]] = []
+    for row in sorted(rows, key=lambda item: str(item.get("编号") or "")):
+        normalized.append({column: _hash_cell_value(row.get(column)) for column in _HASHED_ZH_COLUMNS})
+    payload = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _hash_cell_value(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return format(float(value), ".15g")
+    text = str(value).strip()
+    # openpyxl materializes an empty string cell as None on read-back.  Both
+    # representations mean an empty export field and must hash identically.
+    return text or None
+
+
+def _release_mode(value: str) -> str:
+    mode = str(value or PREVIEW).strip().upper()
+    if mode not in {PREVIEW, PRODUCTION_RELEASE}:
+        raise ExportValidationError(f"EXPORT_RELEASE_MODE_INVALID: {value}")
+    return mode
+
+
 def _verify_written_workbook(path: Path, *, headers: list[str], expected_skus: set[str],
                              expect_images: bool = False, expected_image_count: int = 0) -> None:
     workbook = openpyxl.load_workbook(path, read_only=False, data_only=True)
@@ -709,6 +800,21 @@ def _verify_written_workbook(path: Path, *, headers: list[str], expected_skus: s
             raise ExportValidationError("EXPORT_XLSX_SKU_SET_MISMATCH")
         if expect_images and len(getattr(ws, "_images", ())) != expected_image_count:
             raise ExportValidationError("EXPORT_XLSX_IMAGE_COUNT_MISMATCH")
+    finally:
+        workbook.close()
+
+
+def _read_catalog_rows(path: Path, headers: list[str]) -> list[dict[str, Any]]:
+    workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    try:
+        ws = workbook["商品全量"]
+        actual_headers = [cell.value for cell in ws[1]]
+        if actual_headers != headers:
+            raise ExportValidationError("EXPORT_XLSX_HEADER_OR_FREEZE_MISMATCH")
+        return [
+            {str(header): values[index] for index, header in enumerate(headers)}
+            for values in ws.iter_rows(min_row=2, values_only=True)
+        ]
     finally:
         workbook.close()
 
@@ -936,69 +1042,73 @@ def _publish_export_pair(
     manifest_path: Path,
     manifest: dict[str, Any],
 ) -> None:
-    """Publish workbook and manifest as a recoverable pair.
+    """Compatibility wrapper for the legacy ES workbook/manifest pair."""
+    _publish_export_bundle(preview_path, output_path, manifest_path, manifest)
 
-    A failed manifest replacement restores the previous workbook/manifest
-    pair, so a new workbook is never left beside an old provenance record.
-    """
+
+def _publish_export_bundle(
+    preview_path: Path,
+    output_path: Path,
+    manifest_path: Path,
+    manifest: dict[str, Any],
+    *,
+    repair_report_path: Path | None = None,
+    repair_report: dict[str, Any] | None = None,
+) -> None:
+    """Atomically publish xlsx, manifest and optional Chinese repair report."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    if (repair_report_path is None) != (repair_report is None):
+        raise ExportValidationError("EXPORT_REPAIR_BUNDLE_INCOMPLETE")
+    generated: list[tuple[Path, Path]] = [(preview_path, output_path)]
     manifest_tmp: Path | None = None
-    old_output_tmp: Path | None = None
-    old_manifest_tmp: Path | None = None
-    had_old_output = output_path.exists()
-    had_old_manifest = manifest_path.exists()
-    output_replaced = False
-    manifest_replaced = False
     try:
         fd, manifest_name = tempfile.mkstemp(prefix=f".{manifest_path.stem}.", suffix=".tmp", dir=output_path.parent)
         os.close(fd)
         manifest_tmp = Path(manifest_name)
         manifest_tmp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        if output_path.exists():
-            fd, name = tempfile.mkstemp(prefix=f".{output_path.stem}.old.", suffix=".xlsx", dir=output_path.parent)
+        generated.append((manifest_tmp, manifest_path))
+        if repair_report_path is not None and repair_report is not None:
+            fd, repair_name = tempfile.mkstemp(prefix=f".{repair_report_path.stem}.", suffix=".tmp", dir=output_path.parent)
             os.close(fd)
-            backup = Path(name)
-            try:
-                shutil.copy2(output_path, backup)
-            except BaseException:
-                if backup.exists():
-                    backup.unlink()
-                raise
-            old_output_tmp = backup
-        if manifest_path.exists():
-            fd, name = tempfile.mkstemp(prefix=f".{manifest_path.stem}.old.", suffix=".json", dir=output_path.parent)
+            repair_tmp = Path(repair_name)
+            repair_tmp.write_text(json.dumps(repair_report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            generated.append((repair_tmp, repair_report_path))
+        backups: dict[Path, Path | None] = {}
+        for _, target in generated:
+            if not target.exists():
+                backups[target] = None
+                continue
+            fd, backup_name = tempfile.mkstemp(prefix=f".{target.stem}.old.", suffix=target.suffix, dir=output_path.parent)
             os.close(fd)
-            backup = Path(name)
+            backup = Path(backup_name)
             try:
-                shutil.copy2(manifest_path, backup)
+                shutil.copy2(target, backup)
             except BaseException:
-                if backup.exists():
-                    backup.unlink()
+                backup.unlink(missing_ok=True)
                 raise
-            old_manifest_tmp = backup
-        preview_path.replace(output_path)
-        output_replaced = True
-        manifest_tmp.replace(manifest_path)
-        manifest_replaced = True
+            backups[target] = backup
+        replaced: list[Path] = []
+        try:
+            for temporary, target in generated:
+                temporary.replace(target)
+                replaced.append(target)
+        except BaseException:
+            for target in reversed(replaced):
+                prior = backups[target]
+                if prior is None:
+                    target.unlink(missing_ok=True)
+                else:
+                    prior.replace(target)
+            raise
     except BaseException:
-        # Roll back only files that were actually replaced.  A backup-copy
-        # failure must never be interpreted as a replacement failure and must
-        # therefore leave the old pair untouched.
-        if output_replaced:
-            if had_old_output and old_output_tmp and old_output_tmp.exists():
-                old_output_tmp.replace(output_path)
-            elif not had_old_output and output_path.exists():
-                output_path.unlink()
-        if manifest_replaced:
-            if had_old_manifest and old_manifest_tmp and old_manifest_tmp.exists():
-                old_manifest_tmp.replace(manifest_path)
-            elif not had_old_manifest and manifest_path.exists():
-                manifest_path.unlink()
         raise
     finally:
-        for path in (manifest_tmp, old_output_tmp, old_manifest_tmp):
-            if path and path.exists():
-                path.unlink()
+        for temporary, _ in generated:
+            if temporary.exists():
+                temporary.unlink()
+        for backup in locals().get("backups", {}).values():
+            if backup and backup.exists():
+                backup.unlink()
 
 
 def _sku_set_hash(skus: Iterable[str]) -> str:

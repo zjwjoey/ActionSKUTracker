@@ -44,16 +44,27 @@ class ExportRepairEngine:
     def apply_override(
         self, *, sku: str, field: str, value: Any, record: dict[str, Any], source_field: str,
     ) -> Any:
-        replaced, row, applied = apply_override(
+        replaced, row, outcome = apply_override(
             sku=sku, field=field, value=value, record=record, overrides=self.overrides,
         )
-        if applied and row is not None:
+        if outcome == "APPLIED" and row is not None:
             self.report.events.append(self.report_event(
                 sku=sku, field=field, source_field=source_field, source=record.get(source_field),
                 source_hash=row["source_hash"], before=value, after=replaced,
                 rule="APPROVED_EXPORT_OVERRIDE",
+                approval_source="config/export_repair_overrides.csv",
+                approved_by=row.get("approved_by") or None,
+                approved_at=row.get("approved_at") or None,
+                reason=row.get("reason") or None,
             ))
-        elif row is not None and row.get("source_hash"):
+        elif outcome == "REAPPROVAL_REQUIRED" and row is not None:
+            self.report.add_unresolved(
+                sku=sku, field=field, source_field=source_field,
+                code="OVERRIDE_FIELD_HASH_REAPPROVAL_REQUIRED",
+                source=record.get(source_field), target=value, blocking=True,
+                message="legacy aggregate source hash requires field-level reapproval",
+            )
+        elif outcome == "STALE" and row is not None and row.get("source_hash"):
             self.report.add_unresolved(
                 sku=sku, field=field, source_field=source_field, code="STALE_OVERRIDE",
                 source=record.get(source_field), target=value, blocking=True,
