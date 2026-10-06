@@ -118,13 +118,19 @@ def create_localization_patch(
     db_path: Path, *, patch_id: str, official_sku: str, language: str, field_name: str,
     old_value: str | None, new_value: str, source_hash: str, source_allowlist: Iterable[str] = (),
     created_by: str, evidence: Mapping[str, Any] | None = None, parent_patch_id: str | None = None,
-    reason: str | None = None,
+    reason: str | None = None, allow_noop: bool = False,
 ) -> str:
-    """Create exactly one SKU/language/field patch and PATCH_CREATED event."""
+    """Create exactly one SKU/language/field patch and PATCH_CREATED event.
+
+    ``allow_noop`` is reserved for an explicit provenance-only rebind.  The
+    normal patch contract remains value-changing and still rejects no-op
+    patches by default.
+    """
     if field_name not in LOCALIZATION_FIELDS: raise ImmutablePatchError("PATCH_FIELD_NOT_ALLOWED")
     if not patch_id or not official_sku or not language or not source_hash or not created_by:
         raise ImmutablePatchError("PATCH_IDENTITY_MISSING")
-    if _text(old_value) == _text(new_value): raise ImmutablePatchError("PATCH_NO_VALUE_CHANGE")
+    if _text(old_value) == _text(new_value) and not allow_noop:
+        raise ImmutablePatchError("PATCH_NO_VALUE_CHANGE")
     allowlist = tuple(sorted({str(item).strip() for item in source_allowlist if str(item).strip()})); now = _now()
     with connect(Path(db_path)) as db:
         _migrate_compatible(Path(db_path)); columns = _columns(db, "localization_patches")

@@ -11,7 +11,7 @@ import pytest
 
 from action_tracker.database.connection import connect
 from action_tracker.localization.hashes import localization_source_hash_v1, source_hash_v2
-from action_tracker.services.hashing import localization_source_hash
+from action_tracker.services.hashing import localization_field_source_hash, localization_source_hash
 from action_tracker.localization.providers.base import FakeTranslationProvider, ProviderError, TranslationRequest
 from action_tracker.localization.providers.qwen_mt import QwenMTProvider
 from action_tracker.localization.protection.tokens import ProtectedTokenError, protect_text, restore_text
@@ -1208,3 +1208,73 @@ def test_changed_spec_keeps_name_approved_and_canonical(tmp_path: Path):
     assert tuple(by_field["name_es"][2:]) == ("APPROVED", "PASS", "PASS", "APPROVED")
     assert by_field["spec_es"][1] is None
     assert by_field["spec_es"][2] == "PENDING"
+
+
+def test_explicit_noop_rebind_updates_primary_provenance(tmp_path: Path):
+    """A source-bound approved value can be rebound without changing text."""
+    db_path = tmp_path / "noop-rebind.sqlite"
+    migrate_v2(db_path, role="PRIMARY")
+    record = {
+        "name_es": "Paño de microfibra",
+        "cat1_es": "Hogar",
+        "cat2_es": "Limpieza",
+        "spec_es": "30 x 40 cm",
+        "desc_es": "Absorbente",
+        "details_es": "Número del artículo: 123456",
+    }
+    source_value = localization_source_hash(record)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','CURRENT')")
+        db.execute(
+            """INSERT INTO product_localizations
+               (official_sku,language,name,cat1,cat2,spec,description,details,
+                source,review_status,updated_at,source_hash)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            ("123456", "es", record["name_es"], record["cat1_es"], record["cat2_es"],
+             record["spec_es"], record["desc_es"], record["details_es"],
+             "OFFICIAL_FACT", "VERIFIED", "now", source_value),
+        )
+        db.execute(
+            """INSERT INTO product_localizations
+               (official_sku,language,name,cat1,cat2,spec,description,details,
+                source,review_status,updated_at,source_hash)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            ("123456", "zh", "超细纤维清洁布", "家居", "清洁", "30×40cm",
+             "吸水", "商品编号：123456", "LEGACY", "PENDING", "now", source_value),
+        )
+        db.execute("INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES('base','2026-09-16','COMMITTED','PASS',0,'now','now','2.0.0')")
+        db.execute("INSERT INTO commit_batches(commit_id,run_id,bundle_hash,schema_version,started_at,committed_at,status) VALUES('BASE','base','h','2.0.0','now','now','COMMITTED')")
+
+    registry = LocalizationRegistry(db_path, role="PRIMARY")
+    source_id = registry.register_source("123456", record, source_value, observed_at="2026-09-16")
+    with connect(db_path) as db:
+        unit_id = db.execute(
+            "SELECT unit_id FROM translation_units WHERE source_version_id=? AND field_name='name_es'",
+            (source_id,),
+        ).fetchone()[0]
+    revision_id = registry.record_revision(
+        unit_id=unit_id, target_text="超细纤维清洁布", provider="human:owner", model="owner",
+        request_hash="name-rq", response_hash="name-rs", source_hash=source_value,
+        qa_status="PASS", canonical_qa_status="NOT_REQUIRED", review_status="APPROVED",
+    )
+    store = KnowledgeStore(db_path, role="PRIMARY")
+    staged = store.stage_approved_registry_patches(
+        expected_base_commit_id="BASE", actor="human:owner", revision_ids=[revision_id],
+        include_noop_rebinds=True,
+    )
+    assert staged["staged_fields"] == 1
+    from action_tracker.database.production import apply_approved_localization_patches
+    applied = apply_approved_localization_patches(
+        db_path, patch_ids=staged["patch_ids"], expected_base_commit_id="BASE",
+        actor="service:translation-apply", run_id="noop-rebind-test",
+    )
+    assert applied["applied_fields"] == 1
+    with connect(db_path) as db:
+        row = db.execute(
+            "SELECT value,review_status,freshness_status,source_hash FROM localization_fields "
+            "WHERE official_sku='123456' AND language='zh' AND field_name='name'"
+        ).fetchone()
+    assert tuple(row) == (
+        "超细纤维清洁布", "APPROVED", "CURRENT",
+        localization_field_source_hash(record, "name"),
+    )

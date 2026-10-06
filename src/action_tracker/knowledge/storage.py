@@ -249,7 +249,7 @@ class KnowledgeStore:
                 sql += " LIMIT ?"; params.append(int(limit))
             return [dict(row) for row in db.execute(sql, tuple(params)).fetchall()]
 
-    def stage_approved_registry_patches(self, *, expected_base_commit_id: str, actor: str, limit: int | None = None, source_run_id: str | None = None, queue_run_id: str | None = None, revision_ids: Iterable[str] | None = None) -> dict[str, Any]:
+    def stage_approved_registry_patches(self, *, expected_base_commit_id: str, actor: str, limit: int | None = None, source_run_id: str | None = None, queue_run_id: str | None = None, revision_ids: Iterable[str] | None = None, include_noop_rebinds: bool = False) -> dict[str, Any]:
         """Convert Registry-approved fields into immutable PRIMARY patches.
 
         The method only creates ``PATCH_CREATED`` + ``PATCH_APPROVED`` rows;
@@ -276,7 +276,7 @@ class KnowledgeStore:
                     continue
                 current = db.execute(f"SELECT {field} FROM product_localizations WHERE official_sku=? AND language='zh'", (row["official_sku"],)).fetchone()
                 old_value = current[0] if current else None
-                if str(old_value or "") == str(row["target_text"] or ""):
+                if str(old_value or "") == str(row["target_text"] or "") and not include_noop_rebinds:
                     continue
                 patch_id = hashlib.sha256(f"registry-approved|{row['revision_id']}|{expected_base_commit_id}|{field}|{row['source_hash']}".encode()).hexdigest()
                 create_localization_patch(
@@ -286,7 +286,8 @@ class KnowledgeStore:
                     created_by=actor, evidence={"field_name": field, "revision_id": row["revision_id"],
                     "base_commit_id": expected_base_commit_id, "source_name": "REGISTRY_APPROVED",
                     "canonical_qa_status": row.get("canonical_qa_status", "NOT_REQUIRED")},
-                    reason="approved_registry_revision_to_primary",
+                    reason="approved_registry_provenance_rebind" if include_noop_rebinds and str(old_value or "") == str(row["target_text"] or "") else "approved_registry_revision_to_primary",
+                    allow_noop=include_noop_rebinds,
                 )
                 append_patch_event(
                     self.path, patch_id=patch_id, event_type="PATCH_APPROVED", actor=actor,
