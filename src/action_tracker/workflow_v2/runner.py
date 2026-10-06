@@ -643,6 +643,11 @@ class WorkflowV2Runner:
                 FROM translation_revisions r JOIN translation_units u ON u.current_revision_id=r.revision_id
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
                 JOIN translation_queue q ON q.official_sku=s.official_sku AND q.source_hash=s.source_hash
+                    AND q.requested_fields=CASE u.field_name
+                        WHEN 'name_es' THEN 'name' WHEN 'cat1_es' THEN 'cat1'
+                        WHEN 'cat2_es' THEN 'cat2' WHEN 'spec_es' THEN 'spec'
+                        WHEN 'desc_es' THEN 'description' WHEN 'details_es' THEN 'details'
+                    END
                 WHERE q.run_id=? AND q.status='COMPLETED'""", (self.context.workflow_run_id,)).fetchall()
         for row in revisions:
             item = grouped.setdefault(str(row[0]), {"sku": str(row[0]), "status": "PASS", "fields": {}, "source_hash": str(row[4]), "qa": {"status": str(row[5]), "overall_ready": True}})
@@ -704,6 +709,11 @@ class WorkflowV2Runner:
                 FROM translation_revisions r JOIN translation_units u ON u.current_revision_id=r.revision_id
                 JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
                 JOIN translation_queue q ON q.official_sku=s.official_sku AND q.source_hash=s.source_hash
+                    AND q.requested_fields=CASE u.field_name
+                        WHEN 'name_es' THEN 'name' WHEN 'cat1_es' THEN 'cat1'
+                        WHEN 'cat2_es' THEN 'cat2' WHEN 'spec_es' THEN 'spec'
+                        WHEN 'desc_es' THEN 'description' WHEN 'details_es' THEN 'details'
+                    END
                 WHERE q.run_id=? AND q.status='COMPLETED'""", (self.context.workflow_run_id,)).fetchall()
         for row in rows:
             ready = bool(self.context.source_ready and self.context.source_commit_id

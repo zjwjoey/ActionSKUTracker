@@ -47,3 +47,31 @@ def test_resume_reprocesses_only_current_run_requeued_translation_work(workflow_
             "SELECT status FROM translation_queue WHERE run_id=? AND requested_fields='name'",
             (resumed.context.workflow_run_id,),
         ).fetchone()[0] == "COMPLETED"
+
+
+def test_resume_policy_uses_queue_field_scope_not_all_revisions_for_the_sku(workflow_root, source_row, fake_provider):
+    context = new_context(workflow_root, business_date="2026-10-04", run_id="field-scope")
+    first = WorkflowV2Runner(
+        root=workflow_root, context=context, records=[source_row], expected_skus={"100"},
+        provider=fake_provider, auto_translation=True,
+    ).run()
+    # The source version legitimately has six current revisions.  Model the
+    # production shape where only its name queue belongs to this workflow;
+    # the other completed fields are durable work from a different run.
+    with connect(Path(first.context.database_path)) as db:
+        db.execute(
+            "UPDATE translation_queue SET run_id='historical-run' "
+            "WHERE run_id=? AND requested_fields<>'name'",
+            (first.context.workflow_run_id,),
+        )
+
+    resumed = WorkflowV2Runner(
+        root=workflow_root,
+        context=new_context(workflow_root, business_date="2099-01-01", run_id="field-scope"),
+        records=None, expected_skus=set(), provider=fake_provider, auto_translation=True,
+    ).run(resume=True)
+
+    decisions = resumed.stages["TRANSLATION_POLICY"].details["decisions"]
+    assert len(decisions) == 1
+    assert decisions[0]["sku"] == "100"
+    assert decisions[0]["field"] == "name_es"
