@@ -79,6 +79,7 @@ tests/workflow_v2/test_export_audit_es.py
 tests/workflow_v2/test_export_audit_zh.py
 tests/workflow_v2/test_export_parity.py
 tests/workflow_v2/test_fact_commit_boundary.py
+tests/workflow_v2/test_phase3_production_publication.py
 tests/workflow_v2/test_local_canary.py
 tests/workflow_v2/test_new_sku_gate.py
 tests/workflow_v2/test_qwen_auto_flow.py

@@ -134,14 +134,24 @@ def test_production_formal_export_pair_is_published_to_configured_root(tmp_path)
         manifest.write_text("{}", encoding="utf-8")
     runner = WorkflowV2Runner(
         root=tmp_path / "reports", context=new_context(tmp_path / "reports", business_date="2026-10-04"),
-        production_apply=True, cfg={"paths": {"exports": export_root}},
+        production_apply=True, auto_export=True, cfg={"paths": {"exports": export_root}},
     )
+    repair_report = formal_root / "zh.repair-report.json"
+    repair_report.write_text("{}", encoding="utf-8")
     runner._publish_formal_exports({
-        language: {"output": str(output), "manifest": str(manifest)}
+        language: {
+            "output": str(output), "manifest": str(manifest),
+            **({
+                "release_mode": "production_release",
+                "audited_zh_rows_hash": "same-hash",
+                "published_zh_rows_hash": "same-hash",
+                "repair_report": str(repair_report),
+            } if language == "zh" else {}),
+        }
         for language, (output, manifest) in files.items()
     })
     assert sorted(path.name for path in export_root.iterdir()) == [
-        "es.manifest.json", "es.xlsx", "zh.manifest.json", "zh.xlsx",
+        "es.manifest.json", "es.xlsx", "zh.manifest.json", "zh.repair-report.json", "zh.xlsx",
     ]
 
 

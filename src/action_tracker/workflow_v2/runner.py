@@ -958,11 +958,21 @@ class WorkflowV2Runner:
                 formal_cfg["paths"] = {**dict(self.cfg.get("paths") or {}), "exports": str(formal_root)}
                 export_run_id = self._export_source_run_id()
                 for language in ("es", "zh"):
+                    # ``PRODUCTION_RELEASE`` is a Chinese publication
+                    # contract.  Spanish keeps its established export and
+                    # audit path.  Only the actual Phase 3 formal-publication
+                    # path may opt Chinese output into the extra release gate;
+                    # canaries and operator-pending runs remain previews.
+                    release_mode = (
+                        "PRODUCTION_RELEASE"
+                        if language == "zh" and self._is_formal_production_publication()
+                        else "PREVIEW"
+                    )
                     try:
                         formal_exports[language] = export_catalog(
                             formal_cfg, language=language, export_date=self.context.business_date,
                             no_images=True, run_id=export_run_id,
-                            release_mode="PREVIEW",
+                            release_mode=release_mode,
                         )
                     except ExportValidationError as exc:
                         # A local canary may intentionally have no legacy
@@ -978,16 +988,7 @@ class WorkflowV2Runner:
                             "reason": "FORMAL_RUN_NOT_FOUND",
                             "run_id": export_run_id,
                         }
-                zh_export = formal_exports.get("zh") or {}
-                if (
-                    zh_export.get("status") != "SKIPPED"
-                    and self.final_zh_rows_hash
-                    and zh_export.get("audited_zh_rows_hash") is not None
-                    and zh_export.get("audited_zh_rows_hash") != self.final_zh_rows_hash
-                ):
-                    raise ValueError("WORKFLOW_FINAL_ZH_ROWS_HASH_MISMATCH")
-                if self.production_apply and zh_export.get("status") != "SKIPPED" and not zh_export.get("audited_zh_rows_hash"):
-                    raise ValueError("WORKFLOW_FINAL_ZH_ROWS_HASH_MISSING")
+                self._assert_formal_zh_publication_contract(formal_exports)
             if self.production_apply:
                 # The database commit and its compatibility projections must
                 # advance together.  The localization apply creates a new
@@ -1023,6 +1024,38 @@ class WorkflowV2Runner:
                     shutil.rmtree(staging / "formal")
         return StageResult("PASS", {"staging": str(staging), "atomic": published, "existing_exporter": True, "formal_exports": formal_exports, "compatibility_sync": compatibility_sync, "es_rows": len(self.es_projection), "zh_rows": len(self.zh_projection)})
 
+    def _is_formal_production_publication(self) -> bool:
+        """Whether this invocation will copy a validated bundle to the formal root."""
+        return bool(
+            self.production_apply
+            and self.auto_export
+            and (self.cfg.get("paths") or {}).get("exports")
+        )
+
+    def _assert_formal_zh_publication_contract(self, formal_exports: Mapping[str, Any]) -> None:
+        """Fail closed before a Phase 3 bundle can reach the formal root.
+
+        The exporter owns workbook readback and manifest construction.  The
+        workflow owns the final publication boundary, so it repeats the
+        release-mode and audited/published-row identity checks here instead of
+        trusting a preview-shaped result at the last copy step.
+        """
+        if not self._is_formal_production_publication():
+            return
+        zh_export = formal_exports.get("zh") or {}
+        if str(zh_export.get("release_mode") or "").casefold() != "production_release":
+            raise ValueError("PRODUCTION_ZH_RELEASE_MODE_REQUIRED")
+        audited_hash = zh_export.get("audited_zh_rows_hash")
+        published_hash = zh_export.get("published_zh_rows_hash")
+        if not audited_hash or not published_hash:
+            raise ValueError("WORKFLOW_FINAL_ZH_ROWS_HASH_MISSING")
+        if audited_hash != published_hash:
+            raise ValueError("PUBLISHED_ROWS_DIFFER_FROM_AUDITED_ROWS")
+        if self.final_zh_rows_hash and audited_hash != self.final_zh_rows_hash:
+            raise ValueError("WORKFLOW_FINAL_ZH_ROWS_HASH_MISMATCH")
+        if not zh_export.get("repair_report"):
+            raise ValueError("PRODUCTION_EXPORT_REPAIR_REPORT_MISSING")
+
     def _publish_formal_exports(self, formal_exports: Mapping[str, Any]) -> None:
         """Publish both formal language files as one recoverable pair.
 
@@ -1032,6 +1065,10 @@ class WorkflowV2Runner:
         both targets, and restore the previous bytes if the second replacement
         fails.
         """
+        # Guard both the orchestration call and this final side-effect method.
+        # A future caller cannot bypass the release-mode check by invoking the
+        # publisher directly.
+        self._assert_formal_zh_publication_contract(formal_exports)
         raw_export_root = (self.cfg.get("paths") or {}).get("exports")
         if not raw_export_root:
             raise ValueError("PRODUCTION_EXPORT_PATH_MISSING")
