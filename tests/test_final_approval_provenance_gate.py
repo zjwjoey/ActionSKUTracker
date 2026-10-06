@@ -123,6 +123,46 @@ def test_production_apply_allowlist_success(tmp_path: Path):
     assert apply_approved_localization_patches(path, patch_ids=["p1"], expected_base_commit_id="C1", actor="service:localization-apply")["applied_fields"] == 1
 
 
+def test_multi_sku_apply_binds_each_field_to_its_own_spanish_source(tmp_path: Path):
+    path, source_1 = _primary(tmp_path)
+    source_2_facts = {
+        "name_es": "Segundo producto", "cat1_es": "Hogar", "cat2_es": "Lámparas",
+        "spec_es": "3 unidades", "desc_es": "Descripción dos", "details_es": "Número del artículo: 1002",
+    }
+    source_2 = localization_source_hash(source_2_facts)
+    with connect(path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('ACT1002','1002','CURRENT')")
+        db.execute(
+            "INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,updated_at,source_hash) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            ("1002", "es", "Segundo producto", "Hogar", "Lámparas", "3 unidades", "Descripción dos", "Número del artículo: 1002", "now", source_2),
+        )
+        db.execute(
+            "INSERT INTO product_localizations(official_sku,language,name,cat1,cat2,spec,description,details,updated_at,source_hash) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            ("1002", "zh", "旧商品", "家居", "灯具", "3件", "旧描述二", "旧详情二", "now", source_2),
+        )
+    _patch(path, source_1, patch_id="p1")
+    create_localization_patch(
+        path, patch_id="p2", official_sku="1002", language="zh", field_name="description",
+        old_value="旧描述二", new_value="新描述二", source_hash=source_2,
+        source_allowlist=("MANUAL",), created_by="human:creator",
+        evidence={"field_name": "description", "base_commit_id": "C1"},
+    )
+    append_patch_event(
+        path, patch_id="p2", event_type="PATCH_APPROVED", actor="human:reviewer-a",
+        evidence={"field_name": "description", "base_commit_id": "C1", "source_name": "MANUAL"},
+    )
+    apply_approved_localization_patches(path, patch_ids=["p1", "p2"], expected_base_commit_id="C1", actor="service:localization-apply")
+    with connect(path) as db:
+        rows = {
+            (row[0], row[1]): row[2]
+            for row in db.execute("SELECT official_sku,field_name,source_hash FROM localization_fields WHERE (official_sku,field_name) IN (('1001','name'),('1002','description'))")
+        }
+    assert rows[("1001", "name")] == localization_field_source_hash(
+        {"name_es": "Producto", "cat1_es": "Hogar", "cat2_es": "Cajas", "spec_es": "2 unidades", "desc_es": "Descripción", "details_es": "Número del artículo: 1001"}, "name"
+    )
+    assert rows[("1002", "description")] == localization_field_source_hash(source_2_facts, "description")
+
+
 @pytest.mark.parametrize(
     "approval_actor",
     ["SYSTEM", "AUTO", "MODEL", "AI", "LOCALIZATION", "QWEN", "DEEPSEEK", "SOURCE_AUDIT_CANDIDATE", "service:localization-apply"],

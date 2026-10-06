@@ -142,6 +142,18 @@ def repair_description(value: str | None, source: str | None = None) -> str | No
     )
 
 
+def _strip_source_bound_display_brands(value: str | None, source: str | None, excluded_tokens: set[str]) -> str | None:
+    """Remove only confirmed brand tokens that occur in this source field."""
+    from ..localization.policy import strip_forbidden_display_tokens
+    text = str(value or "")
+    source_text = str(source or "")
+    active = {
+        token for token in excluded_tokens
+        if token and token.casefold() in source_text.casefold() and token.casefold() in text.casefold()
+    }
+    return strip_forbidden_display_tokens(text, active)
+
+
 def repair_content_with_context(
     value: str | None, source: str | None = None, *,
     excluded_tokens: set[str] = (),
@@ -180,7 +192,7 @@ def repair_content_with_context(
         if re.search(pattern, source_text, flags=re.I) and not any(alias.casefold() in target for alias in aliases):
             text = f"{text}；{token}"
             target = text.casefold()
-    return _strip_legacy_description_tail(text)
+    return _strip_source_bound_display_brands(_strip_legacy_description_tail(text), source_text, excluded_tokens)
 
 
 def repair_details(value: str | None, source: str | None) -> str | None:
@@ -211,7 +223,7 @@ def repair_details_with_context(
             continue
         text = f"{text}；{token}"
         target = text.casefold()
-    return _strip_detail_after_article_number(text)
+    return _strip_source_bound_display_brands(_strip_detail_after_article_number(text), source_text, excluded_tokens)
 
 
 def repair_categories(value: Any, source: str | None) -> Any:

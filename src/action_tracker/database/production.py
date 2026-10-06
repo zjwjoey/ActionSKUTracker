@@ -1407,6 +1407,16 @@ def apply_approved_localization_patches(
             from .provenance import sync_localization_field_provenance
             for patch, approval, approval_actor, approval_at, source_hash in patch_rows:
                 sku = patch["official_sku"]; field = patch["field_name"]; new_value = patch.get("new_value")
+                # ``es`` from the validation loop belongs to its last patch.
+                # Re-read this patch's official source before deriving the
+                # field-level provenance hash; a multi-SKU batch must never
+                # bind one SKU's Chinese field to another SKU's source facts.
+                es = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='es'",
+                    (sku,),
+                ).fetchone()
+                if es is None:
+                    raise ProductionDatabaseError("PATCH_SOURCE_ROW_MISSING:" + sku)
                 patch_source = str(approval.get("source_name") or "PATCH_APPROVED")
                 if db.execute("SELECT 1 FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone() is None:
                     db.execute("INSERT INTO product_localizations(official_sku,language,updated_at,source_hash,last_commit_id,applied_commit_id) VALUES(?,?,?,?,?,?)", (sku, "zh", now, source_hash, commit_id, commit_id))

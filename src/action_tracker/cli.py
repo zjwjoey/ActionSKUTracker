@@ -272,6 +272,11 @@ def build_parser() -> argparse.ArgumentParser:
     w2.add_argument("--fake-provider", action="store_true"); w2.add_argument("--fixture", help="离线 JSON fixture")
     w2.add_argument("--fixture-auto-approve-high-risk", action="store_true",
                     help="仅 Fake Provider + --canary + 临时 SQLite 的本地验收可自动批准高风险字段")
+    w2a = sub.add_parser("workflow-v2-apply-owner-review", help="将来源绑定的 Owner 字段决定写入 Workflow V2 Registry")
+    w2a.add_argument("--review-csv", required=True, help="语义审查结果 CSV，只作为待批准字段身份依据")
+    w2a.add_argument("--owner-decisions-csv", required=True, help="Owner 明确决定的 CSV")
+    w2a.add_argument("--actor", required=True, help="必须是 human: 前缀的审批主体")
+    w2a.add_argument("--report", required=True, help="审批写入报告 JSON")
     ws = sub.add_parser("workflow-v2-shadow-compare", help="离线比较旧链路与 Workflow V2 fixture")
     ws.add_argument("--legacy", required=True, help="旧链路 JSON fixture")
     ws.add_argument("--workflow-v2", dest="workflow_v2_fixture", required=True, help="Workflow V2 JSON fixture")
@@ -1120,6 +1125,19 @@ def main(argv=None) -> int:
             print(_json.dumps(ArtifactService(database_path(cfg)).build_csv(args.selection_id, Path(args.output)), ensure_ascii=False)); return 0
         payload = _json.loads(Path(args.query_json).read_text(encoding="utf-8") if Path(args.query_json).exists() else args.query_json)
         print(_json.dumps(svc.create(args.name, payload, description=args.description, view_id=args.view_id), ensure_ascii=False)); return 0
+    if args.command == "workflow-v2-apply-owner-review":
+        from .database.integration import database_path
+        from .localization.registry.repository import LocalizationRegistry
+        from .workflow_v2.review_approval import apply_owner_decisions_csv
+        try:
+            registry = LocalizationRegistry(database_path(cfg), role="PRIMARY")
+            result = apply_owner_decisions_csv(
+                registry, Path(args.review_csv), Path(args.owner_decisions_csv),
+                actor=args.actor, report_path=Path(args.report),
+            )
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr); return 20
+        print(json.dumps(result, ensure_ascii=False)); return 0
     if args.command == "data-update-v2":
         from .config import validate_phase1_profile
         from .workflow_v2.runner import run_workflow_v2

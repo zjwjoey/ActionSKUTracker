@@ -11,7 +11,7 @@ class ProtectedTokenError(ValueError):
 
 # Order matters: URLs/SKU/model tokens before generic numbers and units.
 _TOKEN_RE = re.compile(
-    r"<[^>]+>|https?://[^\s;]+|(?<![A-Za-z0-9])(?:EAN[- ]?\d{8,14})(?![A-Za-z0-9])|(?<![A-Za-z0-9])(?:SKU[- ]?\d{4,}|\d{6,})(?![A-Za-z0-9])|"
+    r"<[^>]+>|https?://[^\s;；]+|(?<![A-Za-z0-9])(?:EAN[- ]?\d{8,14})(?![A-Za-z0-9])|(?<![A-Za-z0-9])(?:SKU[- ]?\d{4,}|\d{6,})(?![A-Za-z0-9])|"
     r"(?<![A-Za-z0-9])(?:CE|FSC|RoHS|GS|BCI|OEKO-TEX)(?![A-Za-z0-9])|"
     r"(?<![A-Za-z0-9])(?:[A-Z]{1,5}[-/]?[A-Z0-9]{1,8}|[A-Z]{2,}\d+)(?![A-Za-z0-9])|"
     r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s?(?:€|EUR|\$|USD)(?![A-Za-z0-9])|"

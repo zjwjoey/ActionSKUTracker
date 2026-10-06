@@ -46,9 +46,13 @@ def strip_forbidden_display_tokens(value: str, tokens: list[str] | tuple[str, ..
 
 def has_ordinary_spanish(value: str, *, allowed_tokens: set[str] | None = None) -> bool:
     allowed = {t.lower() for t in (allowed_tokens or set())}
-    for token in _LATIN.findall(value or ""):
+    # URLs are structured source facts and their host labels are not prose
+    # requiring translation.  Remove the full URL before inspecting Latin
+    # words so ``https://…`` does not look like an English/Spanish residual.
+    inspected = re.sub(r"https?://[^\s;；]+", "", value or "", flags=re.I)
+    for token in _LATIN.findall(inspected):
         _ = token
-    for word in re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+", value or ""):
+    for word in re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+", inspected):
         if word.lower() in allowed or _TECH.match(word):
             continue
         if _SPANISH_WORDS.search(word) or len(word) > 2:

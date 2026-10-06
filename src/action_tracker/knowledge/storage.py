@@ -25,6 +25,7 @@ from .contracts import Resolution, source_hash
 class KnowledgeStore:
     def __init__(self, path: Path, *, role: str = "SHADOW") -> None:
         self.path = Path(path)
+        self.role = role
         if role not in {"SHADOW", "PRIMARY"}:
             raise ValueError("DB_ROLE_INVALID")
         migrate_v2(self.path, role=role)
@@ -139,6 +140,7 @@ class KnowledgeStore:
         if not expected_base_commit_id:
             raise PermissionError("KNOWLEDGE_APPLY_BASE_COMMIT_REQUIRED")
         patch_ids: list[str] = []
+        stale_source_rows: list[dict[str, str]] = []
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         for candidate in candidates:
             sku = str(candidate.get("sku") or "").strip()
@@ -258,17 +260,25 @@ class KnowledgeStore:
             raise PermissionError("REGISTRY_APPLY_ACTOR_MUST_BE_HUMAN")
         rows = self.approved_registry_projection(limit=limit, source_run_id=source_run_id, queue_run_id=queue_run_id, revision_ids=revision_ids)
         patch_ids: list[str] = []
+        stale_source_rows: list[dict[str, str]] = []
         canonical = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}
         with connect(self.path) as db:
             for row in rows:
                 field = canonical.get(str(row["field_name"]), str(row["field_name"]))
                 if field not in {"name", "cat1", "cat2", "spec", "description", "details"}:
                     continue
+                current_source = db.execute(
+                    "SELECT source_hash FROM product_localizations WHERE official_sku=? AND language='es'",
+                    (row["official_sku"],),
+                ).fetchone()
+                if self.role == "PRIMARY" and (not current_source or str(current_source[0] or "") != str(row["source_hash"] or "")):
+                    stale_source_rows.append({"sku": str(row["official_sku"]), "field_name": field})
+                    continue
                 current = db.execute(f"SELECT {field} FROM product_localizations WHERE official_sku=? AND language='zh'", (row["official_sku"],)).fetchone()
                 old_value = current[0] if current else None
                 if str(old_value or "") == str(row["target_text"] or ""):
                     continue
-                patch_id = hashlib.sha256(f"registry-approved|{row['revision_id']}|{expected_base_commit_id}|{field}".encode()).hexdigest()
+                patch_id = hashlib.sha256(f"registry-approved|{row['revision_id']}|{expected_base_commit_id}|{field}|{row['source_hash']}".encode()).hexdigest()
                 create_localization_patch(
                     self.path, patch_id=patch_id, official_sku=str(row["official_sku"]), language="zh",
                     field_name=field, old_value=old_value, new_value=str(row["target_text"] or ""),
@@ -285,7 +295,7 @@ class KnowledgeStore:
                               "canonical_qa_status": row.get("canonical_qa_status", "NOT_REQUIRED")},
                 )
                 patch_ids.append(patch_id)
-        return {"patch_ids": patch_ids, "staged_fields": len(patch_ids), "production_writes": False}
+        return {"patch_ids": patch_ids, "staged_fields": len(patch_ids), "stale_source_rows": stale_source_rows, "production_writes": False}
 
     def preview_approved_registry_apply(self, *, limit: int | None = None) -> list[dict[str, Any]]:
         """Read-only preview of Registry-approved values versus PRIMARY."""

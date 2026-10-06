@@ -16,12 +16,13 @@ NAME_IDENTITY_FACT_PRESERVATION_VERSION = "NAME_IDENTITY_FACT_PRESERVATION_V1"
 
 
 _STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9])", re.I)
-_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|摄氏度|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
+_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|摄氏度|平方千米|平方米|平方厘米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
 _UNIT_ALIASES = {
     "毫安时": "mah", "安时": "ah", "瓦时": "wh", "千瓦时": "kwh", "毫瓦": "mw", "千瓦": "kw",
     "赫兹": "hz", "伏特": "v", "瓦": "w", "分贝": "db", "摄氏度": "°c", "厘米": "cm", "毫米": "mm",
     "千米": "km", "米": "m", "千克": "kg", "公斤": "kg", "克": "g", "毫克": "mg", "微克": "μg",
     "毫升": "ml", "厘升": "cl", "分升": "dl", "升": "l", "百分比": "%",
+    "平方米": "m", "平方厘米": "cm", "平方千米": "km",
 }
 
 
@@ -76,6 +77,14 @@ _TRANSLATED_TECH_TOKEN_ALIASES = {
     "wc": ("马桶", "卫生间", "厕所"),
     "gsm": ("克/平方米", "克/㎡", "克每平方米", "克重"),
     "bpa": ("双酚A", "双酚 a"),
+    # The protected-token scanner intentionally works on ASCII.  Spanish
+    # all-caps labels containing accents can consequently expose a complete
+    # word (PUFF/SET/LUX/CLAVIJA) as a TECH token.  These are source-bound
+    # lexical translations, never identifiers that must be copied verbatim.
+    "puff": ("蒲团", "软凳", "坐垫"),
+    "clavija": ("插头", "插孔"),
+    "set": ("套装",),
+    "lux": ("勒克斯",),
 }
 
 # Certain uppercase spans are brands rather than product identifiers. The
@@ -101,6 +110,7 @@ _SOURCE_BOUND_SHORT_TECH = {"mbps", "gbps", "kbps", "mhz", "khz", "ghz", "hfe", 
 _SOURCE_BOUND_EXACT_TECH = {
     "usb", "usb-a", "usb-c", "micro-usb", "micro-sd", "hdmi", "led", "mdf",
     "fsc", "bci", "tcx", "a4", "b5", "wifi", "magsafe", "playstation",
+    "sds-plus", "transflash", "eprel", "torx",
 }
 
 
@@ -145,7 +155,8 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
             # ``Micro-SD/TransFlash`` are tokenized into slash-separated
             # pieces by the residual detector. Keep those pieces source-bound
             # as well, without broadening the allowlist globally.
-            allowed.update(piece for piece in re.split(r"[\s/]+", token) if len(piece) > 1)
+            separator_pattern = r"[\s/\-]+" if folded in _SOURCE_BOUND_EXACT_TECH else r"[\s/]+"
+            allowed.update(piece for piece in re.split(separator_pattern, token) if len(piece) > 1)
             continue
         # A title-cased token is a possible brand only when it is not the
         # first word after sentence punctuation.  This keeps ordinary Spanish
@@ -156,6 +167,25 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
                 if before and before[-1] not in ".!?\n":
                     allowed.add(token)
                     break
+    # Action renders the same interface both as ``micro USB`` and
+    # ``Micro-USB``.  Permit the individual words only when that complete,
+    # source-bound interface appears in both values; generic ``micro`` is
+    # still ordinary Spanish and remains audited everywhere else.
+    if re.search(r"(?<![A-Za-z0-9])micro[-\s]?usb(?![A-Za-z0-9])", source, flags=re.I) and re.search(r"(?<![A-Za-z0-9])micro[-\s]?usb(?![A-Za-z0-9])", rendered, flags=re.I):
+        allowed.update({"micro", "usb"})
+    if re.search(r"(?<![A-Za-z0-9])micro[-\s]?sd/trans[-\s]?flash(?![A-Za-z0-9])", source, flags=re.I) and re.search(r"(?<![A-Za-z0-9])micro[-\s]?sd/trans[-\s]?flash(?![A-Za-z0-9])", rendered, flags=re.I):
+        allowed.update({"micro", "sd", "trans", "flash", "transflash"})
+    for token in _SOURCE_BOUND_SHORT_TECH:
+        if re.search(rf"(?<![A-Za-z0-9]){re.escape(token)}(?![A-Za-z0-9])", source, flags=re.I) and re.search(rf"(?<![A-Za-z0-9]){re.escape(token)}(?![A-Za-z0-9])", rendered, flags=re.I):
+            allowed.add(token)
+    # A source-bound web address is a factual reference, not Spanish prose.
+    # Permit only its domain labels, and only when the same domain is present
+    # in the rendered field.
+    for domain in re.findall(r"\b(?:https?://)?(?:www\.)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)\b", source, flags=re.I):
+        if domain.casefold() in target_fold:
+            allowed.update(part for part in domain.split(".") if part)
+            if "www." + domain.casefold() in target_fold:
+                allowed.add("www")
     return allowed
 
 
@@ -190,7 +220,7 @@ def _source_bound_cross_field_tokens(name_source: str, target: str) -> set[str]:
 # interface tokens remain fail-closed.
 _ORDINARY_SPANISH_UPPERCASE_WORDS = {
     "BA", "BAÑO", "CALENTADOR", "CALCULADORA", "CHAQUETAS", "CÁMPING",
-    "DE", "EDRED", "MANOS", "MICO", "MPING", "NO", "PERCHERO", "QU", "QUÍMICO",
+    "DE", "EL", "LA", "LE", "EDRED", "MANOS", "MICO", "MPING", "NO", "PERCHERO", "QU", "QUÍMICO",
     "SOMBREROS", "TABURETE", "APARATO", "CALEFACCI", "PERSONAL",
 }
 
@@ -298,14 +328,44 @@ def _is_omittable_display_brand_tech(source_text: str, source_token: str, target
 
 
 def _is_ordinary_spanish_uppercase_token(source_text: str, source_token: str) -> bool:
-    """Return true only for reviewed, generic Spanish uppercase values."""
+    """Return true for an ordinary Spanish all-caps value, never an identifier.
+
+    The conservative token scanner does not recognise accented Latin letters.
+    It can therefore split an official all-caps label such as ``ELÉCTRICA``
+    into apparent technical tokens (``EL`` and ``CTRICA``).  A Chinese
+    translation must not retain those source-language fragments merely to
+    satisfy token preservation.  The lexical fallback remains deliberately
+    narrow: it accepts only a Spanish-looking, letter-only span or a span
+    touching an accented source word.  Codes such as USB, HSS, TCX and XL do
+    not match and remain protected.
+    """
     token = str(source_token or "").strip()
-    if token.upper() not in _ORDINARY_SPANISH_UPPERCASE_WORDS:
-        return False
-    if _source_term_present(source_text, token):
+    source = str(source_text or "")
+    upper = token.upper()
+    # ``_TOKEN_RE`` is ASCII-oriented and splits accented words into a
+    # prefix/suffix pair: ``COLCHÓN`` -> ``COLCH`` and ``ÓN``.  Detect the
+    # prefix before applying the acronym-shape heuristic; short fragments
+    # such as COLCH, MICR, PORT and MAGN otherwise look like technical IDs.
+    if re.search(rf"{re.escape(token)}[ÁÉÍÓÚÜÑ]", source, flags=re.IGNORECASE):
         return True
-    pattern = _ORDINARY_SPANISH_UPPERCASE_FRAGMENTS.get(token.upper())
-    return bool(pattern and re.search(pattern, str(source_text or ""), flags=re.IGNORECASE))
+    if upper in _ORDINARY_SPANISH_UPPERCASE_WORDS:
+        if _source_term_present(source, token):
+            return True
+        pattern = _ORDINARY_SPANISH_UPPERCASE_FRAGMENTS.get(upper)
+        if pattern and re.search(pattern, source, flags=re.IGNORECASE):
+            return True
+        return bool(re.search(rf"[ÁÉÍÓÚÜÑ]{re.escape(token)}|{re.escape(token)}[ÁÉÍÓÚÜÑ]", source, flags=re.IGNORECASE))
+    if not re.fullmatch(r"[A-Z]{4,}", token):
+        # Two-letter articles and source fragments created around accents are
+        # ordinary Spanish only when they touch an accented word.
+        return bool(re.search(rf"[ÁÉÍÓÚÜÑ]{re.escape(token)}|{re.escape(token)}[ÁÉÍÓÚÜÑ]", source, flags=re.IGNORECASE))
+    if len(re.findall(r"[AEIOU]", upper)) < 2:
+        return False
+    # A token embedded in an accented source word (PREVENCI+ÓN, PTICO after
+    # Ó) is necessarily a Spanish fragment, not a standalone technical ID.
+    if re.search(rf"[ÁÉÍÓÚÜÑ]{re.escape(token)}|{re.escape(token)}[ÁÉÍÓÚÜÑ]", source, flags=re.IGNORECASE):
+        return True
+    return _source_term_present(source, token)
 
 
 def _has_casefold_token(text: str, token: str) -> bool:
@@ -360,6 +420,11 @@ def _numbers(value: str) -> Counter[str]:
     # (``9'5x13 cm``).  Normalize only the digit-to-digit form; apostrophes in
     # ordinary text remain untouched.
     text = re.sub(r"(?<=\d)'(?=\d)", ".", text)
+    # A space between a leading group and exactly three trailing digits is a
+    # thousands separator in Action source (``23 500``), not two independent
+    # numeric facts.  Collapse it before extracting values so its normalized
+    # Chinese form ``23500`` compares to one source fact.
+    text = re.sub(r"(?<![A-Za-z0-9])(\d{1,3})\s(?=\d{3}(?!\d))", r"\1", text)
     # A comma-delimited shoe-size list is a list, not one decimal number
     # (``39,40,41,42``).  Split only when there are at least three short
     # numeric components, leaving normal decimals such as ``9,5`` intact.
@@ -379,7 +444,7 @@ def _numbers(value: str) -> Counter[str]:
     # such as ``一种``/``一天`` occur in ordinary descriptions even when the
     # Spanish source contains no number.  ``块`` is included for phrases such
     # as ``三块面板``.
-    quantity_units = set("个件只片颗粒张页套人组支条盒包瓶罐袋双位端口环块伏瓦毫升升克公斤厘米毫米米小时")
+    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋双位端口环块伏瓦毫升升克公斤厘米毫米米小时款")
     digit_chars = set(chinese_digits) | set("0123456789")
     for index, char in enumerate(text):
         if char not in chinese_digits:
@@ -403,10 +468,11 @@ def _numbers(value: str) -> Counter[str]:
 
 def _arabic_numbers(value: str) -> Counter[str]:
     """Return only explicit Arabic-digit numbers from a value."""
+    text = re.sub(r"(?<![A-Za-z0-9])(\d{1,3})\s(?=\d{3}(?!\d))", r"\1", str(value or ""))
     text = re.sub(
         r"(?<!\d)(\d{1,2}(?:,\d{1,2}){2,})(?!\d)",
         lambda match: match.group(1).replace(",", " "),
-        str(value or ""),
+        text,
     )
     return Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
 
@@ -434,6 +500,7 @@ def _semantic_numeric_equivalents(source_text: str, target: str) -> Counter[str]
         (r"\b(\d+)\s+en\s+1\b", {"3": "三合一", "2": "二合一", "4": "四合一"}),
         (r"\b(\d+)\s+personas?\b", {"1": ("单人", "一人"), "2": ("双人", "两人")}),
         (r"\b(1)\s+(?:tamaño|size)\b", {"1": ("均码", "均一尺码", "单一尺码")}),
+        (r"\bn\.\s*[ºo]?\s*(\d+)\b", {"1": "一号", "2": "二号", "3": "三号"}),
     )
     for pattern, mapping in phrase_rules:
         for match in re.finditer(pattern, source):

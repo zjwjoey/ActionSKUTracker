@@ -82,6 +82,18 @@ def test_ordinary_hyphenated_spanish_is_never_source_bound_by_shape():
         ), residual
 
 
+def test_export_audit_ignores_digit_inside_confirmed_brand_removed_from_title():
+    record = {**_record(), "name_es": "Semillas de girasol 2KEEP"}
+    result = audit_repaired_rows([record], [_row(标题="葵花籽")], allowed_tokens={"2KEEP"})
+    assert not any(item["code"] == "NUMERIC_DROPPED" for item in result["findings"])
+
+
+def test_export_audit_does_not_require_confirmed_brand_code_in_no_brand_title():
+    record = {**_record(), "name_es": "Limpiador de frenos GS27"}
+    result = audit_repaired_rows([record], [_row(标题="刹车清洁剂")], allowed_tokens={"GS27"})
+    assert not any(item["code"] in {"MODEL_DROPPED", "PROTECTED_TOKEN_MISSING"} for item in result["findings"])
+
+
 def test_confirmed_source_token_repair_is_idempotent():
     first = repair_title("产品", "Producto TCX")
     second = repair_title(first, "Producto TCX")
@@ -130,6 +142,13 @@ def test_title_drops_brand_number_fragments_but_keeps_model_numbers():
     assert repair_title("跳绳｜31", "Comba Lab31") == "跳绳"
     assert repair_title("派对眼镜｜2", "Gafas Cool2Party") == "派对眼镜"
     assert repair_title("相框｜A4", "Marco A4") == "相框｜A4"
+
+
+def test_description_and_details_hide_confirmed_brand_tokens():
+    from action_tracker.exporting.repair_rules import repair_content_with_context, repair_details_with_context
+
+    assert "Nutini" not in repair_content_with_context("Nutini巧克力饼干", "Galletas Nutini", excluded_tokens={"Nutini"})
+    assert "Nutini" not in repair_details_with_context("品牌：Nutini；商品编号：1", "Marca: Nutini; Número del artículo: 1", excluded_tokens={"Nutini"})
 
 
 def test_description_removes_adapter_parameter_and_repeated_size_tails():

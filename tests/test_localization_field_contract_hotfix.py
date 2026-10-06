@@ -332,6 +332,71 @@ def test_fact_qa_does_not_treat_reviewed_uppercase_spanish_values_as_models():
     assert not any(item.rule_id in {"PROTECTED_TOKEN_MISSING", "PROTECTED_TOKEN_CHANGED"} for item in findings)
 
 
+def test_fact_qa_does_not_require_accent_split_uppercase_spanish_labels():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({
+        "sku": "UPPER-ACCENTED-VALUE",
+        "details_es": "Tipo: ESTUFA DE LEÑA (ELÉCTRICA); Función: PREVENCIÓN DE LA PÉRDIDA DE COLOR; Clase: ÓPTICO",
+    })
+    findings = audit_translation(
+        source,
+        {"details": "类型：电动木材烧灼工具；功能：防止褪色；类别：光学型"},
+        ("details",),
+    )
+    assert not any(item.rule_id in {"PROTECTED_TOKEN_MISSING", "PROTECTED_TOKEN_CHANGED"} for item in findings)
+
+
+def test_fact_qa_translates_accent_split_uppercase_prefixes_and_lexical_values():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({
+        "sku": "UPPER-PREFIXES",
+        "details_es": "Tipo: FUNDA PARA EL COLCHÓN; Tipo: MICRÓFONO DINÁMICO; Tipo: BOLSA PARA PORTÁTIL; Tipo: TABLERO MAGNÉTICO; Tipo: SET DE LIMPIEZA; Intensidad: 30 LUX; Tipo: PUFF; Fijación: CLAVIJA",
+    })
+    findings = audit_translation(
+        source,
+        {"details": "类型：床垫保护套；类型：动圈麦克风；类型：笔记本电脑包；类型：磁性板；类型：清洁套装；亮度：30勒克斯；类型：蒲团；固定件：插头"},
+        ("details",),
+    )
+    assert not any(item.rule_id in {"PROTECTED_TOKEN_MISSING", "PROTECTED_TOKEN_CHANGED"} for item in findings)
+
+
+def test_numeric_guard_normalizes_grouped_thousands_and_chinese_classifier():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({
+        "sku": "GROUPED-THOUSANDS",
+        "description": "23 500 movimientos por minuto; incluye 2 brochas",
+    })
+    findings = audit_translation(source, {"description": "每分钟23500次摆动；包含两把刷子"}, ("description",))
+    assert not any(item.rule_id == "NUMERIC_DROPPED" for item in findings)
+
+
+def test_numeric_guard_does_not_join_a_model_suffix_to_next_line_number():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({"sku": "MODEL-NUMBER", "description": "Formato B5\n192 páginas"})
+    findings = audit_translation(source, {"description": "B5尺寸，内含192页"}, ("description",))
+    assert not any(item.rule_id == "NUMERIC_DROPPED" for item in findings)
+
+
+def test_fact_qa_accepts_chinese_area_and_ordinal_rendering():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({"sku": "AREA-ORDINAL", "name_es": "Producto N.º 1", "description": "Cubre 25 m²"})
+    findings = audit_translation(source, {"name": "商品一号", "description": "覆盖面积25平方米"}, ("name", "description"))
+    assert not any(item.rule_id in {"NUMERIC_DROPPED", "NUMERIC_ADDED", "UNIT_DROPPED"} for item in findings)
+
+
+def test_fact_qa_keeps_short_technical_codes_protected():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({"sku": "TECH-CODE", "details_es": "Material: HSS; conexión USB"})
+    findings = audit_translation(source, {"details": "材质：高速钢；连接方式：有线"}, ("details",))
+    assert any(item.rule_id == "PROTECTED_TOKEN_MISSING" and item.evidence.get("value") == "HSS" for item in findings)
+
+
 def test_fact_qa_accepts_sock_bedding_and_footwear_scoped_equivalents():
     from action_tracker.localization.qa import audit_translation
 

@@ -899,7 +899,10 @@ class WorkflowV2Runner:
             })
             zh_audit_rows.append(zh_row)
         es_audit = audit_es(es_audit_rows)
-        zh_audit = audit_zh(zh_audit_rows)
+        # The finalized projection already ran the canonical field-fact audit
+        # above. Keep this pass for readiness, freshness and malformed-output
+        # checks, but never re-audit a different pre-repair representation.
+        zh_audit = audit_zh(zh_audit_rows, include_field_fact_audit=False)
         if not bool(final_zh.repair_audit.get("release_ready")):
             zh_audit = {
                 **zh_audit,

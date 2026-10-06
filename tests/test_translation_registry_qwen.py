@@ -1076,6 +1076,14 @@ def test_translation_registry_to_primary_and_export_e2e(tmp_path: Path):
         es = db.execute("SELECT name,spec,details FROM product_localizations WHERE official_sku='123456' AND language='es'").fetchone()
     assert tuple(zh) == ("耳机", "家居布置", "厨房", "20mg", "声音清晰", "商品编号：123456")
     assert tuple(es) == (record["name_es"], record["spec_es"], record["details_es"])
+    # A registry approval is not eligible after PRIMARY has moved to a
+    # different source version, even if the revision remains otherwise valid.
+    with connect(db_path) as db:
+        db.execute("UPDATE product_localizations SET source_hash='moved-source' WHERE official_sku='123456' AND language='es'")
+    stale_stage = store.stage_approved_registry_patches(expected_base_commit_id="BASE", actor="human:e2e")
+    assert stale_stage["staged_fields"] == 0
+    assert len(stale_stage["stale_source_rows"]) == 6
+
     export_records = [
         {
             "sku": "123456", "name_es": record["name_es"], "cat1_es": record["cat1_es"], "cat2_es": record["cat2_es"],

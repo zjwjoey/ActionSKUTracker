@@ -469,6 +469,27 @@ def _numeric_drop_equivalent(source: str, target: str, missing: Mapping[str, Any
     return False
 
 
+def _numeric_is_in_omitted_confirmed_brand(source: str, missing: Mapping[str, Any], approved_tokens: set[str]) -> bool:
+    """Return true only when every missing digit belongs to a reviewed brand.
+
+    The no-brand display policy may remove a source brand such as ``7Up`` or
+    ``9th Avenue``.  Their digits are identity characters, never quantities.
+    """
+    source_text = str(source or "")
+    remaining = {_number_key(value) for value in missing}
+    if not remaining:
+        return False
+    covered: set[str] = set()
+    for brand in approved_tokens:
+        value = str(brand or "").strip()
+        if not value or not re.search(r"\d", value):
+            continue
+        if not re.search(rf"(?<![A-Za-z0-9]){re.escape(value)}(?![A-Za-z0-9])", source_text, flags=re.IGNORECASE):
+            continue
+        covered.update(_number_key(item) for item in re.findall(r"\d+(?:[.,]\d+)?", value))
+    return remaining.issubset(covered)
+
+
 def _numeric_addition_explained(source: str, target: str, evidence: Mapping[str, Any], all_source: str = "") -> bool:
     extra = Counter({str(key): int(value) for key, value in (evidence.get("extra") or {}).items()})
     if not extra:
@@ -535,6 +556,7 @@ def audit_repaired_rows(
     from ..localization.qa import (
         _is_allowed_translated_tech_token,
         _is_ordinary_spanish_uppercase_token,
+        _source_term_present,
         _source_bound_cross_field_tokens,
         _source_bound_display_tokens,
         audit_translation,
@@ -603,6 +625,12 @@ def audit_repaired_rows(
             }:
                 if _token_equivalence_allows(finding.rule_id, finding.evidence, source_text, target_text):
                     continue
+                # A reviewed dictionary brand is intentionally absent from the
+                # Chinese display under ACTION_MASTER_NO_BRAND_V1.  Preserve
+                # the field-local source binding, but do not force a brand or
+                # a brand-shaped code such as GS27 back into the output.
+                if token_key in {item.casefold() for item in approved_tokens} and _source_term_present(source_text, token):
+                    continue
             if finding.rule_id in {"PROTECTED_TOKEN_MISSING", "PROTECTED_TOKEN_CHANGED", "MODEL_DROPPED", "MODEL_CHANGED"}:
                 if finding.rule_id == "PROTECTED_TOKEN_MISSING" and int(finding.evidence.get("actual") or 0) > 0:
                     continue
@@ -641,6 +669,8 @@ def audit_repaired_rows(
             if finding.rule_id == "NUMERIC_DROPPED":
                 missing = finding.evidence.get("missing") or {}
                 target_numbers = finding.evidence.get("target") or {}
+                if _numeric_is_in_omitted_confirmed_brand(source_text, missing, approved_tokens):
+                    continue
                 if missing and all(
                     any(_number_key(value) == _number_key(existing) for existing in target_numbers)
                     for value in missing

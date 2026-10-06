@@ -34,7 +34,17 @@ def audit_es(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
             "missing_required": missing, "duplicate_skus": duplicates, "issues": issues, "sku_set": sorted(set(skus))}
 
 
-def audit_zh(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
+def audit_zh(
+    rows: Iterable[Mapping[str, Any]], *, include_field_fact_audit: bool = True,
+) -> dict[str, Any]:
+    """Audit Chinese publish rows.
+
+    ``include_field_fact_audit`` remains enabled for standalone checks.  The
+    Phase 3 runner disables it after building the finalized repair projection:
+    that projection is already checked by ``audit_repaired_rows`` and is the
+    exact row set written to Excel.  Re-running the older raw fact guard there
+    creates a second, divergent set of false positives.
+    """
     values = [dict(row) for row in rows]
     issues: list[dict[str, Any]] = []
     from ..localization.contracts import SourceFacts
@@ -59,15 +69,16 @@ def audit_zh(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         translation_hash = str(row.get("translation_source_hash") or "")
         if source_hash and translation_hash and source_hash != translation_hash:
             issues.append({"sku": sku, "code": "SOURCE_HASH_MISMATCH"})
-        source = SourceFacts.from_record(row)
-        targets = {
-            "name": row.get("name_zh"), "cat1": row.get("cat1_zh"),
-            "cat2": row.get("cat2_zh"), "spec": row.get("spec_zh"),
-            "description": row.get("desc_zh"), "details": row.get("details_zh"),
-        }
-        findings = audit_translation(source, targets, tuple(targets))
-        issues.extend({"sku": sku, "field": finding.field_name, "code": finding.rule_id,
-                       "evidence": dict(finding.evidence)} for finding in findings if finding.blocking)
+        if include_field_fact_audit:
+            source = SourceFacts.from_record(row)
+            targets = {
+                "name": row.get("name_zh"), "cat1": row.get("cat1_zh"),
+                "cat2": row.get("cat2_zh"), "spec": row.get("spec_zh"),
+                "description": row.get("desc_zh"), "details": row.get("details_zh"),
+            }
+            findings = audit_translation(source, targets, tuple(targets))
+            issues.extend({"sku": sku, "field": finding.field_name, "code": finding.rule_id,
+                           "evidence": dict(finding.evidence)} for finding in findings if finding.blocking)
     return {"status": "PASS" if not issues else "FAIL", "rows": len(values), "issues": issues, "sku_set": sorted({str(row.get("sku") or row.get("official_sku") or "") for row in values})}
 
 

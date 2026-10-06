@@ -1,55 +1,51 @@
-sku,field,source_hash,replacement,reason,rule_version,approved_by,approved_at,status
-3212241,name_zh,9b3f44452d4fdb73e8ec27dc2b37507d9b95d9762037cbb99ce110e5ab626ae3,PlayStation 5手柄外接电池,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3216699,name_zh,beaecfad8ae9c50303d76f5d1373271e85ff439ce28ca93ed9b12571932bd7d7,玩具车,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3217331,name_zh,643adcd14ebceec1f7ee45bc29c98acb54f599851f6b1ca682830f6df70dab17,挤压玩偶,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3218133,name_zh,3020220c9641ca7e81367dd3c51875ab2dba22c13af0b5bfc32919b56a6d3df5,电动清洁刷,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3218455,name_zh,50010fae108e00ddf066e8d73f69a4f3b940b4c1649e795c063098e56d0c929e,装饰花瓶,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3221098,name_zh,176dcabfbec4dda9e6ca09444ccbddf3348d388e9aa31ee20ec0b08b76c1b65b,洗手凝胶,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3223895,name_zh,839083f9d3689dd5ac58884c5f2ba47efaeb2f6fe57a4cde92163a7ae308fdbe,灯光音乐火车轨道套装,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3223896,name_zh,618d5e0286c14e537e917ebeac5ce02d7b219484d15fc79a7d1d9180fb99ca65,运输卡车玩具套装,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3225219,name_zh,f608c30c857b89349a3c0d9da29772a0fa25164b0716671a51b1aafa043f0c9e,玻璃容器空气炸锅,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3226338,name_zh,cb0de269a2721b2368e4d4f0496a352382691f4ba6c51b01fc82549b117ea5c5,浴室与身体护理礼盒套装,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3212241,desc_zh,9b3f44452d4fdb73e8ec27dc2b37507d9b95d9762037cbb99ce110e5ab626ae3,"兼容PlayStation 5手柄
-可将手柄续航时间延长140%
-还在为喜爱的PlayStation 5游戏意犹未尽吗？这款实用的外接电池可将手柄的游戏时间延长140%。附带USB-A转USB-C充电线，充电时间约为1.5至2小时。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3217331,desc_zh,643adcd14ebceec1f7ee45bc29c98acb54f599851f6b1ca682830f6df70dab17,"挤压玩乐，乐趣十足
-迪士尼Squelchs挤压、揉捏起来更加有趣！这些柔软可挤压的玩偶采用您喜爱角色的欢乐造型。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3225346,desc_zh,b85104998b3f81d4c6e96aac758396f7eb9be981553a997f43b16392f2098112,"最远传输距离达300米
+﻿sku,field,source_hash,replacement,reason,rule_version,approved_by,approved_at,status
+3212241,name_zh,95f86688381812f9ab43fe35efff3811d5682438bcb174f0cefcf1e6017222ec,5代游戏主机手柄外接电池,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3216699,name_zh,0a5d5c3419ab2f5b78e6b1a5b3543802c94237afa34ce14dfd98ac0b732d541a,玩具车,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3217331,name_zh,4e8924b6c6210453ac7d669a46852912d59df1c3e338e8eef5bd8aa15452af97,挤压玩偶,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3218133,name_zh,9b32b187ca356aee2724bcb3d4475f79211f2bceb41e4c121d818c063216eb1d,电动清洁刷,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3218455,name_zh,a5dd9e7e0024d0463ec01d10527a181b23aa16b6ddfadb793a0f87038e5588ef,花瓶,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3221098,name_zh,9c3235fd68cca18d4c9976914c2ca6f2877fb68b3c3c0964d38e1b62bc1b5e79,洗手凝胶,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3223895,name_zh,717b6415b0443577975d1e1b2d05fc71ac6bebae5bb30e86e6cbd69aa21cc634,灯光音乐火车轨道套装,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3223896,name_zh,113bb3931df699685af6c0af724af50ddcacc22bb7cdd2b4798ddfaf7a023c36,运输玩具卡车,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3225219,name_zh,61c2a0d7f8be73a321bc724103b2e170c45c8cae9b4f14c6f723c55a0de289d2,玻璃容器空气炸锅,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3226338,name_zh,82309773b24767526a77b0cf6811855c3d357b789914ab41da10422a73b53898,手提箱礼盒套装,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3212241,desc_zh,36f7104f0425391f67faddfb511c237a09c696dfeaaba3470840529c5bb1f02c,"兼容5代游戏主机手柄
+可将手柄电池续航延长140%
+还没玩够最喜欢的5代游戏吗？这款实用的外接电池可让手柄使用时间延长140%。随附USB-A转USB-C线缆，1.5–2小时即可轻松充电。",20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3217331,desc_zh,1a9a768b6468e09ebc63318235be33cf76ddd8085fc7f2c8730d1d326675b13c,"可挤压玩耍
+挤压、揉捏玩偶更有乐趣！这些柔软、可挤压的玩偶采用你喜爱的角色的欢快设计。",20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3225346,desc_zh,2bb21f99d8430223edd1a3efa270eb3ba873d33368a85cd7804c59aa95860780,"最远300米通信距离
 无需Wi-Fi即可视频通话
-附带USB-C充电线
-这套两只装对讲机可让您在玩耍时聊天并进行视频通话。设备最远传输距离达300米，配备2英寸屏幕，无需Wi-Fi即可使用。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3226338,desc_zh,cb0de269a2721b2368e4d4f0496a352382691f4ba6c51b01fc82549b117ea5c5,"包含5件个人护理产品
+附USB-C充电线
+使用这套2件装对讲机，边玩边通话和视频通话。设备通信距离最远达300米，配有2英寸屏幕，无需Wi-Fi即可使用。",20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3226338,desc_zh,b044b8b3b25a2c632a92b9b1b5ed7b675bc7da59c31227d287d77f8800401afe,"包含5件个人护理产品
 精美礼盒包装
 纯素配方
-尽情享受这款奢华的沐浴与身体护理礼盒。套装包含沐浴露、泡泡浴、浴盐、浴球和海绵，全部装在精美礼盒中。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-2580178,details_zh,f90fbc2367c57279d1358abaf5e4a15dc6f1729dbb60e6b4eacedc5b3ab8d502,颜色：黑色；带电源开关：是；能耗：2 kWh；适用场景：室内；安装方式：立式；电线长度：1 m；电线长度：1；温度档位数量：2；功率：2000；功率：2000 W；防倾倒保护：是；过热保护：是；加热面积：20 m²；供电方式：电源；加热器具类型：空间加热器；加热技术类型：电加热；电压：240；电压：240 V；商品编号：2580178,20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-2509909,desc_zh,ff5fe8f633be4101bd6e362dce4f8b27414deba30bda90dcd2c99cdf3455ac0d,"多种颜色可选
-这款柔软的棉质毛巾让您给宾客留下美好印象。色彩缤纷的系列适合任何浴室。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-2510060,desc_zh,7713d038b9a128cb4f629d3d7c9a516db82a05341bda7d765bcfe9ab7a4ae478,"多种颜色可选
-品质升级
-这款舒适的棉质浴巾触感柔软亲肤。色彩缤纷的系列适合任何浴室。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-2536274,desc_zh,e17d00ba60b0c3f1c5be65cd3e79609a639db078d71e8e25d22c0134c4e7da82,"采用弹力棉制成
-配有弹力腰带
-这款舒适的男士弹力平角内裤穿着合身。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-2550326,desc_zh,9c9e2bdb9541aa6fb0c7aac0e977abada06db7ff255db6d7bfba9b329359a15a,"经典菱格纹
-100%棉质
-这款吸水性强的厨房抹布可帮助您快速洗完餐具。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-2554067,desc_zh,e039df70d173c0f5bc116499dd1764bac24ba8a6b74c97709ecbda3ef231a0ee,"100%棉质
-Action很荣幸成为Better Cotton Initiative（BCI）项目的一员
-用这款优雅的抹布快速舒适地擦干双手。它在厨房中十分醒目。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3011476,desc_zh,f68bf52225c3bc5b91b4363bd68e0e76d93eb88750b5e23e1dee9f9f0acfe966,"现代时尚
-这款现代感十足的杯垫让您的餐桌更具魅力。非常适合盛放美味佳肴，也可以用作蜡烛底座。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3207419,desc_zh,e78a23927eb9aa95962c3b2abc35921b7bacf710c9f317fee8315fa234b380b7,"配有结实的白色鞋底
-这款毡制拖鞋让您的双脚保持温暖。穿脱方便，内里采用仿皮革衬里。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3209041,desc_zh,acf8d6c60073dce4838a81c561886932eff281d243054ee715c65c1e90e59f47,"天然手工编织纹理
-配有提手
-无论室内还是室外都很合适！它能为客厅增添活力，为花园聚会增添特别氛围，也适合在露台享受悠闲午后。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-3227020,desc_zh,0a2ee346d25a2794e22d42da54cbf0bc9ed416d6bd5f7ec9215a10b0eff1d43f,"适合敏感肌肤
-柔软透气
-可按尺寸裁剪
-这款敏感肌肤创可贴可保护小伤口。柔软透气的材质适合敏感肌肤，可轻松将创可贴裁剪至所需长度，用于覆盖表浅伤口。",20261005 attached Chinese export audit: source-bound retranslation,1.1,human:owner-authorized-20261005,2026-10-05T05:43:58.085481+00:00,APPROVED
-2574659,desc_zh,08831e148c63620bac288061dcdbd9d9cfe08f31066bce936f54a96289cb2565,配有360°旋转底座和蓝色LED灯；水垢过滤器有助于拦截水垢颗粒；荷兰消费者协会于2025年8月评选该产品为“最佳购买”；这款带蓝色LED灯的玻璃电热水壶可快速烧水，透明壶身和水位刻度便于查看水量；加热时蓝灯亮起，360°旋转底座便于从任意角度放回水壶，水垢过滤器有助于倒水时拦截水垢颗粒，适合厨房使用。,20261005 Chinese export audit: source-bound retranslation,1.2,human:owner-authorized-20261005,2026-10-05T00:00:00+08:00,APPROVED
-3015797,desc_zh,164cf1c41ab302e0a2233e7b2d378a55ac325fe41aa799a58d8ac97ccad92822,重量轻，仅2.7千克；配有4个稳定的双轮，可360°旋转；防刮擦，至少含50%再生ABS塑料；这款硬壳行李箱配有实用隔层和拉链闭合，带密码锁和柔韧提手，便于提拿；Budapest系列有多种尺寸可选。,20261005 Chinese export audit: source-bound retranslation,1.2,human:owner-authorized-20261005,2026-10-05T00:00:00+08:00,APPROVED
-3015798,desc_zh,93da27ab9a2a8c9e14412c396fd6c0aaba75e86b33e71499ef410b98dded21e6,重量轻，仅3.2千克；配有4个稳定的双轮，可360°旋转；防刮擦，至少含50%再生ABS塑料；这款硬壳行李箱配有实用隔层和拉链闭合，带密码锁和柔韧提手，便于提拿；Budapest系列有多种尺寸可选。,20261005 Chinese export audit: source-bound retranslation,1.2,human:owner-authorized-20261005,2026-10-05T00:00:00+08:00,APPROVED
-3015799,desc_zh,b65a59c322868b508b29c0ac0b96e6db574c544e1ea77f2b4595cf748014231b,重量轻，仅4千克；配有4个稳定的双轮，可360°旋转；防刮擦，至少含50%再生ABS塑料；这款硬壳行李箱配有实用隔层和拉链闭合，带密码锁和柔韧提手，便于提拿；Budapest系列有多种尺寸可选。,20261005 Chinese export audit: source-bound retranslation,1.2,human:owner-authorized-20261005,2026-10-05T00:00:00+08:00,APPROVED
-3213079,desc_zh,d7752f18f8dc81d63954435e46609a249d3fa116676f1c093d6569334aee5119,60分钟内最多可充电50%；配有强力磁吸固定装置，可360°旋转；支持Qi2认证；这款MagSafe车载无线充电支架适合安全便捷导航，强力磁吸稳固固定手机，无需线缆即可快速充电，并可360°旋转以调节导航和免提通话视角。,20261005 Chinese export audit: source-bound retranslation,1.2,human:owner-authorized-20261005,2026-10-05T00:00:00+08:00,APPROVED
+用这套奢华沐浴和身体护理套装犒劳自己。套装包含沐浴露、泡泡浴液、浴盐、浴球和沐浴海绵，均装在精美礼盒中。",20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+2580178,details_zh,520c2c8251c6b9c4f286c453eb7e39b011cb7a9bb4be834f952b34b34af95779,颜色：黑色；带电源开关：是；能耗：2 kWh；适用场景：室内；安装方式：立式；电线长度：1 m；电线长度：1；固定方式：独立式；温度档位数量：2；功率：2000；功率：2000 W；防倾倒保护：是；过热保护：是；加热面积：20 m²；供电方式：电源；加热器具类型：空间加热器；加热技术类型：电加热；电压：240；电压：240 V；商品编号：2580178,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+2509909,desc_zh,ae057953c6b8e6306abf360a09bb77b93ca2f3ed54841a8ea0ab98503435df35,多种颜色可选,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+2510060,desc_zh,b21d8c689449c609db32d69df8f0b0f09dff7411173f0a383c91e0db4dc44cac,多种颜色可选；品质升级,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+2536274,desc_zh,e017c7dca113ec7cef05ab6072c36c24556b0893b55eea3cc89626e8d70ec18c,弹力棉面料；弹力腰带,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+2550326,desc_zh,80abffbccad22578e4e68069c4c92773d342696adcd215c1f8cd1f21114fd8f6,经典菱格纹；100% 棉质,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+2554067,desc_zh,d62e615cac7e9d7f3194f130f5b0ee606fe8289d15a4d90941a2fddcd79745db,100% 棉；BCI认证,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3011476,desc_zh,a463da73b15b1f85bd1b8f59d546faa9265009b53d2c91fc6a972112e7d0c7a9,造型非常现代,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3207419,desc_zh,58e9716b7ed308daeeef2f709a93b90ce9a29ed927175c1961d8f60cbe6204e9,配有结实的白色鞋底,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3209041,desc_zh,d69e0187ff3c4938c163f32e91328d18dfac7331c443a64e59697d5f6633de96,天然手工编织纹理；带提手,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3227020,desc_zh,90d3bcdda5ab89eb604adb9359e7068ac8159e678b8811dba82ea27191cb9042,创可贴,20261005 attached Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+2574659,desc_zh,b70d890d76c28929906f85132fa05ad45f61844832d2cbd862c6bb9c7fe72fad,带蓝色LED灯、水垢过滤网和360°旋转底座；透明玻璃壶可清楚查看水量，按键开盖，水沸腾后自动断电；启动时蓝灯亮起，使用直观；底座可360°旋转，适合烧水泡茶或烹饪，现代外观也便于搭配厨房。该产品于2025年八月获荷兰消费者协会评为“最佳购买”。,20261005 Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3015797,desc_zh,5ba7c5a01221f82d0ae5b245f18b540b25fa39ab2e9065fb0223d4bad3f5a1ec,"轻巧：仅2.7千克
+4个稳定双轮，可360°旋转
+耐刮擦，至少50%由再生ABS塑料制成
+硬壳行李箱配有实用分隔和拉链封口。带密码锁和柔软提手，便于提起；该行李箱有多种尺寸可选。",20261005 Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3015798,desc_zh,8643460b35b9254b571858856447c9a7b252daa44d6d0f8f66ab3992bc36415e,"轻巧：仅3.2千克
+4个稳定双轮，可360°旋转
+耐刮擦，至少50%由再生ABS塑料制成
+硬壳行李箱配有实用分隔和拉链封口，并配备密码锁和柔软提手，便于提起；该行李箱有多种尺寸可选。",20261005 Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3015799,desc_zh,f2aeeb563bf5a032e9cbd0af783b0a614a54804bd80e38fd4cbbcfb50083c7f6,"轻巧：仅4千克
+4个稳定双轮，可360°旋转
+耐刮擦，至少50%由再生ABS塑料制成
+硬壳行李箱配有实用分隔和拉链封口，并配备密码锁和柔软提手，便于提起；该行李箱有多种尺寸可选。",20261005 Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
+3213079,desc_zh,36953c94f4011d5999dc0d4dbad887f78c064959d81e4f68de0439385bbc4472,"60分钟内最高可充至50%
+具有强力磁吸并可360°旋转
+获得Qi2认证
+这款支持无线充电的MagSafe车载支架非常适合希望安全、轻松导航的人。强力磁性支架可牢牢固定智能手机。借助获得Qi2认证的快充功能，无需线缆即可迅速为设备充电。此外，支架可360°旋转，让您始终拥有适合导航和免提通话的理想视角。",20261005 Chinese export audit: source-bound retranslation; field-source reapproved 2026-10-06,3.3,human:owner,2026-10-06T06:18:21.617017+00:00,APPROVED
