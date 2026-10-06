@@ -175,6 +175,8 @@ def test_primary_repository_projection_is_read_only_and_current_only(tmp_path: P
     rows = repo.load_current_export_records()
     assert [row["sku"] for row in rows] == ["1001"]
     assert rows[0]["name_es"] == "Producto"
+    assert len(rows[0]["source_hash"]) == 64
+    assert rows[0]["presence_source"].startswith("PRIMARY_CURRENT_COMMIT:")
 
 
 def test_primary_localization_recovery_restores_only_empty_fields_and_rebuilds_content_events(tmp_path: Path):

@@ -13,6 +13,7 @@ from typing import Any
 
 from .connection import connect
 from .schema import migrate
+from ..services.hashing import localization_source_hash
 
 
 class ProductionRepositoryError(RuntimeError):
@@ -173,6 +174,11 @@ class ProductionRepository:
                 "approved_by": item[8], "approved_at": item[9], "freshness_status": item[10],
             }
         for row in rows:
+            es_source = {
+                "name_es": row[16] or row[2], "cat1_es": row[17],
+                "cat2_es": row[18], "spec_es": row[19],
+                "desc_es": row[20], "details_es": row[21],
+            }
             records.append({
                 "canonical_id": row[0], "sku": row[1], "name_es": row[16] or row[2], "name_zh": row[22] or row[3],
                 "current_price": row[4], "original_price": row[5], "unit_price": row[6], "raw_tags": row[7],
@@ -186,6 +192,14 @@ class ProductionRepository:
                 "zh_last_commit_id": row[40], "zh_applied_commit_id": row[41],
                 "unit_price_zh": row[42], "zh_unit_price_source": row[43],
                 "source_commit_id": source_commit_id, "source_run_id": source_run_id,
+                # A Phase 3-only run reads its facts back from PRIMARY rather
+                # than retaining the collector's in-memory record.  Rebuild
+                # the same aggregate Spanish binding and make the committed
+                # CURRENT state explicit as presence evidence, so the export
+                # audit evaluates the durable source instead of a lossy read
+                # projection.
+                "source_hash": localization_source_hash(es_source),
+                "presence_source": f"PRIMARY_CURRENT_COMMIT:{source_commit_id}" if source_commit_id else "",
                 "zh_field_provenance": field_provenance.get(str(row[1]), {}),
             })
         return records
