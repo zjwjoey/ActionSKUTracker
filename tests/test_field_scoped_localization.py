@@ -45,6 +45,11 @@ def test_empty_source_hash_is_deterministic_and_unknown_field_fails():
         raise AssertionError("unknown localization field was accepted")
 
 
+def test_localization_hash_treats_null_missing_and_empty_as_the_same_source():
+    base = {"name_es": "Bolas de ojos de chocolate de Halloween", "cat1_es": "Comer y beber", "cat2_es": "", "spec_es": "90 gramos"}
+    assert localization_source_hash({**base, "desc_es": None, "details_es": None}) == localization_source_hash({**base, "desc_es": "", "details_es": ""}) == localization_source_hash(base)
+
+
 def test_legacy_overall_hash_remains_distinct_from_new_field_hash():
     row = _source()
     assert localization_source_hash(row) != field_source_hash(row, "description")

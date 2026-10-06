@@ -51,10 +51,15 @@ def localization_source_hash(rec: dict[str, Any]) -> str:
     product/update hash and also includes stable URLs, while this hash binds
     only the source text that can invalidate a Chinese localization.
     """
-    return _h(
+    return _h(*(_localization_empty(value) for value in (
         rec.get("name_es"), rec.get("cat1_es"), rec.get("cat2_es"),
         rec.get("spec_es"), rec.get("desc_es"), rec.get("details_es"),
-    )
+    )))
+
+
+def _localization_empty(value: Any) -> Any:
+    """Canonicalize only absent localization source text to the empty string."""
+    return "" if value is None else value
 
 
 _LOCALIZATION_FIELD_TO_SOURCE = {
@@ -88,7 +93,7 @@ def localization_field_source_hash(rec: dict[str, Any], field: str) -> str:
     The legacy six-field hash remains available for old records and patch
     identity. New field provenance must use this narrower hash.
     """
-    return _h(_field_source_value(rec, field))
+    return _h(_localization_empty(_field_source_value(rec, field)))
 
 
 def localization_field_source_hashes(rec: dict[str, Any]) -> dict[str, str]:
