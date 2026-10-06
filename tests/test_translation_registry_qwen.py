@@ -1263,6 +1263,11 @@ def test_explicit_noop_rebind_updates_primary_provenance(tmp_path: Path):
         include_noop_rebinds=True,
     )
     assert staged["staged_fields"] == 1
+    retried = store.stage_approved_registry_patches(
+        expected_base_commit_id="BASE", actor="human:owner", revision_ids=[revision_id],
+        include_noop_rebinds=True,
+    )
+    assert retried["patch_ids"] == staged["patch_ids"]
     from action_tracker.database.production import apply_approved_localization_patches
     applied = apply_approved_localization_patches(
         db_path, patch_ids=staged["patch_ids"], expected_base_commit_id="BASE",

@@ -279,6 +279,20 @@ class KnowledgeStore:
                 if str(old_value or "") == str(row["target_text"] or "") and not include_noop_rebinds:
                     continue
                 patch_id = hashlib.sha256(f"registry-approved|{row['revision_id']}|{expected_base_commit_id}|{field}|{row['source_hash']}".encode()).hexdigest()
+                existing = db.execute(
+                    "SELECT event_type FROM localization_patch_events WHERE patch_id=? ORDER BY rowid DESC LIMIT 1",
+                    (patch_id,),
+                ).fetchone()
+                if existing:
+                    # Staging is retryable.  A process interruption after a
+                    # patch was created must not turn a deterministic retry
+                    # into a duplicate-patch failure.  Only an already
+                    # approved immutable patch can be reused; any other
+                    # lifecycle state remains fail-closed.
+                    if str(existing[0]) != "PATCH_APPROVED":
+                        raise RuntimeError("REGISTRY_PATCH_EXISTING_NOT_APPROVED:" + patch_id)
+                    patch_ids.append(patch_id)
+                    continue
                 create_localization_patch(
                     self.path, patch_id=patch_id, official_sku=str(row["official_sku"]), language="zh",
                     field_name=field, old_value=old_value, new_value=str(row["target_text"] or ""),
