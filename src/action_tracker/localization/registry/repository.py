@@ -210,6 +210,24 @@ class LocalizationRegistry:
         self._revision_event(revision_id, "AUTO_APPROVED" if auto else "APPROVED", actor)
         return True
 
+    def restore_unit_freshness(self, revision_id: str, *, source_hash: str, actor: str) -> bool:
+        """Restore an omitted FRESH state only for a current, approved revision."""
+        if not str(actor or "").startswith("human:"):
+            raise ValueError("FRESHNESS_RESTORE_ACTOR_REQUIRED")
+        with connect(self.path) as db:
+            row = db.execute("""SELECT u.unit_id,u.freshness_status,r.qa_status,r.canonical_qa_status,r.review_status
+                FROM translation_revisions r JOIN translation_units u ON u.unit_id=r.unit_id
+                JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
+                WHERE r.revision_id=? AND u.current_revision_id=r.revision_id AND r.source_hash=? AND s.source_hash=?""", (revision_id, source_hash, source_hash)).fetchone()
+            if not row or str(row[2]) != "PASS" or str(row[3] or "NOT_RUN") not in {"PASS", "NOT_REQUIRED"} or str(row[4]) not in {"APPROVED", "HUMAN_REVIEWED", "LOCKED"}:
+                return False
+            blockers = db.execute("SELECT COUNT(*) FROM translation_qa_findings WHERE revision_id=? AND status='OPEN' AND severity IN ('BLOCKER','ERROR','HIGH')", (revision_id,)).fetchone()[0]
+            if blockers:
+                return False
+            db.execute("UPDATE translation_units SET freshness_status='FRESH',status='APPROVED',updated_at=? WHERE unit_id=?", (_now(), row[0]))
+        self._revision_event(revision_id, "FRESHNESS_RESTORED", actor, {"source_hash": source_hash})
+        return True
+
     def reject_revision(self, revision_id: str, *, actor: str, reason: str = "") -> bool:
         with connect(self.path) as db:
             cur = db.execute("UPDATE translation_revisions SET review_status='REJECTED' WHERE revision_id=? AND review_status NOT IN ('APPROVED','SUPERSEDED')", (revision_id,))
