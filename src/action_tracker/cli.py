@@ -176,6 +176,8 @@ def build_parser() -> argparse.ArgumentParser:
     tw.add_argument("--limit", type=int, default=50)
     tw.add_argument("--worker-id", default="localization-worker")
     tw.add_argument("--provider", action="store_true", help="显式允许本次 Worker 调用已配置 Provider")
+    tw.add_argument("--sku", dest="skus", action="append", help="仅处理指定 SKU；可重复，避免消费全局队列")
+    tw.add_argument("--run-id", help="仅处理指定来源 run 的队列")
     tw.add_argument("--dry-run", action="store_true")
     tw.add_argument("--once", action="store_true", help="执行一批后退出（默认行为）")
     # Stable English aliases for automation; the localization-* names remain
@@ -753,7 +755,11 @@ def main(argv=None) -> int:
             if args.dry_run:
                 result = {"status": "PREVIEW_ONLY", "queue": runtime.registry.queue_status(), "production_writes": 0}
             else:
-                result = runtime.worker.process_once(limit=args.limit, worker_id=args.worker_id).as_dict()
+                result = runtime.worker.process_once(
+                    limit=args.limit, worker_id=args.worker_id,
+                    run_id=getattr(args, "run_id", None),
+                    official_skus=getattr(args, "skus", None),
+                ).as_dict()
             print(json.dumps(result, ensure_ascii=False)); return 0
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False), file=sys.stderr); return 2

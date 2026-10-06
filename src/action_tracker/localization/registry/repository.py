@@ -348,7 +348,8 @@ class LocalizationRegistry:
             rows = db.execute(f"SELECT source_text,target_text,field_name,context_key,source_hash FROM (SELECT source_text,target_text,field_name,context_key,source_hash,approval_status FROM translation_memory_entries UNION ALL SELECT source_text,target_text,field_name,context_key,source_hash,approval_status FROM translation_memory_scoped_entries) tm WHERE approval_status='APPROVED' AND source_hash IN ({placeholders})", hashes).fetchall()
         return [dict(row) for row in rows]
 
-    def claim_queue(self, *, limit: int = 50, worker_id: str = "localization-worker", run_id: str | None = None) -> list[dict[str, Any]]:
+    def claim_queue(self, *, limit: int = 50, worker_id: str = "localization-worker", run_id: str | None = None,
+                    official_skus: Iterable[str] | None = None, queue_ids: Iterable[str] | None = None) -> list[dict[str, Any]]:
         """Atomically claim pending/retry units so a worker cannot double-consume.
 
         Workflow V2 passes its run id so a bounded run cannot claim durable
@@ -372,8 +373,24 @@ class LocalizationRegistry:
                 f"UPDATE translation_queue SET status='RETRY',last_error=? WHERE {stale_where}",
                 ("STALE_CLAIM_RECOVERED", *stale_params),
             )
-            where = "run_id=? AND status IN ('PENDING','RETRY')" if run_id else "status IN ('PENDING','RETRY')"
-            params = (run_id, int(limit)) if run_id else (int(limit),)
+            where_parts: list[str] = []
+            params_list: list[Any] = []
+            if run_id:
+                where_parts.append("run_id=?")
+                params_list.append(run_id)
+            selected_skus = tuple(sorted({str(sku).strip() for sku in (official_skus or ()) if str(sku).strip()}))
+            if selected_skus:
+                placeholders = ",".join("?" for _ in selected_skus)
+                where_parts.append(f"official_sku IN ({placeholders})")
+                params_list.extend(selected_skus)
+            selected_queue_ids = tuple(dict.fromkeys(str(item).strip() for item in (queue_ids or ()) if str(item).strip()))
+            if selected_queue_ids:
+                placeholders = ",".join("?" for _ in selected_queue_ids)
+                where_parts.append(f"queue_id IN ({placeholders})")
+                params_list.extend(selected_queue_ids)
+            where_parts.append("status IN ('PENDING','RETRY')")
+            where = " AND ".join(where_parts)
+            params = (*params_list, int(limit))
             rows = db.execute(f"SELECT queue_id,official_sku,language,source_hash,requested_fields,retry_count,run_id FROM translation_queue WHERE {where} ORDER BY CASE priority WHEN 'HIGH' THEN 0 WHEN 'NORMAL' THEN 1 ELSE 2 END,created_at LIMIT ?", params).fetchall()
             for row in rows:
                 cur = db.execute("UPDATE translation_queue SET status='CLAIMED',claimed_at=?,last_error=? WHERE queue_id=? AND status IN ('PENDING','RETRY')", (now, worker_id, row[0]))
@@ -402,6 +419,19 @@ class LocalizationRegistry:
         with connect(self.path) as db:
             cur = db.execute("UPDATE translation_queue SET status='BLOCKED',last_error=? WHERE queue_id=? AND status='CLAIMED'", (str(error)[:1000], queue_id))
             return cur.rowcount == 1
+
+    def requeue_blocked(self, queue_ids: Iterable[str], *, reason: str = "QA_RULE_REFRESH") -> int:
+        """Reopen an explicitly selected blocked batch after a rule fix."""
+        ids = tuple(dict.fromkeys(str(item).strip() for item in queue_ids if str(item).strip()))
+        if not ids:
+            return 0
+        placeholders = ",".join("?" for _ in ids)
+        with connect(self.path) as db:
+            cur = db.execute(
+                f"UPDATE translation_queue SET status='RETRY',last_error=? WHERE queue_id IN ({placeholders}) AND status='BLOCKED'",
+                (str(reason)[:1000], *ids),
+            )
+            return int(cur.rowcount)
 
     def queue_status(self) -> dict[str, int]:
         with connect(self.path) as db:

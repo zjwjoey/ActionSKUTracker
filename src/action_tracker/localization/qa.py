@@ -83,6 +83,103 @@ _TRANSLATED_TECH_TOKEN_ALIASES = {
 # token failure when the source-bound brand is HP.
 _OMITTABLE_DISPLAY_BRAND_TECH = {"hp"}
 
+# Source-bound display tokens which may legitimately remain in Chinese copy.
+# The static allowlist above covers common abbreviations, but Action source
+# facts also contain product brands, mixed-case interfaces and model-like
+# spans (for example ``Alison & Mae``, ``PlayStation`` and ``daN``).  These
+# must be allowed only when the exact token is present in both source and
+# target; ordinary Spanish words remain blocked.
+_SOURCE_BOUND_SPANISH_STOPWORDS = {
+    "a", "al", "como", "con", "de", "del", "desde", "el", "en", "entre",
+    "esta", "este", "la", "las", "lo", "los", "más", "no", "o", "para",
+    "por", "que", "se", "sin", "su", "sus", "un", "una", "y",
+    "color", "colores", "material", "incluye", "número", "numero",
+    "cantidad", "contenido", "tipo", "tamaño", "tamano", "varios", "varias",
+    "diferentes", "negro", "blanco", "rojo", "azul", "verde", "unidades",
+}
+_SOURCE_BOUND_SHORT_TECH = {"mbps", "gbps", "kbps", "mhz", "khz", "ghz", "hfe", "mah", "kwh", "wh", "mah"}
+
+
+def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
+    """Return conservative source-bound brand/technical spans.
+
+    A token is accepted only when it is copied from the same official source
+    field into the target and has a model/brand shape.  Sentence-leading
+    capitalisation alone is not sufficient, which prevents ``Para`` or
+    ``Material`` from becoming a false allowlist entry.
+    """
+    source = str(source_text or "")
+    rendered = str(target or "")
+    if not source or not rendered:
+        return set()
+    target_fold = rendered.casefold()
+    allowed: set[str] = set()
+    for token in re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ&+./-]*", source):
+        if token.casefold() not in target_fold:
+            continue
+        folded = token.casefold()
+        if folded in _SOURCE_BOUND_SPANISH_STOPWORDS:
+            continue
+        target_match = re.search(
+            rf"(?<![A-Za-z0-9]){re.escape(token)}(?![A-Za-z0-9])",
+            rendered,
+            flags=re.IGNORECASE,
+        )
+        model_shape = (
+            any(char.isdigit() for char in token)
+            or any(char in token for char in "-&+./")
+            or (any(char.isupper() for char in token[1:]) and any(char.islower() for char in token))
+            or (
+                folded in _SOURCE_BOUND_SHORT_TECH
+                and target_match is not None
+                and any(char.isupper() for char in target_match.group(0))
+            )
+            or token.isupper()
+        )
+        if model_shape:
+            allowed.add(token)
+            # Compound interface/technology tokens such as
+            # ``Micro-SD/TransFlash`` are tokenized into slash-separated
+            # pieces by the residual detector. Keep those pieces source-bound
+            # as well, without broadening the allowlist globally.
+            allowed.update(piece for piece in re.split(r"[\s/]+", token) if len(piece) > 1)
+            continue
+        # A title-cased token is a possible brand only when it is not the
+        # first word after sentence punctuation.  This keeps ordinary Spanish
+        # sentence starts fail-closed while allowing ``de Alison & Mae``.
+        if token[:1].isupper():
+            for match in re.finditer(re.escape(token), source):
+                before = source[:match.start()].rstrip()
+                if before and before[-1] not in ".!?\n":
+                    allowed.add(token)
+                    break
+    return allowed
+
+
+def _source_bound_cross_field_tokens(name_source: str, target: str) -> set[str]:
+    """Allow only brand/model-shaped spans repeated from the product name."""
+    source = str(name_source or "")
+    rendered = str(target or "")
+    if not source or not rendered:
+        return set()
+    allowed: set[str] = set()
+    # Multiword brands such as ``Alison & Mae`` are kept as one source-bound
+    # display span; do not generalise this to arbitrary title-cased words.
+    for phrase in re.findall(
+        r"(?<![A-Za-z0-9])([A-ZÁÉÍÓÚÜÑ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9-]*(?:\s*&\s*[A-ZÁÉÍÓÚÜÑ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9-]*)+)",
+        source,
+    ):
+        if phrase.casefold() in rendered.casefold():
+            allowed.update(piece for piece in re.split(r"\s*&\s*", phrase) if piece)
+    for token in _source_bound_display_tokens(source, rendered):
+        if (
+            any(char.isdigit() for char in token)
+            or any(char in token for char in "-&+./")
+            or (any(char.isupper() for char in token[1:]) and any(char.islower() for char in token))
+        ):
+            allowed.add(token)
+    return allowed
+
 # The protection tokenizer intentionally remains conservative and recognizes
 # uppercase spans as TECH. Spanish source exports also contain uppercase field
 # values (not identifiers), e.g. ``CALCULADORA`` or ``TABURETE``. Keep this
@@ -91,7 +188,7 @@ _OMITTABLE_DISPLAY_BRAND_TECH = {"hp"}
 _ORDINARY_SPANISH_UPPERCASE_WORDS = {
     "BA", "BAÑO", "CALENTADOR", "CALCULADORA", "CHAQUETAS", "CÁMPING",
     "DE", "EDRED", "MANOS", "MICO", "MPING", "NO", "PERCHERO", "QU", "QUÍMICO",
-    "SOMBREROS", "TABURETE",
+    "SOMBREROS", "TABURETE", "APARATO", "CALEFACCI", "PERSONAL",
 }
 
 _ORDINARY_SPANISH_UPPERCASE_FRAGMENTS = {
@@ -310,6 +407,7 @@ def _semantic_numeric_equivalents(source_text: str, target: str) -> Counter[str]
         (r"\b(\d+)\s+capas?\b", {"3": ("三层", "三层纸", "三层餐巾")} ),
         (r"\b(\d+)\s+en\s+1\b", {"3": "三合一", "2": "二合一", "4": "四合一"}),
         (r"\b(\d+)\s+personas?\b", {"1": ("单人", "一人"), "2": ("双人", "两人")}),
+        (r"\b(1)\s+(?:tamaño|size)\b", {"1": ("均码", "均一尺码", "单一尺码")}),
     )
     for pattern, mapping in phrase_rules:
         for match in re.finditer(pattern, source):
@@ -319,7 +417,37 @@ def _semantic_numeric_equivalents(source_text: str, target: str) -> Counter[str]
                 aliases = (aliases,)
             if any(alias in target_text for alias in aliases):
                 equivalents[number] += 1
+    if _zero_percent_is_semantically_rendered(source, target_text):
+        equivalents["0"] += len(re.findall(r"(?<!\d)0(?:[.,]0)?\s*%", source))
     return equivalents
+
+
+def _brand_embedded_numeric_values(source_text: str) -> Counter[str]:
+    """Return digits embedded in brand-shaped title spans."""
+    values: Counter[str] = Counter()
+    for token in re.findall(
+        r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9&+./-]*\d[A-Za-z0-9&+./-]*(?![A-Za-z0-9])",
+        str(source_text or ""),
+    ):
+        if not any(char.islower() for char in token):
+            continue
+        prefix = re.match(r"[A-Za-z]+", token)
+        if prefix and prefix.group(0).casefold() in {
+            "a", "b", "cr", "f", "h", "ip", "k", "lr", "ps", "r", "t", "usb",
+        }:
+            continue
+        if token.casefold().startswith(("series", "modelo", "model")):
+            continue
+        for number in re.findall(r"\d+(?:[.,]\d+)?", token):
+            values[_canonical_numeric_token(number)] += 1
+    return values
+
+
+def _zero_percent_is_semantically_rendered(source_text: str, target: str) -> bool:
+    return bool(
+        re.search(r"(?<!\d)0(?:[.,]0)?\s*%", str(source_text or ""), flags=re.I)
+        and re.search(r"(?:不含|无|零|0\s*[%％])", str(target or ""))
+    )
 
 
 def _semantic_numeric_extras(source_text: str, target: str) -> Counter[str]:
@@ -357,6 +485,7 @@ def _allowed_display_latin_tokens(source_text: str, target: str) -> set[str]:
     # spelling and the candidate preserves that display token.
     if ("dura-beam" in source_lower or "dura beam" in source_lower) and "dura beam" in target_lower:
         allowed.update({"dura-beam", "dura beam"})
+    allowed.update(_source_bound_display_tokens(source_text, target))
     return allowed
 
 
@@ -379,7 +508,14 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             continue
         if "null" in target.casefold() or "undefined" in target.casefold():
             findings.append(QAFinding("NULL_UNDEFINED_RESIDUAL", "BLOCKER", field_name, {"value": target}, source=source_text, target=target, blocking=True))
-        if has_ordinary_spanish(target, allowed_tokens=_allowed_display_latin_tokens(source_text, target)):
+        allowed_display_tokens = _allowed_display_latin_tokens(source_text, target)
+        # Brands and interfaces may be repeated in a description/detail even
+        # when their official source is the product name.  Keep this explicit
+        # and shape-bound; ordinary Spanish from the name is never allowed.
+        allowed_display_tokens.update(
+            _source_bound_cross_field_tokens(getattr(source, "name_es", ""), target)
+        )
+        if has_ordinary_spanish(target, allowed_tokens=allowed_display_tokens):
             findings.append(QAFinding("SPANISH_RESIDUAL", "ERROR", field_name, {"value": target}, source=source_text, target=target, blocking=True))
         # Technical/numeric guards cannot detect an omitted ordinary product
         # noun.  Reuse deterministic semantic facts when the source term is
@@ -426,6 +562,11 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         all_source_numbers = _numbers(all_source_text)
         dropped = source_numbers - target_numbers
         dropped -= _semantic_numeric_equivalents(source_text, target)
+        if field_name == "name":
+            # No-brand display removes digits embedded in brand spans such as
+            # ``Lab31``/``Cool2Party``. Do not waive standalone quantities or
+            # compact technical models here.
+            dropped -= _brand_embedded_numeric_values(source_text)
         # Brand/series tokens can contain digits that are not product facts.
         # Under the no-brand display policy, ``7Up`` may be removed from the
         # Chinese name; its ``7`` must not become a NUMERIC_DROPPED blocker.
@@ -496,6 +637,12 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     actual_count = target.casefold().count(value.casefold())
                 else:
                     expected_count, actual_count = source_text.count(value), target.count(value)
+                if kind in {"CAPACITY", "BATTERY_CAPACITY", "POWER", "VOLTAGE"}:
+                    compact_value = re.sub(r"\s+", "", value).casefold()
+                    compact_source = re.sub(r"\s+", "", source_text).casefold()
+                    compact_target = re.sub(r"\s+", "", target).casefold()
+                    expected_count = compact_source.count(compact_value)
+                    actual_count = compact_target.count(compact_value)
                 if actual_count < expected_count:
                     if kind == "TECH" and _is_allowed_translated_tech_token(source_text, value, target):
                         continue
@@ -507,6 +654,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         source_units = _units(source_text)
         target_units = _units(target)
         for unit in source_units:
+            if unit == "%" and _zero_percent_is_semantically_rendered(source_text, target):
+                continue
             if unit.casefold() not in target_units:
                 findings.append(QAFinding("UNIT_DROPPED", "BLOCKER", field_name, {"unit": unit}, source=source_text, target=target, message="technical unit dropped", blocking=True))
         for term in terminology:

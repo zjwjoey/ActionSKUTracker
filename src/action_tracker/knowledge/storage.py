@@ -201,7 +201,7 @@ class KnowledgeStore:
         )
         return int(result["applied_fields"])
 
-    def approved_registry_projection(self, *, limit: int | None = None, source_run_id: str | None = None, queue_run_id: str | None = None) -> list[dict[str, Any]]:
+    def approved_registry_projection(self, *, limit: int | None = None, source_run_id: str | None = None, queue_run_id: str | None = None, revision_ids: Iterable[str] | None = None) -> list[dict[str, Any]]:
         """Read the field-level Registry approvals that are eligible for PRIMARY.
 
         This is deliberately a projection query, not a write path.  It makes
@@ -237,11 +237,16 @@ class KnowledgeStore:
                     1,
                 )
                 params = (*params, str(queue_run_id))
+            selected_revision_ids = tuple(dict.fromkeys(str(item).strip() for item in (revision_ids or ()) if str(item).strip()))
+            if selected_revision_ids:
+                placeholders = ",".join("?" for _ in selected_revision_ids)
+                sql = sql.replace("ORDER BY s.official_sku,u.field_name", f"AND r.revision_id IN ({placeholders}) ORDER BY s.official_sku,u.field_name", 1)
+                params = (*params, *selected_revision_ids)
             if limit is not None:
                 sql += " LIMIT ?"; params = (*params, int(limit))
             return [dict(row) for row in db.execute(sql, params).fetchall()]
 
-    def stage_approved_registry_patches(self, *, expected_base_commit_id: str, actor: str, limit: int | None = None, source_run_id: str | None = None, queue_run_id: str | None = None) -> dict[str, Any]:
+    def stage_approved_registry_patches(self, *, expected_base_commit_id: str, actor: str, limit: int | None = None, source_run_id: str | None = None, queue_run_id: str | None = None, revision_ids: Iterable[str] | None = None) -> dict[str, Any]:
         """Convert Registry-approved fields into immutable PRIMARY patches.
 
         The method only creates ``PATCH_CREATED`` + ``PATCH_APPROVED`` rows;
@@ -250,7 +255,7 @@ class KnowledgeStore:
         """
         if not str(actor or "").startswith("human:"):
             raise PermissionError("REGISTRY_APPLY_ACTOR_MUST_BE_HUMAN")
-        rows = self.approved_registry_projection(limit=limit, source_run_id=source_run_id, queue_run_id=queue_run_id)
+        rows = self.approved_registry_projection(limit=limit, source_run_id=source_run_id, queue_run_id=queue_run_id, revision_ids=revision_ids)
         patch_ids: list[str] = []
         canonical = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}
         with connect(self.path) as db:

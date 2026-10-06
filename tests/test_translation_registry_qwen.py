@@ -127,6 +127,54 @@ def test_workflow_queue_claim_is_scoped_to_run_id(tmp_path: Path):
     assert old_statuses == {"PENDING"}
 
 
+def test_workflow_queue_claim_can_be_scoped_to_skus(tmp_path: Path):
+    db_path = tmp_path / "registry.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c2','654321','ACTIVE')")
+    records = [
+        {"sku": "123456", "name_es": "Producto uno", "cat1_es": "Hogar", "cat2_es": "Cocina", "spec_es": "10 cm", "desc_es": "Rojo", "details_es": "Número: 123456"},
+        {"sku": "654321", "name_es": "Producto dos", "cat1_es": "Hogar", "cat2_es": "Cocina", "spec_es": "20 cm", "desc_es": "Azul", "details_es": "Número: 654321"},
+    ]
+    registry.ingest_records(records, source_run_id="scoped-run", observed_at="2026-10-04")
+    claimed = registry.claim_queue(limit=100, worker_id="scoped-worker", run_id="scoped-run", official_skus=["654321"])
+    assert claimed
+    assert {str(row["official_sku"]) for row in claimed} == {"654321"}
+    with connect(db_path) as db:
+        other = {str(row[0]) for row in db.execute("SELECT DISTINCT status FROM translation_queue WHERE official_sku='123456'").fetchall()}
+    assert other == {"PENDING"}
+
+
+def test_requeue_blocked_is_explicitly_scoped(tmp_path: Path):
+    db_path = tmp_path / "registry.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c1','123456','ACTIVE')")
+        db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES('c2','654321','ACTIVE')")
+        for queue_id, sku, status in (("q-blocked", "123456", "BLOCKED"), ("q-pending", "654321", "PENDING")):
+            db.execute(
+                "INSERT INTO translation_queue(queue_id,official_sku,language,source_hash,requested_fields,reason,priority,status,run_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                (queue_id, sku, "zh", "hash", "name", "test", "NORMAL", status, "run", "2026-10-04T00:00:00+00:00"),
+            )
+    assert registry.requeue_blocked(["q-blocked", "q-pending"]) == 1
+    with connect(db_path) as db:
+        assert db.execute("SELECT status FROM translation_queue WHERE queue_id='q-blocked'").fetchone()[0] == "RETRY"
+        assert db.execute("SELECT status FROM translation_queue WHERE queue_id='q-pending'").fetchone()[0] == "PENDING"
+
+
+def test_queue_claim_can_be_scoped_to_exact_queue_ids(tmp_path: Path):
+    db_path = tmp_path / "registry.sqlite"
+    registry = LocalizationRegistry(db_path)
+    with connect(db_path) as db:
+        for idx, status in enumerate(("PENDING", "PENDING"), 1):
+            sku = f"12345{idx}"
+            db.execute("INSERT INTO products(canonical_id,official_sku,status) VALUES(?,?,?)", (f"c{idx}", sku, "ACTIVE"))
+            db.execute("INSERT INTO translation_queue(queue_id,official_sku,language,source_hash,requested_fields,reason,priority,status,run_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", (f"q-{idx}", sku, "zh", "hash", "name", "test", "NORMAL", status, "run", "2026-10-04T00:00:00+00:00"))
+    claimed = registry.claim_queue(limit=10, worker_id="exact-worker", run_id="run", queue_ids=["q-2"])
+    assert [row["queue_id"] for row in claimed] == ["q-2"]
+
+
 def test_legacy_qwen_profile_bridges_only_when_v1_profile_is_missing(monkeypatch):
     monkeypatch.setenv("QWEN_MT_BASE_URL", "https://example.test/compatible-mode/v1")
     legacy = {"translation": {"qwen_mt": {"enabled": True, "model": "qwen-mt-flash"}}, "localization": {}}

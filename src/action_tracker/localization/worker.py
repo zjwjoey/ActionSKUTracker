@@ -112,8 +112,11 @@ class TranslationQueueWorker:
             error_code=str(getattr(exc, "code", type(exc).__name__)),
         )
 
-    def process_once(self, *, limit: int = 50, worker_id: str = "localization-worker", run_id: str | None = None) -> QueueWorkerResult:
-        claimed = self.registry.claim_queue(limit=limit, worker_id=worker_id, run_id=run_id)
+    def process_once(self, *, limit: int = 50, worker_id: str = "localization-worker", run_id: str | None = None,
+                    official_skus: Iterable[str] | None = None, queue_ids: Iterable[str] | None = None) -> QueueWorkerResult:
+        claimed = self.registry.claim_queue(
+            limit=limit, worker_id=worker_id, run_id=run_id, official_skus=official_skus, queue_ids=queue_ids,
+        )
         completed = retried = failed = blocked = review_required = 0
         for item in claimed:
             queue_id = str(item["queue_id"])
@@ -255,5 +258,9 @@ class TranslationQueueWorker:
         return QueueWorkerResult(len(claimed), completed, retried, failed, blocked, review_required)
 
 
-def process_translation_queue(registry: LocalizationRegistry, resolver: TranslationResolver, *, limit: int = 50, worker_id: str = "localization-worker") -> dict[str, int]:
-    return TranslationQueueWorker(registry, resolver).process_once(limit=limit, worker_id=worker_id).as_dict()
+def process_translation_queue(registry: LocalizationRegistry, resolver: TranslationResolver, *, limit: int = 50,
+                              worker_id: str = "localization-worker", official_skus: Iterable[str] | None = None,
+                              queue_ids: Iterable[str] | None = None) -> dict[str, int]:
+    return TranslationQueueWorker(registry, resolver).process_once(
+        limit=limit, worker_id=worker_id, official_skus=official_skus, queue_ids=queue_ids,
+    ).as_dict()

@@ -351,3 +351,75 @@ def test_fact_qa_accepts_sock_bedding_and_footwear_scoped_equivalents():
         ("name", "description", "details"),
     )
     assert not any(item.rule_id in {"SEMANTIC_FACT_DROPPED", "NUMERIC_ADDED"} for item in findings)
+
+
+def test_source_bound_mixed_case_and_brand_tokens_are_not_spanish_residual():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({
+        "sku": "2553790",
+        "name_es": "C&C cincha",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Coche",
+        "spec_es": "1000 daN",
+        "desc_es": "Con gancho Alison & Mae; 1000 daN; compatible con PlayStation; 10/100/1000 mbps",
+        "details_es": "Compatible con PlayStation",
+    })
+    findings = audit_translation(
+        source,
+        {"description": "带 daN Alison & Mae PlayStation；10/100/1000 Mbps"},
+        ("description",),
+    )
+    assert not any(item.rule_id == "SPANISH_RESIDUAL" for item in findings)
+
+
+def test_sentence_leading_spanish_is_still_residual():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({
+        "sku": "2553791",
+        "name_es": "Producto",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Coche",
+        "desc_es": "Para uso general",
+    })
+    findings = audit_translation(source, {"description": "Para uso general"}, ("description",))
+    assert any(item.rule_id == "SPANISH_RESIDUAL" for item in findings)
+
+
+def test_description_repair_preserves_short_source_models():
+    from action_tracker.exporting.repair_rules import repair_content_with_context
+
+    repaired = repair_content_with_context(
+        "适用于切割垫", "Alfombrilla de corte A4 para manualidades"
+    )
+    assert "A4" in repaired
+
+
+def test_fact_qa_accepts_brand_embedded_digits_after_no_brand_cleanup():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({"sku": "BRAND-DIGIT", "name_es": "Comba Lab31"})
+    findings = audit_translation(source, {"name": "跳绳"}, ("name",))
+    assert not any(item.rule_id == "NUMERIC_DROPPED" for item in findings)
+
+
+def test_fact_qa_keeps_real_compact_model_digit_blocking():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({"sku": "MODEL-DIGIT", "name_es": "Marco A4"})
+    findings = audit_translation(source, {"name": "相框"}, ("name",))
+    assert any(item.rule_id == "NUMERIC_DROPPED" for item in findings)
+
+
+def test_fact_qa_accepts_zero_percent_as_no_content_and_one_size_as_uniform_size():
+    from action_tracker.localization.qa import audit_translation
+
+    source = SourceFacts.from_record({
+        "sku": "SEMANTIC-NUMERIC",
+        "desc_es": "Con un 0% de alcohol; 1 size para todos",
+    })
+    findings = audit_translation(
+        source, {"description": "不含酒精；均码，适合所有人"}, ("description",)
+    )
+    assert not any(item.rule_id in {"NUMERIC_DROPPED", "UNIT_DROPPED"} for item in findings)
