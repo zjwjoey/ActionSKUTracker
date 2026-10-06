@@ -46,7 +46,6 @@ def write_catalog_xlsx(
     index = {header: pos + 1 for pos, header in enumerate(headers)}
     text_wrap = set((workbook_format.get("body") or {}).get("wrap_text_columns") or [])
     max_row_height = float((workbook_format.get("body") or {}).get("max_row_height") or 405)
-    hyperlink_labels = dict(workbook_format.get("hyperlink_display_text") or {})
     widths = {
         "图片": 12, "编号": 14, "标题": 28, "分类1": 16, "分类2": 18, "规格": 26,
         "折后价": 13, "原价": 13, "单价": 16, "描述": 48, "产品详情": 56,
@@ -73,12 +72,26 @@ def write_catalog_xlsx(
                 cell.number_format = price_format
             elif header in {"图片链接", "商品链接"} and cell.value:
                 target = str(cell.value)
-                cell.value = str(hyperlink_labels.get(header) or target)
+                # Keep the real URL visible in the cell while also attaching
+                # the hyperlink.  Display labels such as “查看商品” hide the
+                # source address and make exported lists harder to audit or
+                # copy into downstream tools.
+                cell.value = target
                 cell.hyperlink = target
                 cell.style = "Hyperlink"
         if embed_images:
             sku = str(materialized[row_no - 2].get("编号") or "").strip()
-            image_path = image_root / f"{sku}.png" if image_root and sku else None
+            image_path = None
+            if image_root and sku:
+                # The established derivative cache is PNG, while export-only
+                # bundles may deliberately use white-background JPEGs. Keep
+                # PNG as the first choice for backward compatibility and
+                # accept JPG/JPEG without changing the workbook contract.
+                for suffix in (".png", ".jpg", ".jpeg"):
+                    candidate = image_root / f"{sku}{suffix}"
+                    if candidate.exists():
+                        image_path = candidate
+                        break
             image_column = index.get("图片")
             eligible = image_eligibility is None or image_eligibility.get(sku, False)
             if image_column and image_path and image_path.exists() and eligible:

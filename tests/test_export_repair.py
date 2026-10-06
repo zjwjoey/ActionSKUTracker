@@ -6,7 +6,8 @@ from action_tracker.exporting.repair_report import (
     _source_bound_alias,
     audit_repaired_rows,
 )
-from action_tracker.exporting.repair_rules import repair_spec, repair_title
+from action_tracker.exporting.dictionary_join import _repair_export_description, _repair_export_details, _translate_official_tags, _zh_remarks
+from action_tracker.exporting.repair_rules import repair_details, repair_spec, repair_title
 from action_tracker.exporting.repair_tokens import repair_source_model_fragments
 
 
@@ -62,6 +63,15 @@ def test_repaired_row_audit_deduplicates_findings_to_field_rate():
     assert result["field_error_rate"] == 1 - result["field_pass_rate"]
 
 
+def test_export_audit_allows_source_bound_brand_but_not_ordinary_spanish():
+    record = {**_record(), "name_es": "Producto Alison & Mae", "desc_es": "Marca Alison & Mae"}
+    row = _row(标题="商品 Alison & Mae", 描述="来自 Alison & Mae")
+    result = audit_repaired_rows([record], [row])
+    assert not any(item["code"] == "SPANISH_RESIDUAL" for item in result["findings"])
+    ordinary = audit_repaired_rows([record], [_row(描述="Producto Alison & Mae")])
+    assert any(item["code"] == "SPANISH_RESIDUAL" for item in ordinary["findings"])
+
+
 def test_confirmed_source_token_repair_is_idempotent():
     first = repair_title("产品", "Producto TCX")
     second = repair_title(first, "Producto TCX")
@@ -99,6 +109,46 @@ def test_source_bound_numeric_and_alias_equivalence_is_deterministic():
     assert _source_bound_alias("TV", "Con tus personajes favoritos de TV", "带热门卡通人物图案")
     assert _source_bound_alias("AA", "Pilas alcalinas Varta AA", "碱性电池")
     assert _source_bound_alias("UV", "Protección UV Hair Theory", "防晒护发喷雾")
+
+
+def test_chinese_remarks_translate_known_official_spanish_tags():
+    assert _translate_official_tags("Una opción más sostenible | Nuevo | -21%") == "更可持续的选择｜新品｜-21%"
+    assert "Una opción más sostenible" not in _zh_remarks({"raw_tags": "Una opción más sostenible"}, [])
+
+
+def test_title_drops_brand_number_fragments_but_keeps_model_numbers():
+    assert repair_title("跳绳｜31", "Comba Lab31") == "跳绳"
+    assert repair_title("派对眼镜｜2", "Gafas Cool2Party") == "派对眼镜"
+    assert repair_title("相框｜A4", "Marco A4") == "相框｜A4"
+
+
+def test_description_removes_adapter_parameter_and_repeated_size_tails():
+    assert _repair_export_description("三层结构；参数：3", "Alfombrilla para cortar") == "三层结构"
+    assert _repair_export_description(
+        "坚固实用的铁丝网垃圾桶。；尺寸：30×35厘米", "Papelera"
+    ) == "坚固实用的铁丝网垃圾桶"
+    # An unrepeated size remains part of the prose.
+    assert _repair_export_description("产品尺寸：30×35厘米", "Papelera") == "产品尺寸：30×35厘米"
+
+
+def test_details_strip_ordinary_uppercase_fragment_after_article_number():
+    assert _repair_export_details(
+        "计算器类型：计算器；商品编号：2527246；CALCULADORA",
+        "Tipo: Calculadora; Número del artículo: 2527246; CALCULADORA",
+    ) == "计算器类型：计算器；商品编号：2527246"
+    assert _repair_export_details(
+        "商品编号：2542277；MANOS", "Tipo: MANOS; Número del artículo: 2542277"
+    ) == "商品编号：2542277"
+    assert _repair_export_details(
+        "商品编号：1001；USB-C", "Tipo: Cable; Número del artículo: 1001; USB-C"
+    ) == "商品编号：1001"
+
+
+def test_spec_rebuild_discards_cross_field_appended_segments():
+    assert repair_spec(
+        "50×60cm｜多种颜色｜蓝色", "50x60 cm | varios colores"
+    ) == "50×60cm｜多种颜色"
+    assert repair_spec("3×50g", "3x50 gramos") == "3×50g"
 
 
 def test_blocking_unresolved_finding_closes_release_gate():

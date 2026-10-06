@@ -32,9 +32,6 @@ workbook_format:
     data_type: number
     number_format: "€#,##0.00"
   hyperlinks: [图片链接, 商品链接]
-  hyperlink_display_text:
-    图片链接: 查看图片
-    商品链接: 查看商品
   embedded_images: false
 
 common_columns:

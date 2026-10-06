@@ -520,6 +520,8 @@ def audit_repaired_rows(
     from ..localization.qa import (
         _is_allowed_translated_tech_token,
         _is_ordinary_spanish_uppercase_token,
+        _source_bound_cross_field_tokens,
+        _source_bound_display_tokens,
         audit_translation,
     )
 
@@ -644,6 +646,13 @@ def audit_repaired_rows(
                     and word.upper() not in _ORDINARY_SOURCE_TOKENS
                 }
                 source_allowed.update(source_words)
+                # Keep export residual detection aligned with localization QA.
+                # Only source-bound brand/model-shaped spans may survive;
+                # ordinary Spanish remains blocking.
+                source_allowed.update(_source_bound_display_tokens(source_text, target_text))
+                source_allowed.update(
+                    _source_bound_cross_field_tokens(str(source.get("name_es") or ""), target_text)
+                )
                 for phrase in _SOURCE_BOUND_DISPLAY_TOKENS:
                     if phrase in source_text.casefold() and phrase in target_text.casefold():
                         source_allowed.add(phrase)

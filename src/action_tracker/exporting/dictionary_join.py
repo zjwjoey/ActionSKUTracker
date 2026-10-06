@@ -761,9 +761,47 @@ def _zh_remarks(record: dict[str, Any], fallbacks: list[str]) -> str:
         values.append(f"折扣：{float(discount):g}")
     raw_tags = _none_or_text(record.get("raw_tags"))
     if raw_tags:
-        values.append(f"官网官方标签：{raw_tags}")
+        values.append(f"官网官方标签：{_translate_official_tags(raw_tags)}")
     values.extend(fallbacks)
     return "；".join(values)
+
+
+_OFFICIAL_TAG_TRANSLATIONS = {
+    "una opción más sostenible": "更可持续的选择",
+    "sostenible": "可持续",
+    "sostenibilidad": "可持续",
+    "nuevo": "新品",
+    "nueva": "新品",
+    "promoción": "促销",
+    "promocion": "促销",
+    "oferta de fin de semana": "周末优惠",
+}
+
+
+def _translate_official_tags(value: str | None) -> str:
+    """Render official badge labels in Chinese at the Chinese export boundary.
+
+    ``raw_tags`` remains an official Spanish fact in SQLite.  The Chinese
+    workbook is a display projection, so known labels are translated while
+    unknown labels stay visible for review instead of being silently dropped.
+    Date/discount fragments are deliberately preserved verbatim.
+    """
+    text = _none_or_text(value)
+    if not text:
+        return ""
+    rendered: list[str] = []
+    for part in re.split(r"\s*[|｜]\s*", text):
+        token = part.strip()
+        if not token:
+            continue
+        key = token.casefold()
+        replacement = _OFFICIAL_TAG_TRANSLATIONS.get(key)
+        if replacement is None:
+            replacement = re.sub(
+                r"(?i)\bpromoción\s+semanal\b", "每周促销", token
+            )
+        rendered.append(replacement)
+    return "｜".join(rendered)
 
 
 def _repair_export_unit_price(value: str | None) -> str | None:
@@ -820,7 +858,116 @@ def _repair_export_title(value: str | None, source: str | None) -> str | None:
     text = re.sub(r"(?i)\bhilo\s+de\s+tejer\b", "编织线", text)
     text = re.sub(r"(?i)\bcantimplora\s+lujosa\b", "豪华水壶", text)
     text = re.sub(r"(?i)\ball-in-1\b", "一体式", text)
+    # Legacy title projections sometimes left source quantities hanging as
+    # ``标题｜1｜3`` after the Chinese phrase had already rendered ``三合一``.
+    # Remove only a terminal pipe-delimited ASCII token tail.  A standalone
+    # LED count is retained in natural Chinese order (``80灯LED...``).
+    tail = re.search(
+        r"\s*[｜|]\s*(?P<parts>(?:[A-Za-z0-9][A-Za-z0-9²³+./-]*)(?:\s*[｜|]\s*(?:[A-Za-z0-9][A-Za-z0-9²³+./-]*))*)\s*$",
+        text,
+    )
+    if tail:
+        parts = [part.strip() for part in re.split(r"[｜|]", tail.group("parts")) if part.strip()]
+        before = text[:tail.start()].rstrip(" |｜")
+        artifact_tokens = {"gan"}
+        if not all(part.isdigit() or part.casefold() in artifact_tokens for part in parts):
+            return text
+        if (
+            len(parts) == 1
+            and parts[0].isdigit()
+            and re.search(rf"(?<!\d){re.escape(parts[0])}\s+leds?\b", source_text, flags=re.I)
+        ):
+            text = f"{parts[0]}灯{before}"
+        elif "gan" in {part.casefold() for part in parts} and "gan" not in before.casefold():
+            text = before.replace("充电器", "GaN充电器", 1)
+        else:
+            text = before
     return text
+
+
+_ORDINARY_POST_ARTICLE_UPPERCASE = {
+    "APARATO", "CALCULADORA", "CALEFACCI", "CÁMPING", "EDRED", "MANOS",
+    "MICO", "MPING", "PERCHERO", "QU", "QUÍMICO", "SOMBREROS", "TABURETE",
+}
+
+
+def _strip_post_article_uppercase_fragments(value: str | None, source: str | None) -> str | None:
+    text = _none_or_text(value)
+    source_text = _none_or_text(source) or ""
+    if not text or not source_text:
+        return text
+    marker = re.search(r"商品编号\s*[:：]\s*\d+", text)
+    if not marker:
+        return text
+    prefix, suffix = text[:marker.end()], text[marker.end():]
+    # Article number is the final structured detail in the Action source. Any
+    # later parser fragment (ordinary uppercase enum, residual acronym, or
+    # metadata marker) is outside the details payload. Preserve the two
+    # explicit source-anomaly markers because they are deliberate audit
+    # provenance, not parser output.
+    candidate = re.sub(r"^[\s；;|｜]+", "", suffix)
+    if not candidate:
+        return text
+    if candidate.startswith("来源异常：官网字段"):
+        return text
+    # The article number is the terminal structured detail in the source.
+    # Even technical-looking fragments after it (USB-C, LPG, GSM100, etc.)
+    # are parser leakage because the same fact is already represented in the
+    # preceding translated key/value pair.
+    return prefix.rstrip("；;|｜ ")
+
+
+def _spec_compare_text(value: str | None) -> str:
+    return re.sub(r"[\s|｜;；,，]+", "", str(value or "")).casefold()
+
+
+def _has_spec_cross_field_extra(candidate: str | None, canonical: str | None) -> bool:
+    """Detect extra display segments appended outside ``spec_es`` facts."""
+    candidate_text = _none_or_text(candidate)
+    canonical_text = _none_or_text(canonical)
+    if not candidate_text or not canonical_text:
+        return False
+    candidate_key = _spec_compare_text(candidate_text)
+    canonical_key = _spec_compare_text(canonical_text)
+    if candidate_key == canonical_key or canonical_key not in candidate_key:
+        return False
+    # A proper subset is a strong signal for appended cross-field data.  Check
+    # the segment boundary so a legitimate unit/model spelling is not treated
+    # as contamination merely because it contains the canonical text.
+    parts = [part.strip() for part in re.split(r"[|｜;；]", candidate_text) if part.strip()]
+    canonical_parts = [part.strip() for part in re.split(r"[|｜;；]", canonical_text) if part.strip()]
+    if len(parts) <= len(canonical_parts):
+        return False
+    # Every canonical segment must be represented; any unmatched candidate
+    # segment is an extra fact (usually color, weight, or a detail attribute).
+    remaining = list(canonical_parts)
+    for part in parts:
+        part_key = _spec_compare_text(part)
+        match_index = next((i for i, expected in enumerate(remaining)
+                            if part_key == _spec_compare_text(expected)
+                            or part_key in _spec_compare_text(expected)
+                            or _spec_compare_text(expected) in part_key), None)
+        if match_index is not None:
+            remaining.pop(match_index)
+    return not remaining
+
+
+def _strip_repeated_trailing_size(value: str | None) -> str | None:
+    text = _none_or_text(value)
+    if not text:
+        return text
+    match = re.search(
+        r"(?:[。.!！?？]\s*)?[；;]\s*尺寸\s*[:：]\s*"
+        r"[^；;。.!！?？]+(?:[；;]\s*尺寸\s*[:：]\s*[^；;。.!！?？]+)*\s*$",
+        text,
+    )
+    if not match:
+        return text
+    before = text[:match.start()]
+    # A terminal structured size clause is owned by the spec/details columns;
+    # it is always removed at this boundary.  A prose clause without the
+    # leading semicolon (for example ``产品尺寸：...``) is left untouched.
+    return before.rstrip("；;。 ")
 
 
 def _repair_export_details(value: str | None, source: str | None) -> str | None:
@@ -832,7 +979,11 @@ def _repair_export_details(value: str | None, source: str | None) -> str | None:
     # only when the Spanish key/phrase is present, so unrelated Chinese text
     # is not globally rewritten.
     if "número de turnos de limpieza" in source_text:
-        text = text.replace("清洁档位数量", "洗涤次数").replace("清洁次数", "洗涤次数")
+        text = (
+            text.replace("清洁档位数量", "洗涤次数")
+            .replace("清洁次数", "洗涤次数")
+            .replace("清洗次数", "洗涤次数")
+        )
     if "polipropileno" in source_text:
         text = text.replace("聚丙烯(聚丙烯)", "聚丙烯（PP）").replace("聚丙烯（聚丙烯）", "聚丙烯（PP）")
     if "no desechable" in source_text:
@@ -866,10 +1017,16 @@ def _repair_export_details(value: str | None, source: str | None) -> str | None:
         text = re.sub(r"(?:带把手|是否带耳)：(?:是|否)", "来源异常：官网字段Incluye oído", text)
         if "来源异常：官网字段Incluye oído" not in text:
             text += "；来源异常：官网字段Incluye oído"
+    # The legacy detail parser sometimes appended the raw uppercase Spanish
+    # enum/value after the article number (for example ``商品编号：2527246；
+    # CALCULADORA``).  These are ordinary source words, not model/certification
+    # tokens, and do not belong after the structured details payload.
+    text = _strip_post_article_uppercase_fragments(text, source)
     text = re.sub(r"\s*是[“\"]", "；", text)
     text = re.sub(r"选择\s*其中\s*[,，]\s*[,，]；的\s*的；", "多种款式可选；", text)
     text = re.sub(r"；{2,}", "；", text)
-    return _repair_source_bound_content_facts(text, source, include_generic=False)
+    text = _repair_source_bound_content_facts(text, source, include_generic=False)
+    return _strip_post_article_uppercase_fragments(text, source)
 
 
 def _repair_export_spec(
@@ -883,6 +1040,13 @@ def _repair_export_spec(
     source_text = source_value.casefold()
     if not text:
         return text
+    # A translated spec is allowed to contain only facts from spec_es.  Older
+    # candidates occasionally appended color/size/weight facts copied from
+    # details.  Rebuild from the source formatter when the canonical source
+    # projection is present as a proper subset of the candidate.
+    canonical_source = format_spec(source_value)
+    if canonical_source and _has_spec_cross_field_extra(text, canonical_source):
+        text = canonical_source
     source_numbers = _spec_numbers(source)
     target_numbers = _spec_numbers(text)
     rebuild_terms = (
@@ -960,6 +1124,8 @@ def _repair_export_description(value: str | None, source: str | None = None) -> 
         text = text.replace("洁面皂", "迷你淡香水")
         if "迷你淡香水" not in text:
             text = f"{text}；迷你淡香水"
+    if "dispensador" in source_text:
+        text = re.sub(r"\bdispenser\b", "分配器", text, flags=re.I)
     if "poliamida" in source_text and "elastano" in source_text:
         # The known bad projection used 聚酯纤维 for a source that says
         # poliamida + elastano. Correct it only when polyester is absent from
@@ -972,9 +1138,23 @@ def _repair_export_description(value: str | None, source: str | None = None) -> 
             if "氨纶" not in text and "弹性纤维" not in text:
                 text += "；氨纶"
     text = _repair_source_bound_content_facts(text, source_value, include_generic=True)
+    # ``参数：...`` and a repeated trailing ``尺寸：...`` are adapter metadata
+    # leaks, not part of the translated prose.  Remove only terminal clauses;
+    # an in-sentence size statement remains intact.
+    text = re.sub(r"(?:[；;]\s*)?参数\s*[:：].*$", "", text).strip("；; ")
+    text = _strip_repeated_trailing_size(text)
     text = re.sub(r"\s*是[“\"]", "；", text)
     text = re.sub(r"选择\s*其中\s*[,，]\s*[,，]；的\s*的；", "多种款式可选；", text)
     text = re.sub(r"；{2,}", "；", text)
+    # A legacy description adapter appended a compact ASCII token after the
+    # translated prose (PET100, UV90, FAMILY, TV10, ...).  Remove that token
+    # when it is a terminal pipe/semicolon segment; facts already rendered in
+    # the sentence remain untouched.
+    text = re.sub(
+        r"(?:[；;|｜]\s*)[A-Za-z][A-Za-z0-9²³+./-]*\s*$",
+        "",
+        text,
+    ).rstrip("；;|｜ ")
     return text
 
 

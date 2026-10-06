@@ -86,6 +86,10 @@ _TECH_ALIASES = {
     "xl": ("加大", "超大", "特大"), "xxl": ("超大", "特大"), "7up": ("七喜",),
     "magsafe": ("MagSafe", "磁吸", "磁吸充电"),
     "usb-c": ("USB-C", "USB‑C", "USB C"),
+    # Confirmed display brands may be intentionally omitted from Chinese
+    # prose under the no-brand policy when the surrounding product fact is
+    # retained (for example “多种图案” for LEGO character variants).
+    "lego": ("乐高", "积木", "图案", "款式"),
 }
 _COMMON_WORDS = {
     "a", "al", "con", "de", "del", "en", "el", "la", "las", "los", "no", "para",
@@ -246,6 +250,29 @@ def _numbers_with_chinese(value: str) -> Counter[str]:
     for phrase, number in phrase_numbers.items():
         result[number] += (value or "").count(phrase)
     return result
+
+
+def _exact_numeric_token_present(target: str, token: str) -> bool:
+    """Return whether the same numeric surface form survives in the target.
+
+    The shared numeric parser intentionally ignores model-shaped values such as
+    ``LEGO 60485`` and compact unit forms such as ``5A``.  The export audit
+    must still recognise those exact source facts when the target preserves
+    the literal number; otherwise it reports a false drop even though no
+    repair is needed.
+    """
+    raw = str(token or "").replace(",", ".")
+    if not raw:
+        return False
+    pattern = rf"(?<![0-9]){re.escape(raw)}(?![0-9])"
+    return bool(re.search(pattern, str(target or "").replace(",", ".")))
+
+
+def _zero_percent_semantically_rendered(source: str, target: str) -> bool:
+    return bool(
+        re.search(r"(?<!\d)0(?:[.,]0)?\s*%", str(source or ""), flags=re.I)
+        and re.search(r"(?:不含|无|零|0\s*[%％])", str(target or ""))
+    )
 
 
 def _semantic_numeric_equivalents(source: str, target: str) -> Counter[str]:
@@ -456,6 +483,8 @@ def audit(
             if field == "spec":
                 source_numbers, target_numbers = _numbers(source), _numbers_with_chinese(target)
                 for token, count in (source_numbers - target_numbers).items():
+                    if _exact_numeric_token_present(target, token):
+                        continue
                     semantic_covered = _semantic_numeric_equivalents(source, target)[token]
                     # A summary may move a fact from description/details into
                     # spec or the other Chinese field. Treat it as covered if
@@ -488,6 +517,10 @@ def audit(
                 target_added_numbers = _numbers(target)
                 all_source_numbers = _numbers(" ".join(_text(es.get(h)) for h in ES_HEADERS.values()))
                 for token, count in (source_numbers - target_numbers).items():
+                    if _exact_numeric_token_present(target, token):
+                        continue
+                    if token == "0" and _zero_percent_semantically_rendered(source, target):
+                        continue
                     semantic_covered = _semantic_numeric_equivalents(source, target)[token]
                     covered_elsewhere = max(0, all_target_numbers[token] - target_numbers[token])
                     remaining = 0 if target_numbers[token] or all_target_numbers[token] else max(0, count - covered_elsewhere - semantic_covered)
@@ -612,7 +645,10 @@ def audit(
         6,
     )
     content_sku_error_rate = round((len(content_bad_skus) / total) if total else 1.0, 6)
-    blocking_findings = [item for item in findings if item["rule_id"] not in placement_warning_rules]
+    blocking_findings = [
+        item for item in findings
+        if item["rule_id"] not in placement_warning_rules
+    ]
     return {
         "schema_version": "CHINESE_EXPORT_AUDIT_V1",
         "spanish_file": str(spanish), "chinese_file": str(chinese),

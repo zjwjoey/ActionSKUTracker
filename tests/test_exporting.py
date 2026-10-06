@@ -167,7 +167,7 @@ def test_es_export_reads_latest_formal_master_and_keeps_sources_read_only(tmp_pa
         assert ws.cell(2, 7).value == 2.5
         assert ws.cell(2, 8).value == 3.0
         assert ws.cell(3, 8).value is None  # 原价等于当前价，不能显示为促销原价
-        assert ws.cell(2, 13).value == "查看商品"
+        assert ws.cell(2, 13).value == "https://www.action.com/es-es/p/1001/"
         assert ws.cell(2, 13).hyperlink.target == "https://www.action.com/es-es/p/1001/"
     finally:
         workbook.close()
