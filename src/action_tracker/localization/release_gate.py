@@ -22,7 +22,7 @@ PROVENANCE_FIELDS = {
     "name_zh": "name", "cat1_zh": "cat1", "cat2_zh": "cat2", "spec_zh": "spec",
     "desc_zh": "description", "details_zh": "details",
 }
-APPROVED_REVIEW_STATUSES = frozenset({"VERIFIED", "APPROVED", "HUMAN_REVIEWED", "APPROVED_SOURCE_ABSENT"})
+APPROVED_REVIEW_STATUSES = frozenset({"VERIFIED", "APPROVED", "HUMAN_APPROVED", "HUMAN_REVIEWED", "APPROVED_SOURCE_ABSENT"})
 CURRENT_FRESHNESS = "CURRENT"
 _SPANISH_WORDS = {
     "para", "con", "sin", "varios", "varias", "diferentes", "unidades", "unidad", "colores",
@@ -382,7 +382,14 @@ def _validated_exception_ids(
 def _has_release_spanish_residual(value: str, *, allowed_tokens: set[str] | None) -> bool:
     """Detect known ordinary Spanish while allowing reviewed brand/model text."""
     allowed = {token.lower() for token in (allowed_tokens or set())}
-    for word in _WORD_RE.findall(value or ""):
+    for match in _WORD_RE.finditer(value or ""):
+        word = match.group(0)
+        # Initials such as ``L.O.L. Surprise!`` are part of a reviewed IP
+        # token, not a Spanish conjunction.  Preserve detection of standalone
+        # ``o`` while excluding only dot-delimited initials.
+        if (len(word) == 1 and match.start() > 0 and match.end() < len(value)
+                and value[match.start() - 1] == "." and value[match.end()] == "."):
+            continue
         lower = word.lower()
         if lower in allowed or lower in {"usb", "usb-c", "led", "lcd", "diy", "fsc"}:
             continue

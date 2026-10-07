@@ -19,6 +19,198 @@ class ProvenanceClosureError(RuntimeError):
 
 
 _FIELDS = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}
+_APPROVED_STATUSES = {"VERIFIED", "APPROVED", "HUMAN_APPROVED", "HUMAN_REVIEWED", "APPROVED_SOURCE_ABSENT"}
+_SOURCE_FIELD_BY_CANONICAL = {value: key for key, value in _FIELDS.items()}
+
+
+def rebind_current_localization_aggregate_hashes(
+    path: Path,
+    *,
+    official_skus: Iterable[str],
+    expected_base_commit_id: str,
+    actor: str,
+    run_id: str,
+) -> dict[str, object]:
+    """Refresh aggregate ZH source bindings when every field binding is current.
+
+    This is metadata-only: it never changes a Chinese value or field-level
+    approval.  Each SKU must already have six current, approved field records
+    whose field-scoped source hashes match the current official Spanish facts.
+    """
+    skus = tuple(dict.fromkeys(str(value).strip() for value in official_skus if str(value).strip()))
+    if not skus or not str(actor).startswith("human:"):
+        raise ProvenanceClosureError("AGGREGATE_METADATA_CLOSURE_IDENTITY_REQUIRED")
+    path = Path(path); migrate_v2(path, role="PRIMARY"); now = datetime.now(timezone.utc).isoformat()
+    with connect(path) as db:
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            head = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC,commit_id DESC LIMIT 1").fetchone()
+            if not head or str(head[0]) != expected_base_commit_id:
+                raise ProvenanceClosureError("STALE_AGGREGATE_METADATA_CLOSURE_BUNDLE")
+            plans = []
+            already_current = []
+            for sku in skus:
+                es = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='es'",
+                    (sku,),
+                ).fetchone()
+                zh = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details,source_hash FROM product_localizations WHERE official_sku=? AND language='zh'",
+                    (sku,),
+                ).fetchone()
+                if es is None or zh is None:
+                    raise ProvenanceClosureError("AGGREGATE_METADATA_CLOSURE_LOCALIZATION_MISSING:" + sku)
+                record = {"name_es": es[0], "cat1_es": es[1], "cat2_es": es[2], "spec_es": es[3], "desc_es": es[4], "details_es": es[5]}
+                aggregate_hash = localization_source_hash(record)
+                if str(zh[6] or "") == aggregate_hash:
+                    already_current.append(sku)
+                    continue
+                for index, field in enumerate(_FIELDS.values()):
+                    field_row = db.execute(
+                        "SELECT value,review_status,source_hash,freshness_status FROM localization_fields "
+                        "WHERE official_sku=? AND language='zh' AND field_name=?",
+                        (sku, field),
+                    ).fetchone()
+                    if field_row is None:
+                        raise ProvenanceClosureError("AGGREGATE_METADATA_CLOSURE_FIELD_MISSING:" + sku + ":" + field)
+                    status = str(field_row[1] or "").upper()
+                    current_value = "" if zh[index] is None else str(zh[index])
+                    source_value = "" if record[{"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}[field]] is None else str(record[{"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}[field]])
+                    if (
+                        str(field_row[0] or "") != current_value
+                        or status not in _APPROVED_STATUSES
+                        or str(field_row[3] or "").upper() != "CURRENT"
+                        or str(field_row[2] or "") != localization_field_source_hash(record, field)
+                        or (not source_value.strip() and status != "APPROVED_SOURCE_ABSENT")
+                        or (source_value.strip() and not current_value.strip())
+                    ):
+                        raise ProvenanceClosureError("AGGREGATE_METADATA_CLOSURE_FIELD_NOT_READY:" + sku + ":" + field)
+                plans.append((sku, aggregate_hash))
+            if not plans:
+                db.rollback()
+                return {"status": "NOOP", "base_commit_id": expected_base_commit_id, "applied_skus": 0, "already_current_skus": already_current}
+            bundle = json.dumps({"base": expected_base_commit_id, "skus": [sku for sku, _ in plans]}, sort_keys=True)
+            commit_id = f"{datetime.now(timezone.utc).date().isoformat()}_{run_id}_{uuid.uuid5(uuid.NAMESPACE_OID, bundle).hex[:12]}"
+            db.execute(
+                "INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES(?,?,?,?,?,?,?,?)",
+                (run_id, str(datetime.now(timezone.utc).date()), "COMMITTED", "PASS", 0, now, now, "2.0.0"),
+            )
+            db.execute(
+                "INSERT INTO run_evidence(run_id,snapshot_path,snapshot_hash,evidence_json) VALUES(?,?,?,?)",
+                (run_id, None, None, json.dumps({"operation": "AGGREGATE_LOCALIZATION_METADATA_REBIND", "base_commit_id": expected_base_commit_id, "skus": [sku for sku, _ in plans]}, sort_keys=True)),
+            )
+            db.execute(
+                "INSERT INTO commit_batches(commit_id,run_id,base_commit_id,bundle_hash,schema_version,started_at,committed_at,product_count,observation_count,price_event_count,event_count,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                (commit_id, run_id, expected_base_commit_id, uuid.uuid5(uuid.NAMESPACE_OID, bundle).hex, "2.0.0", now, now, len(plans), 0, 0, len(plans), "COMMITTED"),
+            )
+            for sku, aggregate_hash in plans:
+                db.execute(
+                    "UPDATE product_localizations SET source_hash=?,updated_at=?,last_commit_id=?,applied_commit_id=? WHERE official_sku=? AND language='zh'",
+                    (aggregate_hash, now, commit_id, commit_id, sku),
+                )
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+    return {"status": "SUCCESS", "commit_id": commit_id, "base_commit_id": expected_base_commit_id, "applied_skus": len(plans), "already_current_skus": already_current}
+
+
+def apply_source_absence_closures(
+    path: Path,
+    *,
+    sku_fields: Iterable[tuple[str, str]],
+    expected_base_commit_id: str,
+    actor: str,
+    run_id: str,
+) -> dict[str, object]:
+    """Approve only verified empty official source fields without altering Chinese.
+
+    An empty Chinese field is valid only when its own Spanish source field is
+    also empty.  The closure writes an explicit field-level absence approval,
+    then refreshes the aggregate binding when all six field bindings are ready.
+    """
+    items = tuple(dict.fromkeys(
+        (str(sku).strip(), str(field).strip())
+        for sku, field in sku_fields
+        if str(sku).strip() and str(field).strip()
+    ))
+    if not items or not str(actor).startswith("human:"):
+        raise ProvenanceClosureError("SOURCE_ABSENCE_CLOSURE_IDENTITY_REQUIRED")
+    if any(field not in _SOURCE_FIELD_BY_CANONICAL for _, field in items):
+        raise ProvenanceClosureError("SOURCE_ABSENCE_CLOSURE_FIELD_INVALID")
+    path = Path(path); migrate_v2(path, role="PRIMARY"); now = datetime.now(timezone.utc).isoformat()
+    with connect(path) as db:
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            head = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC,commit_id DESC LIMIT 1").fetchone()
+            if not head or str(head[0]) != expected_base_commit_id:
+                raise ProvenanceClosureError("STALE_SOURCE_ABSENCE_CLOSURE_BUNDLE")
+            plans = []
+            source_records = {}
+            for sku, field in items:
+                es = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='es'",
+                    (sku,),
+                ).fetchone()
+                zh = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='zh'",
+                    (sku,),
+                ).fetchone()
+                if es is None or zh is None:
+                    raise ProvenanceClosureError("SOURCE_ABSENCE_CLOSURE_LOCALIZATION_MISSING:" + sku)
+                record = {"name_es": es[0], "cat1_es": es[1], "cat2_es": es[2], "spec_es": es[3], "desc_es": es[4], "details_es": es[5]}
+                index = tuple(_FIELDS.values()).index(field)
+                if str(record[_SOURCE_FIELD_BY_CANONICAL[field]] or "").strip() or str(zh[index] or "").strip():
+                    raise ProvenanceClosureError("SOURCE_ABSENCE_CLOSURE_NOT_EMPTY:" + sku + ":" + field)
+                source_records[sku] = record
+                plans.append((sku, field))
+            bundle = json.dumps({"base": expected_base_commit_id, "fields": plans}, sort_keys=True)
+            commit_id = f"{datetime.now(timezone.utc).date().isoformat()}_{run_id}_{uuid.uuid5(uuid.NAMESPACE_OID, bundle).hex[:12]}"
+            db.execute(
+                "INSERT INTO runs(run_id,run_date,status,qa_state,dry_run,started_at,ended_at,schema_version) VALUES(?,?,?,?,?,?,?,?)",
+                (run_id, str(datetime.now(timezone.utc).date()), "COMMITTED", "PASS", 0, now, now, "2.0.0"),
+            )
+            db.execute(
+                "INSERT INTO run_evidence(run_id,snapshot_path,snapshot_hash,evidence_json) VALUES(?,?,?,?)",
+                (run_id, None, None, json.dumps({"operation": "SOURCE_ABSENCE_METADATA_CLOSURE", "base_commit_id": expected_base_commit_id, "fields": plans}, sort_keys=True)),
+            )
+            db.execute(
+                "INSERT INTO commit_batches(commit_id,run_id,base_commit_id,bundle_hash,schema_version,started_at,committed_at,product_count,observation_count,price_event_count,event_count,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                (commit_id, run_id, expected_base_commit_id, uuid.uuid5(uuid.NAMESPACE_OID, bundle).hex, "2.0.0", now, now, len({sku for sku, _ in plans}), 0, 0, len(plans), "COMMITTED"),
+            )
+            for sku, field in plans:
+                values = {
+                    "official_sku": sku, "language": "zh", field: "",
+                    f"{field}_source": "OFFICIAL_SOURCE_ABSENT",
+                    f"{field}_review_status": "APPROVED_SOURCE_ABSENT",
+                    f"{field}_freshness_status": "CURRENT",
+                    f"{field}_source_hash": localization_field_source_hash(source_records[sku], field),
+                    f"{field}_approved_by": actor, f"{field}_approved_at": now,
+                    f"{field}_applied_commit_id": commit_id,
+                }
+                sync_localization_field_provenance(db, values, commit_id=commit_id, now=now)
+            updated_skus = []
+            for sku in sorted({sku for sku, _ in plans}):
+                record = source_records[sku]
+                ready = True
+                for field in _FIELDS.values():
+                    field_row = db.execute(
+                        "SELECT review_status,source_hash,freshness_status FROM localization_fields WHERE official_sku=? AND language='zh' AND field_name=?",
+                        (sku, field),
+                    ).fetchone()
+                    if field_row is None or str(field_row[0] or "").upper() not in _APPROVED_STATUSES or str(field_row[2] or "").upper() != "CURRENT" or str(field_row[1] or "") != localization_field_source_hash(record, field):
+                        ready = False
+                        break
+                if ready:
+                    db.execute(
+                        "UPDATE product_localizations SET source_hash=?,updated_at=?,last_commit_id=?,applied_commit_id=? WHERE official_sku=? AND language='zh'",
+                        (localization_source_hash(record), now, commit_id, commit_id, sku),
+                    )
+                    updated_skus.append(sku)
+            db.commit()
+        except Exception:
+            db.rollback(); raise
+    return {"status": "SUCCESS", "commit_id": commit_id, "base_commit_id": expected_base_commit_id, "applied_fields": len(plans), "aggregate_rebound_skus": updated_skus}
 
 
 def apply_metadata_only_closures(path: Path, *, revision_ids: Iterable[str], expected_base_commit_id: str, actor: str, run_id: str) -> dict[str, object]:
