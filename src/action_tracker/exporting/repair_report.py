@@ -559,6 +559,7 @@ def audit_repaired_rows(
         _source_term_present,
         _source_bound_cross_field_tokens,
         _source_bound_display_tokens,
+        _units,
         audit_translation,
     )
 
@@ -693,6 +694,11 @@ def audit_repaired_rows(
                 source_allowed.update(
                     _source_bound_cross_field_tokens(str(source.get("name_es") or ""), target_text)
                 )
+                # A measurement unit such as ``g`` or ``kcal`` is not
+                # Spanish prose when the same source-bound unit appears in
+                # the rendered field.  Keep this field-local: a unit is
+                # allowed only when it is present in both source and target.
+                source_allowed.update(_units(source_text) & _units(target_text))
                 residual_text = target_text
                 # These two markers are deliberately retained as provenance
                 # for malformed official source keys.  Their Spanish spelling

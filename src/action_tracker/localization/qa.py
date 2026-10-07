@@ -15,11 +15,11 @@ EMPTY_SOURCE_LOCALIZATION_CONTRACT_VERSION = "EMPTY_SOURCE_LOCALIZATION_CONTRACT
 NAME_IDENTITY_FACT_PRESERVATION_VERSION = "NAME_IDENTITY_FACT_PRESERVATION_V1"
 
 
-_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9])", re.I)
-_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|摄氏度|平方千米|平方米|平方厘米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
+_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9])", re.I)
+_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|平方千米|平方米|平方厘米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
 _UNIT_ALIASES = {
     "毫安时": "mah", "安时": "ah", "瓦时": "wh", "千瓦时": "kwh", "毫瓦": "mw", "千瓦": "kw",
-    "赫兹": "hz", "伏特": "v", "瓦": "w", "分贝": "db", "摄氏度": "°c", "厘米": "cm", "毫米": "mm",
+    "赫兹": "hz", "伏特": "v", "瓦": "w", "分贝": "db", "千卡": "kcal", "千卡路里": "kcal", "摄氏度": "°c", "厘米": "cm", "毫米": "mm",
     "千米": "km", "米": "m", "千克": "kg", "公斤": "kg", "克": "g", "毫克": "mg", "微克": "μg",
     "毫升": "ml", "厘升": "cl", "分升": "dl", "升": "l", "百分比": "%",
     "平方米": "m", "平方厘米": "cm", "平方千米": "km",
@@ -128,7 +128,13 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
         return set()
     target_fold = rendered.casefold()
     allowed: set[str] = set()
-    for token in re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ&+./-]*", source):
+    for raw_token in re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ&+./-]*", source):
+        # A terminal full stop belongs to prose, rather than a model or
+        # display token (for example ``So Slime.``).  Preserve internal dots
+        # used by versioned model identifiers such as ``2.0``.
+        token = raw_token.rstrip(".")
+        if not token:
+            continue
         if token.casefold() not in target_fold:
             continue
         folded = token.casefold()
@@ -167,6 +173,12 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
                 if before and before[-1] not in ".!?\n":
                     allowed.add(token)
                     break
+    # The residual detector splits hyphenated display terms (``K-pop``,
+    # ``Power-fast``) and alpha-numeric product names (``Blue3``) into their
+    # components.  Allow those components only after the complete source
+    # bound term has passed the conservative checks above.
+    for token in tuple(allowed):
+        allowed.update(piece for piece in re.split(r"[-/+]|(?<=\D)(?=\d)|(?<=\d)(?=\D)", token) if len(piece) > 1)
     # Action renders the same interface both as ``micro USB`` and
     # ``Micro-USB``.  Permit the individual words only when that complete,
     # source-bound interface appears in both values; generic ``micro`` is

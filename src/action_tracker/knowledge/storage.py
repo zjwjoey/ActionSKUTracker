@@ -18,6 +18,7 @@ from ..database.connection import connect
 from ..database.immutable_patches import append_patch_event, create_localization_patch
 from ..database.production import apply_approved_localization_patches
 from ..database.schema import migrate_v2
+from ..services.hashing import localization_source_hash
 from .approval import ApprovalDecision
 from .contracts import Resolution, source_hash
 
@@ -268,10 +269,23 @@ class KnowledgeStore:
                 if field not in {"name", "cat1", "cat2", "spec", "description", "details"}:
                     continue
                 current_source = db.execute(
-                    "SELECT source_hash FROM product_localizations WHERE official_sku=? AND language='es'",
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+                    "WHERE official_sku=? AND language='es'",
                     (row["official_sku"],),
                 ).fetchone()
-                if self.role == "PRIMARY" and (not current_source or str(current_source[0] or "") != str(row["source_hash"] or "")):
+                # The Registry stores the canonical aggregate source hash.
+                # An older ES projection can carry a stale metadata hash even
+                # when its six current source fields match that revision.
+                # Recompute from the durable facts instead of treating that
+                # metadata drift as a stale translation source.
+                current_source_hash = ""
+                if current_source:
+                    current_source_hash = localization_source_hash({
+                        "name_es": current_source[0], "cat1_es": current_source[1],
+                        "cat2_es": current_source[2], "spec_es": current_source[3],
+                        "desc_es": current_source[4], "details_es": current_source[5],
+                    })
+                if self.role == "PRIMARY" and current_source_hash != str(row["source_hash"] or ""):
                     stale_source_rows.append({"sku": str(row["official_sku"]), "field_name": field})
                     continue
                 current = db.execute(f"SELECT {field} FROM product_localizations WHERE official_sku=? AND language='zh'", (row["official_sku"],)).fetchone()

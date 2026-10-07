@@ -375,7 +375,7 @@ def build_zh_rows_from_localized_source(
         source_hash = _fact_source_hash(record)
         if repair_engine is not None:
             resolved["unit_price_zh"] = repair_engine.apply(
-                sku=sku, field="unit_price_zh", value=_none_or_text(record.get("unit_price_raw")) or resolved.get("unit_price_zh"),
+                sku=sku, field="unit_price_zh", value=_none_or_text(record.get("unit_price_raw")) or _none_or_text(record.get("unit_price")) or resolved.get("unit_price_zh"),
                 source_field="unit_price", source=record.get("unit_price"), source_hash=source_hash,
                 rule="UNIT_PRICE_NORMALIZE", repairer=repair_unit_price,
             )
