@@ -269,23 +269,35 @@ class KnowledgeStore:
                 if field not in {"name", "cat1", "cat2", "spec", "description", "details"}:
                     continue
                 current_source = db.execute(
-                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
-                    "WHERE official_sku=? AND language='es'",
+                    "SELECT es.name,es.cat1,es.cat2,es.spec,es.description,es.details,"
+                    "p.source_hash,es.source_hash FROM product_localizations es "
+                    "JOIN products p ON p.official_sku=es.official_sku "
+                    "WHERE es.official_sku=? AND es.language='es'",
                     (row["official_sku"],),
                 ).fetchone()
-                # The Registry stores the canonical aggregate source hash.
-                # An older ES projection can carry a stale metadata hash even
-                # when its six current source fields match that revision.
-                # Recompute from the durable facts instead of treating that
-                # metadata drift as a stale translation source.
+                # The Registry stores the canonical localization hash. Older
+                # ES rows can still carry the legacy product-level hash; use
+                # the six durable source fields only for that identified
+                # legacy form. Any other mismatch remains fail-closed.
                 current_source_hash = ""
+                legacy_projection_hash = ""
+                stored_es_hash = ""
                 if current_source:
                     current_source_hash = localization_source_hash({
                         "name_es": current_source[0], "cat1_es": current_source[1],
                         "cat2_es": current_source[2], "spec_es": current_source[3],
                         "desc_es": current_source[4], "details_es": current_source[5],
                     })
-                if self.role == "PRIMARY" and current_source_hash != str(row["source_hash"] or ""):
+                    legacy_projection_hash = str(current_source[6] or "")
+                    stored_es_hash = str(current_source[7] or "")
+                expected_source_hash = str(row["source_hash"] or "")
+                current_matches = stored_es_hash == expected_source_hash
+                legacy_metadata_matches = (
+                    bool(legacy_projection_hash)
+                    and stored_es_hash == legacy_projection_hash
+                    and current_source_hash == expected_source_hash
+                )
+                if self.role == "PRIMARY" and not (current_matches or legacy_metadata_matches):
                     stale_source_rows.append({"sku": str(row["official_sku"]), "field_name": field})
                     continue
                 current = db.execute(f"SELECT {field} FROM product_localizations WHERE official_sku=? AND language='zh'", (row["official_sku"],)).fetchone()

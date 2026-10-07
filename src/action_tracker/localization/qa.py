@@ -109,7 +109,7 @@ _SOURCE_BOUND_SPANISH_STOPWORDS = {
 _SOURCE_BOUND_SHORT_TECH = {"mbps", "gbps", "kbps", "mhz", "khz", "ghz", "hfe", "mah", "kwh", "wh", "mah"}
 _SOURCE_BOUND_EXACT_TECH = {
     "usb", "usb-a", "usb-c", "micro-usb", "micro-sd", "hdmi", "led", "mdf",
-    "fsc", "bci", "tcx", "a4", "b5", "wifi", "magsafe", "playstation",
+    "fsc", "bci", "tcx", "a4", "b5", "wifi", "magsafe", "playstation", "k-pop", "power-fast",
     "sds-plus", "transflash", "eprel", "torx",
 }
 
@@ -147,7 +147,7 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
         )
         model_shape = (
             any(char.isdigit() for char in token)
-            or (any(char.isupper() for char in token[1:]) and any(char.islower() for char in token))
+            or ("-" not in token and any(char.isupper() for char in token[1:]) and any(char.islower() for char in token))
             or (
                 folded in _SOURCE_BOUND_SHORT_TECH
                 and target_match is not None
@@ -163,6 +163,7 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
             # as well, without broadening the allowlist globally.
             separator_pattern = r"[\s/\-]+" if folded in _SOURCE_BOUND_EXACT_TECH else r"[\s/]+"
             allowed.update(piece for piece in re.split(separator_pattern, token) if len(piece) > 1)
+            allowed.update(piece for piece in re.split(r"[-/+]|(?<=\D)(?=\d)|(?<=\d)(?=\D)", token) if len(piece) > 1)
             continue
         # A title-cased token is a possible brand only when it is not the
         # first word after sentence punctuation.  This keeps ordinary Spanish
@@ -173,12 +174,6 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
                 if before and before[-1] not in ".!?\n":
                     allowed.add(token)
                     break
-    # The residual detector splits hyphenated display terms (``K-pop``,
-    # ``Power-fast``) and alpha-numeric product names (``Blue3``) into their
-    # components.  Allow those components only after the complete source
-    # bound term has passed the conservative checks above.
-    for token in tuple(allowed):
-        allowed.update(piece for piece in re.split(r"[-/+]|(?<=\D)(?=\d)|(?<=\d)(?=\D)", token) if len(piece) > 1)
     # Action renders the same interface both as ``micro USB`` and
     # ``Micro-USB``.  Permit the individual words only when that complete,
     # source-bound interface appears in both values; generic ``micro`` is
