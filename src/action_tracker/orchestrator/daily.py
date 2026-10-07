@@ -244,12 +244,14 @@ def run_daily(
     master = paths["master"]
     from ..database.integration import database_path, storage_mode
     configured_storage_mode = storage_mode(cfg)
+    source_commit_id = None
     if configured_storage_mode == "SQLITE_PRIMARY":
         # PRIMARY reads come from the same V2 database that will receive this
         # run. Excel/CSV are compatibility projections and are not consulted
         # for business decisions in this mode.
         from ..database.repository import ProductionRepository
         repository = ProductionRepository(database_path(cfg))
+        source_commit_id = repository.current_head()
         baseline = repository.load_current_products()
         known = repository.load_known_skus()
         offline = repository.load_offline_skus()
@@ -515,6 +517,10 @@ def run_daily(
                              sitemap_only=len(set(sitemap_skus) - set(today_light)),
                              listing_only=len(set(today_light) - set(sitemap_skus)),
                              both_sources=len(set(sitemap_skus) & set(today_light)))
+    # A separate ingest may only promote this snapshot if the same PRIMARY
+    # head is still current.  This prevents a stale collection from replacing
+    # newer lifecycle or product facts after an interrupted formal run.
+    run_report["source_commit_id"] = source_commit_id
     # Evaluate Collection Integrity before snapshot and commit decision. This
     # result is passed through the report and bundle; the writer validates it
     # but does not recalculate it.
@@ -540,6 +546,7 @@ def run_daily(
             "git_commit": git_commit_info(), "working_tree_dirty": git_commit_info().endswith("-dirty"),
             "config_hash": hashlib.sha256((cfg["project_root"] / "config" / "settings.yaml").read_bytes()).hexdigest(),
             "presence_access_state": presence_access_state,
+            "source_commit_id": source_commit_id,
             "detail_access_state": access.state.value,
             "access_state": access.state.value,
             **access.report(),
@@ -549,6 +556,7 @@ def run_daily(
         "product_updates": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"],
                              "need_detail": p["need_detail"]} for p in plans],
         "translation_updates": translation_updates,
+        "review_rows": review_rows,
         "qa_report": qa.to_dict(),
         "run_report": run_report,
     }

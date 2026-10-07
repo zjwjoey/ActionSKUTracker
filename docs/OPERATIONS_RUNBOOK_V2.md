@@ -9,9 +9,15 @@ production runtime are separate.
 
 In `SQLITE_PRIMARY`, `daily-run` is a diagnostic runner and defaults to dry-run.
 `daily-run --no-dry-run` is rejected with `FORMAL_RUN_REQUIRES_DATA_UPDATE`.
-The only formal write entry points are `production-run` and `data-update`; they
-run PREFLIGHT, a validated SQLite Backup API backup, the delegated collection,
-QA, commit, compatibility-export recovery and an Operations report.
+The normal formal write entry points are `production-run` and `data-update`;
+they run PREFLIGHT, a validated SQLite Backup API backup, the delegated
+collection, QA, commit, compatibility-export recovery and an Operations
+report. When a completed `daily-run` snapshot could not reach its formal
+commit, `snapshot-ingest --run-id <run_id> --commit` is the recovery entry
+point. It performs no collection or translation. It requires QA PASS,
+complete Presence evidence, review evidence and the exact PRIMARY head that
+was recorded when the snapshot started; it then uses the normal CommitBundle
+and compatibility-projection paths.
 
 Resume restores the delegated run id, QA result, commit status and commit id
 from the persisted COLLECTION allowlist. If a formal DB commit succeeded but

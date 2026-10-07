@@ -26,6 +26,10 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--max-categories", type=int, default=None)
     d.add_argument("--max-pages", type=int, default=None)
 
+    si = sub.add_parser("snapshot-ingest", help="将已验证的 daily-run 快照单独提交到 PRIMARY")
+    si.add_argument("--run-id", required=True, help="已完成采集的 snapshot run_id")
+    si.add_argument("--commit", action="store_true", help="确认写入 PRIMARY；未提供时只做预检")
+
     r = sub.add_parser("detail-retry", help="仅重试已有 snapshot 中未完成的商品详情")
     r.add_argument("--run-id", required=True, help="父 dry-run 的 run_id")
 
@@ -325,6 +329,11 @@ def main(argv=None) -> int:
             max_pages=args.max_pages,
         )
         print(json.dumps({"run_id": res["run_id"], "qa": res["qa"]["state"]}, ensure_ascii=False))
+        return 0
+    if args.command == "snapshot-ingest":
+        from .orchestrator.snapshot_ingest import ingest_snapshot
+        res = ingest_snapshot(cfg, args.run_id, commit=bool(args.commit))
+        print(json.dumps(res, ensure_ascii=False))
         return 0
     if args.command == "detail-retry":
         from .orchestrator.detail_retry import run_detail_retry

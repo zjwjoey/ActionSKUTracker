@@ -96,8 +96,12 @@ python -m action_tracker init-baseline
 # 默认 dry-run：采集并生成证据，不写正式 Master
 python -m action_tracker daily-run --dry-run
 
-# 正式运行：只有 QA 允许时才提交
+# SQLite PRIMARY 下该命令会安全拒绝正式写入；使用 production-run/data-update
 python -m action_tracker daily-run --no-dry-run
+
+# 已完成采集且通过 QA、但未提交的 snapshot：先预检，再显式单独入库
+python -m action_tracker snapshot-ingest --run-id <run_id>
+python -m action_tracker snapshot-ingest --run-id <run_id> --commit
 
 # 基于最近 snapshot 重跑 QA
 python -m action_tracker qa

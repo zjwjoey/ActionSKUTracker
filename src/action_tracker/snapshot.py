@@ -77,6 +77,11 @@ def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> 
         _write_csv(snap_dir / "product_updates.csv", data["product_updates"])
     if data.get("translation_updates"):
         _write_csv(snap_dir / "translation_updates.csv", data["translation_updates"])
+    # Review rows are part of the formal observation contract.  Persist an
+    # empty marker too, so a later snapshot-only ingest can distinguish "no
+    # reviews" from an incomplete snapshot that silently lost them.
+    if "review_rows" in data:
+        _write_csv(snap_dir / "review_rows.csv", data["review_rows"])
     if data.get("qa_report"):
         _write_text_atomic(snap_dir / "qa_report.json", _json(data["qa_report"]))
     if data.get("run_report"):
