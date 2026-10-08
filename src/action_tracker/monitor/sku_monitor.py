@@ -40,6 +40,7 @@ def run_sku_monitor(
     category_coverage: dict[str, bool] | None = None,
     nuevo_skus: set[str] | None = None,
     promo_skus: set[str] | None = None,
+    business_date: str | None = None,
 ) -> tuple[dict[str, SkuStatus], set[str]]:
     """执行 SKU 集合核对，返回 {sku: SkuStatus} 与今天的存在集合。"""
     sitemap_set = set(sitemap_skus)
@@ -72,6 +73,13 @@ def run_sku_monitor(
             # “没看见”不是“已下架”：不推进 missing_count，也不产生生命周期事件。
             from ..services.lifecycle import Classification
             cls = Classification("UNKNOWN", missing_count, None)
+        elif (not today_present and business_date and k
+              and str(k.get("last_state_observation_date") or "") == business_date):
+            # An absence is a daily observation, not another vote per run.
+            # In particular count=threshold-1 must not become OFFLINE when
+            # the same day's successful observation is executed again.
+            from ..services.lifecycle import Classification
+            cls = Classification("ABSENT", missing_count, None)
         else:
             cls = classify(
                 today_present=today_present,

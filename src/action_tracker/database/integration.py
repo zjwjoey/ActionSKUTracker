@@ -149,7 +149,8 @@ def build_daily_bundle(
             "source_name": "detail" if any(record.get(f"_raw_{field}_es") is not None for field in ("spec", "desc", "details")) else "listing",
             "facts": {
                 field: {
-                    "raw": record.get(f"_raw_{field}_es", record.get(source_key)),
+                    "raw": (None if (record.get("fact_field_provenance") or {}).get(source_key, {}).get("state") == "HISTORY_RETAINED"
+                            else record.get(f"_raw_{field}_es", record.get(source_key))),
                     "normalized": record.get(source_key),
                 }
                 for field, source_key in spanish_fields.items()
@@ -206,6 +207,9 @@ def build_daily_bundle(
     prices = tuple(_price_event(row, run_id) for row in price_events)
     events = tuple(_event(row, run_id) for row in event_events)
     report = dict(run_record)
+    report["fact_field_provenance"] = {
+        str(record["sku"]): record["fact_field_provenance"] for record in products
+        if record.get("sku") and record.get("fact_field_provenance")}
     report.setdefault("run_id", run_id)
     report.setdefault("run_date", observation_date)
     report.setdefault("qa_state", qa_state)
@@ -396,7 +400,7 @@ def _product_status(value: Any, fallback: Any) -> str:
 def _localization(record: Mapping[str, Any], language: str) -> dict[str, Any]:
     digest = knowledge_source_hash(record)
     if language == "es":
-        return {"sku": record.get("sku"), "language": "es", "name": record.get("name_es"),
+        result = {"sku": record.get("sku"), "language": "es", "name": record.get("name_es"),
                 "cat1": record.get("cat1_es"), "cat2": record.get("cat2_es"),
                 "spec": record.get("spec_es"), "unit_price": record.get("unit_price"), "description": record.get("desc_es"),
                 "details": record.get("details_es"), "source": "OFFICIAL_FACT",
@@ -405,6 +409,12 @@ def _localization(record: Mapping[str, Any], language: str) -> dict[str, Any]:
                 "name_source": "official_fact", "cat1_source": "official_fact",
                 "cat2_source": "official_fact", "spec_source": "official_fact", "unit_price_source": "official_unit_price",
                 "description_source": "official_fact", "details_source": "official_fact"}
+        for field, key in (("name", "name_es"), ("cat1", "cat1_es"), ("cat2", "cat2_es"),
+                           ("spec", "spec_es"), ("description", "desc_es"), ("details", "details_es")):
+            evidence = (record.get("fact_field_provenance") or {}).get(key)
+            if evidence:
+                result[f"{field}_source"] = evidence["state"] + ":" + evidence["source"]
+        return result
     return {"sku": record.get("sku"), "language": "zh", "name": record.get("name_zh"),
             "cat1": record.get("cat1_zh"), "cat2": record.get("cat2_zh"),
             "spec": record.get("spec_zh"), "unit_price": format_unit_price(str(record.get("unit_price") or "")), "description": record.get("desc_zh"),

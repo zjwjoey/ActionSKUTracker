@@ -150,6 +150,8 @@ def fetch_product_detail(browser, url: str, sku_hint: str | None = None, max_ret
             except Exception:
                 pass  # 部分页面结构差异，容忍后继续提取
             row = page.evaluate(_EXTRACT_JS, url)
+            if sku_hint and str(row.get("sku") or "") != str(sku_hint):
+                raise RuntimeError("DETAIL_SKU_IDENTITY_MISMATCH")
             if is_bad_title(row.get("name_es") or ""):
                 last_err = f"品名无效(第{attempt + 1}次): {str(row.get('name_es'))[:40]}"
                 time.sleep(0.8)
@@ -166,8 +168,6 @@ def fetch_product_detail(browser, url: str, sku_hint: str | None = None, max_ret
 def _normalize_detail(raw: dict, url: str) -> dict:
     cur = parse_price(raw.get("current_price") or "")
     orig = parse_price(raw.get("original_price") or "")
-    if cur is None and orig is not None:
-        cur = orig
     raw_spec = raw.get("spec_es") or ""
     raw_desc = raw.get("desc_es") or ""
     raw_details = raw.get("details_es") or ""
