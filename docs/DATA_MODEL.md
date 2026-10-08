@@ -50,6 +50,8 @@
 
 由上一期带入的字段不得伪装成当天新抓取字段。
 
+回归与部分详情合并的 `fact_field_provenance` 使用既有行/JSON证据容器，记录各字段的 `CURRENT_VERIFIED`、`HISTORY_RETAINED` 或 `SOURCE_MISSING` 与来源。该映射进入 `run_evidence.evidence_json`，六个西语字段同时使用既有 localization source 列；不新增 schema。历史保留值不重新清洗，不证明本轮售价。详见 `POST_RELEASE_DATA_INTEGRITY.md`。
+
 ## 4. 生命周期实体
 
 `known_skus.csv` 以 SKU 为主键，保存跨日状态所需的最小事实：

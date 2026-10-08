@@ -181,6 +181,11 @@ def apply_state_transition(
             rec["last_state_observation_date"] = run_date
             # 缺失当天不更新 last_seen_date
         elif status == "OFFLINE":
+            if prev_obs == run_date and rec.get("last_status") != "OFFLINE":
+                # Defend callers that calculated the threshold without the
+                # monitor's business-date guard. Keep the last valid state.
+                rec["missing_count"] = str(prev_mc)
+                continue
             # 转为 OFFLINE 的当天：记录完整的连续缺失天数（classify 已给出 new_missing=3）
             # 已是 OFFLINE 的后续观察日：计数冻结，不再增长（商品已确认下架，缺失天数无新信息）
             if rec.get("last_status") == "OFFLINE":

@@ -363,7 +363,7 @@ def build_zh_rows_from_localized_source(
                 and OMIT_BRAND_FROM_CHINESE_DISPLAY
             ):
                 brand_value = _text(brand_row.get("canonical_name"))
-                if brand_value:
+                if brand_value and resolved.get("name_zh"):
                     resolved["name_zh"] = re.sub(
                         rf"(?i)(?<!\w){re.escape(brand_value)}(?:牌)?",
                         "",

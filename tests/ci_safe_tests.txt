@@ -154,3 +154,4 @@ tests/test_export_token_boundaries.py
 
 # CI_SAFE: temporary workbook and synthetic cached image only.
 tests/test_export_image_layout.py
+tests/test_post_release_integrity.py

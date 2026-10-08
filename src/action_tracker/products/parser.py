@@ -177,6 +177,8 @@ def fetch_product_detail(browser, url: str, sku_hint: str | None = None, max_ret
             except Exception:
                 pass  # 部分页面结构差异，容忍后继续提取
             row = page.evaluate(_EXTRACT_JS, url)
+            if sku_hint and str(row.get("sku") or "") != str(sku_hint):
+                raise RuntimeError("DETAIL_SKU_IDENTITY_MISMATCH")
             if is_bad_title(row.get("name_es") or ""):
                 last_err = f"品名无效(第{attempt + 1}次): {str(row.get('name_es'))[:40]}"
                 time.sleep(0.8)
