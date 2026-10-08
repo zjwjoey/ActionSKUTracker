@@ -6,7 +6,7 @@ PRIMARY 是事实、Presence、Lifecycle、Price/Event、来源版本、中文/p
 
 daily 先捕获 head/读取事实与生命周期，将有效 QA、Collection Quality metrics hash 放入完整 CommitBundle。事务核验预期 base，包括明确空初始 head；head 改变拒绝旧计算。同日状态和事件遵循既有幂等规则，质量 FAIL/缺证据不能入库。
 
-V2 production FACT_COMMIT 只验证并复用同日 daily，不写部分 PRESENT-only bundle；独立 writer 仅用于临时 canary。两条正式编排共享 state/daily-run.lock。候选合并/部署前，生产仍执行冻结版。
+V2 production FACT_COMMIT 只验证并复用同日 daily，不写部分 PRESENT-only bundle；独立 writer 仅用于临时 canary。两条正式编排共享 state/daily-run.lock。本轮不更新正在使用的代码 checkout；冻结 main 基线和今日运行代码身份分别记在 CURRENT_STATE。
 
 Registry 和 compatibility export 是 Fact Commit 后独立状态。Registry FAILED/PENDING 保留事实、Operations DEGRADED，按 run/commit/date 精确重试。兼容投影 Pending 仅恢复合法当前 commit，旧 head SUPERSEDED。
 

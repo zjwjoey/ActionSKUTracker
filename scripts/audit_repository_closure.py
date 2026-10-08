@@ -43,7 +43,7 @@ def artifact_fingerprint(root):
             (path.suffix == '.xlsx' or path.name.endswith(('.manifest.json', '.repair-report.json')))} if root.exists() else {}
 
 
-def baseline():
+def baseline(source_checkout=None):
     import yaml
     settings = yaml.safe_load((ROOT / 'config' / 'settings.yaml').read_text(encoding='utf-8'))
     save('00_repository_baseline.json', {
@@ -60,6 +60,13 @@ def baseline():
                                 'localization.ai.enabled': ((settings.get('localization') or {}).get('ai') or {}).get('enabled', False)},
         'scope_excluded_commit': '3d28f0b356ded3fd2b5d24862954b581e0ef60f5',
         'scope_excluded_is_ancestor': command('git', 'merge-base', '--is-ancestor', '3d28f0b', 'HEAD')})
+    if source_checkout:
+        save('today_runtime_code_identity.json', {
+            'source_checkout': str(source_checkout),
+            'branch': command('git', '-C', str(source_checkout), 'branch', '--show-current'),
+            'head': command('git', '-C', str(source_checkout), 'rev-parse', 'HEAD'),
+            'status': command('git', '-C', str(source_checkout), 'status', '--porcelain'),
+            'code_updated_by_this_task': False})
     branches = command('git', 'for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin')['stdout'].splitlines()
     rows = []
     for branch in branches:
@@ -274,8 +281,9 @@ if __name__ == '__main__':
     parser.add_argument('--date')
     parser.add_argument('--reuse-replica', action='store_true', help='Use only a matching, previously created Backup API replica')
     parser.add_argument('--finalize', action='store_true')
+    parser.add_argument('--source-checkout', type=Path, help='Read-only identity of the checkout used by today\'s run')
     args = parser.parse_args()
-    baseline()
+    baseline(args.source_checkout)
     if args.source_db:
         if not args.date:
             parser.error('--date is required with --source-db')

@@ -9,7 +9,8 @@ Action 西班牙站 SKU 自动监测、生命周期管理、西语事实入库�
 - 2026-10-08 核实的 origin/main：231550eb74d24c927e100bc585aa728bf7ab7f19。
 - 生产冻结标签 production/phase1-3-20261007 指向上述 SHA。
 - Phase 1–3 曾在真实 PRIMARY 验收并发布当次 5,626 SKU。这不是固定商品数量，也不代表每天自动批准或发布。
-- 收尾分支 fix/post-production-repository-closure-20261008 尚未合并/部署；生产继续使用冻结版本。
+- 收尾分支 fix/post-production-repository-closure-20261008 尚未合并/部署；本轮保持既有生产运行代码与配置不变。
+- 今日实际执行 checkout 为 F:\ActionSKUTracker_workflow_v2，分支 fix/workflow-v2-phase3-final-closure@3d28f0b；它比已冻结 main 多 snapshot-ingest，不能把实际运行 checkout 与已审查 main 基线混为一谈。
 - 3d28f0b 的 snapshot-ingest 是独立新功能，不纳入本轮，需要专项审查。
 
 ## 流程和三阶段

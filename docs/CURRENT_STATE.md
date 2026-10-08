@@ -23,6 +23,8 @@ fix/post-production-repository-closure-20261008 从核实 main 建立，在独�
 
 部署状态：候选尚未合并 main，也未替换今日生产代码或重启任务。实际 full/CI-safe 数量、final SHA、exact-head CI 和副本证据位于本轮 runtime/reports/post_production_repository_closure_20261008/；runtime 不提交 Git。
 
+今日实际执行代码位于 F:\ActionSKUTracker_workflow_v2，分支 fix/workflow-v2-phase3-final-closure，HEAD 3d28f0b356ded3fd2b5d24862954b581e0ef60f5。已冻结 main 基线和当前运行 checkout 是不同身份；额外 snapshot-ingest 尚不属于本轮主线候选。该 checkout 本轮保持不变。
+
 ## 外部治理与排除范围
 
 main protection 只读查询显示未保护；建议 PR required、Ubuntu/Windows required、禁止 force push/delete，变更须 Owner 授权。PR #5 Selective Workflow V2 runtime backport 已被生产主线取代，建议另行关闭，本轮未合并/关闭。3d28f0b snapshot-ingest 不纳入本轮，须专项审查。
