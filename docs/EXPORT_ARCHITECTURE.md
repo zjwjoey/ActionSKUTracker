@@ -1,5 +1,9 @@
 # Action 西班牙站导出模块架构
 
+## 2026-10-08 发布边界
+
+普通 Catalog/Template 1 PREVIEW 仅写 `paths.exports/preview/`；已有文件须具备可信 preview manifest 与内容摘要，否则拒绝覆盖。PRODUCTION_RELEASE 保持正式目录，Catalog/Template 1 共用完整来源、Master Quality、审批/freshness/hash、Repair、ES/ZH parity 门禁。实际行 hash 必须等于审计行 hash，三件套失败回滚不变。ES Preview 可作为 Workflow V2 的受控 staging，但最终发布不能绕过中文严格 Gate。详见 [README](../README.md)。
+
 ## 1. 模块定位
 
 Export 是正式交付层，不是采集器、翻译器、生命周期判断器或新的 Master。

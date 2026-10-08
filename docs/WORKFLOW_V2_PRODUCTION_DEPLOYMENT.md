@@ -1,68 +1,37 @@
-# Workflow V2 Phase 1 生产部署说明
+# 生产部署与 Phase 1–3 授权
 
-## 候选边界
+## 版本
 
-- 部署分支：`deploy/workflow-v2-production-20261004`
-- 不可变候选：`production/workflow-v2-phase1-rc4`
-- 默认 `config/settings.yaml` 保持 fail-closed；生产 profile 是 partial overlay，不能单独作为完整 settings 文件加载。
-- 本文示例不引用旧的 `75b01acc`、RC3 或 branch HEAD。
+2026-10-08 核实 main 231550eb74d24c927e100bc585aa728bf7ab7f19；冻结 production/phase1-3-20261007。收尾分支 fix/post-production-repository-closure-20261008 尚未合并/部署。部署应引用审查通过且 exact-head Ubuntu/Windows CI 全绿的不可变候选 SHA。
 
-## Phase 1 运行契约
+本轮不带入 3d28f0b snapshot-ingest；不合并旧 PR #5。
 
-运行时将 base settings 与显式 profile deep-merge，并在每次 run evidence 中记录：base/profile 路径、两个 SHA-256 和 effective config hash。API key 只记录 `SET` / `NOT_SET`，不记录值。
+## 部署顺序
 
-Phase 1 只允许 PRIMARY 西语事实、registry ingest、Qwen 翻译、QA 和 review state。以下开关必须关闭：
+1. 独立 checkout 完成 full pytest、CI-safe、生产副本核验。
+2. 推分支、PR、exact-head CI 与审查。
+3. Owner 授权合并/部署后冻结新 SHA；停止写入并做 SQLite Backup API 备份。
+4. 更新批准代码/配置，不 reset PRIMARY、不用旧 Excel 覆盖。
+5. 核验 DB identity/schema/integrity/foreign keys、head、投影、锁、参数。
+6. 分阶段启用权限并记录真实证据。候选测试 PASS 不等于已部署。
 
-- `workflow_v2.auto_policy_approval.enabled`
-- `workflow_v2.auto_export.enabled`
-- `localization.production_apply_enabled`
-- `knowledge.production_apply_enabled`
-- `knowledge.fallback_to_spanish`
+## Phase 1
 
-### 唯一 Phase 1 命令
+    powershell -ExecutionPolicy Bypass -File scripts/run_production_daily.ps1 -Date 2026-10-08 -ProjectRoot F:\ActionSKUTracker
+    python -m action_tracker data-update-v2 --date 2026-10-08 --profile config/workflow_v2_production_profile.yaml --production-translation --no-dry-run
 
-```powershell
-python -m action_tracker data-update-v2 `
-  --date YYYY-MM-DD `
-  --profile config/workflow_v2_production_profile.yaml `
-  --production-translation `
-  --no-dry-run
-```
+先完成正式 daily，唯一事实算法负责 Presence、缺失/下架、NEW/REAPPEARED、Price/Event 和完整 QA bundle。V2 只复用同日 committed daily，不能绕过质量证据。
 
-`--production-translation` 必须有显式 `--profile`，或由已审计的 `ACTION_TRACKER_CONFIG_PROFILE` 提供。显式 CLI 参数优先于环境变量。Phase 1 **DO NOT USE `--production-apply`**；不得执行 localization apply、auto approval 或 formal export publish。
+Profile 是 base settings partial overlay，经 deep merge/Phase 1 validator；记录 base/profile/effective hash，密钥仅 SET/NOT_SET。Phase 1 关闭 auto approval、auto export、knowledge/localization Apply、Spanish fallback。Qwen 仅处理该来源 run 的新增/变化字段。
 
-`--production-apply` 仅属于后续独立授权的 Phase 2，且必须同时打开 knowledge/localization apply gates。它不是 Phase 1 的替代参数。
+## Phase 2 / 3
 
-## 生产运行前置顺序
+QA 和 Owner 来源绑定审批后生成 immutable patch，以当前 base Apply。production-apply 是后续独立授权，不是 Phase 1 替代参数，不自动打开审批权限。
 
-1. 备份 PRIMARY。
-2. 使用 RC4 做 production preflight。
-3. 核对 audited ref、base/profile SHA 和 effective config hash。
-4. 确认 `DASHSCOPE_API_KEY` 为 `SET`。
-5. 执行上面的 Phase 1 translation-only 命令。
-6. 检查 fact commit、registry、queue、provider calls、QA 和 review evidence。
-7. 确认 `localization_apply=disabled`、`export_publish=disabled`；不得自动 Apply/Export。
+中文 export --research-release 或 export-template1 --research-release 使用完整来源/Master Quality/Repair/Audit/parity/实际行 hash 门禁；通过才正式发布。Preview 独立目录，不能覆盖正式文件。V2 ES staging 仍需最终双语 Gate。
 
-## 只读 preflight
+## 观察与恢复
 
-```powershell
-$env:PYTHONPATH='F:\ActionSKUTracker_workflow_v2\src'
-python scripts/workflow_v2_production_preflight.py `
-  --source-root F:\ActionSKUTracker_workflow_v2 `
-  --profile F:\ActionSKUTracker_workflow_v2\config\workflow_v2_production_profile.yaml `
-  --data-root F:\ActionSKUTracker `
-  --expected-branch deploy/workflow-v2-production-20261004 `
-  --expected-ref production/workflow-v2-phase1-rc4 `
-  --json
-```
+观察连续 daily 的字段增量、同日 Resume 幂等、缺失/重现/价格、Registry、发布 Gate。Registry 单独失败保持事实并 DEGRADED，只恢复该 run；不能将某日数据缺口当作改事实授权。
 
-Preflight 与正式命令必须使用同一 base settings、同一 profile 和同一 effective config hash。Preflight 是只读的，不调用 Qwen、不 claim queue、不写 PRIMARY。
-
-## 数据和恢复边界
-
-生产数据库仍是唯一 PRIMARY。验证只能使用 temporary SQLite、fixture、Fake Provider 和 mock environment；不得清空历史 queue、调用真实 Qwen、执行全量 Action 采集或发布 Excel。Resume 必须沿用原 run 的 business date、source commit 和 config hash；profile 改变时阻断并报告 `CONFIG_CHANGED_SINCE_RUN`。
-
-## 发布标记
-
-- `PRODUCTION_CODE_CUTOVER`: preflight、备份、完整测试和 RC4 exact-head CI 全部通过后才可标记 `READY`。
-- `PRODUCTION_FULL_AUTOMATION`: auto approval 和 auto export 关闭期间保持 `NOT_YET`。
+本轮不改 Task Scheduler/GitHub 管理设置。main protection 需另获 Owner 授权；没有已验证上一生产版本不自动回滚，参见 [Rollback](WORKFLOW_V2_PRODUCTION_ROLLBACK.md)。

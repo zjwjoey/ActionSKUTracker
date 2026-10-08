@@ -1,68 +1,39 @@
 # Operations Runbook V2
 
-Daily data update remains `production-run` / `data-update` (compatible with
-P7/P8). Export is on demand and reads the latest committed SQLite facts. Use the validated
-PowerShell wrapper with `-ProjectRoot F:\ActionSKUTracker` when source and
-production runtime are separate.
+## 正式入口
 
-## Post-Merge Production Safety
+    powershell -ExecutionPolicy Bypass -File scripts/run_production_daily.ps1 -Date 2026-10-08 -ProjectRoot F:\ActionSKUTracker
+    python -m action_tracker data-update --date 2026-10-08
 
-In `SQLITE_PRIMARY`, `daily-run` is a diagnostic runner and defaults to dry-run.
-`daily-run --no-dry-run` is rejected with `FORMAL_RUN_REQUIRES_DATA_UPDATE`.
-The only formal write entry points are `production-run` and `data-update`; they
-run PREFLIGHT, a validated SQLite Backup API backup, the delegated collection,
-QA, commit, compatibility-export recovery and an Operations report.
+直接 Python 先设正确 ACTION_TRACKER_PROJECT_ROOT/PYTHONPATH。旧 run_daily.ps1 默认委托官方 wrapper，-DryRun 保留诊断；SQLITE_PRIMARY 禁止 daily-run --no-dry-run。
 
-Resume restores the delegated run id, QA result, commit status and commit id
-from the persisted COLLECTION allowlist. If a formal DB commit succeeded but
-compatibility projection is pending, resume runs only `regenerate_pending_exports`
-for that commit. It never recollects or creates a second commit. A newer formal
-commit marks older pending projection rows `SUPERSEDED`, which are not retryable.
+步骤：PREFLIGHT → BACKUP → COLLECTION → QA → DB_COMMIT → REGISTRY → EXPORT → IMAGE → KNOWLEDGE → AI → AUTO_APPROVAL → REVIEW → REPORT。
 
-`status` reports PRIMARY facts first, then the compatibility projection. When
-the database and Master differ, it reports `COMPATIBILITY = OUT_OF_SYNC` rather
-than presenting the Master count as authoritative. `qa` resolves
-`runtime/snapshots/<date>/<run_id>/qa_report.json`; use `qa --run-id <id>` for a
-specific run.
+EXPORT 是 SQLite 兼容投影同步，不代表 Phase 3 正式中文发布。可选步骤 SKIPPED 不是已执行。Operations 显式传业务日期给 collector 并核验返回；默认 Europe/Madrid，跨午夜/历史日期/Resume 均用冻结 business_date。daily 在读取事实与生命周期前捕获 head，事务拒绝 head 改变。
 
-Detail recovery in PRIMARY is a field-level correction transaction. It may only
-change `name_es`, category, spec, description, details, product URL and image
-URL. It cannot change price, badges, status, lifecycle or Presence. Each change
-is stored in `detail_corrections`, emits derived content-change evidence and is
-then projected from SQLite into compatibility files.
+## 状态与恢复
 
-The localhost Workspace rejects POST/PUT/DELETE requests with a non-loopback
-Host or Origin. The optional image job accepts only hosts listed in
-`images.allowed_hosts`; unexpected hosts fail as `IMAGE_SOURCE_HOST_NOT_ALLOWED`
-without affecting product lifecycle.
+SUCCESS 表示 Operations 完成或合法跳过，不表示中文全库批准。DEGRADED 表示已提交事实而 Registry/投影等后续失败，保留事实。BLOCKED/FAILED 不允许强制发布。
 
-Before additive schema migration: create a SQLite Backup API backup, migrate,
-run `db-validate-production`, inspect parity and only then use the production
-database. Never drop or rewrite product/lifecycle/history tables.
-## Windows Scheduler registration
+报告为 runtime/reports/daily/<date>/<operations_run_id>/state.json。核对 delegated run 与 fact commit 后恢复：
 
-The repository includes `scripts/register_action_tracker_task.ps1`. Run it
-from an elevated PowerShell, for example:
+    python -m action_tracker production-run --date 2026-10-08 --resume --run-id <operations_run_id>
+    python -m action_tracker production-run --date 2026-10-08 --resume --run-id <operations_run_id> --from-step REGISTRY
+    python -m action_tracker registry-retry --run-id <collection_run_id> --commit-id <fact_commit_id> --date 2026-10-08
+    python -m action_tracker sync-exports --commit-id <current_commit_id>
+    python -m action_tracker qa --run-id <collection_run_id>
+    python -m action_tracker status
 
-```powershell
-Set-Location F:\ActionSKUTracker_ops
-.\scripts\register_action_tracker_task.ps1 -ProjectRoot F:\ActionSKUTracker -At 03:30
-```
+Resume 恢复 COLLECTION allowlist 中日期、来源身份、QA、commit 和 Registry，已成功 COLLECTION/DB_COMMIT 不重复。单独 Registry 恢复后再 Resume 升级总状态。
 
-The script is idempotent and registers one daily task that calls
-`run_production_daily.ps1`. It does not collect data while registering. Add
-`-RunNow` only when an operator explicitly wants to start the registered task.
+Registry audit：runtime/reports/registry/<collection_run_id>.json，包含失败原因、retryable、尝试次数/恢复结果。retry 只接受 FAILED/PENDING，核验 commit/date/QA、冻结来源和当前 CURRENT。成功重复请求 ALREADY_READY；来源变化拒绝旧 run，不能恢复旧版本制造 STALE。失败记录缺失时 fail-closed。
 
-After registration, perform a Shadow check by inspecting the task action and
-running one operator-approved invocation. Record the task name, action,
-return code, wrapper run id and report path. A missing task or an elevation
-failure is an operational follow-up, not a product-data change.
+兼容投影恢复仅针对当前合法 commit，新 head 的旧 pending 为 SUPERSEDED，不可重放覆盖。
 
-## Recommended GitHub branch protection
+## 锁和故障
 
-Set these repository rules in GitHub (the application does not set them
-automatically):
+Operations、正式 daily、V2 production 共享 state/daily-run.lock；外层持锁后内部 collector _skip_lock=True。独立 registry-retry 自行持同一锁；Resume 使用内部无锁 adapter。
 
-- Require a pull request before changes to `main`.
-- Require the CI workflow for both Ubuntu and Windows before merge.
-- Block force pushes and branch deletion on `main`.
+403/429/挑战页进入受控停止；无效观测不推进 MISSING/OFFLINE。Detail 失败不否定有效 Presence。缺售价/来源/批准状态导致正式发布 BLOCKED 时处理真实数据原因，不能降低 Gate。
+
+Backup 使用 SQLite Backup API；恢复须停写、Owner 授权、副本 schema/integrity/foreign keys 与事实对账。普通 Preview 写 exports/preview，正式发布 --research-release。Windows Task Scheduler 与 Codex 提醒不同，本轮未注册任务。参见 [README](../README.md)、[Rollback](WORKFLOW_V2_PRODUCTION_ROLLBACK.md)。

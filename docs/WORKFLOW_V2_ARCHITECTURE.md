@@ -1,97 +1,39 @@
-# Workflow V2 architecture
+# Workflow V2 架构与生产边界
 
-Workflow V2 is an opt-in orchestration layer. It coordinates the existing
-extractor, `CommitBundle`/`ProductionWriter`, Translation System V1, QA and
-export modules; it does not create a second crawler, product writer or
-translation database.
+## 三层职责
 
-The public development command is:
+1. 每日事实：既有 orchestrator.daily 负责采集、QA、Presence/Lifecycle、Price/Event、完整 CommitBundle、PRIMARY 和兼容投影。
+2. 增量中文：Registry → 本来源 run Queue → TM/Terminology/授权 Provider → Fact/Canonical QA → Owner → immutable patch → Apply。
+3. 发布：FinalZhProjection → Repair → ES/ZH Audit → Parity → Strict Gate → 三件套。
 
-```powershell
-python -m action_tracker data-update-v2 --date YYYY-MM-DD --fixture fixture.json --fake-provider
-```
+V2 是可恢复编排，不是另一套 Lifecycle/Price 算法。FACT_COMMITTED 或 Phase 1 SUCCESS 不代表已 Apply/正式发布。
 
-The fixture path is offline and the fake provider is deterministic. Production
-settings keep `workflow_v2.enabled`, automatic translation, policy approval and
-automatic export disabled. A future production adapter must pass the source,
-fact commit and translation source gates before constructing a provider.
+## FACT_COMMIT
 
-The isolated Apply canary is:
+旧部分 bundle 缺失 Lifecycle、ABSENT、Price/Event 和 Collection Quality。生产模式禁止该 writer：
 
-```powershell
-python -m action_tracker workflow-v2-local-canary --fixture fixture.json --output runtime/canary
-```
+    data-update/production-run 提交有效 daily
+    → fact_adapter 读取同日 committed daily
+    → 核验 QA、持久化 Collection Quality hash、当前 SKU/六字段事实与 PRIMARY HEAD
+    → VERIFIED_DAILY_FACT_COMMIT_REUSED，事实写入次数 0
 
-It creates a temporary SQLite database, commits fixture Spanish facts through
-`ProductionWriter`, registers a Translation System V1 source/revision, approves
-the fixture revision, and applies it through the existing immutable patch
-coordinator. It never resolves or mutates the configured production database.
+它不重新采集、推进生命周期或覆盖中文。来源变化、质量缺失、日期不一致、未先完成 daily 均 BLOCKED；不能用 requires_collection_integrity=False 退回旧生产路径。fixture/canary 的独立 bundle 只允许临时 SQLite，不是正式观察。
 
-For the full fixture path, including the existing exporter writing only to the
-workflow staging directory, use an explicit temporary database and the scoped
-fixture approval switch:
+生产 V2 不重新抓详情/Apply；待补详情走现有 daily detail-retry/Apply 合同。
 
-```powershell
-python -m action_tracker data-update-v2 --date YYYY-MM-DD --fixture fixture.json `
-  --fake-provider --canary --temp-db runtime/temp/workflow_v2_canary.sqlite3 `
-  --fixture-auto-approve-high-risk --no-dry-run
-```
+## 来源、队列、恢复和锁
 
-`--fixture-auto-approve-high-risk` is rejected unless all of `--fixture`,
-`--fake-provider`, `--canary`, and `--temp-db` are present. It exists only to
-exercise the isolated fixture Apply and export chain; production Apply cannot
-use it.
+生产 queue scope 为实际 collection_run_id；workflow_run_id 是编排身份。plan、worker、QA、policy、Apply 使用同一来源 run，禁止消费历史全局队列。无变化不调 Provider。
 
-Stages are explicit: `PREFLIGHT`, `BACKUP`, `EXTRACT`, `SOURCE_AUDIT`,
-`SOURCE_CLEAN`, `SOURCE_REAUDIT`, `FACT_COMMIT`, `DETAIL_PLAN`,
-`DETAIL_ENRICH`, `TRANSLATION_SOURCE_AUDIT`, `REGISTRY_INGEST`,
-`TRANSLATION_PLAN`, `QWEN_TRANSLATE`, `TRANSLATION_QA`,
-`TRANSLATION_POLICY`, `TRANSLATION_APPLY`, `EXPORT_AUDIT`, `EXPORT_WRITE`,
-and `REPORT`.
+默认 Apply/auto approval/AI 关闭；显式 Phase 1 profile 禁止 auto approval/正式 Apply/export；Owner source-bound approval 不可跳过。
 
-The V1 integration boundary is deliberately adapter-shaped. With no fixture,
-the default extraction adapter runs the established daily collector in
-dry-run snapshot mode; an explicitly enabled `workflow_v2.detail_retry`
-section reuses the existing detail-retry/apply contract against the isolated
-canary database.
+Resume 恢复冻结 context/records/stages；配置 hash 变化拒绝；生产绑定 head 改变拒绝旧恢复。Apply 自身绑定 base，成功后更新允许的 head。生产模式共享 paths.state/daily-run.lock，不嵌套 collector 锁。
 
-```text
-Extraction result
-  -> Presence / Source gates -> Cleaning / Reaudit
-  -> CommitBundle -> ProductionWriter(temp SQLite)
-  -> product_detail_state plan / existing detail retry adapter
-  -> LocalizationRegistry V1 -> TranslationQueueWorker
-  -> TranslationResolver -> Fake Qwen provider (canary only)
-  -> Typed QA + Canonical QA + policy provenance
-  -> immutable localization patch / Apply (temp SQLite only)
-  -> independent ES and ZH projections
-  -> bilingual audit / parity -> existing exporter row builders and, when
-     configured, `export_catalog()` into pending staging
-```
+## 发布
 
-`WorkflowContext` creates the Madrid business date once. All stages share the
-same run id, source snapshot and commit ids. State and audit artifacts are
-written under `runtime/reports/workflow_v2/<business_date>/<workflow_run_id>`.
+ES 在 staging 的 preview 子目录输出，ZH 通过 staging 的完整正式 Gate；最终发布验证中文 actual/audited hash 与双语事实 parity。普通 preview 永不写正式目录。Template 1 与普通中文清单共用 validate_production_release，Repair Audit 不是完整 Gate 的替代品。
 
-## Daily-run Shadow preflight
+    python -m action_tracker data-update-v2 --date 2026-10-08 --profile config/workflow_v2_production_profile.yaml --production-translation --no-dry-run
+    python -m action_tracker data-update-v2 --date 2026-10-08 --fixture fixture.json --fake-provider
 
-The established `daily-run` chain can opt into a read-only preflight with:
-
-```yaml
-workflow_v2:
-  shadow_preflight:
-    enabled: true
-```
-
-The preflight compares the exact in-memory daily records with Workflow V2's
-deterministic source cleanup and re-audit output. It checks SKU identity,
-prices, status, presence source, URL and Spanish fact fields. It does not call
-the browser, a translation provider, a database writer or an export writer.
-The result is embedded in `run_report.workflow_v2_shadow`; `BLOCKED` is
-fail-closed for formal publication while dry-run remains evidence-only. The
-default is disabled until the generated evidence has been reviewed.
-
-Spanish fact commit and translation are separate stages. A provider failure
-can leave `FACT_COMMITTED` intact and make the run `DEGRADED` or `BLOCKED`.
-Translation candidates are not approved by the provider; apply remains an
-explicit stage.
+第二条用于离线回归；第一条须同日 committed daily、授权与有效 profile。证据在 runtime/reports/workflow_v2/<date>/<workflow_run_id>/，记录来源身份、fact/localization commit、配置 hash、QA 和发布状态。SUCCESS_WITH_PENDING 不等于正式发布。参见 [README](../README.md)。
