@@ -84,6 +84,11 @@ class ProductionRepository:
             if str(record.get("sku") or "").strip()
         }
 
+    def load_product_baseline(self) -> dict[str, dict[str, Any]]:
+        """Historical facts for merging, never the current Presence universe."""
+        return {str(row["sku"]): row for row in
+                self.load_current_export_records(include_non_current=True)}
+
     def load_current_product_rows(self) -> dict[str, dict[str, Any]]:
         """Legacy products-table-only projection, retained for diagnostics."""
         with connect(self.path) as db:

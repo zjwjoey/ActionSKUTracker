@@ -135,6 +135,8 @@ def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
     """
     for k in _LIGHT_FIELDS:
         v = light.get(k)
+        if k == "original_price" and k in light and light.get("current_price") is not None:
+            rec[k] = v
         if v is None:
             continue
         if k == "raw_tags":
@@ -252,10 +254,12 @@ def run_daily(
         from ..database.repository import ProductionRepository
         repository = ProductionRepository(database_path(cfg))
         baseline = repository.load_current_products()
+        fact_baseline = repository.load_product_baseline()
         known = repository.load_known_skus()
         offline = repository.load_offline_skus()
     else:
         baseline = excel_reader.load_current(master)
+        fact_baseline = baseline
         known = st.load_known_skus(paths["state"])
         offline = st.load_offline_skus(paths["state"])
     trans = st.load_translation_state(paths["state"])
@@ -352,14 +356,16 @@ def run_daily(
         category_coverage=primary_coverage,
         nuevo_skus=nuevo_skus,
         promo_skus=promo_skus,
+        business_date=run_date,
     )
     log.info("SKU 状态统计: %s", {s: sum(1 for x in statuses.values() if x.status == s) for s in
                                    {"NEW", "ACTIVE", "REAPPEARED", "MISSING_FIRST", "MISSING_CONTINUED", "OFFLINE", "UNKNOWN", "ABSENT"}})
 
     # ---- 计划更新 ----
     plans = updater_mod.plan_updates(
-        statuses, baseline, today_light, cfg["run"]["detail_refresh_days"],
-        nuevo_skus=nuevo_skus, promo_skus=promo_skus)
+        statuses, fact_baseline, today_light, cfg["run"]["detail_refresh_days"],
+        nuevo_skus=nuevo_skus, promo_skus=promo_skus,
+        sitemap_urls=updater_mod.sitemap_detail_urls(sitemap.locs if sitemap else []))
     log.info("需要更新的 SKU: %d (原因: %s)",
              len(plans), {r: sum(1 for p in plans if p["reason"] == r) for r in {p["reason"] for p in plans}})
 
@@ -369,7 +375,7 @@ def run_daily(
     if do_detail:
         try:
             _, updated = updater_mod.fetch_and_merge(
-                browser, [p for p in plans if p["need_detail"]], baseline, snap_dir,
+                browser, [p for p in plans if p["need_detail"]], fact_baseline, snap_dir,
                 cfg["lifecycle"]["max_detail_retries"], nuevo_skus=nuevo_skus, promo_skus=promo_skus,
                 access_controller=access, detail_evidence=detail_evidence,
                 detail_completed_skus=detail_completed_skus,
@@ -386,7 +392,7 @@ def run_daily(
         sku = plan["sku"]
         rec = updated.get(sku)
         if rec is None:
-            base = baseline.get(sku) or {}
+            base = fact_baseline.get(sku) or {}
             rec = dict(base)
             rec.update({"sku": sku, "canonical_id": plan["canonical_id"], "last_seen": run_date, "status": "CURRENT"})
         if plan.get("light"):
@@ -394,13 +400,22 @@ def run_daily(
                          in_nuevo=(sku in nuevo_skus), in_promo=(sku in promo_skus))
         rec["status"] = "CURRENT"
         rec["last_seen"] = run_date
+        verified = {field: "LISTING_CURRENT_RUN" for field, value in
+                    (plan.get("light") or {}).items() if value not in (None, "")}
+        if (plan.get("light") or {}).get("current_price") is not None and "original_price" in (plan.get("light") or {}):
+            verified["original_price"] = "LISTING_CURRENT_RUN"
+        for field, evidence in (rec.get("fact_field_provenance") or {}).items():
+            if evidence.get("state") == "CURRENT_VERIFIED":
+                verified.setdefault(field, evidence["source"])
+        rec = updater_mod.retain_historical_facts(fact_baseline.get(sku) or {}, rec,
+            reappeared=plan["reason"] == "REAPPEARED", verified_fields=verified)
         updated[sku] = rec
 
     # ---- 变化事件 ----
     price_events, badge_events, content_events, anomalies, review_rows = [], [], [], [], []
     for sku, rec in updated.items():
         outcome = change_mod.compute_changes(
-            sku, rec.get("canonical_id"), baseline.get(sku), rec, run_date,
+            sku, rec.get("canonical_id"), fact_baseline.get(sku), rec, run_date,
             cfg["qa"]["price_min"], cfg["qa"]["price_max"], run_id,
         )
         price_events += outcome.price_events
@@ -453,20 +468,27 @@ def run_daily(
     # this run belong here. Missing candidates remain in known_skus.csv until
     # the offline threshold is reached, but are not mixed into CURRENT.
     today_records = _build_current_records(
-        baseline, updated, statuses, today_set, run_date)
+        fact_baseline, updated, statuses, today_set, run_date)
     # Snapshot-level field provenance. Partial Detail is explicit and never
     # presented as freshly collected data.
     detail_plan_skus = {p["sku"] for p in plans if p["need_detail"]}
     completed_detail_set = set(detail_completed_skus)
     for sku, rec in today_records.items():
         stat = statuses.get(sku)
+        if not rec.get("fact_field_provenance"):
+            verified = {field: "LISTING_CURRENT_RUN" for field, value in
+                        today_light.get(sku, {}).items() if value not in (None, "")}
+            if today_light.get(sku, {}).get("current_price") is not None and "original_price" in today_light.get(sku, {}):
+                verified["original_price"] = "LISTING_CURRENT_RUN"
+            rec.update(updater_mod.retain_historical_facts(fact_baseline.get(sku) or {}, rec,
+                reappeared=getattr(stat, "status", "") == "REAPPEARED", verified_fields=verified))
         rec["presence_source"] = getattr(stat, "source_flag", "BASELINE") if stat else "BASELINE"
         rec["listing_fields_source"] = "LISTING_CURRENT_RUN" if sku in today_light else "BASELINE"
         if sku in completed_detail_set:
             rec["detail_status"] = "COMPLETE"
             rec["detail_fields_source"] = "DETAIL_CURRENT_RUN"
         elif sku in detail_plan_skus:
-            old = baseline.get(sku) or {}
+            old = fact_baseline.get(sku) or {}
             has_old_detail = bool(old.get("desc_es") or old.get("details_es") or old.get("spec_es"))
             rec["detail_status"] = "ACCESS_INTERRUPTED" if access.state.value != "NORMAL" else "PENDING"
             rec["detail_fields_source"] = "BASELINE" if has_old_detail else "PENDING"
@@ -585,7 +607,7 @@ def run_daily(
                 offline_runs=cfg["lifecycle"]["offline_confirmation_runs"],
                 today_records=today_records, price_events=price_events, event_events=event_events,
                 run_log_row=run_log_row, review_rows=review_rows,
-                baseline=baseline, today_set=today_set, observation_complete=observation_complete,
+                baseline=fact_baseline, today_set=today_set, observation_complete=observation_complete,
                 snapshot_path=snap_dir, sqlite_diagnostics=sqlite_diagnostics, run_report=run_report,
                 expected_base_commit_id=expected_base_commit_id, enforce_expected_base=(configured_storage_mode == "SQLITE_PRIMARY"))
         else:
@@ -640,6 +662,8 @@ def _build_current_records(
         rec["status"] = "CURRENT"
         rec["last_seen"] = run_date
         rec["missing_count"] = 0
+        if not rec.get("first_seen"):
+            rec["first_seen"] = getattr(stat, "first_seen", None) or run_date
     return current
 
 

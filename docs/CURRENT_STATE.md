@@ -4,6 +4,8 @@
 
 ## 已冻结生产
 
+本节以下旧发布记录截止于上一轮收尾审查，保留为历史。最新已部署代码为 PR #6 合并后的 `main@b09bcea89e35e6a69367a6542ff871bab5ba1921`，`production/post-closure-20261008` 指向该版本；main Branch Protection 已启用。本轮 `fix/post-release-data-integrity-20261008` 仅开发和生产副本验证，尚未合并/部署。见 [上线后数据完整性修复](POST_RELEASE_DATA_INTEGRITY.md)。
+
 - origin/main：231550eb74d24c927e100bc585aa728bf7ab7f19。
 - 标签 production/phase1-3-20261007 指向该 SHA。
 - 历史本地完整测试 826、该基线 Ubuntu/Windows CI-safe 各 823。

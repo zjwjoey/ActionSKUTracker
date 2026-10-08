@@ -27,6 +27,15 @@ class ProductionDatabaseError(RuntimeError):
     """Production DB identity, baseline or transaction validation failure."""
 
 
+def _official_localization_value(row: Mapping[str, Any], field: str, kind: str) -> Any:
+    # A stored baseline value is already the committed official projection.
+    # Reprocessing legacy formatting during a failed detail fetch would create
+    # an unobserved source change and falsely invalidate its Chinese binding.
+    if str(row.get(f"{field}_source") or "").startswith("HISTORY_RETAINED:"):
+        return row.get(field)
+    return normalize_official_text(row.get(field), field=kind)
+
+
 def supersede_older_export_sync(db: sqlite3.Connection, new_commit_id: str) -> None:
     """Move older retryable projections behind the new SQLite head.
 
@@ -399,9 +408,9 @@ class ProductionWriter:
                 source = {
                     "name_es": item.get("name"), "cat1_es": item.get("cat1"),
                     "cat2_es": item.get("cat2"),
-                    "spec_es": normalize_official_text(item.get("spec"), field="spec"),
-                    "desc_es": normalize_official_text(item.get("description"), field="description"),
-                    "details_es": normalize_official_text(item.get("details"), field="details"),
+                    "spec_es": _official_localization_value(item, "spec", "spec"),
+                    "desc_es": _official_localization_value(item, "description", "description"),
+                    "details_es": _official_localization_value(item, "details", "details"),
                 }
                 same_batch_es[item_sku] = {
                     **source,
@@ -413,8 +422,17 @@ class ProductionWriter:
             language = str(r.get("language") or "zh")
             incoming = dict(r)
             if language == "es":
+                previous = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+                    "WHERE official_sku=? AND language='es'", (sku,),
+                ).fetchone()
+                if previous is not None:
+                    for index, field in enumerate(("name", "cat1", "cat2", "spec", "description", "details")):
+                        if (str(incoming.get(f"{field}_source") or "").startswith("HISTORY_RETAINED:")
+                                and incoming.get(field) != previous[index]):
+                            raise ProductionDatabaseError(f"DB_HISTORY_RETAINED_VALUE_CHANGED:{sku}:{field}")
                 for field, kind in (("spec", "spec"), ("description", "description"), ("details", "details")):
-                    incoming[field] = normalize_official_text(incoming.get(field), field=kind)
+                    incoming[field] = _official_localization_value(incoming, field, kind)
                 incoming["source_hash"] = localization_source_hash({
                     "name_es": incoming.get("name"),
                     "cat1_es": incoming.get("cat1"),
@@ -423,6 +441,9 @@ class ProductionWriter:
                     "desc_es": incoming.get("description"),
                     "details_es": incoming.get("details"),
                 })
+                source = same_batch_es[sku]
+                for field in ("name", "cat1", "cat2", "spec", "description", "details"):
+                    incoming[f"{field}_source_hash"] = source[f"{field}_source_hash"]
             if language == "zh":
                 source = same_batch_es.get(sku)
                 if source is None:
@@ -498,11 +519,13 @@ class ProductionWriter:
                         prior = field_state.get(field) or {}
                         incoming[f"{field}_freshness_status"] = (
                             "STALE" if field in changed_fields else
+                            "STALE" if str(prior.get("freshness_status") or "").upper() == "STALE" else
                             "CURRENT" if aggregate_hash_unchanged else
                             prior.get("freshness_status") or ("STALE" if str(existing.get("freshness_status") or "").upper() == "STALE" else "CURRENT")
                         )
                     incoming["freshness_status"] = (
-                        "STALE" if changed_fields else
+                        "STALE" if changed_fields or any(
+                            incoming.get(f"{field}_freshness_status") == "STALE" for field in fields) else
                         "CURRENT" if aggregate_hash_unchanged else
                         ("STALE" if str(existing.get("freshness_status") or "").upper() == "STALE" else "CURRENT")
                     )

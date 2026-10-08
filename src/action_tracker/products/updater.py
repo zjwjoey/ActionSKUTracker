@@ -13,11 +13,73 @@ import time
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
+import re
 
 from ..products.badges import build_badge_state
 from ..services.hashing import content_hash, price_hash
 
 log = logging.getLogger(__name__)
+
+FACT_FIELDS = ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es",
+               "details_es", "product_url", "image_url", "current_price",
+               "original_price", "unit_price")
+
+
+def verified_detail_url(sku: str, *candidates: str | None) -> str:
+    """Only observed official ES URLs for this exact identity are navigable."""
+    for candidate in candidates:
+        parsed = urlparse(str(candidate or ""))
+        if (parsed.scheme == "https" and parsed.netloc == "www.action.com"
+                and parsed.path.startswith(f"/es-es/p/{sku}/")):
+            return str(candidate)
+    return ""
+
+
+def sitemap_detail_urls(locs: list[str]) -> dict[str, str]:
+    urls = {}
+    for url in locs:
+        match = re.match(r"/es-es/p/(\d+)/", urlparse(url).path)
+        if match and verified_detail_url(match[1], url):
+            urls.setdefault(match[1], url)
+    return urls
+
+
+def retain_historical_facts(base: dict, current: dict, *, reappeared: bool,
+                            verified_fields: dict[str, str]) -> dict:
+    """Merge observed facts without promoting a historical return price.
+
+    Empty parse results are missing evidence, not an official deletion. Price
+    history is retained separately; a return without a newly observed selling
+    price stays unpublishable. No Chinese approval is synthesized here.
+    """
+    merged = dict(base)
+    merged.update(current)
+    states = {}
+    for field in FACT_FIELDS:
+        value = current.get(field)
+        source = verified_fields.get(field)
+        if source and value not in (None, ""):
+            states[field] = {"state": "CURRENT_VERIFIED", "source": source}
+        elif (field == "original_price" and source
+              and source == verified_fields.get("current_price")
+              and current.get("current_price") not in (None, "")):
+            # A confirmed selling-price card without an original-price node
+            # means no current promotion, not a reason to retain an old one.
+            merged[field] = None
+            states[field] = {"state": "CURRENT_VERIFIED", "source": source}
+        elif base.get(field) not in (None, ""):
+            merged[field] = base[field]
+            states[field] = {"state": "HISTORY_RETAINED", "source": "BASELINE"}
+        else:
+            states[field] = {"state": "SOURCE_MISSING", "source": "NEEDS_FETCH"}
+    if reappeared and states["current_price"]["state"] != "CURRENT_VERIFIED":
+        merged["_historical_current_price"] = base.get("current_price")
+        for field in ("current_price", "original_price", "unit_price"):
+            merged[field] = None
+            states[field] = {"state": "SOURCE_MISSING", "source": "NEEDS_FETCH"}
+    merged["fact_field_provenance"] = states
+    return merged
 
 
 def _today() -> str:
@@ -31,6 +93,7 @@ def plan_updates(
     detail_refresh_days: int = 7,
     nuevo_skus: set[str] | None = None,
     promo_skus: set[str] | None = None,
+    sitemap_urls: dict[str, str] | None = None,
 ) -> list[dict]:
     """返回需要更新的 SKU 计划列表。
 
@@ -62,8 +125,13 @@ def plan_updates(
             elif _badge_changed(base, sku in nuevo_skus, sku in promo_skus):
                 # 成员集合权威，无需详情确认
                 reason = "BADGE_CHANGE"
-            elif (base.get("image_url") or "") != (light.get("image_url") or ""):
+            elif light.get("image_url") and (base.get("image_url") or "") != light.get("image_url"):
                 reason = "IMAGE_CHANGE"
+            elif any(light.get(field) not in (None, "") and
+                     str(light[field]) != str(base.get(field) or "")
+                     for field in ("name_es", "spec_es", "cat1_es", "product_url")):
+                reason = "CONTENT_CHANGE"
+                need_detail = True
             elif _missing_field(base):
                 reason = "MISSING_FIELD"
                 need_detail = True
@@ -81,6 +149,9 @@ def plan_updates(
                 "reason": reason,
                 "need_detail": need_detail,
                 "light": light,
+                "detail_url": verified_detail_url(sku,
+                    (light or {}).get("product_url"),
+                    (sitemap_urls or {}).get(sku), (base or {}).get("product_url")),
             })
     return plans
 
@@ -157,6 +228,7 @@ def fetch_and_merge(
         # current run. A brand-new record has no prior status, but it must
         # still be written to the CURRENT sheets as CURRENT.
         rec["status"] = "CURRENT"
+        verified_fields = {}
 
         has_detail = False
         if plan["need_detail"]:
@@ -166,8 +238,12 @@ def fetch_and_merge(
                 has_detail = True
                 detail_completed_skus.append(sku)
                 for k, v in detail.items():
+                    if k == "original_price" and detail.get("current_price") is not None:
+                        rec[k] = v
+                        verified_fields[k] = "DETAIL_CURRENT_RUN"
                     if v is not None and v != "":
                         rec[k] = v
+                        verified_fields[k] = "DETAIL_CURRENT_RUN"
                 _mark_ckpt(done, ckpt_file, sku, detail)
             else:
                 rec["last_seen"] = _today()
@@ -176,6 +252,9 @@ def fetch_and_merge(
             light = plan["light"]
             for k in ("current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "product_url"):
                 v = light.get(k)
+                if k == "original_price" and k in light and light.get("current_price") is not None:
+                    rec[k] = v
+                    verified_fields[k] = "LISTING_CURRENT_RUN"
                 if v is None:
                     continue
                 if k == "raw_tags":
@@ -185,6 +264,10 @@ def fetch_and_merge(
                         rec[k] = build_badge_state(rec.get("raw_tags"), sku in nuevo_skus, sku in promo_skus)
                 elif v != "":
                     rec[k] = v
+                    verified_fields[k] = "LISTING_CURRENT_RUN"
+
+        rec = retain_historical_facts(base, rec,
+            reappeared=plan["reason"] == "REAPPEARED", verified_fields=verified_fields)
 
         changes.append({
             "sku": sku,
@@ -206,10 +289,17 @@ def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_
                 detail_evidence=None, evidence_context=None):
     cached = done.get(sku)
     if cached:
-        return cached.get("detail")
+        detail = cached.get("detail") or {}
+        if str(detail.get("sku") or sku) == str(sku):
+            return detail
     from .parser import fetch_product_detail
-    url = (plan.get("light") or {}).get("product_url") or ""
+    url = verified_detail_url(sku, plan.get("detail_url"),
+                              (plan.get("light") or {}).get("product_url"))
     if not url:
+        if detail_evidence is not None:
+            detail_evidence.append({**(evidence_context or {}), "sku": sku,
+                "url": "", "stage": "PRODUCT_DETAIL", "attempt": 0,
+                "error_type": "DETAIL_URL_MISSING", "navigation_attempted": False})
         return None
     state_before = access_controller.state.value if access_controller else "UNKNOWN"
     cooldown_probe_attempted = False
