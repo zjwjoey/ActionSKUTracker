@@ -84,6 +84,26 @@ class WorkflowV2Runner:
         self.source_readiness: dict[str, Any] = {}
 
     def run(self, *, resume: bool = False) -> WorkflowResult:
+        if not self.production_primary:
+            return self._run(resume=resume)
+        from ..services.runtime import RunLock
+        from ..database.integration import latest_commit_id
+        state_dir = Path((self.cfg.get('paths') or {}).get('state') or Path(self.cfg.get('project_root') or self.root) / 'runtime' / 'state')
+        self._production_lock = RunLock(state_dir)
+        self._production_lock.acquire(self.context.workflow_run_id, command='data-update-v2')
+        try:
+            self._expected_primary_head = latest_commit_id(self.temp_db)
+            return self._run(resume=resume)
+        finally:
+            self._production_lock.release()
+
+    def _assert_primary_head(self) -> None:
+        if self.production_primary:
+            from ..database.integration import latest_commit_id
+            if latest_commit_id(self.temp_db) != self._expected_primary_head:
+                raise ValueError('BASELINE_CHANGED_BEFORE_WORKFLOW_WRITE')
+
+    def _run(self, *, resume: bool = False) -> WorkflowResult:
         state_path = self.directory / "workflow_state.json"
         if resume and not state_path.exists():
             candidates = sorted(self.root.glob(f"*/{self.context.workflow_run_id}")) if self.root.exists() else []
@@ -96,6 +116,8 @@ class WorkflowV2Runner:
             state_path = self.directory / "workflow_state.json"
         if resume and state_path.exists():
             prior = json.loads(state_path.read_text(encoding="utf-8"))
+            if self.production_primary and (prior.get('business_date') != self.context.business_date or prior.get('workflow_run_id') != self.context.workflow_run_id):
+                raise ValueError('WORKFLOW_RESUME_IDENTITY_MISMATCH')
             prior_evidence = dict((prior.get("context") or {}).get("config_evidence") or {})
             current_hash = str((self.context.config_evidence or {}).get("effective_config_hash") or "")
             prior_hash = str(prior_evidence.get("effective_config_hash") or "")
@@ -110,6 +132,10 @@ class WorkflowV2Runner:
             self.source_readiness = self._load_json_artifact("source_readiness.json", {})
             if self.records is None and (self.directory / "records.json").exists(): self.records = json.loads((self.directory / "records.json").read_text(encoding="utf-8"))
             self._restore_artifacts()
+            if self.production_primary:
+                bound_head = self.context.localization_commit_id or self.context.source_commit_id
+                if bound_head and bound_head != self._expected_primary_head:
+                    raise ValueError('BASELINE_CHANGED_BEFORE_WORKFLOW_RESUME')
             self._prepare_translation_resume_recovery()
         self._persist_state("RUN_START")
         self._stage("PREFLIGHT", self._preflight)
@@ -169,7 +195,14 @@ class WorkflowV2Runner:
             self._persist_state(name)
             return
         self._persist_state(name, start=True)
-        try: result = fn()
+        try:
+            if self.production_primary:
+                self._production_lock.heartbeat()
+                self._assert_primary_head()
+            result = fn()
+            if self.production_primary and name == 'TRANSLATION_APPLY' and result.status == 'PASS':
+                from ..database.integration import latest_commit_id
+                self._expected_primary_head = latest_commit_id(self.temp_db)
         except Exception as exc: result = StageResult("FAILED", {"error": str(exc)}, type(exc).__name__)
         self.stages[name] = result
         if result.status in DEPENDENCY_SATISFIED:
@@ -198,7 +231,7 @@ class WorkflowV2Runner:
                 rows = db.execute(
                     "SELECT queue_id,official_sku,requested_fields,status FROM translation_queue "
                     "WHERE run_id=? AND status IN ('PENDING','RETRY') ORDER BY created_at",
-                    (self.context.workflow_run_id,),
+                    (self._translation_source_run_id(),),
                 ).fetchall()
         except sqlite3.OperationalError:
             return
@@ -276,6 +309,8 @@ class WorkflowV2Runner:
         stale head.  Resolve the run id from the recorded localization commit
         so the exporter reads the exact, current canary projection.
         """
+        if self.production_primary and not self.context.localization_commit_id:
+            return str(self.context.collection_run_id or self.context.workflow_run_id)
         if not self.context.localization_commit_id or not self.temp_db.exists():
             return self.context.workflow_run_id
         try:
@@ -336,6 +371,8 @@ class WorkflowV2Runner:
         only for persistence, while fields that are not ready in the current
         source are omitted from the translation source version.
         """
+        if self.production_primary:
+            return [dict(row) for row in self.records or []]
         merged = self._records_with_preserved_es()
         missing = {
             (str(item.get("sku") or ""), str(item.get("field") or ""))
@@ -431,6 +468,9 @@ class WorkflowV2Runner:
         this adapter only reads its dry-run snapshot and hands records to the
         isolated V2 stages.
         """
+        if self.production_primary:
+            from .fact_adapter import load_committed_daily_source
+            return load_committed_daily_source(cfg, business_date=business_date)
         from ..orchestrator.daily import run_daily
 
         result = run_daily(
@@ -482,6 +522,23 @@ class WorkflowV2Runner:
         if not self.context.source_ready: return StageResult("BLOCKED", {"reason": "SOURCE_NOT_READY"}, "SOURCE_NOT_READY")
         if self.production_primary and not self.temp_db.exists():
             return StageResult("BLOCKED", {"reason": "PRODUCTION_PRIMARY_MISSING", "database": str(self.temp_db)}, "PRODUCTION_PRIMARY_MISSING")
+        if self.production_primary:
+            from .fact_adapter import load_committed_daily_source
+            from ..exporting.service import canonical_source_hash
+            try:
+                source = load_committed_daily_source(self.cfg, business_date=self.context.business_date)
+                self._assert_primary_head()
+                if canonical_source_hash(self.records or []) != canonical_source_hash(source['records']):
+                    raise ValueError('WORKFLOW_V2_FACTS_DIFFER_FROM_COMMITTED_DAILY')
+            except Exception as exc:
+                return StageResult('BLOCKED', {'reason': str(exc), 'fact_write_attempts': 0}, 'WORKFLOW_V2_FORMAL_FACT_COMMIT_FORBIDDEN')
+            self.context.collection_run_id = source['collection_run_id']
+            self.context.extraction_run_id = source['extraction_run_id']
+            self.context.source_commit_id = source['primary_head']
+            return StageResult('PASS', {'state': 'VERIFIED_DAILY_FACT_COMMIT_REUSED',
+                'commit_id': source['fact_commit_id'], 'base_commit_id': source['primary_head'],
+                'collection_run_id': source['collection_run_id'], 'fact_write_attempts': 0,
+                'collection_quality': 'PASS', 'fact_ready': self.context.fact_ready})
         from ..database.production import CommitBundle, ProductionWriter
         from ..services.hashing import localization_field_source_hashes, localization_source_hash
         self.temp_db.parent.mkdir(parents=True, exist_ok=True)
@@ -550,6 +607,9 @@ class WorkflowV2Runner:
     def _default_detail_adapter(self, *, records: list[dict[str, Any]], plan: list[dict[str, Any]],
                                 business_date: str, workflow_run_id: str) -> dict[str, Any]:
         """Use the established detail-retry/apply contract on the canary DB."""
+        if self.production_primary:
+            return {'records': records, 'pending': [str(row.get('sku') or '') for row in plan],
+                    'status': 'DAILY_DETAIL_RETRY_REQUIRED'}
         parent_run_id = str(self.context.extraction_run_id or "")
         if not parent_run_id or not self.cfg.get("paths"):
             return {"records": records, "pending": [str(row.get("sku") or "") for row in plan], "status": "NOT_CONFIGURED"}
@@ -598,8 +658,8 @@ class WorkflowV2Runner:
         configured_ai = dict((self.cfg.get("localization") or {}).get("ai") or {})
         allow_configured_provider = bool(self.auto_translation and self.provider is None and configured_ai.get("enabled"))
         self.translation_runtime = build_translation_runtime(self._runtime_cfg(), db_path=self.temp_db, allow_provider=allow_configured_provider)
-        result = self.translation_runtime.registry.ingest_records(self._records_for_registry(), source_run_id=self.context.workflow_run_id, observed_at=self.context.business_date)
-        return StageResult("PASS", {"registry": "TranslationRegistryV1", **result, "production_registry_write": False})
+        result = self.translation_runtime.registry.ingest_records(self._records_for_registry(), source_run_id=self._translation_source_run_id(), observed_at=self.context.business_date)
+        return StageResult("PASS", {"registry": "TranslationRegistryV1", **result, "production_registry_write": self.production_primary, "formal_chinese_changes": 0})
     def _translation_plan(self) -> StageResult:
         if self.translation_runtime is None: self._registry_ingest()
         from ..database.connection import connect
@@ -611,11 +671,14 @@ class WorkflowV2Runner:
             rows = [dict(row) for row in db.execute(
                 "SELECT official_sku AS sku, requested_fields, source_hash, reason "
                 "FROM translation_queue WHERE run_id=? AND status IN ('PENDING','RETRY') ORDER BY created_at",
-                (self.context.workflow_run_id,),
+                (self._translation_source_run_id(),),
             ).fetchall()]
         self.translation_plan = rows
         _write_json(self.directory / "translation_plan.json", rows); _write_csv(self.directory / "translation_plan.csv", rows)
         return StageResult("PASS", {"queued": len(rows), "registry_queue": True})
+
+    def _translation_source_run_id(self) -> str:
+        return str(self.context.collection_run_id or self.context.workflow_run_id) if self.production_primary else self.context.workflow_run_id
     def _qwen_translate(self) -> StageResult:
         if not self.translation_plan: return StageResult("PASS", {"called": 0, "reason": "NO_CHANGED_FIELDS"})
         if not self.auto_translation: return StageResult("SKIPPED", {"reason": "AUTO_TRANSLATION_DISABLED", "queued": len(self.translation_plan)})
@@ -632,7 +695,7 @@ class WorkflowV2Runner:
         result = self.translation_runtime.worker.process_once(
             limit=batch_limit,
             worker_id=f"workflow-v2:{self.context.workflow_run_id}",
-            run_id=self.context.workflow_run_id,
+            run_id=self._translation_source_run_id(),
         )
         from ..database.connection import connect
         canonical_to_field = {"name": "name", "cat1": "cat1", "cat2": "cat2", "spec": "spec", "description": "description", "details": "details"}
@@ -648,7 +711,7 @@ class WorkflowV2Runner:
                         WHEN 'cat2_es' THEN 'cat2' WHEN 'spec_es' THEN 'spec'
                         WHEN 'desc_es' THEN 'description' WHEN 'details_es' THEN 'details'
                     END
-                WHERE q.run_id=? AND q.status='COMPLETED'""", (self.context.workflow_run_id,)).fetchall()
+                WHERE q.run_id=? AND q.status='COMPLETED'""", (self._translation_source_run_id(),)).fetchall()
         for row in revisions:
             item = grouped.setdefault(str(row[0]), {"sku": str(row[0]), "status": "PASS", "fields": {}, "source_hash": str(row[4]), "qa": {"status": str(row[5]), "overall_ready": True}})
             item["fields"][canonical_to_field.get(str(row[1]), str(row[1]))] = str(row[3] or "")
@@ -663,7 +726,7 @@ class WorkflowV2Runner:
         with connect(self.temp_db) as db:
             remaining = int(db.execute(
                 "SELECT COUNT(*) FROM translation_queue WHERE run_id=? AND status IN ('PENDING','RETRY','CLAIMED')",
-                (self.context.workflow_run_id,),
+                (self._translation_source_run_id(),),
             ).fetchone()[0])
         provider_calls = result.completed + result.retried + result.failed + result.blocked
         details = {"called": provider_calls, "provider_calls": provider_calls, "batch_limit": batch_limit, "queued": len(self.translation_plan), "remaining": remaining, "worker": result.as_dict()}
@@ -714,7 +777,7 @@ class WorkflowV2Runner:
                         WHEN 'cat2_es' THEN 'cat2' WHEN 'spec_es' THEN 'spec'
                         WHEN 'desc_es' THEN 'description' WHEN 'details_es' THEN 'details'
                     END
-                WHERE q.run_id=? AND q.status='COMPLETED'""", (self.context.workflow_run_id,)).fetchall()
+                WHERE q.run_id=? AND q.status='COMPLETED'""", (self._translation_source_run_id(),)).fetchall()
         for row in rows:
             ready = bool(self.context.source_ready and self.context.source_commit_id
                          and str(row[5] or "").upper() == "PASS"
@@ -757,7 +820,7 @@ class WorkflowV2Runner:
         staged = store.stage_approved_registry_patches(
             expected_base_commit_id=self.context.source_commit_id,
             actor="human:workflow-v2-local-canary",
-            queue_run_id=self.context.workflow_run_id,
+            queue_run_id=self._translation_source_run_id(),
         )
         from ..database.production import apply_approved_localization_patches
         applied = apply_approved_localization_patches(self.temp_db, patch_ids=staged["patch_ids"], expected_base_commit_id=self.context.source_commit_id, actor="service:workflow-v2-local-canary", run_id=f"{self.context.workflow_run_id}-localization-apply") if staged["patch_ids"] else {"applied_fields": 0}
@@ -799,7 +862,7 @@ class WorkflowV2Runner:
                        JOIN translation_units u ON u.current_revision_id=r.revision_id
                        JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
                       WHERE s.source_run_id=?""",
-                    (self.context.workflow_run_id,),
+                    (self._translation_source_run_id(),),
                 ).fetchall()
             approved_fields: dict[str, set[str]] = {}
             approved_hash: dict[str, str] = {}

@@ -18,9 +18,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="action_tracker", description="Action 西班牙站商品每日监测程序")
     sub = p.add_subparsers(dest="command")
 
-    d = sub.add_parser("daily-run", help="每日运行")
+    d = sub.add_parser("daily-run", help="采集诊断；SQLite PRIMARY 正式入口使用 data-update")
     d.add_argument("--dry-run", action="store_true", default=None, help="只出证据不写 Master")
-    d.add_argument("--no-dry-run", dest="dry_run", action="store_false", help="允许正式写 Master")
+    d.add_argument("--no-dry-run", dest="dry_run", action="store_false", help="旧模式写入；SQLite PRIMARY 拒绝此入口")
     d.add_argument("--fetch-details", action="store_true", default=None)
     d.add_argument("--no-fetch-details", dest="fetch_details", action="store_false")
     d.add_argument("--max-categories", type=int, default=None)
@@ -172,7 +172,7 @@ def build_parser() -> argparse.ArgumentParser:
     ls.add_argument("--output", required=True)
     ls.add_argument("--minimal", action="store_true", help="执行官方最小 Qwen-MT wire smoke，不带 domains/terms/TM")
     tr = sub.add_parser("translation-status", help="显示翻译注册表队列状态")
-    tw = sub.add_parser("translation-worker", help="消费翻译队列并写入 Shadow Registry（不写 PRIMARY）")
+    tw = sub.add_parser("translation-worker", help="消费翻译队列并登记候选，不应用正式中文")
     tw.add_argument("--limit", type=int, default=50)
     tw.add_argument("--worker-id", default="localization-worker")
     tw.add_argument("--provider", action="store_true", help="显式允许本次 Worker 调用已配置 Provider")
@@ -254,7 +254,8 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--date", help="业务日期；默认 Europe/Madrid 当日")
     pr.add_argument("--resume", action="store_true")
     pr.add_argument("--run-id", help="恢复时指定精确的 operations run ID")
-    pr.add_argument("--from-step", choices=("PREFLIGHT", "BACKUP", "COLLECTION", "QA", "DB_COMMIT", "EXPORT", "IMAGE", "KNOWLEDGE", "AI", "AUTO_APPROVAL", "REVIEW", "REPORT"))
+    from .operations.contracts import STEP_ORDER
+    pr.add_argument("--from-step", choices=STEP_ORDER)
     pr.add_argument("--dry-run", action="store_true")
     pr.add_argument("--no-network", action="store_true")
     du = sub.add_parser("data-update", help="每日数据更新主链（production-run 兼容别名）")
@@ -266,7 +267,7 @@ def build_parser() -> argparse.ArgumentParser:
     w2.add_argument("--dry-run", action="store_true", default=True); w2.add_argument("--no-dry-run", dest="dry_run", action="store_false")
     w2.add_argument("--canary", action="store_true", help="允许仅针对显式临时 SQLite 的本地 apply")
     w2.add_argument("--production-apply", action="store_true", help="在全部生产开关开启后写入配置的 SQLite PRIMARY")
-    w2.add_argument("--production-translation", action="store_true", help="Phase 1：写入 PRIMARY 西语事实与翻译队列，但禁止 localization apply/export")
+    w2.add_argument("--production-translation", action="store_true", help="处理已提交 daily-run 的增量翻译队列，不独立写入生产事实")
     w2.add_argument("--temp-db", help="本地 canary 临时 SQLite 路径；production-apply 不使用")
     w2.add_argument("--no-network", action="store_true")
     w2.add_argument("--fake-provider", action="store_true"); w2.add_argument("--fixture", help="离线 JSON fixture")
@@ -288,6 +289,10 @@ def build_parser() -> argparse.ArgumentParser:
     ops_sub = ops.add_subparsers(dest="ops_command", required=True)
     ops_sub.add_parser("status"); ops_sub.add_parser("health"); ops_sub.add_parser("runs"); ops_run = ops_sub.add_parser("run"); ops_run.add_argument("run_id")
     ops_serve = ops_sub.add_parser("serve"); ops_serve.add_argument("--host", default="127.0.0.1"); ops_serve.add_argument("--port", type=int, default=8787)
+    rr = sub.add_parser("registry-retry", help="精确恢复失败 run 的 Registry ingest；不重新采集或翻译")
+    rr.add_argument("--run-id", required=True)
+    rr.add_argument("--commit-id", required=True)
+    rr.add_argument("--date", required=True)
     return p
 
 
@@ -1203,6 +1208,11 @@ def main(argv=None) -> int:
         provider = FakeTranslationProvider(mapping=(fixture.get("fake_translations") or {}) if isinstance(fixture, dict) else {})
         result = run_local_canary(record=records[0], provider=provider, output_dir=Path(args.output))
         print(json.dumps(result, ensure_ascii=False)); return 0 if result["status"] == "PASS" else 20
+    if args.command == "registry-retry":
+        from .operations.registry import retry_registry
+        result = retry_registry(cfg, source_run_id=args.run_id, fact_commit_id=args.commit_id, business_date=args.date)
+        print(json.dumps(result, ensure_ascii=False))
+        return 0 if result['status'] == 'SUCCESS' else 10
     if args.command in ("production-run", "data-update"):
         from .operations.entry import run_production
         from .services.runtime import observation_date

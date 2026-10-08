@@ -17,6 +17,11 @@ from .service import (
     ExportValidationError,
     ExportSource,
     PREVIEW,
+    PRODUCTION_RELEASE,
+    export_output_path,
+    validate_preview_destination,
+    validate_production_release,
+    _json_digest,
     build_es_rows,
     build_final_zh_projection,
     canonical_export_rows_hash,
@@ -67,7 +72,8 @@ def export_template1(
             records=tuple(records), source_master_file_hash=source.source_master_file_hash,
             directory=source.directory, source_commit_id=source.source_commit_id,
         )
-        final_zh = build_final_zh_projection(cfg, template_source, release_mode=PREVIEW)
+        mode = PRODUCTION_RELEASE if research_release else PREVIEW
+        final_zh = build_final_zh_projection(cfg, template_source, release_mode=mode)
         zh_rows = [dict(row) for row in final_zh.rows]
         fallback_counts = final_zh.fallback_counts
         repair_report = final_zh.repair_report
@@ -76,6 +82,7 @@ def export_template1(
         validate_zh_rows_against_source(zh_rows, records)
         validate_output_rows(es_rows)
         validate_output_rows(zh_rows)
+        release_audit = validate_production_release(cfg, template_source, zh_rows) if research_release else None
         if research_release and not bool(repair_audit.get("release_ready")):
             raise ExportValidationError(
                 "TEMPLATE1_EXPORT_REPAIR_GATE_FAILED:"
@@ -105,8 +112,8 @@ def export_template1(
     suffix = "带图" if with_images else "不带图"
     name = f"{date_compact}Action商品全量_三表版_{suffix}.xlsx"
     if selection_id: name = name.replace(".xlsx", f"_Selection_{selection_id}.xlsx")
-    output = Path(cfg["paths"]["exports"]) / name
-    temporary = output.with_name(f".{output.stem}.preview.xlsx")
+    output = export_output_path(cfg, name, mode)
+    temporary = output.with_name(f".{output.stem}.{uuid.uuid4().hex}.preview.xlsx")
     image_root = None
     if with_images:
         image_cfg = cfg.get("images") or {}
@@ -142,6 +149,11 @@ def export_template1(
     manifest = {
         "template_id": "action_full_template_1",
         "template_version": 1,
+        "release_mode": mode.casefold(),
+        "output_file": output.name,
+        "output_sha256": hashlib.sha256(temporary.read_bytes()).hexdigest(),
+        "strict_release_audit": release_audit,
+        "repair_report_digest": _json_digest(repair_report.as_dict()),
         "export_date": export_date,
         "run_id": source.run_id,
         "source_kind": source.kind,
@@ -183,6 +195,8 @@ def export_template1(
         },
     }
     try:
+        if mode == PREVIEW:
+            validate_preview_destination(output)
         _publish_export_bundle(
             temporary, output, manifest_path, manifest,
             repair_report_path=repair_report_path, repair_report=repair_report.as_dict(),

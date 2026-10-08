@@ -242,8 +242,9 @@ def run_daily(
 
     # ---- 基线与状态 ----
     master = paths["master"]
-    from ..database.integration import database_path, storage_mode
+    from ..database.integration import database_path, storage_mode, latest_commit_id
     configured_storage_mode = storage_mode(cfg)
+    expected_base_commit_id = latest_commit_id(database_path(cfg)) if configured_storage_mode == "SQLITE_PRIMARY" else None
     if configured_storage_mode == "SQLITE_PRIMARY":
         # PRIMARY reads come from the same V2 database that will receive this
         # run. Excel/CSV are compatibility projections and are not consulted
@@ -585,7 +586,8 @@ def run_daily(
                 today_records=today_records, price_events=price_events, event_events=event_events,
                 run_log_row=run_log_row, review_rows=review_rows,
                 baseline=baseline, today_set=today_set, observation_complete=observation_complete,
-                snapshot_path=snap_dir, sqlite_diagnostics=sqlite_diagnostics, run_report=run_report)
+                snapshot_path=snap_dir, sqlite_diagnostics=sqlite_diagnostics, run_report=run_report,
+                expected_base_commit_id=expected_base_commit_id, enforce_expected_base=(configured_storage_mode == "SQLITE_PRIMARY"))
         else:
             shadow_status = str((run_report.get("workflow_v2_shadow") or {}).get("status") or "").upper()
             commit_status = (
@@ -611,6 +613,7 @@ def run_daily(
             "collection_run_id": _run_context.get("collection_run_id") or run_id,
             "run_report": run_report, "qa": qa.to_dict(),
             "commit_status": commit_status, "commit_id": sqlite_diagnostics.get("commit_id"),
+            "registry": sqlite_diagnostics.get("translation_registry") or {},
             "snapshot_dir": str(snap_dir)}
 
 
@@ -822,6 +825,8 @@ def _commit_phase(
     observation_complete: bool = True,
     snapshot_path: Path | None = None,
     sqlite_diagnostics: dict[str, Any] | None = None,
+    expected_base_commit_id: str | None = None,
+    enforce_expected_base: bool = False,
 ) -> str:
     """QA PASS 后的统一提交：known_skus + Master 先各自暂存验证，再原子替换，最后重生成 offline_skus。
 
@@ -863,6 +868,11 @@ def _commit_phase(
                 snapshot_path=snapshot_path,
             )
             if mode == "SQLITE_PRIMARY":
+                if enforce_expected_base:
+                    from dataclasses import replace
+                    # Freeze the head captured before reading lifecycle and facts.
+                    # Empty initial databases use the writer's explicit empty-head sentinel.
+                    sqlite_bundle = replace(sqlite_bundle, base_commit_id=expected_base_commit_id or "", bundle_hash=None)
                 diagnostics["status"] = "COMMITTING"
                 diagnostics["commit_id"] = commit_daily_bundle(cfg, sqlite_bundle, mode=mode)
                 diagnostics["status"] = "COMMITTED"
@@ -951,9 +961,15 @@ def _commit_phase(
                 from ..localization.registry.repository import LocalizationRegistry
                 registry_result = LocalizationRegistry(database_path(cfg), role="PRIMARY").ingest_records(
                     today_records.values(), source_run_id=run_id, observed_at=run_date)
-                diagnostics["translation_registry"] = {**registry_result, "production_writes": False}
+                diagnostics["translation_registry"] = {**registry_result, "status": "SUCCESS", "production_writes": False}
             except Exception as exc:
                 diagnostics["translation_registry"] = {"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}
+            from ..operations.registry import record_registry_status
+            try:
+                record_registry_status(cfg, source_run_id=run_id, fact_commit_id=diagnostics["commit_id"],
+                    business_date=run_date, result=diagnostics["translation_registry"])
+            except Exception as exc:
+                diagnostics["translation_registry"] = {"status": "FAILED", "error": f"REGISTRY_STATUS_PERSIST_FAILED:{exc}", "retryable": True}
         try:
             diagnostics["export_sync"] = acknowledge_compatibility_exports(cfg, diagnostics["commit_id"])
             if diagnostics["export_sync"].get("status") != "SUCCESS":

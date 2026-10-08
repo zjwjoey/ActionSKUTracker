@@ -104,7 +104,10 @@ class ProductionRunner:
 
     def _load_state(self) -> dict:
         if not self.state_path.exists(): raise FileNotFoundError("RUN_STATE_MISSING")
-        return json.loads(self.state_path.read_text(encoding="utf-8"))
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        if state.get('business_date') != self.business_date or state.get('run_id') != self.run_id:
+            raise ValueError('RESUME_RUN_ID_OR_BUSINESS_DATE_MISMATCH')
+        return state
 
     def _save(self, state: dict) -> None:
         state["started_at"] = state.get("started_at") or datetime.now().isoformat()

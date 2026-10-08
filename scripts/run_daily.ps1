@@ -1,5 +1,5 @@
-# 每日运行（Windows 计划任务可调用）
-# 用法:  powershell -ExecutionPolicy Bypass -File scripts\run_daily.ps1 [-DryRun] [-Mode dry|full]
+# 兼容旧调用：-DryRun 采集诊断；默认委托正式 Operations 入口。
+# 正式计划任务请直接使用 scripts/run_production_daily.ps1。
 param(
     [switch]$DryRun
 )
@@ -13,5 +13,6 @@ $env:PYTHONPATH = Join-Path $root "src"
 if ($DryRun) {
     python -m action_tracker daily-run --dry-run
 } else {
-    python -m action_tracker daily-run --no-dry-run
+    & (Join-Path $PSScriptRoot "run_production_daily.ps1") -ProjectRoot $root
 }
+exit $LASTEXITCODE

@@ -92,3 +92,5 @@ tests/workflow_v2/test_workflow_fail_closed.py
 tests/workflow_v2/test_workflow_resume.py
 tests/workflow_v2/test_production_phase1_state_machine.py
 tests/workflow_v2/test_runtime_closure.py
+tests/workflow_v2/test_review_approval.py
+tests/test_repository_closure.py
