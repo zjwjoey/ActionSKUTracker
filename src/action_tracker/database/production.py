@@ -163,7 +163,7 @@ class ProductionWriter:
                 latest_id = str(latest[0]) if latest else None
                 if bundle.requires_collection_integrity:
                     self._validate_collection_quality_evidence(db, bundle)
-                if bundle.base_commit_id is not None and bundle.base_commit_id != latest_id:
+                if bundle.base_commit_id is not None and (bundle.base_commit_id or None) != latest_id:
                     raise ProductionDatabaseError("BASELINE_CHANGED_BEFORE_COMMIT")
                 self._validate_localization_coverage(db, bundle)
                 self._insert_run(db, bundle, now)
@@ -198,7 +198,8 @@ class ProductionWriter:
                 raise
         return commit_id
 
-    def _validate_collection_quality_evidence(self, db: sqlite3.Connection, bundle: CommitBundle) -> None:
+    @staticmethod
+    def _validate_collection_quality_evidence(db: sqlite3.Connection, bundle: CommitBundle) -> None:
         """Bind the commit to the exact persisted collection-quality evidence.
 
         The evaluator owns calculation and persistence.  The writer only

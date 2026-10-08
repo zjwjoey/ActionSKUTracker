@@ -1,48 +1,32 @@
-# Action SKU Tracker 当前状态
+# 当前仓库与生产状态
 
-更新时间：2026-10-03
-基线：`origin/main@b47e4c56a0274fdddceff347e2571d77c1476014`
+快照截止：2026-10-08。本文件记录已核实生产基线及本轮分支合同，不追逐文档自身提交 SHA。
 
-## Canonical branch
+## 已冻结生产
 
-`main@b47e4c56a0274fdddceff347e2571d77c1476014`
+- origin/main：231550eb74d24c927e100bc585aa728bf7ab7f19。
+- 标签 production/phase1-3-20261007 指向该 SHA。
+- 历史本地完整测试 826、该基线 Ubuntu/Windows CI-safe 各 823。
+- Phase 1–3 曾在真实 PRIMARY 验收并发布当次 5,626 SKU；数量不是永久业务规则。
+- 正式入口 data-update/production-run，SQLite PRIMARY 权威，Excel/State 为兼容投影。
 
-## 稳定主线
+## 本轮候选
 
-- SQLite PRIMARY 是生产主链和唯一正式读事实源。
-- Excel、CSV 和导出文件是兼容投影或只读交付物，必须绑定当前 committed head 并通过 `export_sync`。
-- 主链顺序为：官网证据采集 → Presence 冻结 → Lifecycle → QA → Snapshot/Staging → CommitBundle/事务 → SQLite PRIMARY → 兼容投影/只读导出。
-- Detail 只补充字段，不改变 Presence、CURRENT、MISSING 或 OFFLINE 结论。
-- `F:\按日期整理` 与历史 Master 只读；生产 runtime 不进入 Git。
+fix/post-production-repository-closure-20261008 从核实 main 建立，在独立 checkout 开发。
 
-## 中文本地化安全边界
+1. Preview 独立目录、可信摘要，保护正式/未知三件套。
+2. Template 1 共用完整 Release Gate。
+3. V2 正式 FACT_COMMIT 验证并复用已提交同日 daily；禁止部分 bundle 独立写 PRIMARY。独立 canary 仍只写临时库。
+4. Registry FAILED/PENDING 独立后续状态，Operations DEGRADED，按 run/commit/date 幂等恢复。
+5. Operations 传业务日期；daily 计算前冻结 base；V2 共用运行锁及 head 校验。
+6. 更新入口、恢复、部署、回滚合同，审批回归加入 CI。
 
-- 中文是西语官网事实的派生数据；西语事实、SKU、价格、链接、型号、技术 token、数字和单位不可被翻译流程改写。
-- 正式中文采用 NO_BRAND 展示策略：品牌/IP 留在内部证据、QA 和术语上下文，正式展示字段不显示品牌。
-- 缺失、过期、源损坏或未确认字段保持 `PENDING`/`REVIEW_REQUIRED`；不得把西语复制到正式中文。
-- `display_fallback=ES` 仅为展示提示，不能改变审批、QA 或 release readiness。
-- 当前安全默认值：production apply、auto approval、AI provider 和 Spanish fallback 均关闭。
+部署状态：候选尚未合并 main，也未替换今日生产代码或重启任务。实际 full/CI-safe 数量、final SHA、exact-head CI 和副本证据位于本轮 runtime/reports/post_production_repository_closure_20261008/；runtime 不提交 Git。
 
-## 当前代码状态
+今日实际执行代码位于 F:\ActionSKUTracker_workflow_v2，分支 fix/workflow-v2-phase3-final-closure，HEAD 3d28f0b356ded3fd2b5d24862954b581e0ef60f5。已冻结 main 基线和当前运行 checkout 是不同身份；额外 snapshot-ingest 尚不属于本轮主线候选。该 checkout 本轮保持不变。
 
-- Translation System V1 安全默认值已在主线合并。
-- 本闭环工作在 `chore/repository-consolidation-closure-v1`，从上述基线创建并已推送；本分支只提交文档、审计和安全的实验分支编排，不执行生产采集、apply 或导出写回。
-- CI 白名单来自 `tests/ci_safe_tests.txt`；完整回归和 CI-safe 回归均需使用临时 fixture，不触碰生产 PRIMARY。
+## 外部治理与排除范围
 
-## 待审计边界
+main protection 只读查询显示未保护；建议 PR required、Ubuntu/Windows required、禁止 force push/delete，变更须 Owner 授权。PR #5 Selective Workflow V2 runtime backport 已被生产主线取代，建议另行关闭，本轮未合并/关闭。3d28f0b snapshot-ingest 不纳入本轮，须专项审查。
 
-- 远端旧分支保留用于证据和 owner review；本闭环不删除分支、不移动 recovery tag、不直接修改或推送 main。
-- Stage6 provenance 已在 `fix/stage6-provenance-v2` 验证，Scrapling detail shadow 已在 `experiment/scrapling-detail-shadow-v3` 验证；实验依赖只能放在 `requirements-experiments/`，不得进入生产链。
-- 命名历史只做迁移盘点，不直接合并旧分支。
-
-## 当前已知缺口
-
-- GitHub `main` 尚未配置 branch protection/ruleset，需要管理员配置 PR、required checks、禁止 force-push 和禁止删除。
-- 任何真实 daily-run、官网采集、production apply 和真实生产数据验收均不属于本闭环，仍需单独运行与审批。
-
-## 证据位置
-
-- 架构与边界：`docs/ARCHITECTURE.md`、`docs/DATA_MODEL.md`、`docs/QA_RULES.md`
-- 分支清单：`docs/audits/REPOSITORY_BRANCH_INVENTORY_20261003.md`
-- 本轮预检：`docs/audits/REPOSITORY_CLOSURE_PREFLIGHT_20261003.md`
-- 本轮闭环：`docs/audits/REPOSITORY_CLOSURE_20261003.md`
+本轮不注册任务、不重新采集、不调用新 Qwen、不修今日数据、不恢复 PRIMARY。参见 [README](../README.md)、[Operations](OPERATIONS_RUNBOOK_V2.md)。

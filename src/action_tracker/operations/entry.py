@@ -43,6 +43,8 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
                         "commit_status": details.get("commit_status", ""),
                         "commit_id": details.get("commit_id"),
                         "qa": details.get("qa") or {},
+                        "business_date": details.get("business_date"),
+                        "registry": details.get("registry") or {},
                     }
             except (OSError, json.JSONDecodeError):
                 pass
@@ -53,8 +55,11 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
         # business chain. Operations wraps it; it never creates a second
         # crawler or product writer.
         from ..orchestrator.daily import run_daily
-        result = run_daily(cfg, dry_run=dry_run, fetch_details=True, _skip_lock=True)
+        result = run_daily(cfg, dry_run=dry_run, fetch_details=True, _skip_lock=True, business_date=business_date)
         delegated["result"] = result
+        actual_date = result.get("business_date") or result.get("run_date")
+        if actual_date and str(actual_date) != business_date:
+            return StepResult("BLOCKED", {"expected": business_date, "actual": actual_date}, error_code="COLLECTION_BUSINESS_DATE_MISMATCH")
         qa = result.get("qa") or {}
         commit_status = str(result.get("commit_status") or "")
         if not bool(qa.get("passed")) and not dry_run:
@@ -72,7 +77,29 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
                 "qa": qa,
                 "reason": "FORMAL_COMMIT_NOT_CONFIRMED",
             }, error_code="FORMAL_COMMIT_NOT_CONFIRMED")
-        return StepResult("SUCCESS", {"delegated": True, "delegated_run_id": result.get("run_id"), "commit_status": commit_status, "commit_id": result.get("commit_id"), "qa": qa})
+        registry = result.get("registry") or ((result.get("run_report") or {}).get("sqlite") or {}).get("translation_registry") or {}
+        result["registry"] = registry
+        return StepResult("SUCCESS", {"delegated": True, "delegated_run_id": result.get("run_id"), "business_date": actual_date, "registry": registry, "commit_status": commit_status, "commit_id": result.get("commit_id"), "qa": qa})
+
+    def registry_step() -> StepResult:
+        if dry_run or not (cfg.get("localization") or {}).get("registry_enabled", True):
+            return StepResult("SKIPPED", {"reason": "REGISTRY_DISABLED_OR_DRY_RUN"})
+        result = delegated.get("result") or {}
+        registry = dict(result.get("registry") or {})
+        status = str(registry.get("status") or "PENDING").upper()
+        if status != "SUCCESS" and resume:
+            from .registry import _retry_registry_unlocked
+            try:
+                registry = _retry_registry_unlocked(cfg, source_run_id=str(result.get("run_id") or ""),
+                    fact_commit_id=str(result.get("commit_id") or ""), business_date=business_date)
+                status = registry["status"]
+            except Exception as exc:
+                registry = {**registry, "error": str(exc), "status": "FAILED"}
+                status = "FAILED"
+        details = {**registry, "source_run_id": result.get("run_id"), "fact_commit_id": result.get("commit_id"),
+                   "business_date": business_date, "registry_status": status}
+        return StepResult("SUCCESS" if status == "SUCCESS" else "FAILED", details,
+                          retryable=status != "SUCCESS", error_code=None if status == "SUCCESS" else "REGISTRY_INGEST_PENDING")
 
     def delegated_run_id() -> str | None:
         result = delegated.get("result") or {}
@@ -144,6 +171,7 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
         "COLLECTION": collect_existing_chain,
         "QA": qa_step,
         "DB_COMMIT": db_commit_step,
+        "REGISTRY": registry_step,
         "EXPORT": export_step,
         "IMAGE": image_step,
         "KNOWLEDGE": knowledge_step,

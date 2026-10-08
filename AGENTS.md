@@ -57,6 +57,11 @@
 
 ## 6. Export 边界
 
+- 普通 PREVIEW 仅写 `paths.exports/preview/`，不能覆盖正式或未知三件套；重复预览须验证已有 manifest 文件摘要。
+- Catalog 与 Template 1 PRODUCTION_RELEASE 共用完整 Gate，不以部分 Repair Audit 代替。
+- V2 production FACT_COMMIT 只复用经 QA/Collection Quality 验证的同日 daily，禁止部分事实包独立写 PRIMARY；独立 bundle 仅限临时 canary。
+- 正式入口共享 `paths.state/daily-run.lock`，提交绑定计算前 PRIMARY head。Registry 失败保留合法事实并明确 DEGRADED，只恢复来源仍一致的失败 run。
+
 - Export 是只读交付层，不访问官网、不翻译、不下载图片、不写回 Master/State/Dictionary。
 - 正式 Export 只接受 QA PASS（含已定义的 PASS_PRESENCE_ONLY）和 FULL_COMMIT 来源。
 - 当日在售数量取正式 Listing/CURRENT 有效集合，不取 Sitemap 原始数量。

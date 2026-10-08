@@ -80,7 +80,7 @@ QA FAIL / dry-run
   └─ 保留 Snapshot、Staging、报告；不写 Master/State
 
 QA PASS / PASS_PRESENCE_ONLY + 非 dry-run
-  └─ 原子更新 Master 和跨日 State
+  └─ Collection Quality + 预期 base → PRIMARY 事务 → Master/State 兼容投影
 ```
 
 Detail 完整性单独记录。Presence 完整且已冻结后，Detail 中断不否定当日 CURRENT。
@@ -167,7 +167,9 @@ Template 1：
 | `review_queue.py` | 审核闭环 |
 | `term_candidates.py` | 术语候选 |
 | `exporting/` | 只读导出、校验和 Excel 写入 |
-| `database/` | 冻结的 SQLite 脚手架 |
+| `database/` | 正式 SQLite PRIMARY 事务、来源版本、immutable patch 与兼容投影 |
+| `operations/` | 唯一 daily 正式编排、Registry 状态与精确恢复 |
+| `workflow_v2/` | 已提交 daily 来源复用、增量中文与严格发布编排 |
 
 专题细节见 `LIFECYCLE_ARCHITECTURE.md`、`DICTIONARY_ARCHITECTURE.md` 和 `EXPORT_ARCHITECTURE.md`。
 

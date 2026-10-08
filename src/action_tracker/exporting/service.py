@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import tempfile
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -41,6 +42,75 @@ class ExportValidationError(ValueError):
 PREVIEW = "PREVIEW"
 PRODUCTION_RELEASE = "PRODUCTION_RELEASE"
 _HASHED_ZH_COLUMNS = ("编号", "标题", "分类1", "分类2", "规格", "单价", "描述", "产品详情", "折后价", "原价", "图片链接", "商品链接")
+
+
+def export_output_path(cfg: dict[str, Any], filename: str, mode: str) -> Path:
+    """Preview has a dedicated namespace; existing unknown bundles are protected."""
+    mode = _release_mode(mode)
+    root = Path(cfg["paths"]["exports"]).resolve()
+    directory = root / "preview" if mode == PREVIEW else root
+    if directory.resolve() != directory:
+        raise ExportValidationError("EXPORT_DIRECTORY_ALIAS_FORBIDDEN")
+    output = directory / filename
+    if output.name != filename or output.resolve().parent != directory:
+        raise ExportValidationError("EXPORT_PATH_OUTSIDE_PUBLICATION_DIRECTORY")
+    if mode == PREVIEW:
+        validate_preview_destination(output)
+    return output
+
+
+def validate_preview_destination(output: Path) -> None:
+    paths = (output, output.with_suffix(".manifest.json"), output.with_suffix(".repair-report.json"))
+    if not any(path.exists() or path.is_symlink() for path in paths):
+        return
+    try:
+        manifest = json.loads(paths[1].read_text(encoding="utf-8"))
+        trusted = (
+            not any(path.is_symlink() for path in paths)
+            and manifest.get("release_mode") == "preview"
+            and manifest.get("output_file") == output.name
+            and output.is_file()
+            and manifest.get("output_sha256") == hashlib.sha256(output.read_bytes()).hexdigest()
+        )
+        if paths[2].exists():
+            repair = json.loads(paths[2].read_text(encoding="utf-8"))
+            trusted = trusted and manifest.get("repair_report_digest") == _json_digest(repair)
+        elif manifest.get("repair_report_digest"):
+            trusted = False
+    except (OSError, ValueError, TypeError, AttributeError):
+        trusted = False
+    if not trusted:
+        raise ExportValidationError("PREVIEW_EXISTING_ARTIFACT_UNTRUSTED")
+
+
+def _json_digest(value: Any) -> str:
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
+def validate_production_release(cfg: dict[str, Any], source: "ExportSource", rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """The same complete strict gate for catalog and Template 1 publication."""
+    if source.kind != "SQLITE_CURRENT":
+        raise ExportValidationError("PRODUCTION_RELEASE_REQUIRES_SQLITE_CURRENT")
+    validate_spanish_source_fields(source.records)
+    validate_zh_rows_against_source(rows, source.records)
+    if [str(row.get('编号') or '') for row in rows] != [str(row.get('编号') or '') for row in build_es_rows(source.records)]:
+        raise ExportValidationError('RESEARCH_RELEASE_ES_ZH_ORDER_MISMATCH')
+    from ..localization.release_gate import audit_research_release, load_allowed_tokens, load_explicit_exceptions
+    from ..data_quality.master_gate import audit_master_quality
+    try:
+        master_quality = audit_master_quality(_database_path(cfg)).as_dict()
+    except Exception as exc:
+        raise ExportValidationError(f"MASTER_QUALITY_GATE_ERROR:{type(exc).__name__}") from exc
+    release = audit_research_release(
+        source.records, expected_skus={str(r.get("sku") or "") for r in source.records},
+        exported_rows=rows,
+        allowed_tokens=load_allowed_tokens(Path(cfg["project_root"]) / "data" / "dictionary"),
+        explicit_exceptions=load_explicit_exceptions(Path(cfg["project_root"]) / "config" / "research_release_exceptions.json"),
+        master_quality=master_quality,
+    )
+    if not release.ok:
+        raise ExportValidationError(f"RESEARCH_RELEASE_GATE_FAILED:{','.join(release.issues[:8])}")
+    return {"status": "PASS", "es_audit": "PASS", "zh_audit": "PASS", "parity": "PASS", "master_quality": master_quality}
 
 
 def _export_repair_allowed_tokens(dictionary: Any) -> set[str]:
@@ -234,41 +304,20 @@ def export_catalog(
     repair_report_path: Path | None = None
     final_zh_rows_hash = locals().get("final_zh_rows_hash")
     if release_mode == PRODUCTION_RELEASE:
-        from ..localization.release_gate import audit_research_release, load_allowed_tokens, load_explicit_exceptions
-        master_quality = None
-        # SQLite_CURRENT is the formal source path, so every research release
-        # must pass the read-only Master Quality Gate.  Projection fixtures
-        # that do not use SQLite retain the existing pure export contract.
-        if source.kind == "SQLITE_CURRENT":
-            try:
-                from ..data_quality.master_gate import audit_master_quality
-                master_quality = audit_master_quality(_database_path(cfg)).as_dict()
-            except Exception as exc:
-                raise ExportValidationError(f"MASTER_QUALITY_GATE_ERROR:{type(exc).__name__}") from exc
-        release = audit_research_release(
-            source.records,
-            expected_skus={str(r.get("sku") or "") for r in source.records},
-            exported_rows=rows,
-            allowed_tokens=load_allowed_tokens(Path(cfg["project_root"]) / "data" / "dictionary"),
-            explicit_exceptions=load_explicit_exceptions(Path(cfg["project_root"]) / "config" / "research_release_exceptions.json"),
-            master_quality=master_quality,
-        )
-        if not release.ok:
-            first = ",".join(release.issues[:8])
-            raise ExportValidationError(f"RESEARCH_RELEASE_GATE_FAILED:{first}")
+        release_audit = validate_production_release(cfg, source, rows)
 
     date_compact = export_date.replace("-", "")
     output_name = profile.filename_for(date_compact)
     if selection_id:
         output_name = output_name.replace(".xlsx", f"_Selection_{selection_id}.xlsx")
-    output_path = Path(cfg["paths"]["exports"]) / output_name
+    output_path = export_output_path(cfg, output_name, release_mode)
     headers = [str(column["header"]) for column in profile.columns]
     expected_skus = {str(r["编号"]) for r in rows}
     image_root = (Path(cfg["paths"]["images"]) / "derivatives" / "excel_250") if not no_images else None
     image_eligibility = _resolve_image_eligibility(cfg, source.records, image_root) if image_root else None
     # 先写入并验证旁路临时文件；工作簿和 manifest 通过校验后成对发布，
     # 避免验证失败或 manifest 写入失败时留下半套导出物。
-    preview_path = output_path.with_name(f".{output_path.stem}.preview.xlsx")
+    preview_path = output_path.with_name(f".{output_path.stem}.{uuid.uuid4().hex}.preview.xlsx")
     try:
         image_stats = write_catalog_xlsx(
             preview_path, headers=headers, rows=rows, workbook_format=profile.workbook_format,
@@ -308,7 +357,10 @@ def export_catalog(
             "selection_source_commit_id": selection_source_commit_id,
             "artifact_source_commit_id": artifact_source_commit_id,
             "release_mode": release_mode.casefold(),
+            "output_sha256": hashlib.sha256(preview_path.read_bytes()).hexdigest(),
         }
+        if release_mode == PRODUCTION_RELEASE:
+            manifest["strict_release_audit"] = release_audit
         if language == "zh":
             manifest["dictionary_hash"] = dictionary_hash
             manifest["dictionary_fallback_counts"] = fallback_counts
@@ -338,10 +390,15 @@ def export_catalog(
                 raise ExportValidationError("PUBLISHED_ROWS_DIFFER_FROM_AUDITED_ROWS")
             manifest["export_repair"]["published_zh_rows_hash"] = published_zh_rows_hash
             manifest["export_repair"]["release_ready"] = bool((repair_audit or {}).get("release_ready"))
+        repair_payload = repair_report.as_dict() if repair_report is not None else None
+        if repair_payload is not None:
+            manifest["repair_report_digest"] = _json_digest(repair_payload)
+        if release_mode == PREVIEW:
+            validate_preview_destination(output_path)
         _publish_export_bundle(
             preview_path, output_path, manifest_path, manifest,
             repair_report_path=repair_report_path,
-            repair_report=(repair_report.as_dict() if repair_report is not None else None),
+            repair_report=repair_payload,
         )
         if selection_id:
             from ..delivery.artifacts import ArtifactService
