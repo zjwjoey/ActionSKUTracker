@@ -32,3 +32,60 @@ def test_detail_parser_leaves_original_price_blank_without_official_original_pri
     assert row["current_price"] == 3.99
     assert row["original_price"] is None
     assert row["spec_es"] == ""
+
+
+def test_compound_detail_keys_are_not_split_by_known_shorter_prefixes():
+    raw="Material: Plástico; Material estructura: Plástico; Forma de la brocha: Pincel; Tipo de productos para el hogar: Limpieza; Material cabello: Sintético"
+    assert normalize_official_text(raw,field="details")==raw
+    assert normalize_official_text("Materiales diversos",field="details")=="Materiales diversos"
+
+
+def test_historical_detail_literal_parser_preserves_duplicate_keys():
+    from action_tracker.localization.normalization.structured_details import parse_structured_details
+    pairs=parse_structured_details("{'Material': 'Plástico', 'Material': 'Metal', 'Sin alcohol': 'No'}")
+    assert [(p.key,p.value) for p in pairs]==[("Material","Plástico"),("Material","Metal"),("Sin alcohol","No")]
+
+
+def test_boolean_detail_qa_checks_negative_label_truth():
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    source=SourceFacts(sku="1001",details_es="{'Sin alcohol': 'No'}")
+    bad=guard_translation(source,{"details":"{'是否含酒精': '否'}"},("details",))
+    assert any(f["rule_id"]=="DETAIL_BOOLEAN_POLARITY_CHANGED" for f in bad["findings"])
+    assert guard_translation(source,{"details":"{'是否无酒精': '否'}"},("details",))["status"]=="PASS"
+    assert guard_translation(source,{"details":"{'是否含酒精': '是'}"},("details",))["status"]=="PASS"
+
+
+def test_accented_spanish_nouns_are_not_units_but_chinese_adjacent_units_are():
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    source=SourceFacts(sku="1001",spec_es="12 lápices")
+    assert guard_translation(source,{"spec":"12 支铅笔"},("spec",))["status"]=="PASS"
+    source=SourceFacts(sku="1001",spec_es="5 cm")
+    assert guard_translation(source,{"spec":"5cm宽"},("spec",))["status"]=="PASS"
+    assert any(f["rule_id"]=="UNIT_DROPPED" for f in guard_translation(source,{"spec":"5宽"},("spec",))["findings"])
+
+
+def test_duster_material_conflict_is_blocked():
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    source=SourceFacts(sku="1001",name_es="Plumero de microfibras",details_es="Tipo: Plumero")
+    assert any(f["rule_id"]=="MATERIAL_CONFLICT_WITH_SOURCE" for f in guard_translation(source,{"details":"类型：鸡毛掸子"},("details",))["findings"])
+    assert guard_translation(source,{"details":"类型：除尘掸"},("details",))["status"]=="PASS"
+
+
+def test_nonsterile_claim_cannot_be_reversed_or_omitted():
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    source=SourceFacts(sku="1001",desc_es="Guantes de látex y no estériles")
+    assert any(f["rule_id"]=="STERILITY_STATUS_CHANGED" for f in guard_translation(source,{"description":"无菌乳胶手套"},("description",))["findings"])
+    assert any(f["rule_id"]=="STERILITY_STATUS_DROPPED" for f in guard_translation(source,{"description":"乳胶手套"},("description",))["findings"])
+    assert guard_translation(source,{"description":"非无菌乳胶手套"},("description",))["status"]=="PASS"
+
+
+def test_brush_bristle_key_is_not_translated_as_human_hair():
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    source=SourceFacts(sku="1001",name_es="Juego de pinceles",details_es="Material cabello: Sintético")
+    assert any(f["rule_id"]=="DETAIL_SUBJECT_CHANGED" for f in guard_translation(source,{"details":"发丝材质：合成"},("details",))["findings"])
+    assert guard_translation(source,{"details":"刷毛材质：合成"},("details",))["status"]=="PASS"

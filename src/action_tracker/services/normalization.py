@@ -34,7 +34,7 @@ _DETAIL_KEYS = tuple(sorted({
     "Edad recomendada", "Advertencias de seguridad", "Contenido del paquete", "Incluye",
 }, key=len, reverse=True))
 _DETAIL_KEY_RE = re.compile(
-    r"^(?P<key>" + "|".join(re.escape(key) for key in _DETAIL_KEYS) + r")\s*:?(?P<value>.*)$",
+    r"^(?P<key>" + "|".join(re.escape(key) for key in _DETAIL_KEYS) + r")(?=\s|:|$)\s*:?(?P<value>.*)$",
     re.IGNORECASE,
 )
 
@@ -51,6 +51,14 @@ def _normalize_detail_pairs(text: str) -> str:
     index = 0
     while index < len(tokens):
         token = tokens[index]
+        # An explicit compound key is authoritative. Matching a shorter
+        # known prefix would turn ``Material estructura: Plástico`` into
+        # ``Material: estructura: Plástico`` and destroy its field boundary.
+        if ":" in token:
+            key, value = token.split(":", 1)
+            output.append(f"{key.strip()}: {value.strip()}")
+            index += 1
+            continue
         match = _DETAIL_KEY_RE.match(token)
         if not match:
             output.append(token)

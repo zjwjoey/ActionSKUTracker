@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import re
+import ast
+import json
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -47,6 +49,23 @@ def parse_structured_details(text: str) -> tuple[StructuredDetail, ...]:
     either the key or value.
     """
     raw = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    if raw.strip().startswith("{"):
+        try:
+            node = ast.parse(raw.strip(), mode="eval").body
+            if isinstance(node, ast.Dict):
+                result = []
+                for key_node, value_node in zip(node.keys, node.values):
+                    key = ast.literal_eval(key_node)
+                    value = ast.literal_eval(value_node)
+                    if not isinstance(key, str):
+                        raise ValueError("non-string detail key")
+                    value = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else str(value)
+                    context_key, value_type = _type_for(key, value)
+                    fragment = f"{ast.get_source_segment(raw.strip(), key_node) or key}: {ast.get_source_segment(raw.strip(), value_node) or value}"
+                    result.append(StructuredDetail(key, value, fragment, context_key, value_type))
+                return tuple(result)
+        except (ValueError, TypeError, SyntaxError):
+            pass
     parts = [item.strip() for item in re.split(r"[;\n]+", raw) if item.strip()]
     result: list[StructuredDetail] = []
     for part in parts:

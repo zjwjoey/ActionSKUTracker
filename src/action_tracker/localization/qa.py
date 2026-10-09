@@ -8,6 +8,7 @@ from typing import Any, Mapping
 from .contracts import SourceFacts
 from .policy import FIXED_CAT1, has_ordinary_spanish
 from .protection.tokens import ProtectedTokenError, protect_text, restore_text
+from .normalization.structured_details import parse_structured_details
 
 
 FACT_QA_POLICY_VERSION = "FACT_QA_V2"
@@ -15,7 +16,7 @@ EMPTY_SOURCE_LOCALIZATION_CONTRACT_VERSION = "EMPTY_SOURCE_LOCALIZATION_CONTRACT
 NAME_IDENTITY_FACT_PRESERVATION_VERSION = "NAME_IDENTITY_FACT_PRESERVATION_V1"
 
 
-_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9])", re.I)
+_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u024f])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9\u00c0-\u024f])", re.I)
 _CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|平方千米|平方米|平方厘米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
 _UNIT_ALIASES = {
     "毫安时": "mah", "安时": "ah", "瓦时": "wh", "千瓦时": "kwh", "毫瓦": "mw", "千瓦": "kw",
@@ -589,6 +590,34 @@ def _allowed_display_latin_tokens(source_text: str, target: str) -> set[str]:
     return allowed
 
 
+def _detail_boolean_findings(source_text, target):
+    """Compare presence truth, including explicit negative source labels."""
+    attributes = ((r"\balcohol\b", r"酒精"), (r"\bsilicona\b", r"硅(?:酮|胶)?"),
+        (r"\bgluten\b", r"麸质"), (r"\blactosa\b", r"乳糖"),
+        (r"\bperfume\b", r"香(?:料|精)"), (r"\baz[uú]car(?:es)?\b", r"糖"))
+    bools = {"si": True, "sí": True, "yes": True, "true": True, "是": True,
+             "no": False, "false": False, "否": False}
+    source_pairs = parse_structured_details(source_text)
+    target_pairs = parse_structured_details(target)
+    findings = []
+    for source_pattern, target_pattern in attributes:
+        source_items = [p for p in source_pairs if re.search(source_pattern, p.key, re.I) and p.value.strip().casefold() in bools]
+        target_items = [p for p in target_pairs if re.search(target_pattern, p.key) and p.value.strip().casefold() in bools]
+        if source_items and len(source_items) != len(target_items):
+            findings.append(QAFinding("DETAIL_BOOLEAN_FIELD_MISSING", "BLOCKER", "details", {"source_attribute": source_pattern}, source=source_text, target=target, blocking=True))
+            continue
+        for src, dst in zip(source_items, target_items):
+            source_negative = bool(re.match(r"^(?:sin\b|libre de\b|no contiene\b|no incluye\b)", src.key.strip(), re.I))
+            target_negative = bool(re.search(r"无|不含|未添加|不添加|零", dst.key))
+            source_present = bools[src.value.strip().casefold()] != source_negative
+            target_present = bools[dst.value.strip().casefold()] != target_negative
+            if source_present != target_present:
+                findings.append(QAFinding("DETAIL_BOOLEAN_POLARITY_CHANGED", "BLOCKER", "details",
+                    {"source_key": src.key, "source_value": src.value, "target_key": dst.key, "target_value": dst.value},
+                    source=source_text, target=target, message="boolean fact polarity changed", blocking=True))
+    return findings
+
+
 def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = ()) -> tuple[QAFinding, ...]:
     findings: list[QAFinding] = []
     for field_name in requested_fields:
@@ -606,6 +635,24 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if not source_text.strip():
             findings.append(QAFinding("EMPTY_SOURCE_TARGET_NONEMPTY", "BLOCKER", field_name, {"target": target}, source=source_text, target=target, message="target content exists without official source", blocking=True))
             continue
+        if field_name == "details":
+            findings.extend(_detail_boolean_findings(source_text, target))
+            if (re.search(r"\bpincel(?:es)?\b", str(getattr(source, "name_es", "") or ""), re.I)
+                    and re.search(r"material\s+cabello", source_text, re.I) and "发丝" in target):
+                findings.append(QAFinding("DETAIL_SUBJECT_CHANGED", "BLOCKER", field_name,
+                    {"source_subject": "brush bristles", "target_subject": "human hair"}, source=source_text, target=target, blocking=True))
+        source_nonsterile = bool(re.search(r"\bno\s+est[eé]ril(?:es)?\b", source_text, re.I))
+        target_nonsterile = bool(re.search(r"非无菌|非灭菌|未灭菌|未经灭菌|不是无菌|未进行灭菌", target))
+        if source_nonsterile and not target_nonsterile:
+            findings.append(QAFinding("STERILITY_STATUS_CHANGED" if "无菌" in target else "STERILITY_STATUS_DROPPED",
+                "BLOCKER", field_name, {"source_status": "NON_STERILE"}, source=source_text, target=target, blocking=True))
+        elif not source_nonsterile and re.search(r"\best[eé]ril(?:es)?\b", source_text, re.I) and target_nonsterile:
+            findings.append(QAFinding("STERILITY_STATUS_CHANGED", "BLOCKER", field_name,
+                {"source_status": "STERILE"}, source=source_text, target=target, blocking=True))
+        if (re.search(r"\bmicrofibras?\b", " ".join(str(getattr(source, key, "") or "") for key in ("name_es", "spec_es", "desc_es", "details_es")), re.I)
+                and re.search(r"鸡毛掸|羽毛掸", target)):
+            findings.append(QAFinding("MATERIAL_CONFLICT_WITH_SOURCE", "BLOCKER", field_name,
+                {"source_material": "microfibra", "target_material": "feather"}, source=source_text, target=target, blocking=True))
         if "null" in target.casefold() or "undefined" in target.casefold():
             findings.append(QAFinding("NULL_UNDEFINED_RESIDUAL", "BLOCKER", field_name, {"value": target}, source=source_text, target=target, blocking=True))
         allowed_display_tokens = _allowed_display_latin_tokens(source_text, target)

@@ -109,3 +109,28 @@ def test_source_recovery_bundle_preserves_existing_fields_and_missing_evidence(t
     assert not bundle.current_products and not bundle.observations and not bundle.event_events and not bundle.price_events
     restored=writer.commit(bundle)
     assert writer.commit(bundle)==restored
+
+
+def test_normalization_correction_only_reprojects_recorded_recovery(tmp_path):
+    from action_tracker.database.production import CommitBundle,ProductionWriter
+    from action_tracker.localization.history_recovery import build_historical_normalization_correction_bundle
+    path=tmp_path/"primary.db";writer=ProductionWriter(path,role="PRIMARY")
+    raw="Material estructura: Plástico; Número del artículo: 123"
+    artifact=tmp_path/"source.txt";artifact.write_text(raw,encoding="utf-8")
+    import hashlib
+    source={"reference":str(artifact),"file_hash":hashlib.sha256(artifact.read_bytes()).hexdigest()}
+    bad="Material: estructura: Plástico; Número del artículo: 123"
+    head=writer.commit(CommitBundle(run_id="restore",observation_date="2026-10-09",qa_state="PASS",
+        current_products=({"sku":"123","status":"HISTORICAL","name_es":"Original"},),
+        localization_updates=({"sku":"123","language":"es","name":"Original","details":bad},),
+        run_record={"operation":"HISTORICAL_SOURCE_RECOVERY","field_evidence":[{"sku":"123","field":"details","status":"VERIFIED","raw":raw,"normalized":bad,"source":source}]}))
+    bundle,report=build_historical_normalization_correction_bundle(path,run_id="fix",base_commit_id=head,run_date="2026-10-09")
+    assert report["corrected_fields"]==1
+    assert bundle.localization_updates[0]["details"]==raw
+    assert not bundle.current_products and not bundle.event_events and not bundle.price_events
+    writer.commit(bundle)
+    _,report=build_historical_normalization_correction_bundle(path,run_id="retry",base_commit_id=None,run_date="2026-10-09")
+    assert report["corrected_fields"]==0
+    with sqlite3.connect(path) as db:db.execute("UPDATE product_localizations SET details='Later fact' WHERE language='es'")
+    with pytest.raises(ValueError,match="SOURCE_CHANGED_REVIEW"):
+        build_historical_normalization_correction_bundle(path,run_id="late",base_commit_id=None,run_date="2026-10-09")
