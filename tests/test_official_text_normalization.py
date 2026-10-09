@@ -29,6 +29,54 @@ def test_battery_capacity_spacing_is_equivalent_but_value_and_unit_are_protected
         assert guard_translation(facts,{'spec':'5000Ah'},('spec',))['status']=='FAIL'
 
 
+def test_natural_compound_aliases_require_the_same_source_context():
+    from action_tracker.localization.qa import _semantic_aliases
+    assert '隐形袜' in _semantic_aliases('calcetines','Calcetines invisibles','袜子')
+    assert '婴儿袜' in _semantic_aliases('calcetines','Calcetines de bebé','袜子')
+    assert '毛圈袜' in _semantic_aliases('calcetines','Calcetines de rizo','袜子')
+    assert '隐形袜' not in _semantic_aliases('calcetines','Calcetines','袜子')
+    assert '婴儿袜' not in _semantic_aliases('calcetines','Calcetines Bebe','袜子')
+    assert '连裤袜' not in _semantic_aliases('calcetines','Calcetines invisibles','袜子')
+    assert '发圈' in _semantic_aliases('gomas','Gomas del pelo','橡皮筋')
+    assert '发圈' not in _semantic_aliases('gomas','Gomas para embalaje','橡皮筋')
+    assert '发圈' not in _semantic_aliases('gomas','Gomas industriales; no aptas para pelo','橡皮筋')
+    assert '竹篮' in _semantic_aliases('bambú','Cesta de bambú','竹制')
+    assert '竹篮' not in _semantic_aliases('bambú','Material: Bambú','竹制')
+    assert '柚木' in _semantic_aliases('madera','Madera de teca','木质')
+    assert '柚木' not in _semantic_aliases('madera','Madera de pino','木质')
+    assert '柚木' not in _semantic_aliases('madera','Madera marca Teca','木质')
+
+
+def test_uppercase_brand_omission_requires_verified_field_scoped_role():
+    from types import SimpleNamespace
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    fact=SimpleNamespace(semantic_type='BRAND',source_text='DAY',source_field='name_es')
+    source=SourceFacts.from_record({'name_es':'Temporizador digital de cocina DAY'})
+    assert guard_translation(source,{'name':'数字厨房计时器'},('name',),semantic_facts=(fact,))['status']=='PASS'
+    assert guard_translation(source,{'name':'数字厨房计时器'},('name',))['status']=='FAIL'
+    fact.source_field='desc_es'
+    assert guard_translation(source,{'name':'数字厨房计时器'},('name',),semantic_facts=(fact,))['status']=='FAIL'
+    source=SourceFacts.from_record({'name_es':'Adaptador USB'})
+    assert guard_translation(source,{'name':'适配器'},('name',),semantic_facts=(fact,))['status']=='FAIL'
+
+
+def test_ordinal_brand_numbers_are_not_product_quantities_and_do_not_waive_real_counts():
+    from types import SimpleNamespace
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    brand=SimpleNamespace(semantic_type='BRAND',source_text='9th Avenue',source_field='name_es')
+    source=SourceFacts.from_record({'name_es':'Polo 9th Avenue'})
+    assert guard_translation(source,{'name':'Polo衫'},('name',),semantic_facts=(brand,))['status']=='PASS'
+    source=SourceFacts.from_record({'name_es':'Polo 9th Avenue | 9 unidades'})
+    assert guard_translation(source,{'name':'Polo衫'},('name',),semantic_facts=(brand,))['status']=='FAIL'
+    assert guard_translation(source,{'name':'9件Polo衫'},('name',),semantic_facts=(brand,))['status']=='PASS'
+    brand=SimpleNamespace(semantic_type='BRAND',source_text='Lab31',source_field='name_es')
+    source=SourceFacts.from_record({'name_es':'Producto Lab31 | 31 unidades'})
+    qa=guard_translation(source,{'name':'商品'},('name',),semantic_facts=(brand,))
+    assert any(f['rule_id']=='NUMERIC_DROPPED' for f in qa['findings'])
+
+
 def test_normalizer_removes_ui_transport_residue_without_changing_facts():
     assert normalize_official_text("Añadir a tus favoritos", field="spec") is None
     assert normalize_official_text("Descripción\n<a href='x'>Texto</a>\nLeer más", field="description") == "Texto"

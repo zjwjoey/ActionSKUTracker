@@ -250,7 +250,7 @@ _ALLOWED_LATIN_DISPLAY_TOKENS = {
     "dura-beam", "dura beam", "bloxx", "style", "choco", "trio",
     "do & dry", "essentials", "power activ", "nex",
     "fsc", "bci", "pefc", "tüv", "hdmi", "usb", "usb-c", "xl", "xxl",
-    "omega", "dvd", "ph", "pH",
+    "omega", "dvd", "ph", "pH", "polo",
 }
 
 _SOURCE_FIELD_BY_TARGET = {
@@ -330,9 +330,22 @@ def _is_allowed_translated_tech_token(source_text: str, source_token: str, targe
     )
 
 
-def _is_omittable_display_brand_tech(source_text: str, source_token: str, target: str) -> bool:
+def _is_omittable_display_brand_tech(source_text: str, source_token: str, target: str, *, semantic_facts=(), field_name="") -> bool:
     token = str(source_token or "").casefold()
-    return token in _OMITTABLE_DISPLAY_BRAND_TECH and _source_term_present(source_text, source_token) and not _has_casefold_token(target, source_token)
+    if _has_casefold_token(target, source_token):
+        return False
+    if token in _OMITTABLE_DISPLAY_BRAND_TECH and _source_term_present(source_text, source_token):
+        return True
+    # A source-scoped, trusted BRAND fact resolves an uppercase brand such
+    # as DAY. Unknown acronyms remain technical identifiers, never brands
+    # inferred solely from their spelling.
+    return field_name == 'name' and any(
+        str(getattr(fact,'semantic_type','')) == 'BRAND'
+        and _fact_applies_to_field(fact,field_name)
+        and str(getattr(fact,'source_text','')).casefold() == token
+        and _source_term_present(source_text,source_token)
+        for fact in semantic_facts
+    )
 
 
 def _is_ordinary_spanish_uppercase_token(source_text: str, source_token: str) -> bool:
@@ -386,6 +399,16 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # context-bound so ordinary ``paño`` facts do not accept ``湿巾``.
     if source_term.casefold() in {"paño", "paños"} and "húmed" in str(source_text or "").casefold():
         aliases.append("湿巾")
+    if source_term.casefold() == 'calcetines':
+        if re.search(r'\b(?:de|para)\s+beb[eé]s?\b',source_text,re.I):aliases.append('婴儿袜')
+        for marker,alias in [('invisibles','隐形袜'),('rizo','毛圈袜')]:
+            if _source_term_present(source_text,marker):aliases.append(alias)
+    if source_term.casefold() == 'gomas' and re.search(r'\bgomas\s+(?:de|del)\s+pelo\b',source_text,re.I):
+        aliases.append('发圈')
+    if source_term.casefold() == 'bambú' and re.search(r'\bcestas?\s+de\s+bambú\b',source_text,re.I):
+        aliases.append('竹篮')
+    if source_term.casefold() == 'madera' and re.search(r'\bmadera\s+de\s+teca\b',source_text,re.I):
+        aliases.append('柚木')
     return tuple(dict.fromkeys(aliases))
 
 
@@ -726,7 +749,23 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             # No-brand display removes digits embedded in brand spans such as
             # ``Lab31``/``Cool2Party``. Do not waive standalone quantities or
             # compact technical models here.
-            dropped -= _brand_embedded_numeric_values(source_text)
+            brand_numeric_waivers = _brand_embedded_numeric_values(source_text)
+            verified_brand_numbers: Counter[str] = Counter()
+            seen_brands = set()
+            for fact in semantic_facts:
+                brand=str(getattr(fact,'source_text','') or '')
+                if (str(getattr(fact,'semantic_type',''))=='BRAND'
+                    and _fact_applies_to_field(fact,field_name)
+                    and _source_term_present(source_text,brand)
+                    and not _has_casefold_token(target,brand)
+                    and brand.casefold() not in seen_brands):
+                    # Count only this verified omitted brand span. A second
+                    # standalone 9 in "9th Avenue, 9 unidades" stays protected.
+                    verified_brand_numbers.update(_numbers(brand))
+                    seen_brands.add(brand.casefold())
+            # Heuristic and verified roles may refer to the same Lab31 span;
+            # union their counts rather than waive it twice.
+            dropped -= brand_numeric_waivers | verified_brand_numbers
         # Brand/series tokens can contain digits that are not product facts.
         # Under the no-brand display policy, ``7Up`` may be removed from the
         # Chinese name; its ``7`` must not become a NUMERIC_DROPPED blocker.
@@ -771,7 +810,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             if actual_count < expected_count:
                 if kind == "TECH" and _is_ordinary_spanish_uppercase_token(source_text, value):
                     continue
-                if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target):
+                if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                     continue
                 if kind == "TECH" and _is_allowed_translated_tech_token(source_text, value, target):
                     continue
@@ -795,7 +834,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             if kind in {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "CAPACITY", "BATTERY_CAPACITY", "POWER", "VOLTAGE"}:
                 if kind == "TECH" and _is_ordinary_spanish_uppercase_token(source_text, value):
                     continue
-                if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target):
+                if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                     continue
                 if kind == "TECH":
                     expected_count = source_text.casefold().count(value.casefold())
@@ -811,7 +850,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 if actual_count < expected_count:
                     if kind == "TECH" and _is_allowed_translated_tech_token(source_text, value, target):
                         continue
-                    if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target):
+                    if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                         continue
                     findings.append(QAFinding("PROTECTED_TOKEN_MISSING", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
                 elif actual_count > expected_count:
