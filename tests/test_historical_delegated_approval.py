@@ -133,3 +133,21 @@ def test_historical_source_hydration_does_not_guess_missing_name(tmp_path):
     record=hydrate(ProductionRepository(path),path)["1001"]
     assert record["name_es"] is None
     assert record["source_hash"]==localization_source_hash({key:record[key] for key in ("name_es","cat1_es","cat2_es","spec_es","desc_es","details_es")})
+
+
+def test_historical_chinese_display_fallback_is_not_applied_localization(tmp_path):
+    import runpy
+    from pathlib import Path
+    from action_tracker.database.repository import ProductionRepository
+    from action_tracker.localization.history_audit import historical_freshness_status
+    hydrate=runpy.run_path(str(Path(__file__).resolve().parents[1]/'scripts/run_historical_localization_pilot.py'))['historical_records']
+    path,_,_,_,_=fixture(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE product_localizations SET name=NULL WHERE language='zh'")
+        db.execute("UPDATE products SET name_zh='旧业务中文'")
+    repo=ProductionRepository(path)
+    assert repo.load_current_export_records(include_non_current=True)[0]['name_zh']=='旧业务中文'
+    assert hydrate(repo,path)['1001']['name_zh'] is None
+    assert historical_freshness_status({},True)=='NO_FRESHNESS_STATUS'
+    assert historical_freshness_status({},False)=='NO_LOCALIZATION'
+    assert historical_freshness_status({'zh_freshness_status':'STALE'},True)=='STALE'

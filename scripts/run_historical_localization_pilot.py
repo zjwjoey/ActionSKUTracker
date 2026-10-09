@@ -31,6 +31,17 @@ from action_tracker.services.runtime import RunLock
 def historical_records(repo, database):
     records = {r["sku"]: r for r in repo.load_current_export_records(include_non_current=True)}
     with connect(database) as db:
+        for record in records.values():
+            if record['status'] != 'CURRENT':
+                # Business-name display fallback is not an applied Chinese
+                # localization. Preserve it in review evidence, but do not
+                # treat a missing localization row as already written.
+                for target_key in CANONICAL_TO_ZH.values():
+                    record[target_key] = None
+        for row in db.execute("SELECT official_sku,name,cat1,cat2,spec,description,details FROM product_localizations WHERE language='zh'"):
+            record = records.get(str(row[0]))
+            if record and record['status'] != 'CURRENT':
+                record.update(dict(zip(('name_zh','cat1_zh','cat2_zh','spec_zh','desc_zh','details_zh'), row[1:])))
         for row in db.execute("SELECT official_sku,name,cat1,cat2,spec,description,details FROM product_localizations WHERE language='es'"):
             record = records.get(str(row[0]))
             if record and record["status"] != "CURRENT":

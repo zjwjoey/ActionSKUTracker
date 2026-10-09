@@ -64,14 +64,23 @@ otherwise they remain METADATA_REVIEW_REQUIRED. Optional source restoration and
 validated backup execute under the same RunLock. Production uses the real
 runtime directory as projection root so it shares the daily-run lock.
 
-The 100-SKU manifest covers 600 fields; it does not mean 600 Chinese fields have
-passed semantic review. The isolated pilot restored 286 Spanish fields on 68
-SKU and applied 10 reviewed Chinese names. Four reviewed names were retained,
-two require review. Full regression passed 875 tests before final runner edits.
+The pilot manifest covers all six fields for each selected SKU; its size is
+not the number of approved or applied Chinese fields. Candidate, review,
+clone-validation and production-Apply counts are recorded separately in the
+runtime reports. QA PASS alone is never semantic approval.
 Historical approval reads the exact ES localization fields; a missing source
 does not inherit an unverified business-name fallback. Source restoration uses
 separate CommitBundle run IDs from Chinese Apply. Each subsequent batch needs
 a distinct `--batch-id` and output directory.
+
+The historical runner also reads the actual Chinese localization projection,
+not the business-name fallback used for display. A reviewed legacy Chinese
+name can be recovered through the normal approval and Apply chain if the
+localization is missing; an existing display value does not count as Apply.
+Read-only audits distinguish a missing Chinese row (`NO_LOCALIZATION`) from
+an existing row without aggregate freshness metadata (`NO_FRESHNESS_STATUS`).
+Reconstructed aggregates do not invent an official observation timestamp;
+original field dates remain in source evidence.
 
 Current SKU, localization, prices, events, observations and lifecycle hashes
 matched the original backup. Repeat execution and final production acceptance

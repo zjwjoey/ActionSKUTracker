@@ -24,6 +24,10 @@ from ..services.hashing import localization_field_source_hash
 FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
 
 
+def historical_freshness_status(record, has_zh_row):
+    return record.get('zh_freshness_status') or ('NO_FRESHNESS_STATUS' if has_zh_row else 'NO_LOCALIZATION')
+
+
 def verified_archive_identity(row, skus):
     sku = str(row.get("编号") or "").strip()
     url = urlparse(str(row.get("商品链接") or ""))
@@ -288,7 +292,7 @@ def build_audit(database, master, snapshots, output, history_sources=None, verif
                    "chinese": target, "evidence": evidence, "action": action,
                    "archived_chinese": archived_zh[(sku, field)], "recoverable_chinese": candidate,
                    "qa_findings": findings, "semantic_review": "NOT_RUN",
-                   "freshness": record.get("zh_freshness_status") or "NO_LOCALIZATION",
+                   "freshness": historical_freshness_status(record, sku in zh_skus),
                    "has_es_row": sku in es_skus, "has_zh_row": sku in zh_skus}
             provenance = (record.get("zh_field_provenance") or {}).get(field) or {}
             current_hash = localization_field_source_hash(record, field)
@@ -312,7 +316,7 @@ def build_audit(database, master, snapshots, output, history_sources=None, verif
     report = {"historical_skus": len(records), "fields": len(rows),
               "statuses": dict(Counter(r["status"] for r in records.values())),
               "missing_es_rows": len(skus - es_skus), "missing_zh_rows": len(skus - zh_skus),
-              "freshness": dict(Counter(r.get("zh_freshness_status") or "NO_LOCALIZATION" for r in records.values())),
+              "freshness": dict(Counter(historical_freshness_status(r, sku in zh_skus) for sku, r in records.items())),
               "actions": {key: {"fields": value, "skus": len(affected[key])} for key, value in counts.items()},
               "source_errors": source_errors, "primary_unchanged": unchanged,
               "integrity": integrity, "foreign_key_violations": fk,
