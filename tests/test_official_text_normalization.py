@@ -2,6 +2,14 @@ from action_tracker.products.parser import _normalize_detail
 from action_tracker.services.normalization import normalize_official_text
 
 
+def test_spec_size_labels_keep_literal_ranges_and_do_not_consume_other_words():
+    from action_tracker.localization.formatter import format_spec
+    assert format_spec('Tallas 98-140 | diferentes variantes') == '尺码 98–140｜多款可选'
+    assert format_spec('Talla XL | 2 unidades') == '尺码 XL｜2 件'
+    assert format_spec('Tallas 240-255 cm | 2 piezas') == '尺码 240–255cm｜2 件'
+    assert format_spec('Pantallas 2 unidades') == 'Pantallas 2 件'
+
+
 def test_normalizer_removes_ui_transport_residue_without_changing_facts():
     assert normalize_official_text("Añadir a tus favoritos", field="spec") is None
     assert normalize_official_text("Descripción\n<a href='x'>Texto</a>\nLeer más", field="description") == "Texto"
