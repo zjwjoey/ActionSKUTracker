@@ -10,6 +10,25 @@ def test_spec_size_labels_keep_literal_ranges_and_do_not_consume_other_words():
     assert format_spec('Pantallas 2 unidades') == 'Pantallas 2 件'
 
 
+def test_numeric_qa_does_not_merge_a_thousands_group_across_fields():
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    facts=SourceFacts.from_record({'sku':'1001','name_es':'Modelo 1','spec_es':'300 ml'})
+    assert guard_translation(facts,{'spec':'300ml'},('spec',))['status']=='PASS'
+    assert guard_translation(facts,{'spec':'301ml'},('spec',))['status']=='FAIL'
+    assert guard_translation(facts,{'spec':'1300ml'},('spec',))['status']=='FAIL'
+
+
+def test_battery_capacity_spacing_is_equivalent_but_value_and_unit_are_protected():
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    for source,target in [('5000 mAh','5000mAh'),('5000mAh','5000 mAh')]:
+        facts=SourceFacts.from_record({'sku':'1001','spec_es':source})
+        assert guard_translation(facts,{'spec':target},('spec',))['status']=='PASS'
+        assert guard_translation(facts,{'spec':'6000mAh'},('spec',))['status']=='FAIL'
+        assert guard_translation(facts,{'spec':'5000Ah'},('spec',))['status']=='FAIL'
+
+
 def test_normalizer_removes_ui_transport_residue_without_changing_facts():
     assert normalize_official_text("Añadir a tus favoritos", field="spec") is None
     assert normalize_official_text("Descripción\n<a href='x'>Texto</a>\nLeer más", field="description") == "Texto"

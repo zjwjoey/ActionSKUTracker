@@ -715,11 +715,11 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         # description/details into the canonical spec field.  Keep dropped
         # checks field-local, but only call a target number "added" when it
         # is absent from every official Spanish source field.
-        all_source_text = " ".join(
-            str(getattr(source, attr, "") or "")
-            for attr in ("name_es", "spec_es", "desc_es", "details_es", "cat1_es", "cat2_es")
-        )
-        all_source_numbers = _numbers(all_source_text)
+        # Parse each field independently. Joining a name ending in "1" and
+        # a spec starting with "300 ml" invents a thousands group "1 300".
+        all_source_numbers: Counter[str] = Counter()
+        for attr in ("name_es", "spec_es", "desc_es", "details_es", "cat1_es", "cat2_es"):
+            all_source_numbers.update(_numbers(str(getattr(source, attr, "") or "")))
         dropped = source_numbers - target_numbers
         dropped -= _semantic_numeric_equivalents(source_text, target)
         if field_name == "name":
@@ -759,8 +759,13 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             findings.append(QAFinding("NUMERIC_ADDED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "extra": dict(duplicated)}, source=source_text, target=target, message="numeric fact added", blocking=True))
         protected = protect_text(source_text)
         target_protected = protect_text(target)
-        source_strict = Counter((kind, value.casefold()) for kind, value in zip(protected.token_types, protected.tokens) if kind in _STRICT_TOKEN_TYPES)
-        target_strict = Counter((kind, value.casefold()) for kind, value in zip(target_protected.token_types, target_protected.tokens) if kind in _STRICT_TOKEN_TYPES)
+        def strict_key(kind, value):
+            # Quantified technical tokens already use whitespace equivalence
+            # below for preservation; their changed/added comparison must
+            # use the same rule. Models and certification IDs stay literal.
+            return re.sub(r"\s+", "", value).casefold() if kind in {"CAPACITY", "BATTERY_CAPACITY"} else value.casefold()
+        source_strict = Counter((kind, strict_key(kind, value)) for kind, value in zip(protected.token_types, protected.tokens) if kind in _STRICT_TOKEN_TYPES)
+        target_strict = Counter((kind, strict_key(kind, value)) for kind, value in zip(target_protected.token_types, target_protected.tokens) if kind in _STRICT_TOKEN_TYPES)
         for (kind, value), expected_count in source_strict.items():
             actual_count = target_strict.get((kind, value), 0)
             if actual_count < expected_count:
