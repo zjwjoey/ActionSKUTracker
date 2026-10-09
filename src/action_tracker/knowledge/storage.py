@@ -250,15 +250,26 @@ class KnowledgeStore:
                 sql += " LIMIT ?"; params.append(int(limit))
             return [dict(row) for row in db.execute(sql, tuple(params)).fetchall()]
 
-    def stage_approved_registry_patches(self, *, expected_base_commit_id: str, actor: str, limit: int | None = None, source_run_id: str | None = None, queue_run_id: str | None = None, revision_ids: Iterable[str] | None = None, include_noop_rebinds: bool = False) -> dict[str, Any]:
+    def stage_approved_registry_patches(self, *, expected_base_commit_id: str, actor: str, limit: int | None = None, source_run_id: str | None = None, queue_run_id: str | None = None, revision_ids: Iterable[str] | None = None, include_noop_rebinds: bool = False, delegated_approval: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """Convert Registry-approved fields into immutable PRIMARY patches.
 
         The method only creates ``PATCH_CREATED`` + ``PATCH_APPROVED`` rows;
         it never mutates ``product_localizations``.  The caller must still
         invoke the existing atomic apply coordinator explicitly.
         """
-        if not str(actor or "").startswith("human:"):
+        if not str(actor or "").startswith("human:") and delegated_approval is None:
             raise PermissionError("REGISTRY_APPLY_ACTOR_MUST_BE_HUMAN")
+        if delegated_approval is not None:
+            from ..localization.delegated_approval import validate_delegation, validate_delegated_revision
+            delegation_digest = validate_delegation(delegated_approval, actor)
+            revision_ids = tuple(revision_ids or ())
+            if not revision_ids:
+                raise PermissionError("DELEGATION_EXPLICIT_REVISIONS_REQUIRED")
+            with connect(self.path) as db:
+                for revision_id in revision_ids:
+                    validate_delegated_revision(db, delegated_approval, actor=actor, revision_id=revision_id)
+        else:
+            delegation_digest = None
         rows = self.approved_registry_projection(limit=limit, source_run_id=source_run_id, queue_run_id=queue_run_id, revision_ids=revision_ids)
         patch_ids: list[str] = []
         stale_source_rows: list[dict[str, str]] = []
@@ -333,6 +344,7 @@ class KnowledgeStore:
                     self.path, patch_id=patch_id, event_type="PATCH_APPROVED", actor=actor,
                     evidence={"field_name": field, "revision_id": row["revision_id"],
                               "base_commit_id": expected_base_commit_id, "source_name": "REGISTRY_APPROVED",
+                              "delegation_hash": delegation_digest,
                               "canonical_qa_status": row.get("canonical_qa_status", "NOT_REQUIRED")},
                 )
                 patch_ids.append(patch_id)

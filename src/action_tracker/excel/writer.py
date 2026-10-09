@@ -204,6 +204,42 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
     return updated
 
 
+def _project_approved_historical_localizations(wb, records) -> None:
+    """Mirror only source-bound approved fields, without rewriting history."""
+    from ..services.hashing import localization_field_source_hash
+    if not records or "08_LONG_TERM_MASTER" not in wb.sheetnames:
+        return
+    sheet = wb["08_LONG_TERM_MASTER"]
+    headers = [cell.value for cell in sheet[7]]
+    if headers[:len(LONG_TERM_MASTER_HEADERS)] != LONG_TERM_MASTER_HEADERS:
+        raise RuntimeError("08_LONG_TERM_MASTER header mismatch")
+    idx = {name: i + 1 for i, name in enumerate(headers)}
+    by_sku = {str(sheet.cell(n, idx["正式SKU"]).value or ""): n
+              for n in range(8, sheet.max_row + 1)
+              if sheet.cell(n, idx["身份类型"]).value == "OFFICIAL_SKU"}
+    for record in records:
+        if record.get("status") not in {"HISTORICAL", "ABSENT", "MISSING", "OFFLINE"}:
+            continue
+        row = by_sku.get(str(record.get("sku") or ""))
+        if row is None or sheet.cell(row, idx["当前状态"]).value == "CURRENT":
+            continue
+        for field, zh, es, zh_column, es_column in (
+            ("name", "name_zh", "name_es", "中文品名", "西班牙语品名"),
+            ("cat1", "cat1_zh", "cat1_es", "一级类目（中文）", "一级类目（西语）"),
+            ("spec", "spec_zh", "spec_es", "规格（中文）", "规格（西语）"),
+        ):
+            provenance = (record.get("zh_field_provenance") or {}).get(field) or {}
+            if (provenance.get("review_status") != "APPROVED"
+                    or provenance.get("freshness_status") not in {"CURRENT", "FRESH"}
+                    or not provenance.get("approved_by") or not record.get(es)
+                    or not record.get(zh)
+                    or provenance.get("value") != record.get(zh)
+                    or provenance.get("source_hash") != localization_field_source_hash(record, field)):
+                continue
+            sheet.cell(row, idx[zh_column]).value = _cell(record[zh])
+            sheet.cell(row, idx[es_column]).value = _cell(record[es])
+
+
 def _refresh_long_term_catalog(wb) -> None:
     """Refresh current fields without deleting historical long-term entities."""
     if "08_LONG_TERM_MASTER" not in wb.sheetnames:
@@ -334,6 +370,7 @@ def stage_master(
     review_rows: list[dict] | None = None,
     return_backup: bool = False,
     compatibility_projection: bool = False,
+    historical_localizations: list[dict] | None = None,
 ) -> Path | tuple[Path, Path]:
     """暂存新的 Master 到 temp：备份 → 复制 → 更新 → 保存 → 完整验证。
 
@@ -365,6 +402,7 @@ def stage_master(
             n_es = _update_or_append_current(wb, "02_SKU_ES_CURRENT", ES_MAP, updated_records, set(ES_MAP.values()))
             log.info("01 更新 %d 行, 02 更新 %d 行", n_zh, n_es)
             _refresh_long_term_catalog(wb)
+            _project_approved_historical_localizations(wb, historical_localizations)
 
             # 03 / 04 追加（表头用常量，行 dict 的 key 与之对应）
             _append_rows(wb, "03_PRICE_HISTORY", price_events, PRICE_HISTORY_HEADERS)

@@ -210,6 +210,24 @@ class LocalizationRegistry:
         self._revision_event(revision_id, "AUTO_APPROVED" if auto else "APPROVED", actor)
         return True
 
+    def approve_revision_delegated(self, revision_id: str, *, actor: str, grant: Mapping[str, Any]) -> dict[str, Any]:
+        """Approve one reviewed historical revision under explicit Owner delegation."""
+        from ..delegated_approval import validate_delegated_revision
+        with connect(self.path) as db:
+            db.execute("BEGIN IMMEDIATE")
+            evidence = validate_delegated_revision(db, grant, actor=actor, revision_id=revision_id, require_approved=False)
+            previous = db.execute("SELECT review_status,approved_by FROM translation_revisions WHERE revision_id=?", (revision_id,)).fetchone()
+            if previous[0] == "APPROVED":
+                if previous[1] != actor:
+                    raise PermissionError("DELEGATION_EXISTING_APPROVAL_OWNER")
+                validate_delegated_revision(db, grant, actor=actor, revision_id=revision_id)
+                return {"status": "ALREADY_APPROVED", **evidence}
+            now = _now()
+            db.execute("UPDATE translation_revisions SET review_status='APPROVED',approved_by=?,approved_at=? WHERE revision_id=?", (actor, now, revision_id))
+            db.execute("UPDATE translation_units SET status='APPROVED',updated_at=? WHERE current_revision_id=?", (now, revision_id))
+            db.execute("INSERT INTO translation_revision_events(event_id,revision_id,event_type,actor,evidence_json,occurred_at) VALUES(?,?,?,?,?,?)", (str(uuid.uuid4()), revision_id, "OWNER_DELEGATED_APPROVED", actor, json.dumps(evidence, ensure_ascii=False, sort_keys=True), now))
+            return {"status": "APPROVED", **evidence}
+
     def restore_unit_freshness(self, revision_id: str, *, source_hash: str, actor: str) -> bool:
         """Restore an omitted FRESH state only for a current, approved revision."""
         if not str(actor or "").startswith("human:"):
