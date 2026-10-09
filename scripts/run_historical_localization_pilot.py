@@ -56,6 +56,7 @@ def main():
     parser.add_argument("--authorization-text", required=True)
     parser.add_argument("--source-manifest", type=Path)
     parser.add_argument("--backup", type=Path)
+    parser.add_argument("--batch-id", default="historical_reviewed_pilot_20261009")
     args = parser.parse_args()
     cfg = load_settings(); cfg["storage"] = {**cfg.get("storage", {}), "mode": "SQLITE_PRIMARY", "db_path": args.database}
     for key in ("state", "temp", "backups", "exports"):
@@ -71,7 +72,7 @@ def main():
         if args.source_manifest:
             source_rows = [json.loads(line) for line in args.source_manifest.read_text(encoding="utf-8").splitlines() if line.strip()]
             bundle, source_result = build_historical_source_bundle(args.database, source_rows,
-                run_id="historical_source_pilot_100_20261009", base_commit_id=ProductionRepository(args.database).current_head(), run_date="2026-10-09")
+                run_id=("historical_source_pilot_100_20261009" if args.batch_id == "historical_reviewed_pilot_20261009" else args.batch_id + "_source"), base_commit_id=ProductionRepository(args.database).current_head(), run_date="2026-10-09")
             if source_result["recovered_fields"]:
                 source_result["commit_id"] = ProductionWriter(args.database, role="PRIMARY").commit(bundle)
             (args.output / "source_recovery.json").write_text(json.dumps(source_result, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -140,7 +141,7 @@ def main():
             if staged["stale_source_rows"]: raise ValueError("PILOT_STALE_SOURCE")
             if staged["patch_ids"]:
                 result = apply_approved_localization_patches(args.database, patch_ids=staged["patch_ids"],
-                    expected_base_commit_id=head, actor="service:historical-localization-apply", run_id="historical_reviewed_pilot_20261009", delegated_approval=grant)
+                    expected_base_commit_id=head, actor="service:historical-localization-apply", run_id=args.batch_id, delegated_approval=grant)
         head = repo.current_head()
         with connect(args.database) as db:
             previous_sync = db.execute("SELECT status,master_sha256,known_sha256,offline_sha256 FROM export_sync WHERE commit_id=?", (head,)).fetchone()
