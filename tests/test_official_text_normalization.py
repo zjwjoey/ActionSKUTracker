@@ -89,3 +89,22 @@ def test_brush_bristle_key_is_not_translated_as_human_hair():
     source=SourceFacts(sku="1001",name_es="Juego de pinceles",details_es="Material cabello: Sintético")
     assert any(f["rule_id"]=="DETAIL_SUBJECT_CHANGED" for f in guard_translation(source,{"details":"发丝材质：合成"},("details",))["findings"])
     assert guard_translation(source,{"details":"刷毛材质：合成"},("details",))["status"]=="PASS"
+
+
+def test_dual_color_numeric_equivalence_is_scoped_and_counted():
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    source=SourceFacts(sku="1001",desc_es="2 tonos")
+    assert guard_translation(source,{"description":"双色"},("description",))["status"]=="PASS"
+    source=SourceFacts(sku="1001",desc_es="3 tonos")
+    assert guard_translation(source,{"description":"双色"},("description",))["status"]=="FAIL"
+    source=SourceFacts(sku="1001",desc_es="2 tonos; 2 unidades")
+    assert guard_translation(source,{"description":"双色"},("description",))["status"]=="FAIL"
+
+
+def test_no_ironing_instruction_is_not_optional_or_an_easy_care_claim():
+    from action_tracker.localization.contracts import SourceFacts
+    from action_tracker.localization.qa import guard_translation
+    source=SourceFacts(sku="1001",details_es="Instrucciones de planchado: Sin planchado")
+    assert any(f["rule_id"]=="CARE_INSTRUCTION_CHANGED" for f in guard_translation(source,{"details":"熨烫说明：无需熨烫"},("details",))["findings"])
+    assert guard_translation(source,{"details":"熨烫说明：不熨烫"},("details",))["status"]=="PASS"

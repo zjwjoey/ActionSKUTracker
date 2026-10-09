@@ -507,6 +507,7 @@ def _semantic_numeric_equivalents(source_text: str, target: str) -> Counter[str]
         (r"\b(\d+)\s+capas?\b", {"3": ("三层", "三层纸", "三层餐巾")} ),
         (r"\b(\d+)\s+en\s+1\b", {"3": "三合一", "2": "二合一", "4": "四合一"}),
         (r"\b(\d+)\s+personas?\b", {"1": ("单人", "一人"), "2": ("双人", "两人")}),
+        (r"\b(\d+)\s+(?:tonos|colores)\b", {"2": "双色"}),
         (r"\b(1)\s+(?:tamaño|size)\b", {"1": ("均码", "均一尺码", "单一尺码")}),
         (r"\bn\.\s*[ºo]?\s*(\d+)\b", {"1": "一号", "2": "二号", "3": "三号"}),
     )
@@ -618,6 +619,17 @@ def _detail_boolean_findings(source_text, target):
     return findings
 
 
+def _detail_care_findings(source_text, target):
+    source_pairs = parse_structured_details(source_text)
+    target_pairs = parse_structured_details(target)
+    no_iron = any(re.search(r"instrucciones\s+de\s+planchado", p.key, re.I)
+        and re.fullmatch(r"sin planchado|no planchar", p.value.strip(), re.I) for p in source_pairs)
+    if no_iron and any("熨烫" in p.key and re.search(r"无需|不用|免熨|不必", p.value) for p in target_pairs):
+        return [QAFinding("CARE_INSTRUCTION_CHANGED", "BLOCKER", "details", {},
+            source=source_text, target=target, message="care instruction changed into an optional/easy-care claim", blocking=True)]
+    return []
+
+
 def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = ()) -> tuple[QAFinding, ...]:
     findings: list[QAFinding] = []
     for field_name in requested_fields:
@@ -637,6 +649,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             continue
         if field_name == "details":
             findings.extend(_detail_boolean_findings(source_text, target))
+            findings.extend(_detail_care_findings(source_text, target))
             if (re.search(r"\bpincel(?:es)?\b", str(getattr(source, "name_es", "") or ""), re.I)
                     and re.search(r"material\s+cabello", source_text, re.I) and "发丝" in target):
                 findings.append(QAFinding("DETAIL_SUBJECT_CHANGED", "BLOCKER", field_name,

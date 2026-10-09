@@ -128,8 +128,10 @@ def main():
             facts = {key: record.get(key) for key in ("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es")}
             source_hash = localization_source_hash(facts)
             # None is unavailable evidence; register_source skips those units.
-            runtime.registry.register_source(sku, facts, source_hash, observed_at=str(record.get("last_seen") or ""),
-                source_run_id="historical-reviewed-pilot", source_quality_status="VALID")
+            # A reconstructed aggregate has no single official observation
+            # timestamp. Original field dates remain in immutable evidence.
+            runtime.registry.register_source(sku, facts, source_hash, observed_at="",
+                source_run_id=args.batch_id, source_quality_status="VALID")
             with connect(args.database) as db:
                 existing = db.execute("SELECT r.revision_id FROM translation_revisions r JOIN translation_units u ON u.unit_id=r.unit_id JOIN translation_source_versions s ON s.source_version_id=u.source_version_id WHERE s.official_sku=? AND s.source_hash=? AND u.field_name=? AND r.target_hash=? AND r.repair_reason='HISTORICAL_SOURCE_BOUND_SEMANTIC_REVIEW' ORDER BY r.created_at DESC LIMIT 1", (sku, source_hash, CANONICAL_TO_SOURCE[field], value_hash(target))).fetchone()
             revision = str(existing[0]) if existing else runtime.registry.record_revision_for_sku(sku, field, target,
