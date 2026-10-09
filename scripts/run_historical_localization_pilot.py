@@ -16,7 +16,7 @@ from action_tracker.database.production import ProductionWriter, apply_approved_
 from action_tracker.database.repository import ProductionRepository
 from action_tracker.knowledge.storage import KnowledgeStore
 from action_tracker.localization.canonical_qa import canonical_guard
-from action_tracker.localization.contracts import SourceFacts
+from action_tracker.localization.contracts import SourceFacts, CANONICAL_TO_SOURCE, CANONICAL_TO_ZH, CANONICAL_AI_FIELDS
 from action_tracker.localization.delegated_approval import ACTOR, VERSION
 from action_tracker.localization.hashes import value_hash
 from action_tracker.localization.history_audit import verified_backup
@@ -28,6 +28,20 @@ from action_tracker.services.hashing import localization_source_hash, localizati
 from action_tracker.services.runtime import RunLock
 
 
+def historical_records(repo, database):
+    records = {r["sku"]: r for r in repo.load_current_export_records(include_non_current=True)}
+    with connect(database) as db:
+        for row in db.execute("SELECT official_sku,name,cat1,cat2,spec,description,details FROM product_localizations WHERE language='es'"):
+            record = records.get(str(row[0]))
+            if record and record["status"] != "CURRENT":
+                # A missing historical source remains unavailable. Export's
+                # business-name fallback is not this field's source evidence.
+                facts = dict(zip(("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es"), row[1:]))
+                record.update(facts)
+                record["source_hash"] = localization_source_hash(facts)
+    return records
+
+
 def already_ready(record, database, field, target):
     provenance = record.get("zh_field_provenance", {}).get(field, {})
     with connect(database) as db:
@@ -37,8 +51,10 @@ def already_ready(record, database, field, target):
             WHERE s.official_sku=? AND s.source_hash=? AND u.field_name=?
             AND u.freshness_status='FRESH' AND r.review_status='APPROVED'
             AND r.qa_status='PASS' AND r.canonical_qa_status IN ('PASS','NOT_REQUIRED')
-            AND r.target_hash=?""", (record["sku"], record["source_hash"],
-                {"name": "name_es"}[field], value_hash(target))).fetchone()[0]
+            AND r.target_hash=? AND r.target_text=? AND r.source_hash=s.source_hash
+            AND NOT EXISTS (SELECT 1 FROM translation_qa_findings q WHERE q.revision_id=r.revision_id
+                AND q.status='OPEN' AND q.severity IN ('BLOCKER','ERROR','HIGH'))""", (record["sku"], record["source_hash"],
+                CANONICAL_TO_SOURCE[field], value_hash(target), target)).fetchone()[0]
     return bool(approved and provenance.get("value") == target
         and provenance.get("review_status") == "APPROVED"
         and provenance.get("freshness_status") in {"CURRENT", "FRESH"}
@@ -78,7 +94,7 @@ def main():
             (args.output / "source_recovery.json").write_text(json.dumps(source_result, ensure_ascii=False, indent=2), encoding="utf-8")
         runtime = build_translation_runtime(cfg, db_path=args.database, allow_provider=False)
         repo = ProductionRepository(args.database)
-        records = {r["sku"]: r for r in repo.load_current_export_records(include_non_current=True)}
+        records = historical_records(repo, args.database)
         reviews = json.loads(args.review_file.read_text(encoding="utf-8"))
         artifact_hash = hashlib.sha256(args.review_file.read_bytes()).hexdigest()
         outcomes = []; grant_reviews = {}; ready = []
@@ -95,10 +111,10 @@ def main():
             if not artifact.startswith("PRIMARY:") and hashlib.sha256(Path(artifact).read_bytes()).hexdigest() != selected.get("file_hash"):
                 raise ValueError("PILOT_REVIEW_SOURCE_ARTIFACT_CHANGED")
             if record["status"] == "CURRENT": raise ValueError("PILOT_HISTORICAL_SCOPE_REQUIRED")
-            if field != "name": raise ValueError("PILOT_REVIEW_FIELD_NOT_SUPPORTED")
-            if str(record.get("name_es") or "") != review["source"]:
+            if field not in CANONICAL_AI_FIELDS: raise ValueError("PILOT_REVIEW_FIELD_NOT_SUPPORTED")
+            if str(record.get(CANONICAL_TO_SOURCE[field]) or "") != review["source"]:
                 outcomes.append({"sku": sku, "field": field, "status": "SOURCE_VERSION_REVIEW_REQUIRED"}); continue
-            if record.get("name_zh") == target:
+            if record.get(CANONICAL_TO_ZH[field]) == target:
                 outcomes.append({"sku": sku, "field": field,
                     "status": "NO_OP" if already_ready(record, args.database, field, target) else "METADATA_REVIEW_REQUIRED"}); continue
             plan = runtime.resolver.engine.resolve(record); context = plan.context
@@ -115,7 +131,7 @@ def main():
             runtime.registry.register_source(sku, facts, source_hash, observed_at=str(record.get("last_seen") or ""),
                 source_run_id="historical-reviewed-pilot", source_quality_status="VALID")
             with connect(args.database) as db:
-                existing = db.execute("SELECT r.revision_id FROM translation_revisions r JOIN translation_units u ON u.unit_id=r.unit_id JOIN translation_source_versions s ON s.source_version_id=u.source_version_id WHERE s.official_sku=? AND s.source_hash=? AND u.field_name='name_es' AND r.target_hash=? AND r.repair_reason='HISTORICAL_SOURCE_BOUND_SEMANTIC_REVIEW' ORDER BY r.created_at DESC LIMIT 1", (sku, source_hash, value_hash(target))).fetchone()
+                existing = db.execute("SELECT r.revision_id FROM translation_revisions r JOIN translation_units u ON u.unit_id=r.unit_id JOIN translation_source_versions s ON s.source_version_id=u.source_version_id WHERE s.official_sku=? AND s.source_hash=? AND u.field_name=? AND r.target_hash=? AND r.repair_reason='HISTORICAL_SOURCE_BOUND_SEMANTIC_REVIEW' ORDER BY r.created_at DESC LIMIT 1", (sku, source_hash, CANONICAL_TO_SOURCE[field], value_hash(target))).fetchone()
             revision = str(existing[0]) if existing else runtime.registry.record_revision_for_sku(sku, field, target,
                 source_hash=source_hash, provider="codex_semantic_review", model="CODEX", repair_reason="HISTORICAL_SOURCE_BOUND_SEMANTIC_REVIEW",
                 qa_status=qa["status"], canonical_qa_status=canonical["status"],

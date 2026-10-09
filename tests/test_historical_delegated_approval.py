@@ -99,3 +99,37 @@ def test_pilot_noop_requires_approved_ready_projection(tmp_path):
     assert ready(record, path, "name", "商品")
     record["zh_field_provenance"]["name"]["freshness_status"] = "STALE"
     assert not ready(record, path, "name", "商品")
+
+
+@pytest.mark.parametrize("field,target", [("name","商品"),("cat1","家居"),("cat2","箱子"),
+    ("spec","2 件"),("description","文字"),("details","材质：塑料")])
+def test_all_canonical_fields_delegated_apply_and_resume(tmp_path, field, target):
+    import runpy
+    from pathlib import Path
+    from action_tracker.database.repository import ProductionRepository
+    ready = runpy.run_path(str(Path(__file__).resolve().parents[1] / "scripts/run_historical_localization_pilot.py"))["already_ready"]
+    path, registry, head, _, grant = fixture(tmp_path)
+    review = copy.deepcopy(next(iter(grant["reviews"].values())))
+    rid = registry.record_revision_for_sku("1001",field,target,source_hash=review["source_hash"],provider="review",repair_reason="reviewed",qa_status="PASS")
+    review.update(field=field,target_hash=value_hash(target)); grant["reviews"]={rid:review}
+    registry.approve_revision_delegated(rid,actor=ACTOR,grant=grant)
+    staged=KnowledgeStore(path,role="PRIMARY").stage_approved_registry_patches(expected_base_commit_id=head,actor=ACTOR,revision_ids=[rid],delegated_approval=grant)
+    apply_approved_localization_patches(path,patch_ids=staged["patch_ids"],expected_base_commit_id=head,delegated_approval=grant)
+    record=ProductionRepository(path).load_current_export_records(include_non_current=True)[0]
+    assert ready(record,path,field,target)
+    registry.record_finding(rid,rule_id="NEW_BLOCKER",severity="BLOCKER",evidence={})
+    assert not ready(record,path,field,target)
+
+
+def test_historical_source_hydration_does_not_guess_missing_name(tmp_path):
+    import runpy
+    from pathlib import Path
+    from action_tracker.database.repository import ProductionRepository
+    hydrate=runpy.run_path(str(Path(__file__).resolve().parents[1]/"scripts/run_historical_localization_pilot.py"))["historical_records"]
+    path,_,_,_,_=fixture(tmp_path)
+    with connect(path) as db:
+        db.execute("UPDATE product_localizations SET name=NULL WHERE language='es'")
+        db.execute("UPDATE products SET name_es='Unverified business fallback'")
+    record=hydrate(ProductionRepository(path),path)["1001"]
+    assert record["name_es"] is None
+    assert record["source_hash"]==localization_source_hash({key:record[key] for key in ("name_es","cat1_es","cat2_es","spec_es","desc_es","details_es")})

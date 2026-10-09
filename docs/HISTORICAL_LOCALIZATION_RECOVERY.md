@@ -56,8 +56,9 @@ historical scope, current revision, freshness, QA, canonical QA, open blockers
 and current PRIMARY source. Unrelated service calls retain the human-only gate.
 Delegated Apply does not support unit price modifications.
 
-The runner `scripts/run_historical_localization_pilot.py` currently accepts
-semantically reviewed name corrections only. Existing equal targets require
+The runner `scripts/run_historical_localization_pilot.py` accepts finite,
+semantically reviewed corrections for the six canonical text fields. It does
+not approve unreviewed provider candidates. Existing equal targets require
 approved current provenance and Registry readiness before returning NO_OP;
 otherwise they remain METADATA_REVIEW_REQUIRED. Optional source restoration and
 validated backup execute under the same RunLock. Production uses the real
@@ -67,6 +68,11 @@ The 100-SKU manifest covers 600 fields; it does not mean 600 Chinese fields have
 passed semantic review. The isolated pilot restored 286 Spanish fields on 68
 SKU and applied 10 reviewed Chinese names. Four reviewed names were retained,
 two require review. Full regression passed 875 tests before final runner edits.
+Historical approval reads the exact ES localization fields; a missing source
+does not inherit an unverified business-name fallback. Source restoration uses
+separate CommitBundle run IDs from Chinese Apply. Each subsequent batch needs
+a distinct `--batch-id` and output directory.
+
 Current SKU, localization, prices, events, observations and lifecycle hashes
 matched the original backup. Repeat execution and final production acceptance
 must be recorded in runtime reports.
