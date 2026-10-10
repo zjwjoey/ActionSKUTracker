@@ -6,6 +6,7 @@ from typing import Any, Mapping
 from .contracts import SemanticFact, SourceFacts
 
 _TERM_MAP = {
+    "goma de borrar": ("PRODUCT_TYPE", "橡皮擦"), "gomas de borrar": ("PRODUCT_TYPE", "橡皮擦"),
     "gomas": ("PRODUCT_TYPE", "橡皮筋"), "barra de cola": ("PRODUCT_TYPE", "胶棒"),
     "alfombrilla para cortar": ("PRODUCT_TYPE", "切割垫"), "papel de cocina": ("PRODUCT_TYPE", "厨房纸"), "paño": ("PRODUCT_TYPE", "清洁布"),
     "paños": ("PRODUCT_TYPE", "清洁布"), "detergente": ("PRODUCT_TYPE", "洗洁精"),
@@ -61,6 +62,12 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     if isinstance(tech_rows, Mapping):
         tech_rows = [{"token": key, "canonical_token": value, "token_type": "TECH_TOKEN"} for key, value in tech_rows.items()]
     def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
+        if source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"}:
+            # The complete noun means eraser, not an assertion of rubber
+            # composition or rubber bands. Preserve separate material facts.
+            remaining = re.sub(r"\bgomas?\s+de\s+borrar\b", " ", dict(text_fields).get(field, ""), flags=re.I)
+            if not re.search(rf"\b{re.escape(source_text)}\b", remaining, re.I):
+                return
         key = (kind, source_text.casefold(), zh, field)
         if key in seen or not source_text or not zh:
             return

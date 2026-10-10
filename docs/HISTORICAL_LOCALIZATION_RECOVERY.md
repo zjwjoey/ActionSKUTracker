@@ -161,6 +161,15 @@ It does not waive bare BBQ identifiers, BBQ-120 models, or tokens borrowed
 from another field. The fixture retains the original archival evidence and
 tests omitted flavour and cross-field/model counterexamples.
 
+SKU3210285 exposes a trusted-brand/unit collision: `3M` in its title is a
+brand, not a length. Name QA masks only exact, omitted, field-bound BRAND
+spans before unit extraction; actual `3 m`/`3m`, missing brand evidence and
+wrong-field brand evidence still fail. SKU3211913 exposes the compound noun
+`goma de borrar`: semantic parsing records an eraser product type without
+asserting rubber material from that noun. A separate `de goma` or details
+material remains protected. Both cases carry real archived source evidence
+and counterexample assertions; the published dictionary is unchanged.
+
 The history source configuration paths now point at the existing read-only
 `F:/按日期整理/action表格` archive. Neither those files nor production Master is
 modified by audit. Approved historical compatibility projection changes only

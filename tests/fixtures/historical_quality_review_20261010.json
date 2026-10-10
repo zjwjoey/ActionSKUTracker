@@ -163,5 +163,35 @@
       "field_hash": "822b1812f19aabe01c67248e188a24e3cc0153721620332cbf38125a6dcf1576"
     },
     "expected_behavior": "FIELD_SCOPED_BBQ_STYLE_FLAVOUR_TRANSLATION_NOT_MODEL_WAIVER"
+  },
+  {
+    "sku": "3211913",
+    "field": "name",
+    "source": "Figura XL de goma de borrar",
+    "target": "XL造型橡皮擦",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Figura XL de goma de borrar",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "4060877807baa5a74fa0d38c3aa24589cce64eb67d4bacaeb7905dc4251ce2b9"
+    },
+    "expected_behavior": "LEXICAL_OR_TRUSTED_BRAND_DISAMBIGUATION_WITH_FACT_PRESERVATION"
+  },
+  {
+    "sku": "3210285",
+    "field": "name",
+    "source": "Pinzas decorativas 3M Command",
+    "target": "装饰夹",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Pinzas decorativas 3M Command",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "2547f1b147a856feaa754837b688551823f5b14997f023ab6643aef2ca3e39ab"
+    },
+    "expected_behavior": "LEXICAL_OR_TRUSTED_BRAND_DISAMBIGUATION_WITH_FACT_PRESERVATION"
   }
 ]

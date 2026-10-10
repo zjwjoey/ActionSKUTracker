@@ -870,7 +870,17 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     findings.append(QAFinding("PROTECTED_TOKEN_MISSING", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
                 elif actual_count > expected_count:
                     findings.append(QAFinding("PROTECTED_TOKEN_DUPLICATED", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
-        source_units = _units(source_text)
+        unit_source = source_text
+        if field_name == "name":
+            for fact in semantic_facts:
+                brand = str(getattr(fact, "source_text", "") or "")
+                if (str(getattr(fact, "semantic_type", "")) == "BRAND"
+                        and _fact_applies_to_field(fact, field_name) and brand
+                        and not _has_casefold_token(target, brand)):
+                    # A trusted, field-bound 3M brand is not three metres.
+                    # Match exact spelling, so a separate 3 m/3m stays a unit.
+                    unit_source = re.sub(rf"(?<!\w){re.escape(brand)}(?!\w)", " ", unit_source)
+        source_units = _units(unit_source)
         target_units = _units(target)
         for unit in source_units:
             if unit == "%" and _zero_percent_is_semantically_rendered(source_text, target):

@@ -117,3 +117,31 @@ def test_real_bbq_flavour_translation_cannot_waive_device_models_or_cross_field_
                    {"name_es": "Dispositivo BBQ-120 style"}):
         bad = guard_translation(SourceFacts.from_record(record), {"name": "烧烤风味设备"}, ("name",))
         assert bad["status"] == "FAIL"
+
+
+def test_real_eraser_noun_does_not_invent_rubber_composition():
+    from action_tracker.localization.semantic import parse_semantic_facts
+    row = case("3211913")
+    source = SourceFacts.from_record({"name_es": row["source"]})
+    facts = parse_semantic_facts(source)
+    assert any(f.semantic_type == "PRODUCT_TYPE" and f.canonical_value == "橡皮擦" for f in facts)
+    assert not any(f.semantic_type == "MATERIAL" and f.source_text == "goma" for f in facts)
+    assert guard_translation(source, {"name": row["target"]}, ("name",), semantic_facts=facts)["status"] == "PASS"
+    actual_material = parse_semantic_facts(SourceFacts.from_record({"name_es": "Goma de borrar de goma"}))
+    assert any(f.semantic_type == "MATERIAL" and f.source_text == "goma" for f in actual_material)
+    other_field = parse_semantic_facts(SourceFacts.from_record({"name_es": "Goma de borrar", "details_es": "Material: Goma"}))
+    assert any(f.semantic_type == "MATERIAL" and f.source_field == "details_es" for f in other_field)
+
+
+def test_real_brand_unit_collision_requires_same_field_brand_and_preserves_real_metres():
+    row = case("3210285")
+    source = SourceFacts.from_record({"name_es": row["source"]})
+    brand = SemanticFact("BRAND", "3M", "3M", "3M", "name_es")
+    assert guard_translation(source, {"name": row["target"]}, ("name",), semantic_facts=(brand,))["status"] == "PASS"
+    assert guard_translation(source, {"name": row["target"]}, ("name",))["status"] == "FAIL"
+    wrong_field = SemanticFact("BRAND", "3M", "3M", "3M", "desc_es")
+    assert guard_translation(source, {"name": row["target"]}, ("name",), semantic_facts=(wrong_field,))["status"] == "FAIL"
+    for actual_unit in ("3 m", "3m"):
+        more = SourceFacts.from_record({"name_es": row["source"] + " " + actual_unit})
+        bad = guard_translation(more, {"name": row["target"]}, ("name",), semantic_facts=(brand,))
+        assert any(f["rule_id"] == "UNIT_DROPPED" for f in bad["findings"])
