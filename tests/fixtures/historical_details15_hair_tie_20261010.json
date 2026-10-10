@@ -1,0 +1,356 @@
+[
+  {
+    "sku": "3219801",
+    "source": "{'Número del artículo': '3219801', 'Color': 'Multicolor, Negro', 'Cantidad': '6 unidades', 'Tipo de accesorio para el cabello': 'Goma para cola de caballo'}",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "{'Número del artículo': '3219801', 'Color': 'Multicolor, Negro', 'Cantidad': '6 unidades', 'Tipo de accesorio para el cabello': 'Goma para cola de caballo'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3219801",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "67aea6e5d8a2c700dfb4bccbc2185877220aba38fae3d13ce67c43a19ba8a675"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "{'Número del artículo': '3219801', 'Color': 'Multicolor, Negro', 'Cantidad': '6 unidades', 'Tipo de accesorio para el cabello': 'Goma para cola de caballo'}",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3219801",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "67aea6e5d8a2c700dfb4bccbc2185877220aba38fae3d13ce67c43a19ba8a675"
+        }
+      ]
+    },
+    "context": {
+      "name": "Gomas del pelo",
+      "cat1": "Moda",
+      "cat2": "Accesorios para el cabello",
+      "spec": "6 uds. | diferentes variantes",
+      "description": "Con bonitos lazos o diseño trenzado\nDa el toque final a cualquier peinado",
+      "details": "{'Número del artículo': '3219801', 'Color': 'Multicolor, Negro', 'Cantidad': '6 unidades', 'Tipo de accesorio para el cabello': 'Goma para cola de caballo'}"
+    },
+    "candidate": "{'商品编号': '3219801', '颜色': '多色、黑色', '数量': '6件', '发饰类型': '马尾辫橡皮筋'}",
+    "target": "{'商品编号':'3219801','颜色':'多色、黑色','数量':'6件','发饰类型':'马尾发圈'}",
+    "formal_approval": false,
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "details",
+          "evidence": {
+            "semantic_type": "MATERIAL",
+            "source_term": "goma",
+            "expected_target": "橡胶",
+            "source_field": "details_es",
+            "target_scope": "details",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "{'Número del artículo': '3219801', 'Color': 'Multicolor, Negro', 'Cantidad': '6 unidades', 'Tipo de accesorio para el cabello': 'Goma para cola de caballo'}",
+          "target": "{'商品编号': '3219801', '颜色': '多色、黑色', '数量': '6件', '发饰类型': '马尾辫橡皮筋'}",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    }
+  },
+  {
+    "sku": "2564827",
+    "source": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-02\\2026-09-02_030100\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-02/2026-09-02_030100",
+        "file_hash": "da28948e4ea50de9a25b26000489daf25cc7a3583e90171b309416fdaa15b053",
+        "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+          "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-26\\2026-08-26_130145\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-26/2026-08-26_130145",
+          "file_hash": "7aa34749c60e85fdede52763c445b98504451bf565ec05b18f926322baf062f7",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-28\\2026-08-28_073710\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-28/2026-08-28_073710",
+          "file_hash": "9f3985b8c93914d1d14e7c7b10cd5a9c9281df376c514dcca8685c5bb3b284ae",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+          "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_184646\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_184646",
+          "file_hash": "25e78152339d143bd5b8808efc9833c8202ff31f264118c57720a039dc852b51",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_155325\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_155325",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_164431\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_164431",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_024429\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_024429",
+          "file_hash": "87f966bee1380fa0cf174b37dee21f9193f2cc69007a2a20ad44548d5ff07d0c",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_035941\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_035941",
+          "file_hash": "739c048fd236408c8c8d316472d0d3a09959f0dc515b1e76092903c32f8d8d7c",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-01\\2026-09-01_113916\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-01/2026-09-01_113916",
+          "file_hash": "3516a29a90edb0699efbe4d017b16f58373e99589541d0bb909da6c74c38e8bd",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-02\\2026-09-02_030100\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-02/2026-09-02_030100",
+          "file_hash": "da28948e4ea50de9a25b26000489daf25cc7a3583e90171b309416fdaa15b053",
+          "field_hash": "a6059bda6efa53ebfe1431432e9145672c24f644063970cd699475c0d895e854"
+        }
+      ]
+    },
+    "before": "颜色: 蓝色, 棕色, 彩色, 粉色\n材质: 纺织品\n形状: 圆形\n发饰类型: 发圈\n商品编号: 2564827",
+    "target": "颜色: 蓝色, 棕色, 彩色, 粉色\n材质: 纺织品\n形状: 圆形\n发饰类型: 发圈\n商品编号: 2564827",
+    "formal_approval": false,
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "details",
+          "evidence": {
+            "semantic_type": "MATERIAL",
+            "source_term": "goma",
+            "expected_target": "橡胶",
+            "source_field": "details_es",
+            "target_scope": "details",
+            "placement": ""
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Color: Azul, Marrón, Multicolor, Rosa; Material: Textil; Forma: Redondo; Tipo de accesorio para el cabello: Goma para cola de caballo; Número del artículo: 2564827",
+          "target": "颜色: 蓝色, 棕色, 彩色, 粉色\n材质: 纺织品\n形状: 圆形\n发饰类型: 发圈\n商品编号: 2564827",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    }
+  }
+]

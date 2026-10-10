@@ -44,6 +44,8 @@ _SEMANTIC_PATTERNS = (
     ("NUTRITION", r"\b(?:vitamina|omega[- ]?3|colágeno|magnesio|proteína)\b"),
 )
 
+_HAIR_TIE_PATTERN = r"\bgomas?\s+para\s+(?:la\s+)?cola\s+de\s+caballo\b"
+
 
 def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None) -> tuple[SemanticFact, ...]:
     dictionaries = dictionaries or {}
@@ -73,6 +75,10 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
             # The complete noun means eraser, not an assertion of rubber
             # composition or rubber bands. Preserve separate material facts.
             remaining = re.sub(r"\bgomas?\s+de\s+borrar\b", " ", dict(text_fields).get(field, ""), flags=re.I)
+            # A ponytail tie names an accessory, not its composition. Only
+            # consume this complete own-field phrase; separately stated goma
+            # material or other rubber bands remain protected facts.
+            remaining = re.sub(_HAIR_TIE_PATTERN, " ", remaining, flags=re.I)
             # The complete peelable-candy phrase is disambiguated only by
             # an explicit gummy noun in this same source field. A separate
             # rubber-band occurrence remains a separate product fact.
@@ -89,6 +95,8 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        for match in re.finditer(_HAIR_TIE_PATTERN, text, re.I):
+            add("PRODUCT_TYPE", match.group(0), "发圈", field, "source_bound_hair_tie_phrase")
         if (re.search(r"\bgomas\s+pelables\b", text, re.I)
                 and re.search(r"\bgominolas?\b", text, re.I)):
             add("PRODUCT_TYPE", "gomas pelables", "软糖", field, "source_bound_confectionery_phrase")
