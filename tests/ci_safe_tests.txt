@@ -122,3 +122,4 @@ tests/test_historical_spec24_usage_units.py
 tests/test_historical_archive_material_qualifiers.py
 tests/test_historical_trusted_source_qa.py
 tests/test_historical_strategy_isolation.py
+tests/test_localization_quality_experiment.py
