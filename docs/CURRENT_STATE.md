@@ -75,3 +75,12 @@ main protection 只读查询显示未保护；建议 PR required、Ubuntu/Window
 独立分支核心提交`08ac633`、`7638176`修复木纹外观和竹纤维限定词保护，并阻断外观来源被擅称实木。真实来源fixture及负例加入CI_SAFE，最终完整回归1278 PASS，包含六种隔离daily兼容场景；本地代码尚未部署到生产默认daily入口，正式词典及默认开关不变，外部模型服务调用0。全六字段独立语义审查及整个历史优化目标仍未完成。
 
 详见[504项审查报告](HISTORICAL_ARCHIVE_504_REVIEW_20261010.md)。正式运行证据位于上述归档报告目录：`remaining504_final_summary.json`、`remaining_all246_apply/acceptance_final.json`、`remaining_all246_resume/pilot_review_apply.json`、`remaining258_manual_review_index.json`。早期`acceptance.json`草稿的空值指标已由`acceptance_supersession.json`明确作废，正式统计只涵盖历史六字段，实际Apply结论不变。
+
+
+## 2026-10-11 可信来源432项审查及入库完成
+
+432项全部完成本轮审查，正式补入84字段/79 SKU（品名42、规格10、描述15、详情17）；另外3次无来源限定词修正，累计87补丁但仍84个不同字段。原范围仍待复核347个历史字段，另1个字段所属商品CURRENT。两个正式批次Master Sync、完整性、外键、八项受保护数据及23份来源SHA核验通过；两次实际Resume分别0 Apply/84 NO_OP和0 Apply/3 NO_OP，最终84项APPROVED/FRESH。
+
+最终PRIMARY头`2026-10-10_detail_apply_20261010T161740273910Z_4c999604_7e3d96056e6e`，历史SKU4243，历史六字段空值4623。145次真实Qwen-MT生成、28个确定性候选，review provider调用0；候选不计入库。核心代码`4ce68d3`，完整回归1288 PASS，未部署生产默认daily入口。全历史语义审查及整体目标仍未完成。
+
+详见[432项审查及正式验收](HISTORICAL_TRUSTED432_REVIEW_20261010.md)，运行证据`runtime/reports/historical_localization_20261009/trusted432_20261010/overall_final_summary.json`及`final_acceptance.json`；人工复核索引`manual_review_index_at_final_head.json`。

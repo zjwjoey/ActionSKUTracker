@@ -11,3 +11,18 @@
 真实来源fixture包含2542126、2582174、3008153、3202438、3221160、3221364的西语及文件SHA。10个CI_SAFE测试核对有效翻译、面积单位与数值异常、区间遗漏、小数保留、型号后缀及普通西语、限定语跨字段和品牌注入。完整回归1288 PASS（93.50秒）。只改本地独立分支，未发布正式词典、启用生产默认翻译开关或部署到生产daily入口。
 
 运行证据：`F:\ActionSKUTracker\runtime\reports\historical_localization_20261009\trusted432_20261010`，包括scope、源文件SHA、原候选及服务provenance、逐字段审查、preflight和Owner队列。实际Apply、Master Sync、完整性和同批Resume结论须以正式验收记录追加，不以候选计为已入库。
+
+
+## 2026-10-11 正式入库与最终验收
+
+432项完成本轮来源及语义审查：84个缺失中文字段通过既有QA、delegated Approval、Immutable Patch、正式Apply和Master Sync补入，涉及79个SKU（品名42、规格10、描述15、详情17）。23个候选原样采用，61个候选修正后采用；其中9项从此前阻断队列恢复。随后发现3处译文限定过细，经同一正式流程去除无来源支持的“分格”和“套件”：累计87次文本补丁Apply，仍为84个不同字段，不能把重复修正算成87个补译字段。
+
+348项未入库：最终头下仍属历史范围347项，另1项所属商品已恢复CURRENT。机械QA由307 PASS /125 FAIL变为311 PASS /121 FAIL，227个机械PASS仍因来源、主体、材质、数值或其他语义风险被阻断。只按本字段来源生成事实，不能用机械PASS替代语义批准。候选生成包含145次真实Qwen-MT请求、28个确定性结果，独立review provider调用0，服务总token记录24263；确定性候选中的商品身份误判已记录和阻断，planner缺陷尚未整体修复。
+
+两个正式批次Master Sync均SUCCESS；84项批次实际Resume为0 Apply、84 NO_OP，3项措辞批次实际Resume为0 Apply、3 NO_OP，两次均ALREADY_SYNCED。每批数据库完整性、外键、字段差异和八项受保护数据核验通过，23份来源文件SHA-256复核未改变。最终84项当前中文与批准值一致、来源绑定APPROVED/FRESH。入库前共享锁释放后重新核对全部六字段来源上下文、空值和历史状态，84项均无变化。并发生产daily及browser恢复任务使用同一写锁，未删除其锁或停止其进程；其外部变化不能计入本批改动。
+
+本批84项写入头为`2026-10-10_historical_trusted432_20261010_4f12a5cfd758`，3项措辞修正头为`2026-10-10_historical_trusted432_wording3_20261010_8b076b117ad0`。最终读取PRIMARY头为`2026-10-10_detail_apply_20261010T161740273910Z_4c999604_7e3d96056e6e`；历史SKU为4243，六字段空值为4623。剩余清单覆盖完整性为True；来源分类沿用已有审计，未冒称在并发任务后重新全量审计。
+
+核心独立分支`fix/historical-localization-recovery-20261009`提交`4ce68d3`，完整回归1288 PASS。本轮修改QA及真实来源测试，未部署到生产默认daily入口，也未训练模型参数或发布正式词典。已有隔离daily兼容测试随完整回归通过；整套在线daily验收、全部既有中文独立语义审查和整个历史优化目标仍未完成。
+
+正式证据入口：`overall_final_summary.json`、`final_acceptance.json`、两个批次的`verification.json`及Resume结果；复核清单为`manual_review_index_at_final_head.json`，剩余历史空值为`remaining_historical_inventory.jsonl`。以上均位于`F:\ActionSKUTracker\runtime\reports\historical_localization_20261009\trusted432_20261010`，候选与实际Apply严格分开计数。
