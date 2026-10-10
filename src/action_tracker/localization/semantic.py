@@ -49,9 +49,14 @@ _SEMANTIC_PATTERNS = (
 )
 
 _HAIR_TIE_PATTERN = r"\bgomas?\s+para\s+(?:la\s+)?cola\s+de\s+caballo\b"
+_HISTORICAL_QUALITY_TERMS = frozenset({
+    "marcadores grandes", "marcadores acrílicos", "marcadores dobles de pizarra blanca",
+    "marcadores de punta fina y pincel", "brocha para polvos", "recortacejas",
+    "ampollas de aceite", "goma de borrar", "gomas de borrar", "over-ear",
+})
 
 
-def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None) -> tuple[SemanticFact, ...]:
+def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None, historical_quality: bool = True) -> tuple[SemanticFact, ...]:
     dictionaries = dictionaries or {}
     text_fields = (("name_es", source.name_es), ("spec_es", source.spec_es), ("desc_es", source.desc_es), ("details_es", source.details_es))
     facts: list[SemanticFact] = []
@@ -75,7 +80,7 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     if isinstance(tech_rows, Mapping):
         tech_rows = [{"token": key, "canonical_token": value, "token_type": "TECH_TOKEN"} for key, value in tech_rows.items()]
     def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
-        if source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"}:
+        if historical_quality and source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"}:
             # The complete noun means eraser, not an assertion of rubber
             # composition or rubber bands. Preserve separate material facts.
             remaining = re.sub(r"\bgomas?\s+de\s+borrar\b", " ", dict(text_fields).get(field, ""), flags=re.I)
@@ -102,11 +107,11 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         # A numeric wash allowance states use, not an unqualified count.
         # Keep the complete phrase and its own field; do not treat washed
         # fabric adjectives or a wash count in another field as evidence.
-        for match in re.finditer(r"(?<!\w)\d+\s+lavados\b", text, re.I):
+        for match in re.finditer(r"(?<!\w)\d+\s+lavados\b", text, re.I) if historical_quality else ():
             add("VARIANT", match.group(0), "洗涤", field, "source_bound_wash_count")
-        for match in re.finditer(_HAIR_TIE_PATTERN, text, re.I):
+        for match in re.finditer(_HAIR_TIE_PATTERN, text, re.I) if historical_quality else ():
             add("PRODUCT_TYPE", match.group(0), "发圈", field, "source_bound_hair_tie_phrase")
-        if (re.search(r"\bgomas\s+pelables\b", text, re.I)
+        if (historical_quality and re.search(r"\bgomas\s+pelables\b", text, re.I)
                 and re.search(r"\bgominolas?\b", text, re.I)):
             add("PRODUCT_TYPE", "gomas pelables", "软糖", field, "source_bound_confectionery_phrase")
         for row in product_rows if isinstance(product_rows, (list, tuple)) else ():
@@ -136,6 +141,8 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
                 semantic = kind if kind in {"PRODUCT_TYPE", "BRAND", "SERIES", "MODEL", "TECH_TOKEN", "MATERIAL", "FUNCTION", "CARE", "COMPATIBILITY", "DESCRIPTION_FACT"} else "DESCRIPTION_FACT"
                 add(semantic, term, zh, field, "term_dictionary")
         for term, (kind, zh) in _TERM_MAP.items():
+            if not historical_quality and term in _HISTORICAL_QUALITY_TERMS:
+                continue
             if term.startswith("marcadores"):
                 # A book/web marker is not a pen. Remove only that complete
                 # noun phrase; a separate pen phrase in this field survives.

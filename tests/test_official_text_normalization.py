@@ -4,10 +4,10 @@ from action_tracker.services.normalization import normalize_official_text
 
 def test_spec_size_labels_keep_literal_ranges_and_do_not_consume_other_words():
     from action_tracker.localization.formatter import format_spec
-    assert format_spec('Tallas 98-140 | diferentes variantes') == '尺码 98–140｜多款可选'
-    assert format_spec('Talla XL | 2 unidades') == '尺码 XL｜2 件'
-    assert format_spec('Tallas 240-255 cm | 2 piezas') == '尺码 240–255cm｜2 件'
-    assert format_spec('Pantallas 2 unidades') == 'Pantallas 2 件'
+    assert format_spec('Tallas 98-140 | diferentes variantes',experimental_size_labels=True) == '尺码 98–140｜多款可选'
+    assert format_spec('Talla XL | 2 unidades',experimental_size_labels=True) == '尺码 XL｜2 件'
+    assert format_spec('Tallas 240-255 cm | 2 piezas',experimental_size_labels=True) == '尺码 240–255cm｜2 件'
+    assert format_spec('Pantallas 2 unidades',experimental_size_labels=True) == 'Pantallas 2 件'
 
 
 def test_numeric_qa_does_not_merge_a_thousands_group_across_fields():

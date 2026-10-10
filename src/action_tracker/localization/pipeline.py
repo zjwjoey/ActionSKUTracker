@@ -129,7 +129,7 @@ def translate_candidate(record: Mapping[str, Any], requested_fields: tuple[str, 
     display_tokens: list[str] = []
     semantic_types = {"PRODUCT_TYPE", "FUNCTION", "MATERIAL", "COMPATIBILITY", "CARE", "NUTRITION", "VARIANT", "DETAIL_KEY"}
     seen_terms: set[str] = set()
-    for fact in semantic_facts:
+    for fact in engine.generation_semantic_facts(source):
         source_term = str(fact.source_text or "").strip()
         source_field = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}
         if requested_fields and fact.source_field and not any(fact.source_field == source_field.get(field, field) for field in requested_fields):

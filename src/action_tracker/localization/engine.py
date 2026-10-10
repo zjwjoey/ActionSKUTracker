@@ -19,9 +19,19 @@ class LocalizationEngine:
     ``resolve_unknown`` in a separate, explicit step.
     """
 
-    def __init__(self, *, knowledge: Mapping[str, Any] | None = None, policy_version: str | None = None):
+    def __init__(self, *, knowledge: Mapping[str, Any] | None = None, policy_version: str | None = None,
+                 experimental_historical_candidates: bool = False):
+        if type(experimental_historical_candidates) is not bool:
+            raise ValueError("EXPERIMENTAL_CANDIDATES_BOOLEAN_REQUIRED")
         self.knowledge = dict(knowledge or {})
         self.policy_version = policy_version or "CHINESE_LOCALIZATION_STANDARD_V1"
+        self.experimental_historical_candidates = experimental_historical_candidates
+
+    def generation_semantic_facts(self, source: SourceFacts):
+        """QA vocabulary must not silently become provider/candidate policy."""
+        return parse_semantic_facts(source, known_brands=set(self.knowledge.get("brands") or ()),
+                                    dictionaries=self.knowledge,
+                                    historical_quality=self.experimental_historical_candidates)
 
     def source_facts(self, record: Mapping[str, Any]) -> SourceFacts:
         return SourceFacts.from_record(record)
@@ -56,11 +66,19 @@ class LocalizationEngine:
                 "details_zh": product.get("details_zh") or product.get("details") or "",
             })
         known_brands = set(record_knowledge.get("brands") or ())
-        facts = parse_semantic_facts(source, known_brands=known_brands, dictionaries=record_knowledge)
-        plan = plan_localization(source, facts, knowledge=record_knowledge, existing=existing)
+        facts = parse_semantic_facts(source, known_brands=known_brands, dictionaries=record_knowledge,
+                                     historical_quality=self.experimental_historical_candidates)
+        plan = plan_localization(source, facts, knowledge=record_knowledge, existing=existing,
+                                  experimental_size_labels=self.experimental_historical_candidates)
         from .product_family import build_translation_context
         from dataclasses import replace
         plan = replace(plan, context=build_translation_context(record, "", semantic_facts=plan.semantic_facts))
+        if not self.experimental_historical_candidates:
+            # Retain enhanced fact checks and placement evidence, but discard
+            # the QA plan's candidate values and provider context entirely.
+            quality_facts = parse_semantic_facts(source, known_brands=known_brands, dictionaries=record_knowledge)
+            quality_plan = plan_localization(source, quality_facts, knowledge=record_knowledge, existing=existing)
+            plan = replace(plan, semantic_facts=quality_plan.semantic_facts)
         existing_hash = str((existing or {}).get("source_hash") or "")
         if existing_hash and existing_hash != source.source_hash and not bool((existing or {}).get("retranslate")):
             # Daily observation may detect changed Spanish facts before a new

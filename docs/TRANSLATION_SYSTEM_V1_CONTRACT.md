@@ -74,6 +74,15 @@ into PRIMARY. Queue workers and providers never write the PRIMARY projection.
 
 ## Runtime and safety boundary
 
+Historical quality QA vocabulary and candidate-generation policy are separate.
+The engine defaults `experimental_historical_candidates=False`; its candidate
+planner, provider context, terminology and retry hints use the baseline semantic
+rules, while enhanced source-bound facts remain available to QA. Explicitly
+setting this constructor parameter to true enables historical candidate rules
+only for isolated experiments. The production runtime builder never enables it.
+No dictionary publication, auto approval or production Apply permission is
+implied by this parameter. See `HISTORICAL_LOCALIZATION_MERGE_GATE_20261011.md`.
+
 `build_translation_runtime()` is the single wiring point used by Shadow,
 Canary and Queue Worker. Shadow never allows provider calls; Canary requires
 an explicit provider flag and remains read-only. `localization.ai.enabled`,
