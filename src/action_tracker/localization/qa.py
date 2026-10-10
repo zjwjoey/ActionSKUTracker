@@ -448,6 +448,8 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             aliases.extend(("氛围照明", "环境照明"))
         if re.search(r"\biluminación\s+led\b", source_text, re.I):
             aliases.extend(("LED照明", "LED灯光"))
+        if re.search(r"\biluminación\s+(?:de|con)\s+(?:hilo|cable)\s+de\s+cobre\b", source_text, re.I):
+            aliases.extend(("铜线灯串", "灯串"))
         if re.search(r"\bmodos?\s+de\s+iluminación\b", source_text, re.I):
             aliases.extend(("照明模式", "灯光模式"))
     # Capsules are not always medicines. Recognize detergent capsules only
@@ -466,6 +468,11 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # context-bound so ordinary ``paño`` facts do not accept ``湿巾``.
     if source_term.casefold() in {"paño", "paños"} and "húmed" in str(source_text or "").casefold():
         aliases.append("湿巾")
+    if source_term.casefold() in {"paño", "paños"}:
+        if re.search(r"\bpaños?\s+(?:para|de)\s+secar\b", source_text, re.I):
+            aliases.append("擦干布")
+        if re.search(r"\bpaños?\s+(?:para|de)\s+pulir\b", source_text, re.I):
+            aliases.append("抛光布")
     if source_term.casefold() == 'calcetines':
         if re.search(r'\b(?:de|para)\s+beb[eé]s?\b',source_text,re.I):aliases.append('婴儿袜')
         for marker,alias in [('invisibles','隐形袜'),('rizo','毛圈袜')]:

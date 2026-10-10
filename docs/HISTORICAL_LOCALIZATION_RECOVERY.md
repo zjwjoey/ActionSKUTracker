@@ -390,3 +390,7 @@ Details15's 97 real Qwen calls completed and an actual Resume reused all97 respo
 ### 2026-10-10 existing quadruple-outlet numeric evidence
 
 Revalidation of prior independent reviews exposed SKU3213413's correctly translated 4插孔插线板 as a numeric false positive. Its own historical title Regleta de enchufes cuádruple explicitly supports four sockets. Numeric QA now counts only this complete noun phrase; it does not authorize an isolated multiplier, partial/model fragment or another field's quantity. Repeats and unrelated quantities stay protected. Eleven CI_SAFE tests include the real archived source/hash and unchanged existing Chinese. No new translation, approval or Apply is conferred by the fixture; the already-correct value remains unchanged.
+
+### 2026-10-10 existing-description specific noun QA
+
+Same-field iluminación de/con hilo/cable de cobre permits the specific 灯串 noun; paño para/de secar and paño para/de pulir permit 擦干布 and 抛光布. These aliases do not apply to generic nouns or qualifications in another source field, and do not waive quantity, LED or measurement checks. Twelve CI_SAFE tests include two real existing-description fixtures. They validate the noun choices only, not overall semantic approval or completeness. Separate independent review found other ordinary problems in those descriptions: an unsupported outdoor-use qualifier and omitted original usage text. Corrections still require the native Approval/Immutable Patch/Apply pipeline. Correct terms are retained; no official source is rewritten.
