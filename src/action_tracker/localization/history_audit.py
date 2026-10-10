@@ -149,7 +149,12 @@ def add_record(index, record, *, skus, rank, reference, observed_at="", file_has
         if source_key not in record:
             continue
         value = record[source_key]
-        text = "" if value is None else str(value)
+        # A null in a fact snapshot means unavailable evidence, not a
+        # verified official empty value. Otherwise a rank-1 null can mask
+        # a supported rank-2 archive source or create a false conflict.
+        if value is None:
+            continue
+        text = str(value)
         index[(sku, field)].append({"rank": rank, "text": text, "reference": reference,
             "observed_at": observed_at, "file_hash": file_hash,
             "field_hash": localization_field_source_hash({source_key: text}, field)})

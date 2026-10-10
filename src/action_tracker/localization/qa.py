@@ -558,7 +558,8 @@ def _canonical_numeric_token(token: str) -> str:
     return raw.replace(",", ".")
 
 
-def _numbers(value: str) -> Counter[str]:
+def _normalize_numeric_syntax(value: str) -> str:
+    """Use identical numeric syntax in preservation and addition checks."""
     text = str(value or "")
     # ASCII area exponents are unit syntax, never a second count. Keep
     # unrelated model digits and dimensions intact.
@@ -583,6 +584,11 @@ def _numbers(value: str) -> Counter[str]:
         lambda match: match.group(1).replace(",", " "),
         text,
     )
+    return text
+
+
+def _numbers(value: str) -> Counter[str]:
+    text = _normalize_numeric_syntax(value)
     numbers = Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
     # The historical outlet-strip title explicitly names four sockets. Count
     # only the complete own-field noun phrase, not a generic multiplier,
@@ -638,12 +644,7 @@ def _numbers(value: str) -> Counter[str]:
 
 def _arabic_numbers(value: str) -> Counter[str]:
     """Return only explicit Arabic-digit numbers from a value."""
-    text = re.sub(r"(?<![A-Za-z0-9])(\d{1,3})\s(?=\d{3}(?!\d))", r"\1", str(value or ""))
-    text = re.sub(
-        r"(?<!\d)(\d{1,2}(?:,\d{1,2}){2,})(?!\d)",
-        lambda match: match.group(1).replace(",", " "),
-        text,
-    )
+    text = _normalize_numeric_syntax(value)
     return Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
 
 

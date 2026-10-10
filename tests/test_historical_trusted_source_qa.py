@@ -32,6 +32,19 @@ def test_integer_range_list_keeps_decimals_and_missing_sizes():
     assert _numbers('28-29,5')=={'28':1,'29.5':1}
     assert check('Talla: 28-29,30-31','尺码:28-29','details')['status']=='FAIL'
 
+@pytest.mark.parametrize('source,target',[
+    ('10 m2','10 m2'),
+    ('2,5 m2','2.5 m2'),
+    ('15-18,23-26','15-18,23-26'),
+    ("9\u00275x13 cm","9\u00275x13 cm"),
+])
+def test_equivalent_numeric_syntax_does_not_invent_added_number(source,target):
+    assert check(source,target,'spec')['status']=='PASS'
+
+def test_shared_numeric_syntax_keeps_model_and_missing_number_guards():
+    assert check('10 m2','10 m2 M2','spec')['status']=='FAIL'
+    assert check('15-18,23-26','15-18,23-27','spec')['status']=='FAIL'
+
 def test_iphone_suffix_cannot_allow_unrelated_prose():
     assert check('Apto para iPhone X/XS/11 pro','适用于iPhone X/XS/11 pro','spec')['status']=='PASS'
     assert check('Apto para iPhone X/XS/11 pro','适用于iPhone X/XS/11 pro para','spec')['status']=='FAIL'

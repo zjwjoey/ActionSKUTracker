@@ -60,6 +60,33 @@ def test_missing_fields_do_not_create_empty_units():
     assert choose_evidence(index[("123", "details")])["status"] == "SOURCE_UNAVAILABLE"
 
 
+def test_null_snapshot_source_does_not_mask_supported_archive():
+    from collections import defaultdict
+    index = defaultdict(list)
+    add_record(index, {"sku": "123", "spec_es": None},
+               skus={"123"}, rank=1, reference="snapshot")
+    assert choose_evidence(index[("123", "spec")])["status"] == "SOURCE_UNAVAILABLE"
+    add_record(index, {"sku": "123", "spec_es": "2 unidades"},
+               skus={"123"}, rank=2, reference="archive")
+    evidence = choose_evidence(index[("123", "spec")])
+    assert evidence["status"] == "EVIDENCE_AVAILABLE"
+    assert evidence["selected"]["text"] == "2 unidades"
+    assert len(evidence["versions"]) == 1
+
+
+def test_null_and_explicit_empty_snapshot_sources_remain_distinct():
+    from collections import defaultdict
+    index = defaultdict(list)
+    add_record(index, {"sku": "123", "details_es": None},
+               skus={"123"}, rank=1, reference="null-snapshot")
+    add_record(index, {"sku": "123", "details_es": ""},
+               skus={"123"}, rank=1, reference="explicit-empty-snapshot")
+    evidence = choose_evidence(index[("123", "details")])
+    assert evidence["status"] == "EXPLICIT_EMPTY_EVIDENCE"
+    assert evidence["selected"]["reference"] == "explicit-empty-snapshot"
+    assert len(evidence["versions"]) == 1
+
+
 def test_current_and_unknown_skus_excluded():
     from collections import defaultdict
     index = defaultdict(list)
