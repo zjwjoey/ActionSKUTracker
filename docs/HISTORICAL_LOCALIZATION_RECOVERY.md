@@ -38,6 +38,15 @@ The reviewed Apply runner independently rejects these values even when an
 older audit artifact incorrectly labels them EVIDENCE_AVAILABLE. Regression
 coverage includes SKU 2546793's batch-09 button-text source.
 
+`tests/fixtures/historical_spec_review_20261010.json` retains source artifact
+references, file and field hashes, SKU context, provider candidates and the
+five semantically reviewed targets actually applied in specification batch 10.
+Offline CI-safe tests reject corrupted numeric facts, reproduce SKU 3218603's
+decimal-dimension error and verify that description changes leave specification
+hashes unchanged. These five cases cover specification regression only; they
+do not constitute full six-field semantic acceptance or the complete future
+daily-run acceptance matrix.
+
 Fact QA findings are candidates for review, not confirmed semantic errors.
 Fact QA PASS is not semantic approval. This command creates no translation
 tasks, revisions, approvals, patches, Apply commits or lifecycle events.

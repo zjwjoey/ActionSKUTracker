@@ -96,3 +96,4 @@ tests/workflow_v2/test_production_phase1_state_machine.py
 tests/workflow_v2/test_runtime_closure.py
 tests/workflow_v2/test_review_approval.py
 tests/test_repository_closure.py
+tests/test_historical_real_spec_regression.py

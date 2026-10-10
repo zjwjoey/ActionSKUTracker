@@ -1,0 +1,132 @@
+{
+  "contract": "REAL_HISTORICAL_REGRESSION_V1",
+  "review_batch": "historical_spec_batch_10_20261010",
+  "applied_commit": "2026-10-10_historical_spec_batch_10_20261010_7c262b9e2768",
+  "cases": [
+    {
+      "sku": "3217744",
+      "field": "spec",
+      "source": "750 vatios | Ø 18 cm | varios colores",
+      "approved_target": "750瓦 | 直径18厘米 | 多种颜色",
+      "provider_candidate": "750瓦 | 直径18厘米 | 多种颜色",
+      "source_evidence": {
+        "rank": 1,
+        "text": "750 vatios | Ø 18 cm | varios colores",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+        "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+        "field_hash": "0c0dd95ed0b7cecdf4c5fb63be017ca3a33e7dedfd506126e0a407bf60d4df1f"
+      },
+      "context": {
+        "name": "Gofrera de burbujas George Wilkinson",
+        "cat1": "Cocina",
+        "cat2": "Aparatos de cocina",
+        "spec": "750 vatios | Ø 18 cm | varios colores",
+        "description": "En bonitas tonalidades pastel\nCon revestimiento antiadherente\nCon luz de preparación\n¡Completa tu desayuno o brunch con gofres de burbujas caseros! Con esta waflera podrás servir gofres calientes y recién hechos en la mesa en un abrir y cerrar de ojos.",
+        "details": "Color: Azul, Verde, Púrpura; Con interruptor de encendido y apagado: Sí; Con revestimiento antiadherente: Sí; Número de placas para gofre: 1; Tipo de alimentación: Alimentación de red; Tipo de sandwichera / aparato para hacer wafels: Solo gofre; Número del artículo: 3217744"
+      },
+      "expected_guard": "PASS",
+      "semantic_review_note": "已对照规格西语及同SKU上下文：数值、单位、尺寸、选项与商品属性忠实；候选无需语义修改；现有中文为空，补译经QA及授权Apply。"
+    },
+    {
+      "sku": "3218310",
+      "field": "spec",
+      "source": "60 uds.",
+      "approved_target": "60片",
+      "provider_candidate": "60个",
+      "source_evidence": {
+        "rank": 2,
+        "text": "60 uds.",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "74359245ad8a8800c07388a296c2d153667a23f7d1ff1275e1c4dcfe79494bfc"
+      },
+      "context": {
+        "name": "Discos de algodón Teddy Care",
+        "cat1": "Cuidado personal",
+        "cat2": "Cuidados para el bebé",
+        "spec": "60 uds.",
+        "description": "",
+        "details": ""
+      },
+      "expected_guard": "PASS",
+      "semantic_review_note": "已对照规格西语及同SKU上下文：数值、单位、尺寸、选项与商品属性忠实；修正量词、自然中文或小数标点，不增加来源事实。"
+    },
+    {
+      "sku": "3218603",
+      "field": "spec",
+      "source": "5x5,5x5 cm | diferentes variantes",
+      "approved_target": "5×5.5×5厘米 | 不同款式",
+      "provider_candidate": "5x5，5x5厘米 | 不同款式",
+      "source_evidence": {
+        "rank": 2,
+        "text": "5x5,5x5 cm | diferentes variantes",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "27a642590c5146fec77c24e0387d881c4cf316dab12b435d84093a820020e917"
+      },
+      "context": {
+        "name": "Caja sorpresa Kawaii",
+        "cat1": "Juguetes",
+        "cat2": "Juegos",
+        "spec": "5x5,5x5 cm | diferentes variantes",
+        "description": "",
+        "details": ""
+      },
+      "expected_guard": "PASS",
+      "semantic_review_note": "已对照规格西语及同SKU上下文：数值、单位、尺寸、选项与商品属性忠实；修正量词、自然中文或小数标点，不增加来源事实。"
+    },
+    {
+      "sku": "3218978",
+      "field": "spec",
+      "source": "3x 15 ml",
+      "approved_target": "3×15毫升",
+      "provider_candidate": "3×15毫升",
+      "source_evidence": {
+        "rank": 2,
+        "text": "3x 15 ml",
+        "reference": "F:\\按日期整理\\action表格\\20260727\\20260727Action商品全量_西语版_不带图.xlsx::商品全量",
+        "observed_at": "2026-07-27",
+        "file_hash": "1826cdae894aa62848d6d3a3af64c1b05d5d3620d23c4837bf7e17e01fa2cc72",
+        "field_hash": "b932d672dbe6395ebeae729b04f55bf7487619258e48f2d92e17bbb9e9bcd817"
+      },
+      "context": {
+        "name": "Ampollas de aceite de argán para el cabello The Beauty Dept.",
+        "cat1": "Cuidado personal",
+        "cat2": "Cuidado del cabello",
+        "spec": "3x 15 ml",
+        "description": "",
+        "details": ""
+      },
+      "expected_guard": "PASS",
+      "semantic_review_note": "已对照规格西语及同SKU上下文：数值、单位、尺寸、选项与商品属性忠实；候选无需语义修改；现有中文为空，补译经QA及授权Apply。"
+    },
+    {
+      "sku": "3219896",
+      "field": "spec",
+      "source": "Incluye 2 coches",
+      "approved_target": "包含2辆汽车",
+      "provider_candidate": "包含2辆汽车",
+      "source_evidence": {
+        "rank": 2,
+        "text": "Incluye 2 coches",
+        "reference": "F:\\按日期整理\\action表格\\20260706\\20260706Action商品全量_西语版_不带图.xlsx::Action ES 商品",
+        "observed_at": "2026-07-06",
+        "file_hash": "0b4bdbdeda7d8d3705870fbd65f545337c362cdd71662c8355dc9c225f429b96",
+        "field_hash": "07de4c0ed7f3deb775d1bd99f2c7c03b8370c714fcd6b9f8a6d8caf213f0ee43"
+      },
+      "context": {
+        "name": "Torre de carreras y rescate Paw Patrol",
+        "cat1": "Juguetes",
+        "cat2": "",
+        "spec": "Incluye 2 coches",
+        "description": "Incluye a Marshall y Chase en sus coches de rescate\n¡Disfruta de horas de diversión con la torre de control, Chase y Marshall de La Patrulla Canina! Gracias a las pistas que se pueden fijar a la torre, los cachorros corren rápidamente hacia la emergencia para salvar a todo el mundo.",
+        "details": "{'Número del artículo': '3219896', 'Material': 'Plástico', 'Edad adecuada': 'A partir de 2 años', 'Incluye sonido': 'No'}"
+      },
+      "expected_guard": "PASS",
+      "semantic_review_note": "已对照规格西语及同SKU上下文：数值、单位、尺寸、选项与商品属性忠实；候选无需语义修改；现有中文为空，补译经QA及授权Apply。"
+    }
+  ]
+}
