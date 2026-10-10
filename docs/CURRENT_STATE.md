@@ -35,21 +35,21 @@ main protection 只读查询显示未保护；建议 PR required、Ubuntu/Window
 
 用户授权的独立 checkout 为 `F:\ActionSKUTracker_history_20261009`，分支 `fix/historical-localization-recovery-20261009`。正式数据库仍为 `F:\ActionSKUTracker\runtime\db\action_tracker.db`。历史中文通过既有 Registry / QA / delegated Approval / Immutable Patch / Apply / Master Sync 写入；没有合并或推送 main，也没有发布字典基线或修改 daily 的配置开关。
 
-最新已验收 PRIMARY head：`2026-10-10_historical_existing_spec23_20261010_24e9cb0583f0`。类目第 19、20 批共恢复 1,531 个正确原值的审批及来源绑定；规格第 21、22、23 批分别恢复 38、41、51 个绑定，第 23 批另修正 2 条 Over-ear 特性丢失的规格。各批均完成备份、受保护数据和全库中文差异检查、Master Sync 及实际同批 Resume；重复 Apply 为 0。原值元数据补丁不能计为补译或错误译文修正。
+最新已验收 PRIMARY head：`2026-10-10_historical_existing_spec24_20261010_b316539f6ded`。类目第 19、20 批共恢复 1,531 个正确原值的审批及来源绑定；规格第 21、22、23、24 批分别恢复 38、41、51、110 个绑定，第 23、24 批另修正 2、9 条规格文本。描述第 24 批修正 1 条包耳式耳垫特性及随附线缆措辞。各批均完成备份、受保护数据和全库中文差异检查、Master Sync 及实际同批 Resume；重复 Apply 为 0。原值元数据补丁不能计为补译或错误译文修正。
 
-规格独立审查第 21、22、23 组共覆盖 300 组、609 个 SKU 字段：604 个现有中文可保留，2 个已修正并入库；1 个因 `5 pares` 与 `5 unidades` 的包装层级歧义、2 个因 `hojas` 与 `páginas` 的计数层级歧义保留待复核。第 23 批正式 Apply 为 53 个字段（51 个绑定、2 个文本修正），不是缺失字段补译。正确中文不重新翻译。
+规格独立审查第 21–24 组共覆盖 600 组、1,174 个 SKU 字段：1,154 个现有中文可保留，11 个已修正并入库，9 个来源/色号问题保留待复核。第 24 组的 565 个字段中，550 个正确值保留、9 个修正、6 个阻断；440 个正确字段直接复用已有有效审批，110 个恢复绑定。9 条修正包含 7 条洗涤次数用途遗漏、1 条功率单位尾缀残留和 1 条拉伸器档位误译。6 条阻断涉及唇线笔/染发剂色号及四个无法明确分解的包装计数差异。正确中文不重新翻译；本轮 120 个实际 Apply（规格 119、描述 1）不包含缺失字段补译。
 
 | 截止此已验收 head 的核实范围 | 数量及解释 |
 | --- | --- |
 | 历史 SKU / 六字段机械检查 | 4,244 / 25,464；不等同于全量独立语义审查 |
 | 非空中文 | 20,470 |
-| 既有独立审查证据重新验证 | 3,211；精确原文、目标、来源文件、当前审批和 QA 均核对 |
+| 既有独立审查证据重新验证 | 3,771；精确原文、目标、来源文件、当前审批和 QA 均核对 |
 | 已人工确认类目映射证据重新验证 | 6,629；全部当前有效审批和绑定，单独统计映射政策验证 |
-| 上述两类当前有效审核覆盖 | 9,840 个不同字段；其余 10,630 个非空字段仍未被这两类证据覆盖 |
+| 上述两类当前有效审核覆盖 | 10,400 个不同字段；其余 10,070 个非空字段仍未被这两类证据覆盖 |
 | 缺失中文 | 4,994；可信来源 709，其中 708 与 PRIMARY 精确一致、1 有已记录的不一致 |
 | 缺失来源分类 | 缺源 3,460、版本冲突 469、语言复核 355、明确空源 1；不编造中文 |
-| 历史实际 Apply 账本 | 16,256 个不同不可变补丁 ID：14,565 个文本改动补丁、1,691 个原值元数据补丁；重复修正单独计补丁，不是唯一字段数 |
+| 历史实际 Apply 账本 | 16,376 个不同不可变补丁 ID：14,575 个文本改动补丁、1,801 个原值元数据补丁；重复修正单独计补丁，不是唯一字段数 |
 
-最近核心代码为 `cb54da9`：既有字段级 VARIANT 机制保护本字段 Over-ear 的包耳特性，阻断通用头戴式及否定包耳表述；21 项真实来源和边界测试加入 CI_SAFE，完整回归 1,245 项通过。此前 `c84f0e8` 为来源限定的霓虹灯 QA 别名，`0c3cbea` 绑定有限翻译缓存的实际 adapter 配置。本批没有新的模型服务调用。六项真实历史来源 fixture 的 daily 兼容性测试通过，完整在线 daily-run 仍未验证。全六字段独立语义审查及任务整体验收尚未完成。
+最近核心代码为 `cb1e72f`：既有字段级 VARIANT 机制保护数字 lavados 的洗涤用途，QA 阻断中文数字单位残留 s/es；22 项真实来源和边界测试加入 CI_SAFE，完整回归 1,267 项通过。此前 `cb54da9` 保护 Over-ear 包耳特性，`c84f0e8` 为来源限定的霓虹灯 QA 别名，`0c3cbea` 绑定有限翻译缓存的实际 adapter 配置。本批没有新的模型服务调用。六项真实历史来源 fixture 的 daily 兼容性测试通过，完整在线 daily-run 仍未验证。全六字段独立语义审查及任务整体验收尚未完成。
 
-可追溯证据保存在 `F:\ActionSKUTracker\runtime\reports\historical_localization_20261009`：各批 `acceptance.json`、`existing_spec21_reviewed_all.json`、`existing_spec22_reviewed_all.json`、`existing_spec23_reviewed_all.json`、各批 `owner_queue.json`、`prior_independent_semantic_review_revalidated_after_existing_spec23.json`、`historical_actual_apply_ledger_after_existing_spec23.json`、全字段 `existing_chinese_reaudit_20261010_after_existing_spec23`。这些运行产物不提交 Git。新规则全量扫描另定位到 3013368 描述的同类特性遗漏，已完成本字段独立审查和 QA；`existing_description24_overear_final_apply_scope.json` 中 1 条修正尚未 Apply。下一步先通过正式流程验收此修正，再扩大独立语义审查批次、推进其他字段与可信来源缺失候选；不得把未 Apply 候选计为正式入库。
+可追溯证据保存在 `F:\ActionSKUTracker\runtime\reports\historical_localization_20261009`：各批 `acceptance.json`、规格第 21–24 批 `reviewed_all.json`、各批 `owner_queue.json`、`prior_independent_semantic_review_revalidated_after_existing_spec24.json`、`historical_actual_apply_ledger_after_existing_spec24.json`、全字段 `existing_chinese_reaudit_20261010_after_existing_spec24`。这些运行产物不提交 Git。下一轮 `existing_name20_pending100_groups.json` 包含 100 组、154 个品名字段，尚未独立审查或 Apply。继续其他字段及可信来源缺失候选；不得把未 Apply 候选计为正式入库。2546793 描述的唯一可信来源不一致是旧归档 `null.` 前缀与已清理 PRIMARY 的差异，需核对来源规范化证据，禁止重新写入 null 或伪造归档精确匹配。
