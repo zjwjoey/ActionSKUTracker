@@ -26,6 +26,7 @@ from action_tracker.localization.qa import guard_translation
 from action_tracker.localization.runtime_builder import build_translation_runtime
 from action_tracker.services.hashing import localization_source_hash, localization_field_source_hash
 from action_tracker.services.runtime import RunLock
+from action_tracker.data_quality.rules import contains_ui_transport_text, contains_html_markup
 
 
 def historical_records(repo, database):
@@ -123,6 +124,8 @@ def main():
                 raise ValueError("PILOT_REVIEW_SOURCE_ARTIFACT_CHANGED")
             if record["status"] == "CURRENT": raise ValueError("PILOT_HISTORICAL_SCOPE_REQUIRED")
             if field not in CANONICAL_AI_FIELDS: raise ValueError("PILOT_REVIEW_FIELD_NOT_SUPPORTED")
+            if contains_ui_transport_text(review["source"]) or contains_html_markup(review["source"]):
+                outcomes.append({"sku": sku, "field": field, "status": "SOURCE_QUALITY_REVIEW_REQUIRED"}); continue
             if str(record.get(CANONICAL_TO_SOURCE[field]) or "") != review["source"]:
                 outcomes.append({"sku": sku, "field": field, "status": "SOURCE_VERSION_REVIEW_REQUIRED"}); continue
             if record.get(CANONICAL_TO_ZH[field]) == target:

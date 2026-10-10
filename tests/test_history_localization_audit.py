@@ -35,6 +35,22 @@ def test_chinese_in_spanish_source_cannot_pass():
     assert len(result["versions"]) == 2
 
 
+@pytest.mark.parametrize("text", ["Añadir a tus favoritos", "Leer más", "<button>Descripción</button>"])
+def test_transport_residue_is_not_trustworthy_source(text):
+    # SKU 2546793, spec batch 09: snapshot button text was incorrectly
+    # offered as a product specification. No target is asserted or guessed.
+    result = choose_evidence([evidence(text)])
+    assert result["selected"] is None
+    assert result["status"] == "SOURCE_LANGUAGE_REVIEW_REQUIRED"
+    assert result["versions"][0]["text"] == text
+
+
+def test_clean_historical_source_can_replace_button_evidence():
+    result = choose_evidence([evidence("Añadir a tus favoritos"), evidence("100 g", rank=3)])
+    assert result["selected"]["text"] == "100 g"
+    assert len(result["versions"]) == 2
+
+
 def test_missing_fields_do_not_create_empty_units():
     from collections import defaultdict
     index = defaultdict(list)

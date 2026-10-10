@@ -20,6 +20,7 @@ from .contracts import CANONICAL_TO_SOURCE, CANONICAL_TO_ZH, SourceFacts
 from .qa import guard_translation
 from ..database.repository import ProductionRepository
 from ..services.hashing import localization_field_source_hash
+from ..data_quality.rules import contains_ui_transport_text, contains_html_markup
 
 FIELDS = ("name", "cat1", "cat2", "spec", "description", "details")
 
@@ -123,7 +124,10 @@ def choose_evidence(candidates):
     """
     if not candidates:
         return {"status": "SOURCE_UNAVAILABLE", "selected": None, "versions": []}
-    valid = [item for item in candidates if not re.search(r"[\u3400-\u9fff\ufffd]", item["text"])]
+    valid = [item for item in candidates
+             if not re.search(r"[\u3400-\u9fff\ufffd]", item["text"])
+             and not contains_ui_transport_text(item["text"])
+             and not contains_html_markup(item["text"])]
     if not valid:
         return {"status": "SOURCE_LANGUAGE_REVIEW_REQUIRED", "selected": None, "versions": candidates}
     rank = min(item["rank"] for item in valid)

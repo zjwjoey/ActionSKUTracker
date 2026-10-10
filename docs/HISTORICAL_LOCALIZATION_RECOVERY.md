@@ -31,6 +31,13 @@ unavailable/conflicting sources, STALE rows and a diverse 100-SKU pilot manifest
 Cat3 and selling points are not supported standalone fields in the current
 localization contract and are not invented or flattened into other fields.
 
+UI button text and HTML transport residue are rejected using the shared
+data-quality classifiers before source selection. Such evidence stays in the
+versions list and requires source review, never an official-empty designation.
+The reviewed Apply runner independently rejects these values even when an
+older audit artifact incorrectly labels them EVIDENCE_AVAILABLE. Regression
+coverage includes SKU 2546793's batch-09 button-text source.
+
 Fact QA findings are candidates for review, not confirmed semantic errors.
 Fact QA PASS is not semantic approval. This command creates no translation
 tasks, revisions, approvals, patches, Apply commits or lifecycle events.
