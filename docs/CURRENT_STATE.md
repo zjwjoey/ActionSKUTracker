@@ -1,6 +1,6 @@
 # 当前仓库与生产状态
 
-快照截止：2026-10-08。本文件记录已核实生产基线及本轮分支合同，不追逐文档自身提交 SHA。
+历史治理快照截止：2026-10-08；2026-10-10 授权历史中文修复进度见末节。以下旧候选和运行目录描述保留其当时身份，不表示历史修复分支已部署到 daily 主线。
 
 ## 已冻结生产
 
@@ -30,3 +30,26 @@ fix/post-production-repository-closure-20261008 从核实 main 建立，在独�
 main protection 只读查询显示未保护；建议 PR required、Ubuntu/Windows required、禁止 force push/delete，变更须 Owner 授权。PR #5 Selective Workflow V2 runtime backport 已被生产主线取代，建议另行关闭，本轮未合并/关闭。3d28f0b snapshot-ingest 不纳入本轮，须专项审查。
 
 本轮不注册任务、不重新采集、不调用新 Qwen、不修今日数据、不恢复 PRIMARY。参见 [README](../README.md)、[Operations](OPERATIONS_RUNBOOK_V2.md)。
+
+## 2026-10-10 历史中文修复：已验收与待处理
+
+用户授权的独立 checkout 为 `F:\ActionSKUTracker_history_20261009`，分支 `fix/historical-localization-recovery-20261009`。正式数据库仍为 `F:\ActionSKUTracker\runtime\db\action_tracker.db`。历史中文通过既有 Registry / QA / delegated Approval / Immutable Patch / Apply / Master Sync 写入；没有合并或推送 main，也没有发布字典基线或修改 daily 的配置开关。
+
+最新已验收 PRIMARY head：`2026-10-10_historical_existing_spec21_20261010_6c8b7c12564a`。类目第 19、20 批共恢复 1,531 个正确原值的审批及来源绑定；规格第 21 批另恢复 38 个绑定。各批均完成备份、受保护数据和全库中文差异检查、Master Sync 及实际同批 Resume；重复 Apply 为 0，中文文本改动为 0。元数据补丁不能计为补译或错误译文修正。
+
+规格独立审查第 21、22 组共覆盖 200 组、398 个 SKU 字段：397 个现有中文可保留，1 个因规格 `5 pares` 与详情 `5 unidades` 的包装层级歧义保留待复核。第 22 批有 41 个绑定修复候选通过 QA，尚未 Apply；其余 121 个正确字段已具备有效审批，直接复用。正确中文不重新翻译。
+
+| 截止此已验收 head 的核实范围 | 数量及解释 |
+| --- | --- |
+| 历史 SKU / 六字段机械检查 | 4,244 / 25,464；不等同于全量独立语义审查 |
+| 非空中文 | 20,470 |
+| 既有独立审查证据重新验证 | 2,961；精确原文、目标、来源文件、当前审批和 QA 均核对 |
+| 已人工确认类目映射证据重新验证 | 6,629；全部当前有效审批和绑定，单独统计映射政策验证 |
+| 上述两类当前有效审核覆盖 | 9,590 个不同字段；其余 10,880 个非空字段仍未被这两类证据覆盖 |
+| 缺失中文 | 4,994；可信来源 709，其中 708 与 PRIMARY 精确一致、1 有已记录的不一致 |
+| 缺失来源分类 | 缺源 3,460、版本冲突 469、语言复核 355、明确空源 1；不编造中文 |
+| 历史实际 Apply 账本 | 16,162 个不同不可变补丁 ID：14,563 个文本改动补丁、1,599 个原值元数据补丁；重复修正单独计补丁，不是唯一字段数 |
+
+最近核心代码为 `c84f0e8`（来源限定的霓虹灯 QA 别名）及 `0c3cbea`（有限翻译缓存绑定实际 adapter 配置）；完整回归 1,224 项通过。此后的上述规格审查和绑定批次没有改核心规则，没有新的模型调用。六项真实历史来源 fixture 的 daily 兼容性测试通过，完整在线 daily-run 仍未验证。全六字段独立语义审查及任务整体验收尚未完成。
+
+可追溯证据保存在 `F:\ActionSKUTracker\runtime\reports\historical_localization_20261009`：各批 `acceptance.json`、`existing_spec21_reviewed_all.json`、`existing_spec22_reviewed_all.json`、`existing_spec22_owner_queue.json`、`prior_independent_semantic_review_revalidated_after_existing_spec21.json`、`historical_actual_apply_ledger_after_existing_spec21.json`、全字段 `existing_chinese_reaudit_20261010_after_existing_spec21`。这些运行产物不提交 Git。下一步先通过正式流程验收第 22 批的 41 个绑定，再继续独立规格审查、其他五字段和可信来源缺失候选；不得把未 Apply 候选计为正式入库。
