@@ -695,6 +695,17 @@ def _allowed_display_latin_tokens(source_text: str, target: str) -> set[str]:
     return allowed
 
 
+def _detail_source_value_findings(source_text, target):
+    # Historical Action text contains this invalid physical-state value.
+    # Preserve the official source; do not infer gel/liquid or an efficacy claim.
+    return [QAFinding("SOURCE_DETAILS_TYPED_VALUE_INVALID", "BLOCKER", "details",
+        {"source_key": p.key, "source_value": p.value}, source=source_text, target=target,
+        message="physical-state source value requires source review", blocking=True)
+        for p in parse_structured_details(source_text)
+        if p.key.strip().casefold() == "sustancia"
+        and p.value.strip().casefold() in {"válido", "valido"}]
+
+
 def _detail_boolean_findings(source_text, target):
     """Compare presence truth, including explicit negative source labels."""
     attributes = ((r"\balcohol\b", r"酒精"), (r"\bsilicona\b", r"硅(?:酮|胶)?"),
@@ -756,6 +767,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             findings.append(QAFinding("EMPTY_SOURCE_TARGET_NONEMPTY", "BLOCKER", field_name, {"target": target}, source=source_text, target=target, message="target content exists without official source", blocking=True))
             continue
         if field_name == "details":
+            findings.extend(_detail_source_value_findings(source_text, target))
             findings.extend(_detail_boolean_findings(source_text, target))
             findings.extend(_detail_care_findings(source_text, target))
             if (re.search(r"\bpincel(?:es)?\b", str(getattr(source, "name_es", "") or ""), re.I)

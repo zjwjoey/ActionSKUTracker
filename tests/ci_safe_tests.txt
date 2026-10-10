@@ -109,3 +109,4 @@ tests/test_historical_existing_description_retries.py
 tests/test_historical_details11_boolean_scope.py
 tests/test_historical_details12_sugar_lactose_scope.py
 tests/test_historical_details13_rinse_uv.py
+tests/test_historical_details_invalid_source_state.py

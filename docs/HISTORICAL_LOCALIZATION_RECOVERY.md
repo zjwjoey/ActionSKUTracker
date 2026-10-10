@@ -320,6 +320,24 @@ corrections, 15 source-conflict/uncertain cases held for Owner. Candidate and QA
 counts do not establish Apply completion. Runtime Spanish, Presence, prices
 and lifecycle events are unchanged by this code edit.
 
+### 2026-10-10 unresolved source physical-state gate
+
+Scanning all 4244 historical records found 18 own-source Sustancia:Válido
+anomalies: 11 already have Chinese and seven are missing. All 18 complete
+sources and current Chinese values were independently read. Some existing
+translations invent gel/foam, some render 有效成分:有效, and one silently omits
+the source attribute. No definitive physical-state translation is supported
+by this own-field source; none is approved, cleared or overwritten.
+
+The shared details Guard now blocks exactly the known typed value
+Sustancia:Válido/Valido for source review. Official Spanish remains nonempty;
+the finding is not an official-empty or missing-source classification. Three
+real fixtures retain full source evidence/current values and no guessed target.
+Eleven tests cover the source anomaly, accent/case variants, valid liquid/cream/
+powder values, no source mutation and isolation from other requested fields.
+The explicit Owner queue is a finite source-anomaly audit, not a claim of
+complete independent review of all 25464 historical Chinese fields.
+
 ## 2026-10-10: description13 source context and dimensional units
 
 Six real SKU cases retain full source/context, archival hashes and failed
