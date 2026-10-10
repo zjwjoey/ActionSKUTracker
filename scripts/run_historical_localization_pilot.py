@@ -74,6 +74,18 @@ def already_ready(record, database, field, target):
         and provenance.get("source_hash") == localization_field_source_hash(record, field))
 
 
+def reviewed_write_status(review):
+    """Provider candidates and Guard PASS cannot create semantic approval."""
+    if review.get("risk_level") == "HIGH":
+        return "OWNER_REVIEW_REQUIRED"
+    if (review.get("semantic_status") != "PASS"
+            or review.get("review_model") != "CODEX"
+            or review.get("risk_level") not in {"LOW", "MEDIUM"}
+            or not str(review.get("review_note") or "").strip()):
+        return "SEMANTIC_REVIEW_REQUIRED"
+    return "READY"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, required=True)
@@ -131,6 +143,9 @@ def main():
             if record.get(CANONICAL_TO_ZH[field]) == target:
                 outcomes.append({"sku": sku, "field": field,
                     "status": "NO_OP" if already_ready(record, args.database, field, target) else "METADATA_REVIEW_REQUIRED"}); continue
+            review_status = reviewed_write_status(review)
+            if review_status != "READY":
+                outcomes.append({"sku": sku, "field": field, "status": review_status}); continue
             plan = runtime.resolver.engine.resolve(record); context = plan.context
             resolution = runtime.resolver.resolve_field(record, field, allow_provider=False, context=context)
             terms = tuple(resolution.provenance.get("terminology") or ())

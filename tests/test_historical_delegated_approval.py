@@ -151,3 +151,16 @@ def test_historical_chinese_display_fallback_is_not_applied_localization(tmp_pat
     assert historical_freshness_status({},True)=='NO_FRESHNESS_STATUS'
     assert historical_freshness_status({},False)=='NO_LOCALIZATION'
     assert historical_freshness_status({'zh_freshness_status':'STALE'},True)=='STALE'
+def test_provider_candidate_cannot_become_semantic_approval():
+    import runpy
+    from pathlib import Path
+    gate = runpy.run_path(str(Path(__file__).resolve().parents[1] /
+                             "scripts/run_historical_localization_pilot.py"))["reviewed_write_status"]
+    candidate = {"decision": "CORRECTED", "semantic_status": "PASS", "provider": "qwen_mt"}
+    assert gate(candidate) == "SEMANTIC_REVIEW_REQUIRED"
+    reviewed = {**candidate, "review_model": "CODEX", "risk_level": "MEDIUM",
+                "review_note": "Compared this field with the retained Spanish evidence."}
+    assert gate(reviewed) == "READY"
+    assert gate({**reviewed, "risk_level": "HIGH"}) == "OWNER_REVIEW_REQUIRED"
+    assert gate({**reviewed, "semantic_status": "PENDING"}) == "SEMANTIC_REVIEW_REQUIRED"
+    assert gate({**reviewed, "review_note": ""}) == "SEMANTIC_REVIEW_REQUIRED"

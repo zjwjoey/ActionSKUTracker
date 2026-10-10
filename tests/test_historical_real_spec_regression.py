@@ -47,3 +47,19 @@ def test_real_spec_hash_is_independent_of_description_change(case):
              for field in ("spec", "description")}
     assert before["spec"] == after["spec"]
     assert before["description"] != after["description"]
+@pytest.mark.parametrize("sku,source,target", [
+    ("3221778", "10 ledes | 5,6 metros", "10个LED灯 | 5.6米"),
+    ("3221803", "20 ledes | diferentes variantes", "20个LED | 不同款式"),
+    ("3224354", "10 LEDs | 3 metros", "10个LED灯 | 3米"),
+])
+def test_real_spanish_led_plural_is_not_an_invented_technical_token(sku, source, target):
+    facts = SourceFacts.from_record({"sku": sku, "spec_es": source})
+    assert guard_translation(facts, {"spec": target}, ("spec",))["status"] == "PASS"
+
+
+def test_led_equivalence_cannot_be_imported_from_another_field():
+    facts = SourceFacts.from_record({"sku": "3221803", "spec_es": "20 luces",
+                                    "desc_es": "Con ledes"})
+    result = guard_translation(facts, {"spec": "20个LED灯"}, ("spec",))
+    assert result["status"] == "FAIL"
+    assert any(f["rule_id"] == "PROTECTED_TOKEN_ADDED" for f in result["findings"])

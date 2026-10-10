@@ -47,6 +47,13 @@ hashes unchanged. These five cases cover specification regression only; they
 do not constitute full six-field semantic acceptance or the complete future
 daily-run acceptance matrix.
 
+Real specification QA regressions 3221778 and 3221803 permit `ledes` → `LED`
+only when `ledes` is present in the target field's Spanish source. A negative
+test keeps LED additions blocked when the word appears only in description
+context. This changes QA equivalence, not source facts or dictionary approval.
+SKU 3224354 covers the English plural spelling `LEDs` under the same
+field-source boundary.
+
 Fact QA findings are candidates for review, not confirmed semantic errors.
 Fact QA PASS is not semantic approval. This command creates no translation
 tasks, revisions, approvals, patches, Apply commits or lifecycle events.
@@ -74,7 +81,10 @@ Delegated Apply does not support unit price modifications.
 
 The runner `scripts/run_historical_localization_pilot.py` accepts finite,
 semantically reviewed corrections for the six canonical text fields. It does
-not approve unreviewed provider candidates. Existing equal targets require
+not approve unreviewed provider candidates. New writes require explicit CODEX
+semantic PASS, a nonempty review note and LOW/MEDIUM risk; HIGH risk stays in
+the Owner queue. Provider-supplied PASS cannot substitute for semantic review.
+Existing equal targets require
 approved current provenance and Registry readiness before returning NO_OP;
 otherwise they remain METADATA_REVIEW_REQUIRED. Optional source restoration and
 validated backup execute under the same RunLock. Production uses the real

@@ -60,6 +60,10 @@ _SEMANTIC_TARGET_ALIASES = {
 # source-bound instead of weakening the protected-token guard globally.
 _TRANSLATED_STRICT_TOKEN_ALLOWLIST = {
     "bricolaje": {"DIY"},
+    # Real historical specs 3221778/3221803 spell the LED plural ``ledes``.
+    # This equivalence is permitted only in this field's own source text.
+    "ledes": {"LED"},
+    "LEDs": {"LED"},
 }
 
 # Some short technical acronyms are official source terminology rather than
