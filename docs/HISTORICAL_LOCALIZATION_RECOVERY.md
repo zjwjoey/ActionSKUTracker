@@ -154,6 +154,13 @@ The `stale.jsonl` report lists all fields belonging to aggregate-STALE SKU;
 its row count is not a count of individually stale fields. Field bindings and
 freshness remain explicit in each row for individual investigation.
 
+Real SKU3209565 exposed a false technical-token failure for `BBQ style`
+translated as `烧烤风味`. The lexical equivalence requires that complete
+phrase in the field's own Spanish source and the explicit flavour rendering.
+It does not waive bare BBQ identifiers, BBQ-120 models, or tokens borrowed
+from another field. The fixture retains the original archival evidence and
+tests omitted flavour and cross-field/model counterexamples.
+
 The history source configuration paths now point at the existing read-only
 `F:/按日期整理/action表格` archive. Neither those files nor production Master is
 modified by audit. Approved historical compatibility projection changes only

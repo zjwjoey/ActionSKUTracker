@@ -148,5 +148,20 @@
       "field_hash": "ef2b4e6194f7f146c5d00391232c50b96665af5b248ffd24d2498ab38d18a5b8"
     },
     "expected_behavior": "BAMBOO_COMPOUND_EQUIVALENCE_KEEP_TEXT"
+  },
+  {
+    "sku": "3209565",
+    "field": "name",
+    "source": "Patatas fritas Chio #BBQ style",
+    "target": "烧烤风味薯片",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Patatas fritas Chio #BBQ style",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "822b1812f19aabe01c67248e188a24e3cc0153721620332cbf38125a6dcf1576"
+    },
+    "expected_behavior": "FIELD_SCOPED_BBQ_STYLE_FLAVOUR_TRANSLATION_NOT_MODEL_WAIVER"
   }
 ]

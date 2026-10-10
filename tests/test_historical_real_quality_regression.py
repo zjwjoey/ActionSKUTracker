@@ -106,3 +106,14 @@ def test_real_bamboo_compound_retains_material_but_bamboo_pattern_is_not_materia
     assert guard_translation(source, {"name": row["target"]}, ("name",), semantic_facts=(fact,))["status"] == "PASS"
     result = guard_translation(source, {"name": "竹纹塑料签"}, ("name",), semantic_facts=(fact,))
     assert any(f["rule_id"] == "SEMANTIC_FACT_DROPPED" for f in result["findings"])
+
+
+def test_real_bbq_flavour_translation_cannot_waive_device_models_or_cross_field_tokens():
+    row = case("3209565")
+    source = SourceFacts.from_record({"name_es": row["source"]})
+    assert guard_translation(source, {"name": row["target"]}, ("name",))["status"] == "PASS"
+    assert guard_translation(source, {"name": "薯片"}, ("name",))["status"] == "FAIL"
+    for record in ({"name_es": "Dispositivo BBQ", "desc_es": "BBQ style"},
+                   {"name_es": "Dispositivo BBQ-120 style"}):
+        bad = guard_translation(SourceFacts.from_record(record), {"name": "烧烤风味设备"}, ("name",))
+        assert bad["status"] == "FAIL"

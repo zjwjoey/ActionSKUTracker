@@ -335,6 +335,10 @@ def _is_allowed_translated_strict_token(source_text: str, token: str, target: st
 
 
 def _is_allowed_translated_tech_token(source_text: str, source_token: str, target: str) -> bool:
+    # A flavour phrase is not a device/model identifier. Keep this confined
+    # to the complete phrase in the same source field, never BBQ model codes.
+    if str(source_token or "").casefold() == "bbq":
+        return bool(re.search(r"\bBBQ\s+style\b", source_text, re.I) and "烧烤风味" in target)
     aliases = _TRANSLATED_TECH_TOKEN_ALIASES.get(str(source_token or "").casefold(), ())
     return _source_term_present(source_text, source_token) and any(
         alias.casefold() in str(target or "").casefold() for alias in aliases
