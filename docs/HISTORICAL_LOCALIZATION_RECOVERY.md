@@ -408,3 +408,7 @@ Completed legacy checkpoints remain read-only candidate evidence with LEGACY_CON
 ### 2026-10-10 description18 neon lamp sense
 
 Shared illumination QA permits 霓虹灯 only with the complete own-field lámpara de neón phrase. 霓虹壁灯 requires the more specific lámpara de pared (solar) de neón phrase; a generic lamp, generic lighting, or a qualifier from another field is insufficient. Eight CI_SAFE cases include the real archived source, blocked pre-change candidate and full context. Quantity and LED protection remain active. The fixture confers no formal approval, and all existing-description repairs still use the native immutable Apply pipeline.
+
+### 2026-10-10 historical headphone fit preservation
+
+Two independently reviewed historical specs (3013368 and 3200696) exposed a shared QA false negative: own-source Over-ear passed with generic 头戴式 Chinese. The existing field-scoped VARIANT parser now recognizes this complete technical term, and semantic QA requires 包耳式, 罩耳式, 耳罩式 or 全包耳式 rather than generic headband style. Negated fit expressions do not satisfy the source assertion. Other source fields cannot impose fit on a generic title or specification, and number/interface guards remain active. Twenty-one CI_SAFE cases include both real archived source hashes and the recorded pre-change PASS; fixture expectations confer no approval or Apply. The native review, QA, immutable patch, integrity, Sync and Resume contracts remain required.

@@ -19,6 +19,10 @@ _TERM_MAP = {
     "paños": ("PRODUCT_TYPE", "清洁布"), "detergente": ("PRODUCT_TYPE", "洗洁精"),
     "barritas para gato": ("PRODUCT_TYPE", "猫零食条"), "barritas para gatos": ("PRODUCT_TYPE", "猫零食条"),
     "auriculares": ("PRODUCT_TYPE", "耳机"), "cartulina": ("PRODUCT_TYPE", "彩色手工卡纸"),
+    # Official archived headphone specs use this English fit term. It states
+    # ear coverage, not merely the presence of a headband. Keep own-field
+    # provenance and the existing VARIANT contract.
+    "over-ear": ("VARIANT", "包耳式"),
     "cola para madera": ("PRODUCT_TYPE", "木工胶"), "gofres": ("PRODUCT_TYPE", "华夫饼"),
     "microfibra": ("MATERIAL", "超细纤维"), "microfibras": ("MATERIAL", "超细纤维"), "goma": ("MATERIAL", "橡胶"),
     "iluminación": ("PRODUCT_TYPE", "照明灯"), "cápsulas": ("PRODUCT_TYPE", "胶囊"),

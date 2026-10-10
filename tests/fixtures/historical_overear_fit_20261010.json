@@ -1,0 +1,186 @@
+[
+  {
+    "sku": "3013368",
+    "field": "spec",
+    "source": "Over-ear",
+    "before": "头戴式",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Over-ear",
+        "reference": "F:\\按日期整理\\action表格\\20260720\\20260720Action商品全量_西语版_不带图.xlsx::商品全量",
+        "observed_at": "2026-07-20",
+        "file_hash": "9478539292c647dec3f0e0343a7d22128e54e96dcc171c9f0451aee5a86654e1",
+        "field_hash": "39b4f992bfc979bd38a868e29c53e284df0851066eb6e5a8fbe4bf3c6601bcb2"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Over-ear",
+          "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+          "observed_at": "2026-01-09",
+          "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+          "field_hash": "39b4f992bfc979bd38a868e29c53e284df0851066eb6e5a8fbe4bf3c6601bcb2"
+        },
+        {
+          "rank": 2,
+          "text": "耳罩式",
+          "reference": "F:\\按日期整理\\action表格\\20260701\\20260701Action商品全量_西语版_不带图.xlsx::格式化模板",
+          "observed_at": "2026-07-01",
+          "file_hash": "f43364151895559d04dccce824dfed681fcda62a4e5375a7dc19a5114745fbf4",
+          "field_hash": "6e7f56cc65d0c3a57e34acea17778c741d55b27517c2862dc542ef6d760e300c"
+        },
+        {
+          "rank": 2,
+          "text": "Over-ear",
+          "reference": "F:\\按日期整理\\action表格\\20260706\\20260706Action商品全量_西语版_不带图.xlsx::Action ES 商品",
+          "observed_at": "2026-07-06",
+          "file_hash": "0b4bdbdeda7d8d3705870fbd65f545337c362cdd71662c8355dc9c225f429b96",
+          "field_hash": "39b4f992bfc979bd38a868e29c53e284df0851066eb6e5a8fbe4bf3c6601bcb2"
+        },
+        {
+          "rank": 2,
+          "text": "Over-ear",
+          "reference": "F:\\按日期整理\\action表格\\20260713\\20260713Action商品全量_西语版_不带图.xlsx::商品全量",
+          "observed_at": "2026-07-13",
+          "file_hash": "9eda0b3143e661a7e080ad46b71fd6b2649bc6dfd2ffa283d827ba1d9a459df2",
+          "field_hash": "39b4f992bfc979bd38a868e29c53e284df0851066eb6e5a8fbe4bf3c6601bcb2"
+        },
+        {
+          "rank": 2,
+          "text": "Over-ear",
+          "reference": "F:\\按日期整理\\action表格\\20260720\\20260720Action商品全量_西语版_不带图.xlsx::商品全量",
+          "observed_at": "2026-07-20",
+          "file_hash": "9478539292c647dec3f0e0343a7d22128e54e96dcc171c9f0451aee5a86654e1",
+          "field_hash": "39b4f992bfc979bd38a868e29c53e284df0851066eb6e5a8fbe4bf3c6601bcb2"
+        },
+        {
+          "rank": 3,
+          "text": "Over-ear",
+          "reference": "F:\\ActionSKUTracker\\runtime\\master\\Action_Master.xlsx::08_LONG_TERM_MASTER::SKU=3013368",
+          "observed_at": "2026-07-20",
+          "file_hash": "1ac7e016748dbb6cee87daf08d67b2e2ee3c07e1290251c299b1ecf741a6401c",
+          "field_hash": "39b4f992bfc979bd38a868e29c53e284df0851066eb6e5a8fbe4bf3c6601bcb2"
+        },
+        {
+          "rank": 2,
+          "text": "Over-ear",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3013368",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "39b4f992bfc979bd38a868e29c53e284df0851066eb6e5a8fbe4bf3c6601bcb2"
+        }
+      ]
+    },
+    "context": {
+      "name": "Auriculares de estudio Roseland",
+      "cat1": "Multimedia",
+      "cat2": null,
+      "spec": "Over-ear",
+      "unit_price": null,
+      "description": "Con suaves almohadillas over-ear con ángulo de giro de 90 grados\nEquipado con entrada doble para fuentes de audio\nCon micrófono desmontable\nEstos auriculares de estudio son plegables, por lo que los podrás llevar fácilmente a todas partes. Funciona con cable y viene con 3 cables diferentes y un micrófono desmontable. ¡Ideal para componer música, grabar pódcast o simplemente disfrutar de tu música favorita!",
+      "details": "{'Número del artículo': '3013368', 'Color': 'Negro', 'Auriculares giratorios': 'Sí', 'Conexión de la señal': 'Con cable', 'Inalámbrica': 'No', 'Modo de transporte': 'Sobre el oído con diadema', 'Plegable': 'Sí', 'Recargable': 'No', 'Tipo de conexión': 'Jack'}"
+    },
+    "before_current_native_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "source_supported_proposed_correction": "包耳式",
+    "proposed_correction_current_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "independent_review_note": "Over-ear明确为覆盖/包围耳朵的佩戴方式，原值头戴式仅表示头带结构，丢失本字段特性。修正为包耳式，仅恢复原文明示特性，不增加品牌、型号、接口、续航或旋转角度。 正确值保留；Over-ear仅修复丢失特性；完整上下文只用于含义判断，不导入其他字段事实。",
+    "status": "VERIFIED_SEMANTIC_QA_FALSE_NEGATIVE",
+    "expected_behavior": "Recognize explicit own-field over-ear coverage/fit requirement; generic headband style alone must not satisfy it. Preserve over-ear fit in Chinese. Do not import fit from another source field. No candidate is a formal apply result."
+  },
+  {
+    "sku": "3200696",
+    "field": "spec",
+    "source": "Over-ear",
+    "before": "头戴式",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Over-ear",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "39b4f992bfc979bd38a868e29c53e284df0851066eb6e5a8fbe4bf3c6601bcb2"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Over-ear",
+          "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+          "observed_at": "2026-01-09",
+          "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+          "field_hash": "39b4f992bfc979bd38a868e29c53e284df0851066eb6e5a8fbe4bf3c6601bcb2"
+        },
+        {
+          "rank": 2,
+          "text": "耳罩式",
+          "reference": "F:\\按日期整理\\action表格\\20260701\\20260701Action商品全量_西语版_不带图.xlsx::格式化模板",
+          "observed_at": "2026-07-01",
+          "file_hash": "f43364151895559d04dccce824dfed681fcda62a4e5375a7dc19a5114745fbf4",
+          "field_hash": "6e7f56cc65d0c3a57e34acea17778c741d55b27517c2862dc542ef6d760e300c"
+        },
+        {
+          "rank": 3,
+          "text": "耳罩式",
+          "reference": "F:\\ActionSKUTracker\\runtime\\master\\Action_Master.xlsx::08_LONG_TERM_MASTER::SKU=3200696",
+          "observed_at": "2026-07-01",
+          "file_hash": "1ac7e016748dbb6cee87daf08d67b2e2ee3c07e1290251c299b1ecf741a6401c",
+          "field_hash": "6e7f56cc65d0c3a57e34acea17778c741d55b27517c2862dc542ef6d760e300c"
+        },
+        {
+          "rank": 2,
+          "text": "Over-ear",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3200696",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "39b4f992bfc979bd38a868e29c53e284df0851066eb6e5a8fbe4bf3c6601bcb2"
+        }
+      ]
+    },
+    "context": {
+      "name": "Auriculares de diadema plegables Roseland",
+      "cat1": "Multimedia",
+      "cat2": "Auriculares",
+      "spec": "Over-ear",
+      "unit_price": null,
+      "description": "18 horas de reproducción\nCon micrófono: permite realizar llamadas manos libres\nEquipados con botones de control de volumen\nEstos auriculares de diadema plegables tienen un alcance de hasta 10 metros y son fáciles de llevar para que puedas escuchar tu música o podcast favoritos dondequiera que vayas.",
+      "details": "{'Número del artículo': '3200696', 'Color': 'Negro', 'Auriculares giratorios': 'No', 'Bluetooth': 'Sí', 'Conexión de la señal': 'Bluetooth', 'Control de volumen': 'Sí', 'Inalámbrica': 'Sí', 'Incluye cargador': 'No', 'Micrófono integrado': 'Sí', 'Modo de transporte': 'Sobre el oído con diadema', 'Plegable': 'Sí', 'Recargable': 'Sí', 'Tipo de conexión': 'USB-c', 'Versión bluetooth': '5.3'}"
+    },
+    "before_current_native_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "source_supported_proposed_correction": "包耳式",
+    "proposed_correction_current_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "independent_review_note": "Over-ear明确为覆盖/包围耳朵的佩戴方式，原值头戴式仅表示头带结构，丢失本字段特性。修正为包耳式，仅恢复原文明示特性，不增加品牌、型号、接口、续航或旋转角度。 正确值保留；Over-ear仅修复丢失特性；完整上下文只用于含义判断，不导入其他字段事实。",
+    "status": "VERIFIED_SEMANTIC_QA_FALSE_NEGATIVE",
+    "expected_behavior": "Recognize explicit own-field over-ear coverage/fit requirement; generic headband style alone must not satisfy it. Preserve over-ear fit in Chinese. Do not import fit from another source field. No candidate is a formal apply result."
+  }
+]

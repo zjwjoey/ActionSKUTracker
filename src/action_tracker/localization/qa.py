@@ -48,6 +48,7 @@ _SEMANTIC_TARGET_ALIASES = {
     "ampollas de aceite": ("安瓶", "安瓿"),
     "gomas": ("橡皮筋", "橡胶圈", "松紧带"),
     "goma": ("橡胶",),
+    "over-ear": ("包耳式", "罩耳式", "耳罩式", "全包耳式"),
     "goma de borrar": ("橡皮擦", "橡皮"),
     "calcetines": ("袜子", "短袜", "长袜", "低帮袜", "运动袜"),
     "detergente": ("洗洁精", "洗涤剂", "清洁剂", "马桶清洁剂"),
@@ -865,7 +866,16 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             if not _fact_applies_to_field(fact, field_name):
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
-            if _source_term_present(source_text, source_term) and not any(alias.casefold() in target.casefold() for alias in aliases):
+            represented = any(alias.casefold() in target.casefold() for alias in aliases)
+            if source_term.casefold() == "over-ear" and fact_type == "VARIANT":
+                # A negated fit cannot satisfy a positive source assertion.
+                # Generic headband style and conflicting fits alone must fail.
+                affirmative_target = re.sub(
+                    r"(?:不是|并非|不采用|不属于|不具备|不支持|不|非)\s*(?:全)?(?:包耳式|罩耳式|耳罩式)",
+                    "", target,
+                )
+                represented = any(alias in affirmative_target for alias in aliases)
+            if _source_term_present(source_text, source_term) and not represented:
                 findings.append(QAFinding(
                     "SEMANTIC_FACT_DROPPED", "ERROR", field_name,
                     {
