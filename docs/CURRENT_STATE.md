@@ -84,3 +84,7 @@ main protection 只读查询显示未保护；建议 PR required、Ubuntu/Window
 最终PRIMARY头`2026-10-10_detail_apply_20261010T161740273910Z_4c999604_7e3d96056e6e`，历史SKU4243，历史六字段空值4623。145次真实Qwen-MT生成、28个确定性候选，review provider调用0；候选不计入库。核心代码`4ce68d3`，完整回归1288 PASS，未部署生产默认daily入口。全历史语义审查及整体目标仍未完成。
 
 详见[432项审查及正式验收](HISTORICAL_TRUSTED432_REVIEW_20261010.md)，运行证据`runtime/reports/historical_localization_20261009/trusted432_20261010/overall_final_summary.json`及`final_acceptance.json`；人工复核索引`manual_review_index_at_final_head.json`。
+
+## 2026-10-11 翻译模块远端提交准备
+
+重新fetch后核对本分支相对origin/main的全部50个既有提交/76个文件，未落后main且远端尚无同名分支。修复来源审计将None误作官方明确空值、数字保留与新增检查格式不一致导致的面积/区间误报，新增7个回归案例；核心提交`c9946b9`。最终完整回归1295 PASS，本地CI原120文件白名单1295 PASS；远端跨系统CI尚待推送验证。默认安全开关、正式字典、schema、PRIMARY和Master未改动；未push、创建PR或部署。详见[远端提交准备审查](HISTORICAL_LOCALIZATION_REMOTE_PREPARATION_20261011.md)。
