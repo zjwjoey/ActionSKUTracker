@@ -438,6 +438,8 @@ def _has_casefold_token(text: str, token: str) -> bool:
 
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
     aliases = list(_SEMANTIC_TARGET_ALIASES.get(source_term.casefold(), (canonical,)))
+    if re.fullmatch(r"\d+\s+lavados", source_term, re.I):
+        aliases.extend(("洗衣", "清洗", "水洗"))
     # In these complete phrases illumination describes light usage/effects,
     # rather than an additional lamp product. Do not waive generic product
     # nouns or borrow the qualifying phrase from another source field.
@@ -816,6 +818,17 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if not source_text.strip():
             findings.append(QAFinding("EMPTY_SOURCE_TARGET_NONEMPTY", "BLOCKER", field_name, {"target": target}, source=source_text, target=target, message="target content exists without official source", blocking=True))
             continue
+        # Chinese units do not take a Latin plural suffix. Historical
+        # ``800 vatios -> 800 瓦s`` passed numeric/unit preservation despite
+        # visibly broken Chinese. This gate diagnoses; it never repairs text.
+        malformed_units = re.findall(
+            r"(?<![0-9])\d+(?:[.,]\d+)?\s*(?:毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|伏特|瓦|分贝|千卡|摄氏度|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|件|个)(?:es|s)(?![A-Za-z])",
+            target, re.I,
+        )
+        if malformed_units:
+            findings.append(QAFinding("MALFORMED_TRANSLATED_UNIT", "ERROR", field_name,
+                {"spans": malformed_units}, source=source_text, target=target,
+                message="Chinese numeric unit retains a Latin plural suffix", blocking=True))
         if field_name == "details":
             findings.extend(_detail_source_value_findings(source_text, target))
             findings.extend(_detail_charging_speed_findings(source_text, target))

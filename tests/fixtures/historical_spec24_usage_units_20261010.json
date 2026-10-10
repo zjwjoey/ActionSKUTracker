@@ -1,0 +1,387 @@
+[
+  {
+    "group_index": 24,
+    "sku": "3217598",
+    "source": "3 niveles",
+    "before": "3层",
+    "context": {
+      "name": "Estirador de espalda",
+      "cat1": "Artículos deportivos",
+      "cat2": null,
+      "spec": "3 niveles",
+      "unit_price": null,
+      "description": "3 posiciones ajustables, decide tú la intensidad\nAyuda a aliviar el dolor muscular y la tensión en la parte inferior de la espalda\nCompacto y ligero\n¿Tienes la espalda rígida o los músculos tensos? Con este estirador de espalda multinivel darás a tu espalda el merecido estiramiento que necesita todos los días. Elige entre 3 posiciones ajustables, túmbate cómodamente y siente cómo se relajan los músculos de la espalda. Ligera, compacta y fácil de transportar.",
+      "details": "{'Número del artículo': '3217598'}"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "3 niveles",
+        "reference": "F:\\按日期整理\\action表格\\20260706\\20260706Action商品全量_西语版_不带图.xlsx::Action ES 商品",
+        "observed_at": "2026-07-06",
+        "file_hash": "0b4bdbdeda7d8d3705870fbd65f545337c362cdd71662c8355dc9c225f429b96",
+        "field_hash": "642a7a5c76c8eb89fea0655462cf3996e6447dcd1cda5304204c1087d94ad417"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  },
+  {
+    "group_index": 170,
+    "sku": "2569123",
+    "source": "26 lavados",
+    "before": "26次",
+    "context": {
+      "name": "Detergente en polvo Total Clean",
+      "cat1": "Hogar",
+      "cat2": "Detergentes y lavavajillas",
+      "spec": "26 lavados",
+      "unit_price": null,
+      "description": "Detergente para ropa de color y blanca\nEfectivo incluso a baja temperatura\nCon un fresco aroma\nEste detergente en polvo Total Clean deja la ropa limpia y como nueva.",
+      "details": "Color: Blanco; Apto para tipo de aparato: Lavadora; Apto para tipo de colada: Lavado a máquina; Apto para tipo de colada a color: Colada blanca, Colada a color; Contenido: 1.95 kg; Función: Combinación; Función de limpieza: Sí; Incluye tapón dosificador: No; Número de turnos de limpieza: 26; Sustancia: Polvo; Tipo de dispensador: Bolsa; Número del artículo: 2569123"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "26 lavados",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-10-01\\2026-10-01_073814\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-10-01/2026-10-01_073814",
+        "file_hash": "34c047c86c6f9510b983dc39e368b3d68ee4dbf0f8749ee8c2b98eb1b21116a1",
+        "field_hash": "50117c25510cec0ffcebf898d349189df2aca8e229345d06e72b007d700d29da"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  },
+  {
+    "group_index": 184,
+    "sku": "3214173",
+    "source": "33 lavados",
+    "before": "33次",
+    "context": {
+      "name": "Detergente Purox Universal",
+      "cat1": "Hogar",
+      "cat2": "Detergentes y lavavajillas",
+      "spec": "33 lavados",
+      "unit_price": null,
+      "description": "Adecuado para ropa blanca y de color\nPotente limpieza higiénica\nCon fresca fragancia de flores de montaña",
+      "details": "Color: Verde; Incluye tapón dosificador: Sí; Número de turnos de limpieza: 33; Tipo de dispensador: Botella; Número del artículo: 3214173"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "33 lavados",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-26\\2026-09-26_034832\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-26/2026-09-26_034832",
+        "file_hash": "648c99b7f1d1765c098806319819451aaf71053da7cfe6b6e45b12b47e603977",
+        "field_hash": "aed757ba1a1a508d2ee4eb358601fff5815ee634232f6863a865ee7a7bbad1b1"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  },
+  {
+    "group_index": 197,
+    "sku": "3219366",
+    "source": "40 lavados",
+    "before": "40次",
+    "context": {
+      "name": "Cápsulas de lavado Endless Scent Paradise Freshness Colour & White",
+      "cat1": "Hogar",
+      "cat2": "Detergentes y lavavajillas",
+      "spec": "40 lavados",
+      "unit_price": null,
+      "description": "Para ropa blanca y de color\nEliminación eficaz de manchas\nDale a tu ropa un aroma fresco y duradero con estas cápsulas de lavado Endless Scent. La fórmula concentrada ayuda a eliminar las manchas y es ideal para ropa blanca y de color. Para 40 lavados.",
+      "details": "Apto para tipo de colada: Lavado a máquina; Apto para tipo de colada a color: Colada a color, Colada blanca; Cantidad: 40 unidades; Contenido: 800 ml; Función de limpieza: Sí; Número de turnos de limpieza: 40; Sustancia: Cápsula; Número del artículo: 3219366"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "40 lavados",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-10-07\\2026-10-07_030413\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-10-07/2026-10-07_030413",
+        "file_hash": "d87655af0e60eb6888298f6f17584959a0a87be5d16203da233f9df9162447f4",
+        "field_hash": "9a1d98c6610a2f56eac433051c06916ab28e013bfbeb4ae36425454da27219ae"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  },
+  {
+    "group_index": 197,
+    "sku": "3219369",
+    "source": "40 lavados",
+    "before": "40次",
+    "context": {
+      "name": "Cápsulas de lavado Endless Scent Blanco",
+      "cat1": "Hogar",
+      "cat2": "Detergentes y lavavajillas",
+      "spec": "40 lavados",
+      "unit_price": null,
+      "description": "Potente contra las manchas\nEspecial para ropa blanca\nCon aroma fresco",
+      "details": "Apto para tipo de aparato: Lavadora; Apto para tipo de colada: Lavado a máquina; Apto para tipo de colada a color: Colada blanca; Cantidad: 40 unidades; Contenido: 800 ml; Función: Quitamanchas, Con enzimas; Función de limpieza: Sí; Número de turnos de limpieza: 40; Olor: Fresco; Sin perfume: No; Sustancia: Cápsula; Tipo de dispensador: Cápsula; Uso previsto: Lavadora; Número del artículo: 3219369"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "40 lavados",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-10\\2026-09-10_030315\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-10/2026-09-10_030315",
+        "file_hash": "109d7c359ce39fef295a09848f9e39d4d95146ed372a2c17e15720dcd8c26dd6",
+        "field_hash": "9a1d98c6610a2f56eac433051c06916ab28e013bfbeb4ae36425454da27219ae"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  },
+  {
+    "group_index": 201,
+    "sku": "3214177",
+    "source": "43 lavados",
+    "before": "43次",
+    "context": {
+      "name": "Detergente en polvo Purox Color",
+      "cat1": "Hogar",
+      "cat2": "Detergentes y lavavajillas",
+      "spec": "43 lavados",
+      "unit_price": null,
+      "description": "Potente protección del color\nElimina manchas y bacterias incrustadas\nCon fresca fragancia de flores de montaña",
+      "details": "Apto para tipo de aparato: Lavadora; Apto para tipo de colada: Lavado a máquina; Apto para tipo de colada a color: Colada a color; Contenido: 3 kg; Número de turnos de limpieza: 43; Tipo de dispensador: Polvo; Número del artículo: 3214177"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "43 lavados",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-10\\2026-09-10_030315\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-10/2026-09-10_030315",
+        "file_hash": "109d7c359ce39fef295a09848f9e39d4d95146ed372a2c17e15720dcd8c26dd6",
+        "field_hash": "9fbee666e1a69849c9279c752d31f1c4aed61850bc75926d12310feaa430c7e7"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  },
+  {
+    "group_index": 206,
+    "sku": "3222918",
+    "source": "50 lavados",
+    "before": "50次",
+    "context": {
+      "name": "Detergente Bilore Classic",
+      "cat1": "Hogar",
+      "cat2": "Detergentes y lavavajillas",
+      "spec": "50 lavados",
+      "unit_price": null,
+      "description": "Fragancia fresca clásica que perdura durante mucho tiempo\nApto para lavado a mano y a máquina\nDale a tu colada un encantador y fresco aroma clásico con este potente detergente. Su fórmula limpia a fondo la ropa y deja un aroma fresco de larga duración. Con hasta 50 lavados, esta botella grande te durará más tiempo. Gracias a su práctica asa, puedes verter sin derramar y dosificar fácilmente. Perfecto para el uso diario y la colada de todos los días.",
+      "details": "Apto para tipo de aparato: Lavadora; Apto para tipo de colada: Lavado a máquina; Contenido: 2.65 litro; Número de turnos de limpieza: 50; Número del artículo: 3222918"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "50 lavados",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-26\\2026-09-26_034832\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-26/2026-09-26_034832",
+        "file_hash": "648c99b7f1d1765c098806319819451aaf71053da7cfe6b6e45b12b47e603977",
+        "field_hash": "48405b6791c8ff3253ab14fdbd01f2d5a26d627a18dc5765ebba16bc77fcc6f8"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  },
+  {
+    "group_index": 206,
+    "sku": "3222919",
+    "source": "50 lavados",
+    "before": "50次",
+    "context": {
+      "name": "Detergente Bilore Almizcle",
+      "cat1": "Hogar",
+      "cat2": "Detergentes y lavavajillas",
+      "spec": "50 lavados",
+      "unit_price": null,
+      "description": "Fragancia suave de larga duración\nCon este eficaz detergente, deja tu ropa increíblemente limpia y fresca. Su suave aroma da a tu ropa una sensación de comodidad que dura mucho tiempo. Con hasta 50 lavados, te durará mucho tiempo y gracias a la práctica botella con asa, podrás echarlo sin derramar nada. Ideal para el uso diario y adecuado para todos tus conjuntos favoritos.",
+      "details": "Apto para tipo de colada: Lavado a máquina; Contenido: 2.65 litro; Número de turnos de limpieza: 50; Sin perfume: No; Número del artículo: 3222919"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "50 lavados",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-26\\2026-09-26_034832\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-26/2026-09-26_034832",
+        "file_hash": "648c99b7f1d1765c098806319819451aaf71053da7cfe6b6e45b12b47e603977",
+        "field_hash": "48405b6791c8ff3253ab14fdbd01f2d5a26d627a18dc5765ebba16bc77fcc6f8"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  },
+  {
+    "group_index": 232,
+    "sku": "3224693",
+    "source": "800 vatios",
+    "before": "800 瓦s",
+    "context": {
+      "name": "Batidora de mano MasterChef",
+      "cat1": "Cocina",
+      "cat2": "Aparatos de cocina",
+      "spec": "800 vatios",
+      "unit_price": null,
+      "description": "Potente motor de 800 vatios\nVarilla y cuchillas de acero inoxidable\nVelocidad variable + modo turbo\nBatir, mezclar y triturar sin esfuerzo con esta potente batidora MasterChef. Gracias al potente motor y a la varilla de acero inoxidable, trabajarás de forma rápida y eficiente, ideal para sopas, salsas y batidos.",
+      "details": "Color: Negro, Dorado, Plateado; Material: Acero inoxidable, Abs; Accesorios: Batidora de mano; Inalámbrica: No; Potencia: 800; Potencia: 800 vatio; Tipo de alimentación: Alimentación de red; Número del artículo: 3224693"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "800 vatios",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-20\\2026-09-20_040329\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-20/2026-09-20_040329",
+        "file_hash": "3923b02c5f3791b2cd03df7f516000a710ee0fd01fe5dc1708a2074bcaf234a1",
+        "field_hash": "4eb00d5f734a958937770c99f9d91959099234881cf862cd7ccb870e9f2de8e5"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  },
+  {
+    "group_index": 186,
+    "sku": "3002504",
+    "source": "344 muffin",
+    "before": "344个玛芬",
+    "context": {
+      "name": "Perfilador de labios Max & More",
+      "cat1": "Cuidado personal",
+      "cat2": "Maquillaje",
+      "spec": "344 muffin",
+      "unit_price": null,
+      "description": null,
+      "details": null
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "344 muffin",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "f648bb2b071795978cdcb7b1404dfd54e05ccb9579d31915403125e333a5ac77"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  },
+  {
+    "group_index": 238,
+    "sku": "2542177",
+    "source": "Cahoba 3.6",
+    "before": "卡霍巴 3.6",
+    "context": {
+      "name": "Tinte de pelo Fashion Professional Oil & Shine",
+      "cat1": "Cuidado personal",
+      "cat2": "Cuidado del cabello",
+      "spec": "Cahoba 3.6",
+      "unit_price": null,
+      "description": null,
+      "details": null
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Cahoba 3.6",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "aa4774823e409a7440a5bbca91d4dea2077c648de60551d138bc280627176550"
+      }
+    },
+    "before_qa": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    },
+    "formal_approval": false
+  }
+]

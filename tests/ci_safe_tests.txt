@@ -118,3 +118,4 @@ tests/test_historical_description17_guard_cases.py
 tests/test_finite_batch_adapter_identity.py
 tests/test_historical_neon_description.py
 tests/test_historical_overear_fit.py
+tests/test_historical_spec24_usage_units.py

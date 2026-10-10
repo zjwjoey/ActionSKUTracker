@@ -99,6 +99,11 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        # A numeric wash allowance states use, not an unqualified count.
+        # Keep the complete phrase and its own field; do not treat washed
+        # fabric adjectives or a wash count in another field as evidence.
+        for match in re.finditer(r"(?<!\w)\d+\s+lavados\b", text, re.I):
+            add("VARIANT", match.group(0), "洗涤", field, "source_bound_wash_count")
         for match in re.finditer(_HAIR_TIE_PATTERN, text, re.I):
             add("PRODUCT_TYPE", match.group(0), "发圈", field, "source_bound_hair_tie_phrase")
         if (re.search(r"\bgomas\s+pelables\b", text, re.I)
