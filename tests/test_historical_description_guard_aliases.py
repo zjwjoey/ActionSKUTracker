@@ -62,3 +62,34 @@ def test_brand_spans_require_complete_same_field_source_and_keep_prose_blocked(s
 ])
 def test_three_effect_alias_preserves_scope_counts_and_models(record, target):
     assert check(record, target)["status"] == "FAIL"
+
+
+@pytest.mark.parametrize("row", CASES, ids=lambda row: row["sku"])
+def test_valid_real_descriptions_still_pass_with_full_context(row):
+    keys = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es",
+            "spec": "spec_es", "description": "desc_es", "details": "details_es"}
+    record = {keys[key]: value for key, value in row["context"].items()}
+    assert check(record, row["target"])["status"] == "PASS"
+
+
+@pytest.mark.parametrize("suffix", ["\n10", "\n1300", "\n长10米"])
+def test_real_led_description_cannot_import_spec_length_or_details_lumen(suffix):
+    row = next(row for row in CASES if row["sku"] == "3015660")
+    keys = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es",
+            "spec": "spec_es", "description": "desc_es", "details": "details_es"}
+    record = {keys[key]: value for key, value in row["context"].items()}
+    # These intentionally mutated candidates are failures, not gold targets.
+    result = check(record, row["target"] + suffix)
+    assert any(x["rule_id"] == "NUMERIC_ADDED" for x in result["findings"])
+
+
+@pytest.mark.parametrize("field", ["name", "cat1", "cat2", "description", "details"])
+def test_other_field_number_never_authorizes_a_non_spec_translation(field):
+    keys = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es",
+            "description": "desc_es", "details": "details_es"}
+    result = check({keys[field]: "Color azul", "spec_es": "10 cm"}, "蓝色10", field)
+    assert any(x["rule_id"] == "NUMERIC_ADDED" for x in result["findings"])
+
+
+def test_spanish_article_does_not_turn_into_a_false_added_quantity():
+    assert check({"desc_es": "Una vela azul"}, "一支蓝色蜡烛")["status"] == "PASS"

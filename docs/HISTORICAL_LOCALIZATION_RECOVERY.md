@@ -233,3 +233,20 @@ Twenty-one new positive/negative tests pass. Full regression: 991 passed in
 113.80 seconds, JUnit archived in the runtime historical report directory.
 Runtime dictionary baseline is unchanged. Description12 candidates are still
 pending formal immutable Apply at this code checkpoint.
+
+## 2026-10-10: non-spec quantities must belong to their own source
+
+Real SKU3015660 showed that appending the specification length 10 metres or
+structured-details lumen 1300 to its description still passed numeric Guard.
+Neither value occurs in that description. Non-spec numeric additions now use
+only the target field's own source, rather than the entire SKU payload.
+Canonical specification numeric relocation keeps its existing compatibility
+contract; general source-bound Chinese quantity interpretation still needs
+further audit. Spanish articles rendered as Chinese classifiers remain valid.
+
+Fourteen additional tests cover the full five real SKU contexts, three
+intentionally corrupted LED candidates, five non-spec field scopes and a
+Spanish article. No mutated target is marked as gold. Full regression:
+1005 passed in 94.95 seconds. All167 committed description12 targets were
+rechecked under the stricter Guard with zero failures. Code is local to this
+independent branch; no dictionary baseline or production settings changed.

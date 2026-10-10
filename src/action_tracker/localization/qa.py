@@ -779,15 +779,14 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     blocking=True,
                 ))
         source_numbers, target_numbers = _numbers(source_text), _numbers(target)
-        # A planner may legitimately move an official numeric fact from
-        # description/details into the canonical spec field.  Keep dropped
-        # checks field-local, but only call a target number "added" when it
-        # is absent from every official Spanish source field.
-        # Parse each field independently. Joining a name ending in "1" and
-        # a spec starting with "300 ml" invents a thousands group "1 300".
-        all_source_numbers: Counter[str] = Counter()
-        for attr in ("name_es", "spec_es", "desc_es", "details_es", "cat1_es", "cat2_es"):
-            all_source_numbers.update(_numbers(str(getattr(source, attr, "") or "")))
+        # Ordinary translations cannot import quantities from other fields.
+        # Preserve the established canonical-spec relocation contract only
+        # for spec; independent source numbers avoid joined thousands groups.
+        allowed_source_numbers = source_numbers.copy()
+        if field_name == "spec":
+            allowed_source_numbers = Counter()
+            for attr in ("name_es", "spec_es", "desc_es", "details_es", "cat1_es", "cat2_es"):
+                allowed_source_numbers.update(_numbers(str(getattr(source, attr, "") or "")))
         dropped = source_numbers - target_numbers
         dropped -= _semantic_numeric_equivalents(source_text, target)
         if field_name == "name":
@@ -818,18 +817,16 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             dropped["7"] -= 1
             if dropped["7"] <= 0:
                 del dropped["7"]
-        # Repetition of a number that is already present in another official
-        # field is not an invented fact (for example ``40cm`` plus
-        # ``40×40cm`` rendered into the canonical spec).  Only values absent
-        # from the complete official payload are additions.
+        # Canonical spec may repeat an official relocated number (40cm plus
+        # 40×40cm). Other fields require their own source evidence.
         # Chinese classifiers such as ``一条``/``一天`` are often introduced
         # by a faithful translation of Spanish articles (``una``/``uno``),
         # not by an added numeric fact.  Treat explicit Arabic digits as
         # additions unconditionally; only count a Chinese numeral as an
         # addition when that numeric value is already present in the official
-        # source payload and is repeated beyond its source count.
+        # allowed source scope and is repeated beyond its source count.
         target_arabic = _arabic_numbers(target)
-        duplicated = Counter({value: count for value, count in target_arabic.items() if value not in all_source_numbers})
+        duplicated = Counter({value: count for value, count in target_arabic.items() if value not in allowed_source_numbers})
         duplicated -= _semantic_numeric_extras(source_text, target)
         # This complete functional phrase is an explicit quantity, unlike
         # an ordinary Chinese article such as 一条. It needs its own-field
@@ -839,9 +836,9 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if three_effect_claims > three_in_one_source:
             duplicated["3"] += three_effect_claims - three_in_one_source
         for value, count in target_numbers.items():
-            if value in target_arabic or value not in all_source_numbers:
+            if value in target_arabic or value not in allowed_source_numbers:
                 continue
-            extra = count - all_source_numbers.get(value, 0)
+            extra = count - allowed_source_numbers.get(value, 0)
             if extra > 0:
                 duplicated[value] += extra
         if dropped:
