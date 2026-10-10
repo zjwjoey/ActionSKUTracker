@@ -301,3 +301,8 @@ Eleven real evidence fixtures preserve selected source artifact hashes, complete
 Owner holds include health/safety claims, contradictory Halal flags, page/sheet counts, compartment counts, uncertain faux fur/leather, coffee/cocoa source mismatch and the cap-description double negation. Full independent six-field semantic audit and live online daily-run validation remain incomplete.
 
 The complete existing-field guard scan exposed two false regressions for Chinese 四种/两种; non-singular Chinese 种 counts are now recognized while generic 一种 remains excluded. This prevents enforcing new Spanish color counts without accepting their Chinese equivalents. Full suite rerun required after this adjustment.
+
+
+### 2026-10-10 existing-description retries
+
+SKU3223925's own description contains the complete Play-Doh Create & Celebrate span. Shared residual QA preserves only that complete same-field commercial name; partial names and names borrowed from another source field stay blocked. SKU3225810's description explicitly contains both gomas pelables and gominola, proving confectionery rather than rubber bands. The semantic parser now emits the source-scoped soft-candy product fact, suppresses only the generic rubber-band occurrence consumed by that complete phrase, and retains separately mentioned rubber-band facts. A gummy marker in another field is insufficient, and dictionary broad matches cannot reintroduce the wrong product identity. Real source artifacts/hashes and negative cases are preserved; none confer approval. Existing corrections remove unsupported 20-unit/150-g facts imported from other fields and retain own-source brands.

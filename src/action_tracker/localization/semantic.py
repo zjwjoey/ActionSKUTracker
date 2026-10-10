@@ -73,6 +73,13 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
             # The complete noun means eraser, not an assertion of rubber
             # composition or rubber bands. Preserve separate material facts.
             remaining = re.sub(r"\bgomas?\s+de\s+borrar\b", " ", dict(text_fields).get(field, ""), flags=re.I)
+            # The complete peelable-candy phrase is disambiguated only by
+            # an explicit gummy noun in this same source field. A separate
+            # rubber-band occurrence remains a separate product fact.
+            own_text = dict(text_fields).get(field, "")
+            if (re.search(r"\bgomas\s+pelables\b", own_text, re.I)
+                    and re.search(r"\bgominolas?\b", own_text, re.I)):
+                remaining = re.sub(r"\bgomas\s+pelables\b", " ", remaining, flags=re.I)
             if not re.search(rf"\b{re.escape(source_text)}\b", remaining, re.I):
                 return
         key = (kind, source_text.casefold(), zh, field)
@@ -82,6 +89,9 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        if (re.search(r"\bgomas\s+pelables\b", text, re.I)
+                and re.search(r"\bgominolas?\b", text, re.I)):
+            add("PRODUCT_TYPE", "gomas pelables", "软糖", field, "source_bound_confectionery_phrase")
         for row in product_rows if isinstance(product_rows, (list, tuple)) else ():
             term = str(row.get("source_term") or "").strip()
             aliases = [term, *re.split(r"\s*[|,;]\s*", str(row.get("source_aliases") or ""))]

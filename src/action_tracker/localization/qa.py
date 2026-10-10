@@ -214,7 +214,7 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
                 allowed.add("www")
     # Multiword commercial spans must occur complete in this same field.
     # Interior prose words (of/the/mini) are not general residual exceptions.
-    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini"):
+    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini", "Play-Doh Create & Celebrate"):
         pattern = rf"(?<![A-Za-z0-9]){re.escape(phrase)}(?![A-Za-z0-9])"
         if re.search(pattern, source, re.I) and re.search(pattern, rendered, re.I):
             allowed.update(re.findall(r"[A-Za-z]+", phrase))
