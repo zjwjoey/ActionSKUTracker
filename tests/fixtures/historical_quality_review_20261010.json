@@ -103,5 +103,35 @@
       "field_hash": "60e14d1be6a4955d221de81cf1181e6a5388547a5ea1e4499502e61883615710"
     },
     "expected_behavior": "WOOD_COMPOUND_EQUIVALENCE_KEEP_FACT"
+  },
+  {
+    "sku": "3205379",
+    "field": "name",
+    "source": "Micrófono de karaoke inalámbrico con luz",
+    "target": "带灯无线卡拉OK麦克风",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Micrófono de karaoke inalámbrico con luz",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "1c7dc8751b44ebb813fbf33938fbed1b8857d749833c9897e7ec5f4cd328f2c6"
+    },
+    "expected_behavior": "SOURCE_SCOPED_KARAOKE_LEXICAL_TOKEN_EQUIVALENCE"
+  },
+  {
+    "sku": "3206321",
+    "field": "name",
+    "source": "Juego de karaoke inalámbrico Fresh ’n Rebel Kids",
+    "target": "儿童无线卡拉OK套装",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Juego de karaoke inalámbrico Fresh ’n Rebel Kids",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "0288424b65a61c10657258544e51c49007eca019aa580d8f67bde547c57272c5"
+    },
+    "expected_behavior": "SOURCE_SCOPED_KARAOKE_LEXICAL_TOKEN_EQUIVALENCE"
   }
 ]

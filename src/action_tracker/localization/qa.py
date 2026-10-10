@@ -318,8 +318,14 @@ def _omittable_display_term(term: Mapping[str, Any], semantic_facts: tuple[Any, 
     )
 
 
-def _is_allowed_translated_strict_token(source_text: str, token: str) -> bool:
+def _is_allowed_translated_strict_token(source_text: str, token: str, target: str = "", actual_count: int = 1) -> bool:
     token_key = str(token or "").casefold()
+    # The Chinese lexical rendering of karaoke contains the uppercase
+    # letters OK. It is not a new model identifier. Require the complete
+    # phrase and account for every OK token; standalone/extra OK stays blocked.
+    if token_key == "ok":
+        return (_source_term_present(source_text, "karaoke") and
+                len(re.findall(r"卡拉\s*OK(?![A-Za-z0-9])", target, re.I)) == actual_count)
     return any(
         token_key in {candidate.casefold() for candidate in targets}
         and _source_term_present(source_text, source_term)
@@ -828,7 +834,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         allow_fixed_category_tokens = field_name == "cat1" and target in FIXED_CAT1
         for (kind, value), actual_count in target_strict.items():
             if actual_count > source_strict.get((kind, value), 0) and not allow_fixed_category_tokens:
-                if _is_allowed_translated_strict_token(source_text, value):
+                if _is_allowed_translated_strict_token(source_text, value, target, actual_count):
                     continue
                 if kind == "TECH" and _has_casefold_token(source_text, value):
                     continue

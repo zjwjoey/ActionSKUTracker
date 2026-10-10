@@ -78,3 +78,22 @@ def test_real_wood_compounds_preserve_material_without_allowing_woodgrain(sku, t
     assert guard_translation(source, {"name": target}, ("name",), semantic_facts=(fact,))["status"] == "PASS"
     result = guard_translation(source, {"name": "木纹塑料制品"}, ("name",), semantic_facts=(fact,))
     assert any(f["rule_id"] == "SEMANTIC_FACT_DROPPED" for f in result["findings"])
+
+
+@pytest.mark.parametrize("sku", ["3205379", "3206321"])
+def test_real_karaoke_lexical_ok_is_not_an_invented_technical_model(sku):
+    row = case(sku)
+    source = SourceFacts.from_record({"sku": sku, "name_es": row["source"]})
+    assert guard_translation(source, {"name": row["target"]}, ("name",))["status"] == "PASS"
+    for bad, rule in (("OK麦克风", "PROTECTED_TOKEN_ADDED"),
+                      ("卡拉OK麦克风 OK", "PROTECTED_TOKEN_ADDED"),
+                      ("卡拉OK99麦克风", "MODEL_CHANGED")):
+        result = guard_translation(source, {"name": bad}, ("name",))
+        assert result["status"] == "FAIL"
+        assert any(f["rule_id"] == rule for f in result["findings"])
+
+
+def test_karaoke_context_cannot_waive_an_added_token_in_the_title():
+    source = SourceFacts.from_record({"name_es": "Micrófono", "desc_es": "Para karaoke"})
+    result = guard_translation(source, {"name": "卡拉OK麦克风"}, ("name",))
+    assert any(f["rule_id"] == "PROTECTED_TOKEN_ADDED" for f in result["findings"])
