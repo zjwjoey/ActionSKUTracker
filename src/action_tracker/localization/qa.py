@@ -51,6 +51,7 @@ _SEMANTIC_TARGET_ALIASES = {
     "microfibra": ("超细纤维", "微纤维"),
     "microfibras": ("超细纤维", "微纤维"),
     "madera": ("木质", "木材", "木制", "木头", "木盖", "木屑", "芒果木"),
+    "bambú": ("竹制", "竹材", "竹子", "竹签", "竹筷"),
 }
 
 # A small, explicit allowlist for semantic translations that are rendered as

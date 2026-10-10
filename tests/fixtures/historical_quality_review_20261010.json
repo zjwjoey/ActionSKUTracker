@@ -133,5 +133,20 @@
       "field_hash": "0288424b65a61c10657258544e51c49007eca019aa580d8f67bde547c57272c5"
     },
     "expected_behavior": "SOURCE_SCOPED_KARAOKE_LEXICAL_TOKEN_EQUIVALENCE"
+  },
+  {
+    "sku": "2529728",
+    "field": "name",
+    "source": "Palillos de bambú",
+    "target": "竹签",
+    "source_evidence": {
+      "rank": 1,
+      "text": "Palillos de bambú",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-21\\2026-09-21_023932\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-21/2026-09-21_023932",
+      "file_hash": "2dfae288d978bdfb504d5c13975c79f8b5780c9f695a0a5b818e057f71eb78f0",
+      "field_hash": "ef2b4e6194f7f146c5d00391232c50b96665af5b248ffd24d2498ab38d18a5b8"
+    },
+    "expected_behavior": "BAMBOO_COMPOUND_EQUIVALENCE_KEEP_TEXT"
   }
 ]

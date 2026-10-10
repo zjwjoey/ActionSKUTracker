@@ -97,3 +97,12 @@ def test_karaoke_context_cannot_waive_an_added_token_in_the_title():
     source = SourceFacts.from_record({"name_es": "Micrófono", "desc_es": "Para karaoke"})
     result = guard_translation(source, {"name": "卡拉OK麦克风"}, ("name",))
     assert any(f["rule_id"] == "PROTECTED_TOKEN_ADDED" for f in result["findings"])
+
+
+def test_real_bamboo_compound_retains_material_but_bamboo_pattern_is_not_material():
+    row = case("2529728")
+    source = SourceFacts.from_record({"sku": row["sku"], "name_es": row["source"]})
+    fact = SemanticFact("MATERIAL", "bambú", "竹制", "竹制", "name_es")
+    assert guard_translation(source, {"name": row["target"]}, ("name",), semantic_facts=(fact,))["status"] == "PASS"
+    result = guard_translation(source, {"name": "竹纹塑料签"}, ("name",), semantic_facts=(fact,))
+    assert any(f["rule_id"] == "SEMANTIC_FACT_DROPPED" for f in result["findings"])

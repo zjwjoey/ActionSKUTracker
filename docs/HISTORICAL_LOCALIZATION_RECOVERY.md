@@ -121,6 +121,13 @@ preserves missing/None evidence as unavailable instead of coercing it to
 official-empty strings; a business display name is never an ES fallback.
 Existing source/field hash contracts and immutable historical rows are retained.
 
+Further real-history QA regressions cover SKU 3205379/3206321: `karaoke`
+may render as 卡拉OK only when present in the same field's source and every
+OK token belongs to that complete phrase. Standalone/extra OK and invented
+OK99 models remain blocked. SKU 2529728 retains 竹签 as a bamboo-material
+compound; 竹纹塑料签 cannot satisfy the material fact. These aliases leave
+semantic approval and source-conflict routing unchanged.
+
 The pilot manifest covers all six fields for each selected SKU; its size is
 not the number of approved or applied Chinese fields. Candidate, review,
 clone-validation and production-Apply counts are recorded separately in the
