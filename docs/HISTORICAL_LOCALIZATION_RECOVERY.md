@@ -170,6 +170,15 @@ asserting rubber material from that noun. A separate `de goma` or details
 material remains protected. Both cases carry real archived source evidence
 and counterexample assertions; the published dictionary is unchanged.
 
+The historical reviewed pilot's optional `--rebind-kept-values` mode accepts
+independently reviewed KEEP values and uses the existing
+`include_noop_rebinds` immutable patch path. Equal targets with valid approved
+Registry/PRIMARY provenance remain NO_OP; unapproved equal targets require
+the explicit option, exact before value, verified source, low/medium semantic
+approval, full QA and delegated approval. Changed KEEP values remain blocked.
+This preserves correct Chinese and allows future incremental reuse without
+retranslation. Source binding repairs are separate from text backfill counts.
+
 The history source configuration paths now point at the existing read-only
 `F:/按日期整理/action表格` archive. Neither those files nor production Master is
 modified by audit. Approved historical compatibility projection changes only

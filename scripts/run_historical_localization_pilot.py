@@ -106,6 +106,8 @@ def main():
     parser.add_argument("--source-manifest", type=Path)
     parser.add_argument("--backup", type=Path)
     parser.add_argument("--batch-id", default="historical_reviewed_pilot_20261009")
+    parser.add_argument("--rebind-kept-values", action="store_true",
+                        help="Restore approved source bindings for independently reviewed KEEP values through existing immutable noop patches")
     args = parser.parse_args()
     cfg = load_settings(); cfg["storage"] = {**cfg.get("storage", {}), "mode": "SQLITE_PRIMARY", "db_path": args.database}
     for key in ("state", "temp", "backups", "exports"):
@@ -132,7 +134,7 @@ def main():
         artifact_hash = hashlib.sha256(args.review_file.read_bytes()).hexdigest()
         outcomes = []; grant_reviews = {}; ready = []
         for review in reviews:
-            if review["decision"] != "CORRECTED":
+            if review["decision"] != "CORRECTED" and not (args.rebind_kept_values and review["decision"] == "KEEP"):
                 continue
             sku = review["sku"]; field = review["field"]; target = review["after"]
             record = records[sku]
@@ -150,8 +152,12 @@ def main():
             if str(record.get(CANONICAL_TO_SOURCE[field]) or "") != review["source"]:
                 outcomes.append({"sku": sku, "field": field, "status": "SOURCE_VERSION_REVIEW_REQUIRED"}); continue
             if record.get(CANONICAL_TO_ZH[field]) == target:
-                outcomes.append({"sku": sku, "field": field,
-                    "status": "NO_OP" if already_ready(record, args.database, field, target) else "METADATA_REVIEW_REQUIRED"}); continue
+                if already_ready(record, args.database, field, target):
+                    outcomes.append({"sku": sku, "field": field, "status": "NO_OP"}); continue
+                if not args.rebind_kept_values:
+                    outcomes.append({"sku": sku, "field": field, "status": "METADATA_REVIEW_REQUIRED"}); continue
+            elif review["decision"] == "KEEP":
+                outcomes.append({"sku": sku, "field": field, "status": "KEPT_VALUE_CHANGED_REVIEW_REQUIRED"}); continue
             target_status = reviewed_target_status(review, record.get(CANONICAL_TO_ZH[field]))
             if target_status != "READY":
                 outcomes.append({"sku": sku, "field": field, "status": target_status}); continue
@@ -196,7 +202,8 @@ def main():
             for revision in ready: runtime.registry.approve_revision_delegated(revision, actor=ACTOR, grant=grant)
             head = repo.current_head()
             staged = KnowledgeStore(args.database, role="PRIMARY").stage_approved_registry_patches(
-                expected_base_commit_id=head, actor=ACTOR, revision_ids=ready, delegated_approval=grant)
+                expected_base_commit_id=head, actor=ACTOR, revision_ids=ready,
+                include_noop_rebinds=args.rebind_kept_values, delegated_approval=grant)
             if staged["stale_source_rows"]: raise ValueError("PILOT_STALE_SOURCE")
             if staged["patch_ids"]:
                 result = apply_approved_localization_patches(args.database, patch_ids=staged["patch_ids"],

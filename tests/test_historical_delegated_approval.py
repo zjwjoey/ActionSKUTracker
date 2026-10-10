@@ -101,6 +101,39 @@ def test_pilot_noop_requires_approved_ready_projection(tmp_path):
     assert not ready(record, path, "name", "商品")
 
 
+def test_retained_real_chinese_can_restore_binding_without_retranslation_or_text_change(tmp_path):
+    import json, runpy
+    from pathlib import Path
+    from action_tracker.database.repository import ProductionRepository
+    row = next(r for r in json.loads((Path(__file__).parent / "fixtures/historical_quality_review_20261010.json").read_text("utf8")) if r["sku"] == "3211913")
+    facts = {"name_es": row["source"], "cat1_es": None, "cat2_es": None, "spec_es": None, "desc_es": None, "details_es": None}
+    db = tmp_path / 'primary.db'
+    head = ProductionWriter(db, role="PRIMARY").commit(CommitBundle(run_id="real-keep", observation_date="2026-10-10", qa_state="PASS",
+        current_products=({"sku": row['sku'], "name_es": row['source'], "status": "HISTORICAL", "current_price": 1.25},),
+        localization_updates=({"sku": row['sku'], "language": "es", "name": row['source']}, {"sku": row['sku'], "language": "zh", "name": row['target']})))
+    registry = LocalizationRegistry(db, role='PRIMARY'); source_hash = localization_source_hash(facts)
+    registry.register_source(row['sku'], facts, source_hash, observed_at='2026-10-10')
+    rid = registry.record_revision_for_sku(row['sku'], 'name', row['target'], source_hash=source_hash, provider='independent_review', repair_reason='retained_real_text', qa_status='PASS')
+    evidence = tmp_path / 'review.json'; evidence.write_text(json.dumps(row, ensure_ascii=False), 'utf8')
+    grant = {'contract': VERSION, 'actor': ACTOR, 'authorization_ref': 'test:existing-owner-delegation', 'authorization_text': 'review and retain historical text',
+        'expires_at': (datetime.now(timezone.utc)+timedelta(days=1)).isoformat(), 'reviews': {rid: {'sku': row['sku'], 'field': 'name', 'source_hash': source_hash,
+        'target_hash': value_hash(row['target']), 'semantic_status': 'PASS', 'source_evidence_status': 'VERIFIED', 'evidence_ref': str(evidence), 'evidence_sha256': hashlib.sha256(evidence.read_bytes()).hexdigest()}}}
+    ready = runpy.run_path(str(Path(__file__).resolve().parents[1]/'scripts/run_historical_localization_pilot.py'))['already_ready']
+    record = ProductionRepository(db).load_current_export_records(include_non_current=True)[0]
+    assert not ready(record, db, 'name', row['target'])
+    registry.approve_revision_delegated(rid, actor=ACTOR, grant=grant)
+    store = KnowledgeStore(db, role='PRIMARY'); args = dict(expected_base_commit_id=head, actor=ACTOR, revision_ids=[rid], delegated_approval=grant)
+    assert not store.stage_approved_registry_patches(**args)['patch_ids']
+    staged = store.stage_approved_registry_patches(**args, include_noop_rebinds=True)
+    assert len(staged['patch_ids']) == 1
+    assert store.stage_approved_registry_patches(**args, include_noop_rebinds=True)['patch_ids'] == staged['patch_ids']
+    apply_approved_localization_patches(db, patch_ids=staged['patch_ids'], expected_base_commit_id=head, delegated_approval=grant)
+    record = ProductionRepository(db).load_current_export_records(include_non_current=True)[0]
+    assert record['name_zh'] == row['target'] and ready(record, db, 'name', row['target'])
+    with connect(db) as cx:
+        assert cx.execute("SELECT current_price,status FROM products WHERE official_sku=?", (row['sku'],)).fetchone()[:] == (1.25, 'HISTORICAL')
+
+
 @pytest.mark.parametrize("field,target", [("name","商品"),("cat1","家居"),("cat2","箱子"),
     ("spec","2 件"),("description","文字"),("details","材质：塑料")])
 def test_all_canonical_fields_delegated_apply_and_resume(tmp_path, field, target):
