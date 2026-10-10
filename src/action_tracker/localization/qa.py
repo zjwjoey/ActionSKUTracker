@@ -510,6 +510,17 @@ def _numbers(value: str) -> Counter[str]:
         text,
     )
     numbers = Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
+    # Spelled-out quantities are still own-field source facts. Restrict this
+    # to complete cardinal + counted-noun phrases, not brand/game names or
+    # pronouns. Unsupported compound numbers must not become their last digit.
+    spanish_cardinals = {"dos": "2", "tres": "3", "cuatro": "4", "cinco": "5",
+                         "seis": "6", "siete": "7", "ocho": "8", "nueve": "9", "diez": "10"}
+    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas)"
+    for match in re.finditer(rf"\b({'|'.join(spanish_cardinals)})\s+{counted_nouns}\b", text, re.I):
+        prefix = text[:match.start()]
+        if re.search(r"\b(?:y|e|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos|seiscientos|setecientos|ochocientos|novecientos|mil)\s*$", prefix, re.I):
+            continue
+        numbers[spanish_cardinals[match.group(1).casefold()]] += 1
     # Chinese display text commonly renders source numerals as characters,
     # e.g. ``3 en 1`` -> ``三合一``.  Count those simple digit forms as the
     # same facts without weakening the Arabic-number checks.
@@ -520,7 +531,7 @@ def _numbers(value: str) -> Counter[str]:
     # such as ``一种``/``一天`` occur in ordinary descriptions even when the
     # Spanish source contains no number.  ``块`` is included for phrases such
     # as ``三块面板``.
-    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋双位端口环块层伏瓦毫升升克公斤厘米毫米米小时款")
+    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋卷双位端口环块层伏瓦毫升升克公斤厘米毫米米小时款")
     digit_chars = set(chinese_digits) | set("0123456789")
     for index, char in enumerate(text):
         if char not in chinese_digits:

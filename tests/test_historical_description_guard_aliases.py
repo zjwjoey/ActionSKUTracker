@@ -93,3 +93,40 @@ def test_other_field_number_never_authorizes_a_non_spec_translation(field):
 
 def test_spanish_article_does_not_turn_into_a_false_added_quantity():
     assert check({"desc_es": "Una vela azul"}, "一支蓝色蜡烛")["status"] == "PASS"
+
+
+WORD_CASES = json.loads((Path(__file__).parent / "fixtures" /
+                         "historical_spanish_quantity_words_20261010.json").read_text(encoding="utf8"))
+
+
+def test_real_charger_preserves_numeric_two_and_spelled_out_two_without_retranslation():
+    row = next(x for x in WORD_CASES if x["sku"] == "3013594")
+    assert row["evidence"]["selected"]["text"] == row["source"]
+    assert any(x["rule_id"] == "NUMERIC_ADDED" for x in row["qa"]["findings"])
+    assert check({"desc_es": row["source"]}, row["target"])["status"] == "PASS"
+
+
+@pytest.mark.parametrize("target,status", [("5卷热敏纸", "PASS"), ("五卷热敏纸", "PASS"),
+                                           ("4卷热敏纸", "FAIL")])
+def test_real_thermal_paper_spelled_quantity_and_corrupted_mutation(target, status):
+    row = next(x for x in WORD_CASES if x["sku"] == "3224425")
+    assert row["evidence"]["selected"]["text"] == row["source"]
+    assert check({"desc_es": row["source"]}, target)["status"] == status
+    # Even the correct quantity cannot authorize imported dimensions.
+    assert check({"desc_es": row["source"], "spec_es": "57 mm x 18 m"},
+                 target + "57毫米×18米")["status"] == "FAIL"
+
+
+@pytest.mark.parametrize("source", ["UNO-Flip", "Dos", "tres colores",
+                                     "treinta y cinco rollos", "ciento cinco rollos"])
+def test_cardinal_phrases_do_not_invent_brand_pronoun_or_compound_quantities(source):
+    from action_tracker.localization.qa import _numbers
+    assert not _numbers(source)
+
+
+@pytest.mark.parametrize("source,target", [("dos dispositivos", "两个设备"),
+                                           ("cinco unidades", "5件"),
+                                           ("tres pares", "3双")])
+def test_explicit_counted_noun_requires_own_field_cardinal(source, target):
+    assert check({"desc_es": source}, target)["status"] == "PASS"
+    assert check({"desc_es": "Producto", "spec_es": source}, target.replace("两", "2"))["status"] == "FAIL"

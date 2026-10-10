@@ -250,3 +250,22 @@ Spanish article. No mutated target is marked as gold. Full regression:
 1005 passed in 94.95 seconds. All167 committed description12 targets were
 rechecked under the stricter Guard with zero failures. Code is local to this
 independent branch; no dictionary baseline or production settings changed.
+
+## 2026-10-10: spelled Spanish quantities in their counted-noun scope
+
+The new numeric scope exposed a valid existing charger description containing
+both numeric 2 ports and spelled dos dispositivos. Its correct Chinese is
+retained. Thermal paper also explicitly contains cinco rollos; this permits
+five rolls without permitting its other-field dimensions. Numeric QA now
+counts standalone dos through diez only with an explicit bounded counted noun
+(units, pieces, pairs, rolls, devices, ports, eyelashes). Compound cardinal
+suffixes, standalone words and brand/game names acquire no invented count.
+Chinese 五卷 now represents the explicit roll count. Spanish source is unchanged.
+
+Two real-source fixtures plus twelve additional tests cover preservation,
+wrong quantities, cross-field leakage and non-quantity/compound exclusions.
+Full regression: 1017 passed in 96.12 seconds. Independently reviewed impact:
+24 existing fields, one correct KEEP, twenty ordinary corrections passing
+Guard/canonical QA, one eyelash-unit ambiguity requiring Owner, and two
+remaining Guard blockers (Play-Doh series residual and candy gomas noun).
+These blocker candidates are not approved or applied by this code checkpoint.
