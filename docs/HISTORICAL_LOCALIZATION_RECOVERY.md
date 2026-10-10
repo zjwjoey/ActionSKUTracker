@@ -111,6 +111,16 @@ semicolon delimiters. Numeric QA recognizes Chinese digits followed by 层;
 lexical words such as 五金 remain outside the numeric context. These changes
 fix false flags, never create semantic approval or auto-correct Chinese text.
 
+Real-history daily compatibility tests capture three actually applied and
+source-bound fields of SKU 3218603. Isolated temporary Registry databases
+verify missing-source NEW, approved reuse, one-field source changes,
+HISTORICAL-to-CURRENT reuse, repeated same-day ingestion, and unavailable
+sources. Changed facts in these tests are explicitly simulated, not official
+source versions or guessed translation standards. Registry ingestion now
+preserves missing/None evidence as unavailable instead of coercing it to
+official-empty strings; a business display name is never an ES fallback.
+Existing source/field hash contracts and immutable historical rows are retained.
+
 The pilot manifest covers all six fields for each selected SKU; its size is
 not the number of approved or applied Chinese fields. Candidate, review,
 clone-validation and production-Apply counts are recorded separately in the

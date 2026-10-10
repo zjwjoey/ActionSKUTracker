@@ -1,0 +1,83 @@
+{
+  "sku": "3218603",
+  "capture_head": "2026-10-10_historical_name08_20261010_6debc2ebe938",
+  "source_status": "HISTORICAL",
+  "scope": "Three actually approved fields; source partial-change and unavailable-source scenarios are isolated test simulations, never new official facts.",
+  "units": [
+    {
+      "field": "cat1",
+      "source_key": "cat1_es",
+      "source": "Juguetes",
+      "target": "玩具",
+      "approval_provenance": {
+        "value": "玩具",
+        "source": "REGISTRY_APPROVED",
+        "review_status": "APPROVED",
+        "source_hash": "f4c9dbdc5e49ac66d339c1d392278d92cee3120b9a4904e21a7fb06649b02db0",
+        "updated_at": "2026-10-09T13:03:14.703550+00:00",
+        "applied_commit_id": "2026-10-09_historical_literal_batch_03_20261009_043561fb924e",
+        "approved_by": "service:historical-localization-review",
+        "approved_at": "2026-10-09T12:57:55+00:00",
+        "freshness_status": "CURRENT"
+      },
+      "source_evidence": {
+        "rank": 2,
+        "text": "Juguetes",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "f4c9dbdc5e49ac66d339c1d392278d92cee3120b9a4904e21a7fb06649b02db0"
+      }
+    },
+    {
+      "field": "cat2",
+      "source_key": "cat2_es",
+      "source": "Juegos",
+      "target": "游戏",
+      "approval_provenance": {
+        "value": "游戏",
+        "source": "REGISTRY_APPROVED",
+        "review_status": "APPROVED",
+        "source_hash": "ba96c0ea8026a798883dc12761628af9222212659269b920ee5eabea73ac8ece",
+        "updated_at": "2026-10-09T13:03:14.703550+00:00",
+        "applied_commit_id": "2026-10-09_historical_literal_batch_03_20261009_043561fb924e",
+        "approved_by": "service:historical-localization-review",
+        "approved_at": "2026-10-09T12:57:55+00:00",
+        "freshness_status": "CURRENT"
+      },
+      "source_evidence": {
+        "rank": 2,
+        "text": "Juegos",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "ba96c0ea8026a798883dc12761628af9222212659269b920ee5eabea73ac8ece"
+      }
+    },
+    {
+      "field": "spec",
+      "source_key": "spec_es",
+      "source": "5x5,5x5 cm | diferentes variantes",
+      "target": "5×5.5×5厘米 | 不同款式",
+      "approval_provenance": {
+        "value": "5×5.5×5厘米 | 不同款式",
+        "source": "REGISTRY_APPROVED",
+        "review_status": "APPROVED",
+        "source_hash": "27a642590c5146fec77c24e0387d881c4cf316dab12b435d84093a820020e917",
+        "updated_at": "2026-10-09T13:03:14.703550+00:00",
+        "applied_commit_id": "2026-10-10_historical_spec_batch_10_20261010_7c262b9e2768",
+        "approved_by": "service:historical-localization-review",
+        "approved_at": "2026-10-10T01:55:33+00:00",
+        "freshness_status": "CURRENT"
+      },
+      "source_evidence": {
+        "rank": 2,
+        "text": "5x5,5x5 cm | diferentes variantes",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "27a642590c5146fec77c24e0387d881c4cf316dab12b435d84093a820020e917"
+      }
+    }
+  ]
+}
