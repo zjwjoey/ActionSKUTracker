@@ -35,7 +35,7 @@ main protection 只读查询显示未保护；建议 PR required、Ubuntu/Window
 
 用户授权的独立 checkout 为 `F:\ActionSKUTracker_history_20261009`，分支 `fix/historical-localization-recovery-20261009`。正式数据库仍为 `F:\ActionSKUTracker\runtime\db\action_tracker.db`。历史中文通过既有 Registry / QA / delegated Approval / Immutable Patch / Apply / Master Sync 写入；没有合并或推送 main，也没有发布字典基线或修改 daily 的配置开关。
 
-最新已验收 PRIMARY head：`2026-10-10_historical_existing_spec24_20261010_b316539f6ded`。类目第 19、20 批共恢复 1,531 个正确原值的审批及来源绑定；规格第 21、22、23、24 批分别恢复 38、41、51、110 个绑定，第 23、24 批另修正 2、9 条规格文本。描述第 24 批修正 1 条包耳式耳垫特性及随附线缆措辞。各批均完成备份、受保护数据和全库中文差异检查、Master Sync 及实际同批 Resume；重复 Apply 为 0。原值元数据补丁不能计为补译或错误译文修正。
+规格第 24 批验收 PRIMARY head：`2026-10-10_historical_existing_spec24_20261010_b316539f6ded`。类目第 19、20 批共恢复 1,531 个正确原值的审批及来源绑定；规格第 21、22、23、24 批分别恢复 38、41、51、110 个绑定，第 23、24 批另修正 2、9 条规格文本。描述第 24 批修正 1 条包耳式耳垫特性及随附线缆措辞。各批均完成备份、受保护数据和全库中文差异检查、Master Sync 及实际同批 Resume；重复 Apply 为 0。原值元数据补丁不能计为补译或错误译文修正。
 
 规格独立审查第 21–24 组共覆盖 600 组、1,174 个 SKU 字段：1,154 个现有中文可保留，11 个已修正并入库，9 个来源/色号问题保留待复核。第 24 组的 565 个字段中，550 个正确值保留、9 个修正、6 个阻断；440 个正确字段直接复用已有有效审批，110 个恢复绑定。9 条修正包含 7 条洗涤次数用途遗漏、1 条功率单位尾缀残留和 1 条拉伸器档位误译。6 条阻断涉及唇线笔/染发剂色号及四个无法明确分解的包装计数差异。正确中文不重新翻译；本轮 120 个实际 Apply（规格 119、描述 1）不包含缺失字段补译。
 
@@ -53,3 +53,15 @@ main protection 只读查询显示未保护；建议 PR required、Ubuntu/Window
 最近核心代码为 `cb1e72f`：既有字段级 VARIANT 机制保护数字 lavados 的洗涤用途，QA 阻断中文数字单位残留 s/es；22 项真实来源和边界测试加入 CI_SAFE，完整回归 1,267 项通过。此前 `cb54da9` 保护 Over-ear 包耳特性，`c84f0e8` 为来源限定的霓虹灯 QA 别名，`0c3cbea` 绑定有限翻译缓存的实际 adapter 配置。本批没有新的模型服务调用。六项真实历史来源 fixture 的 daily 兼容性测试通过，完整在线 daily-run 仍未验证。全六字段独立语义审查及任务整体验收尚未完成。
 
 可追溯证据保存在 `F:\ActionSKUTracker\runtime\reports\historical_localization_20261009`：各批 `acceptance.json`、规格第 21–24 批 `reviewed_all.json`、各批 `owner_queue.json`、`prior_independent_semantic_review_revalidated_after_existing_spec24.json`、`historical_actual_apply_ledger_after_existing_spec24.json`、全字段 `existing_chinese_reaudit_20261010_after_existing_spec24`。这些运行产物不提交 Git。下一轮 `existing_name20_pending100_groups.json` 包含 100 组、154 个品名字段，尚未独立审查或 Apply。继续其他字段及可信来源缺失候选；不得把未 Apply 候选计为正式入库。2546793 描述的唯一可信来源不一致是旧归档 `null.` 前缀与已清理 PRIMARY 的差异，需核对来源规范化证据，禁止重新写入 null 或伪造归档精确匹配。
+
+## 2026-10-10 用户指定历史表格中文匹配与首批入库
+
+最新验收 PRIMARY head 为 `2026-10-10_historical_user_archive_pilot49_20261010_896fb33466e9`。按用户要求只读扫描 `F:\按日期整理\action表格` 中 17 个日期的 75 份商品表，包括带图、无图和修复版本。仅按官方 SKU 及本字段西语版本匹配，不按行号或相似标题，也不把 4 月表中的 `vivienda_…` 内部编号猜成 SKU。75 个输入文件在入库后重新校验 SHA-256，均未改变。
+
+此前 4,994 个中文空字段中，4,920 个在归档有非空候选；其中 535 个具有可信且与 PRIMARY 精确一致的西语配对和唯一中文值（品名 249、规格 4、描述 136、详情 146）。另 171 个有多个中文版本，4,214 个不能建立当前精确西语配对，74 个未找到候选。以上是候选发现，不能算成入库。
+
+首批独立审核 49 个品名/规格字段，31 个经过既有 QA、delegated Approval、Immutable Patch、Apply 和 Master Sync 实际补入（30 品名、1 规格）。27 个归档候选原样复用，4 个在恢复前可靠修正；没有覆盖已有中文，没有新模型服务调用。实际中文差异为 31 个字段，完整性、外键与八项受保护数据检查通过；同批实际 Resume 为 0 Apply、31 NO_OP、ALREADY_SYNCED。18 个首批字段保持空值待复核，其中 4 个 QA 阻断、14 个来源/主体等语义阻断。
+
+其余 486 个候选已完成机械 QA，316 PASS、170 FAIL，尚未独立语义审查或 Apply。原 535 个候选共剩 504 个未入库；不能把 316 个机械 PASS 当成语义批准。QA 及待复核问题包括木纹外观被误按木材材质保护、iPhone 型号残留判定、PPP/DPI 标记差异，以及旧表把盒装茶误写为收纳盒、把淋浴收纳架误写为花洒支架。核心代码未修改，保留 `cb1e72f` 和此前完整回归 1,267 PASS 的身份，不声称本次重新运行完整代码测试。
+
+验收后中文仍空 4,963 个：可信来源 678（677 与 PRIMARY 精确一致、1 个旧 `null.` 前缀差异）、缺源 3,460、版本冲突 469、语言复核 355、明确空源 1。所有匹配证据、冻结审查、实际入库与 Resume、待复核及剩余清单保存在 `runtime/reports/historical_localization_20261009/user_archive_chinese_20261010/`；入口为 `final_summary.json` 和 `pilot49_apply/acceptance.json`。全量独立语义审查、剩余恢复及整体验收继续进行，任务未完成。
