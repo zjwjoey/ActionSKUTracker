@@ -269,3 +269,22 @@ Full regression: 1017 passed in 96.12 seconds. Independently reviewed impact:
 Guard/canonical QA, one eyelash-unit ambiguity requiring Owner, and two
 remaining Guard blockers (Play-Doh series residual and candy gomas noun).
 These blocker candidates are not approved or applied by this code checkpoint.
+
+## 2026-10-10: description13 source context and dimensional units
+
+Six real SKU cases retain full source/context, archival hashes and failed
+Guard outputs. Exact same-field Pro-max/T-Rex/gsm tokens now survive residual
+checking without waiving missing sources or accepting another field's tokens.
+Complete iluminación ambiental/modos de iluminación phrases allow their
+lighting-use meanings. Spelled quantities now cover speakers, pockets, modes
+and hours; conjunctions between quantities retain both, while compound number
+suffixes cannot acquire the wrong last-digit value. The independent reviewer
+also restored PC and explicit powder-brush terms in ordinary candidates.
+
+Area units retain their powers: mm²/cm²/m²/km² map to 平方毫米/平方厘米/平方米/
+平方千米 and cannot become linear measures. Numeric values, cable models and
+unit powers stay protected. Thirty new tests include six real positive cases
+and mutated/missing/cross-field/compound negative cases. Full regression:
+1047 passed in84.77 seconds. Description13 all200 independently reviewed,
+165 Guard/canonical PASS and35 high-risk Owner; immutable Apply still pending
+at this code checkpoint. No runtime dictionary baseline or settings published.

@@ -16,14 +16,14 @@ EMPTY_SOURCE_LOCALIZATION_CONTRACT_VERSION = "EMPTY_SOURCE_LOCALIZATION_CONTRACT
 NAME_IDENTITY_FACT_PRESERVATION_VERSION = "NAME_IDENTITY_FACT_PRESERVATION_V1"
 
 
-_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u024f])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9\u00c0-\u024f])", re.I)
-_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|平方千米|平方米|平方厘米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
+_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u024f])\d+(?:[.,]\d+)?\s*(km²|cm²|mm²|m²|mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9\u00c0-\u024f])", re.I)
+_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|平方千米|平方米|平方厘米|平方毫米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
 _UNIT_ALIASES = {
     "毫安时": "mah", "安时": "ah", "瓦时": "wh", "千瓦时": "kwh", "毫瓦": "mw", "千瓦": "kw",
     "赫兹": "hz", "伏特": "v", "瓦": "w", "分贝": "db", "千卡": "kcal", "千卡路里": "kcal", "摄氏度": "°c", "厘米": "cm", "毫米": "mm",
     "千米": "km", "米": "m", "千克": "kg", "公斤": "kg", "克": "g", "毫克": "mg", "微克": "μg",
     "毫升": "ml", "厘升": "cl", "分升": "dl", "升": "l", "百分比": "%",
-    "平方米": "m", "平方厘米": "cm", "平方千米": "km",
+    "平方米": "m²", "平方厘米": "cm²", "平方千米": "km²", "平方毫米": "mm²",
 }
 
 
@@ -126,7 +126,7 @@ _SOURCE_BOUND_EXACT_TECH = {
     "sds-plus", "transflash", "eprel", "torx",
     # Exact same-field commercial/game spans; the residual scanner splits
     # hyphens into words, so their full source-bound spelling is required.
-    "re-load", "skip-bo", "uno-flip",
+    "re-load", "skip-bo", "uno-flip", "pro-max", "t-rex", "gsm",
 }
 
 
@@ -428,6 +428,10 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             aliases.append("照明")
         if re.search(r"\befectos?\s+de\s+iluminación\b", source_text, re.I):
             aliases.extend(("灯光效果", "光效"))
+        if re.search(r"\biluminación\s+ambiental\b", source_text, re.I):
+            aliases.extend(("氛围照明", "环境照明"))
+        if re.search(r"\bmodos?\s+de\s+iluminación\b", source_text, re.I):
+            aliases.extend(("照明模式", "灯光模式"))
     # Capsules are not always medicines. Recognize detergent capsules only
     # from a complete phrase in this field; other fields cannot supply it.
     detergent_capsules = bool(re.search(
@@ -515,10 +519,13 @@ def _numbers(value: str) -> Counter[str]:
     # pronouns. Unsupported compound numbers must not become their last digit.
     spanish_cardinals = {"dos": "2", "tres": "3", "cuatro": "4", "cinco": "5",
                          "seis": "6", "siete": "7", "ocho": "8", "nueve": "9", "diez": "10"}
-    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas)"
+    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas)"
     for match in re.finditer(rf"\b({'|'.join(spanish_cardinals)})\s+{counted_nouns}\b", text, re.I):
         prefix = text[:match.start()]
-        if re.search(r"\b(?:y|e|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos|seiscientos|setecientos|ochocientos|novecientos|mil)\s*$", prefix, re.I):
+        # A conjunction after a counted noun starts another quantity, e.g.
+        # dos horas y tres modos. Only a preceding numeric cardinal makes
+        # this an unsupported compound suffix (treinta y cinco rollos).
+        if re.search(r"\b(?:veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos|seiscientos|setecientos|ochocientos|novecientos|mil)\s*(?:(?:y|e)\s*)?$", prefix, re.I):
             continue
         numbers[spanish_cardinals[match.group(1).casefold()]] += 1
     # Chinese display text commonly renders source numerals as characters,
