@@ -21,7 +21,7 @@ def test_real_source_qualified_material(row):
     result=check(row['source'],row['reviewed_value'],row['field'])
     assert result['status']=='PASS'
 
-@pytest.mark.parametrize('target',['木质时钟','木制时钟','实木时钟'])
+@pytest.mark.parametrize('target',['木质时钟','木制时钟','实木时钟','木纹时钟，实木制成','木质外观时钟，采用木材制作'])
 def test_wood_appearance_cannot_approve_real_wood(target):
     assert check('Reloj con aspecto de madera',target)['status']=='FAIL'
 

@@ -8,11 +8,11 @@
 
 `localization/qa.py` 修复材料限定词判定：本字段只有 `aspecto de madera` 时接受木纹/木质外观，不接受木制/木质商品；本字段只有 `fibras de bambú` 时认可竹纤维，不把它当实体竹制品。只消费完整本字段短语，另一个字段不得提供限定，存在额外真实木材/竹材事实时继续保护。
 
-加入 3 个带真实来源证据的历史案例（3203980、3004723、3004727），及真实材质/跨字段/限定词遗漏的负例。测试 CI_SAFE，已加入显式白名单；没有更新正式字典或默认生产开关。有效测试修复前 6 FAIL / 3 PASS，修复后全量 `python -m pytest -q`：1276 PASS，95.42 秒。
+加入 3 个带真实来源证据的历史案例（3203980、3004723、3004727），及真实材质/跨字段/限定词遗漏的负例。测试 CI_SAFE，已加入显式白名单；没有更新正式字典或默认生产开关。有效测试修复前 6 FAIL / 3 PASS，第一次修复后全量 `python -m pytest -q`：1276 PASS，95.42 秒。随后加入“木纹且擅称实木”组合否例和显式 APPEARANCE_AS_MATERIAL_ASSERTED Gate，第二次全量回归1278 PASS，90.11秒。
 
 ## 审查证据
 
-报告位于 `F:\ActionSKUTracker\runtime\reports\historical_localization_20261009\user_archive_chinese_20261010`，最终审查版本 `remaining_all504_v2_20261010_*`。初次按字段分类 QA、独立语义注释与修正文案均保留，最终版本重新核对来源 SHA、字段当前为空与 PRIMARY head。
+报告位于 `F:\ActionSKUTracker\runtime\reports\historical_localization_20261009\user_archive_chinese_20261010`，最终审查版本 `remaining_all504_v3_20261010_*`。初次按字段分类 QA、独立语义注释与修正文案均保留，最终版本重新核对来源 SHA、字段当前为空与 PRIMARY head。
 
 Apply 只使用现有 `run_historical_localization_pilot.py` 正式链路及用户自主审批委托。其事务之前自动备份并验证恢复，事务之后核对保护表、字段 diff、完整性和 Master Sync，再实际重复 Resume 验证幂等。当前进度与实际入库数以验收 JSON 和 CURRENT_STATE 的后续记录为准，不以候选或 preflight 数量冒充入库。
 

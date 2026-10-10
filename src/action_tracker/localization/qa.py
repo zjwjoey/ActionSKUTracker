@@ -829,6 +829,16 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if not source_text.strip():
             findings.append(QAFinding("EMPTY_SOURCE_TARGET_NONEMPTY", "BLOCKER", field_name, {"target": target}, source=source_text, target=target, message="target content exists without official source", blocking=True))
             continue
+        wood_appearance_remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
+        if (wood_appearance_remaining != source_text
+                and not re.search(r"\bmadera\b", wood_appearance_remaining, re.I)):
+            # Mentioning the correct appearance must not conceal an extra
+            # assertion of wood composition in another part of the target.
+            composition_target = re.sub(r"木质外观|木材外观", "", target)
+            if re.search(r"实木|木制|木材|木质", composition_target):
+                findings.append(QAFinding("APPEARANCE_AS_MATERIAL_ASSERTED", "BLOCKER", field_name,
+                    {"source_qualifier": "aspecto de madera"}, source=source_text, target=target,
+                    message="wood appearance was promoted to wood composition", blocking=True))
         # Chinese units do not take a Latin plural suffix. Historical
         # ``800 vatios -> 800 瓦s`` passed numeric/unit preservation despite
         # visibly broken Chinese. This gate diagnoses; it never repairs text.
