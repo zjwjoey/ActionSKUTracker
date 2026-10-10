@@ -410,6 +410,18 @@ def _has_casefold_token(text: str, token: str) -> bool:
 
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
     aliases = list(_SEMANTIC_TARGET_ALIASES.get(source_term.casefold(), (canonical,)))
+    # Capsules are not always medicines. Recognize detergent capsules only
+    # from a complete phrase in this field; other fields cannot supply it.
+    detergent_capsules = bool(re.search(
+        r"\b(?:detergentes?\s+en\s+cápsulas|cápsulas\s+de\s+(?:lavado|detergente))\b",
+        source_text, re.I))
+    if source_term.casefold() in {"cápsulas", "detergente"} and detergent_capsules:
+        aliases.append("洗涤凝珠")
+        # Laundry-specific Chinese needs an explicit laundry marker, and
+        # dishwashing text must not receive this narrower interpretation.
+        if (re.search(r"\b(?:color|ropa|colada)\b", source_text, re.I)
+                and not re.search(r"\b(?:lavavajillas|vajilla|platos)\b", source_text, re.I)):
+            aliases.append("洗衣凝珠")
     # ``paño húmedo`` is a wet wipe, not a generic cleaning cloth.  Keep this
     # context-bound so ordinary ``paño`` facts do not accept ``湿巾``.
     if source_term.casefold() in {"paño", "paños"} and "húmed" in str(source_text or "").casefold():

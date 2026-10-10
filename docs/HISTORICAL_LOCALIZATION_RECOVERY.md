@@ -185,3 +185,16 @@ modified by audit. Approved historical compatibility projection changes only
 paired ES/ZH name, category and specification cells on existing historical
 Master rows. Current rows and business history are preserved. Production
 checkout changes pre-existing before this task are preserved.
+# 2026-10-10: source-bound detergent capsule nouns
+
+Historical SKUs 3217413 and 3217414 exposed Guard false failures: the
+semantic seed expected 胶囊 / 洗洁精 even when the field explicitly described
+detergent capsules. The existing semantic alias function now accepts
+洗涤凝珠 only for complete detergent-capsule phrases in the same field.
+洗衣凝珠 additionally requires a laundry marker (color, ropa or colada)
+and is excluded when the source mentions dishes or a dishwasher.
+Unrelated medicine capsules, bare detergent, and evidence present only in
+another field remain blocked. Quantity and model protection is unchanged.
+Two real-source fixtures retain archival file and field hashes; negative
+tests cover medicine, dishwashing, partial phrases and cross-field leakage.
+No runtime dictionary baseline is published by this change.
