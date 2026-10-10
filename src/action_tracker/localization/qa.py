@@ -72,6 +72,8 @@ _TRANSLATED_STRICT_TOKEN_ALLOWLIST = {
     # This equivalence is permitted only in this field's own source text.
     "ledes": {"LED"},
     "LEDs": {"LED"},
+    "USB C": {"USB-C"},
+    "IA": {"AI"},
 }
 
 # Some short technical acronyms are official source terminology rather than
@@ -79,6 +81,7 @@ _TRANSLATED_STRICT_TOKEN_ALLOWLIST = {
 # explicit; otherwise the protected-token guard would mistake a correct
 # translation such as ``GLP -> 液化石油气`` for a dropped token.
 _TRANSLATED_TECH_TOKEN_ALIASES = {
+    "ia": ("AI", "人工智能"),
     "glp": ("液化石油气",),
     "lpg": ("液化石油气",),
     # Source technical abbreviations that are legitimately localized in the
@@ -126,7 +129,7 @@ _SOURCE_BOUND_EXACT_TECH = {
     "sds-plus", "transflash", "eprel", "torx",
     # Exact same-field commercial/game spans; the residual scanner splits
     # hyphens into words, so their full source-bound spelling is required.
-    "re-load", "skip-bo", "uno-flip", "pro-max", "t-rex", "gsm",
+    "re-load", "skip-bo", "uno-flip", "pro-max", "t-rex", "gsm", "jawbreaker", "i-scrub", "olus",
 }
 
 
@@ -209,6 +212,12 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
             allowed.update(part for part in domain.split(".") if part)
             if "www." + domain.casefold() in target_fold:
                 allowed.add("www")
+    # Multiword commercial spans must occur complete in this same field.
+    # Interior prose words (of/the/mini) are not general residual exceptions.
+    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini"):
+        pattern = rf"(?<![A-Za-z0-9]){re.escape(phrase)}(?![A-Za-z0-9])"
+        if re.search(pattern, source, re.I) and re.search(pattern, rendered, re.I):
+            allowed.update(re.findall(r"[A-Za-z]+", phrase))
     return allowed
 
 
@@ -430,6 +439,8 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             aliases.extend(("灯光效果", "光效"))
         if re.search(r"\biluminación\s+ambiental\b", source_text, re.I):
             aliases.extend(("氛围照明", "环境照明"))
+        if re.search(r"\biluminación\s+led\b", source_text, re.I):
+            aliases.extend(("LED照明", "LED灯光"))
         if re.search(r"\bmodos?\s+de\s+iluminación\b", source_text, re.I):
             aliases.extend(("照明模式", "灯光模式"))
     # Capsules are not always medicines. Recognize detergent capsules only
@@ -519,8 +530,8 @@ def _numbers(value: str) -> Counter[str]:
     # pronouns. Unsupported compound numbers must not become their last digit.
     spanish_cardinals = {"dos": "2", "tres": "3", "cuatro": "4", "cinco": "5",
                          "seis": "6", "siete": "7", "ocho": "8", "nueve": "9", "diez": "10"}
-    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas)"
-    for match in re.finditer(rf"\b({'|'.join(spanish_cardinals)})\s+{counted_nouns}\b", text, re.I):
+    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas|pendientes|cajas|colores)"
+    for match in re.finditer(rf"\b({'|'.join(spanish_cardinals)})\s+(?:pequeñ[oa]s\s+)?{counted_nouns}\b", text, re.I):
         prefix = text[:match.start()]
         # A conjunction after a counted noun starts another quantity, e.g.
         # dos horas y tres modos. Only a preceding numeric cardinal makes
@@ -555,7 +566,7 @@ def _numbers(value: str) -> Counter[str]:
             connector_context = previous != "/" or (index >= 2 and text[index - 2] in digit_chars)
         if following in connectors:
             connector_context = connector_context or following != "/" or (index + 2 < len(text) and text[index + 2] in digit_chars)
-        if connector_context or following in quantity_units or previous in quantity_units:
+        if connector_context or following in quantity_units or previous in quantity_units or (following == "种" and chinese_digits[char] != "1"):
             numbers[chinese_digits[char]] += 1
     return numbers
 

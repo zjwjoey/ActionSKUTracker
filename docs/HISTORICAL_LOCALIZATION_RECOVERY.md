@@ -288,3 +288,16 @@ and mutated/missing/cross-field/compound negative cases. Full regression:
 1047 passed in84.77 seconds. Description13 all200 independently reviewed,
 165 Guard/canonical PASS and35 high-risk Owner; immutable Apply still pending
 at this code checkpoint. No runtime dictionary baseline or settings published.
+
+
+### 2026-10-10 description14 source-bound QA refinement
+
+All 200 description14 candidates were independently compared with their own complete Spanish description and saved SKU context: 92 candidate KEEP, 79 ordinary source-supported corrections, 29 Owner holds. Before refinement 159 passed and 12 ordinary candidates were blocked. Candidate/review counts are not applied counts.
+
+The shared QA now supports same-field complete commercial spans Snacks of the World / Stretcherz Stretch Squad mini and exact Jawbreaker / i-Scrub / Olus, without allowing these from another field or partial multiword brand fragments. Added source-bound IA → AI and USB C → USB-C spellings; no absent interface/model may be inferred. Spanish quantity recognition covers earrings, boxes (including pequenas modifier), and colors, with compound-number protection retained. The complete own-source iluminación led phrase accepts LED照明 without making bare iluminación interchangeable with light effects. Source capuchones de goma retains explicit 橡胶 in the reviewed target rather than waiving the material check.
+
+Eleven real evidence fixtures preserve selected source artifact hashes, complete saved context and pre-change failures; they explicitly confer no formal approval. Counterexamples reject other-field borrowing, altered quantities, partial brand names, added standards and missing acronyms. Full regression must pass before formal Apply.
+
+Owner holds include health/safety claims, contradictory Halal flags, page/sheet counts, compartment counts, uncertain faux fur/leather, coffee/cocoa source mismatch and the cap-description double negation. Full independent six-field semantic audit and live online daily-run validation remain incomplete.
+
+The complete existing-field guard scan exposed two false regressions for Chinese 四种/两种; non-singular Chinese 种 counts are now recognized while generic 一种 remains excluded. This prevents enforcing new Spanish color counts without accepting their Chinese equivalents. Full suite rerun required after this adjustment.

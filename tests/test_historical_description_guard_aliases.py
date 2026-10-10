@@ -117,7 +117,7 @@ def test_real_thermal_paper_spelled_quantity_and_corrupted_mutation(target, stat
                  target + "57毫米×18米")["status"] == "FAIL"
 
 
-@pytest.mark.parametrize("source", ["UNO-Flip", "Dos", "tres colores",
+@pytest.mark.parametrize("source", ["UNO-Flip", "Dos", "tres favoritos",
                                      "treinta y cinco rollos", "ciento cinco rollos"])
 def test_cardinal_phrases_do_not_invent_brand_pronoun_or_compound_quantities(source):
     from action_tracker.localization.qa import _numbers

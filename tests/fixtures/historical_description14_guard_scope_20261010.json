@@ -1,0 +1,1151 @@
+[
+  {
+    "sku": "3217978",
+    "source": "Deliciosa mezcla de aperitivos picantes y crujientes\nPara los verdaderos amantes de la comida picante\nBolsa extragrande de 250 gramos\n¿Te gustan los aperitivos con un toque especial? ¡Esta mezcla muy picante de Snacks of the World aportará fuego a tu aperitivo! Una bolsa extragrande llena de bocados crujientes con un toque picante.",
+    "target": "美味的香辣脆口零食混合装\n适合真正的嗜辣人士\n超大袋装，250克\n喜欢带有独特风味的零食吗？这款Snacks of the World超辣混合装，为你的零食时刻增添火辣滋味！一大袋香脆小食，带有辛辣风味。",
+    "context": {
+      "name": "Snacks of the World Flaming Hot Mix Spicy",
+      "cat1": "Comer y beber",
+      "cat2": "Frutos secos y aperitivos",
+      "spec": "250 gramos",
+      "description": "Deliciosa mezcla de aperitivos picantes y crujientes\nPara los verdaderos amantes de la comida picante\nBolsa extragrande de 250 gramos\n¿Te gustan los aperitivos con un toque especial? ¡Esta mezcla muy picante de Snacks of the World aportará fuego a tu aperitivo! Una bolsa extragrande llena de bocados crujientes con un toque picante.",
+      "details": "{'Número del artículo': '3217978', 'Carbohidratos': '31 g', 'Consejos sobre conservación': 'Conservar en un lugar fresco y seco', 'Contenido': '250 g', 'Energía': '539 kcal', 'Grasas': '36.4 g', 'Proteínas': '18.8 g', 'Sal': '1.92 g'}"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Deliciosa mezcla de aperitivos picantes y crujientes\nPara los verdaderos amantes de la comida picante\nBolsa extragrande de 250 gramos\n¿Te gustan los aperitivos con un toque especial? ¡Esta mezcla muy picante de Snacks of the World aportará fuego a tu aperitivo! Una bolsa extragrande llena de bocados crujientes con un toque picante.",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3217978",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "0d4f9258af52f6a84f5fb319f6d9c7098e281b9cf57a78d4d527594364bf8232"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Deliciosa mezcla de aperitivos picantes y crujientes\nPara los verdaderos amantes de la comida picante\nBolsa extragrande de 250 gramos\n¿Te gustan los aperitivos con un toque especial? ¡Esta mezcla muy picante de Snacks of the World aportará fuego a tu aperitivo! Una bolsa extragrande llena de bocados crujientes con un toque picante.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3217978",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "0d4f9258af52f6a84f5fb319f6d9c7098e281b9cf57a78d4d527594364bf8232"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "美味的香辣脆口零食混合装\n适合真正的嗜辣人士\n超大袋装，250克\n喜欢带有独特风味的零食吗？这款Snacks of the World超辣混合装，为你的零食时刻增添火辣滋味！一大袋香脆小食，带有辛辣风味。"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Deliciosa mezcla de aperitivos picantes y crujientes\nPara los verdaderos amantes de la comida picante\nBolsa extragrande de 250 gramos\n¿Te gustan los aperitivos con un toque especial? ¡Esta mezcla muy picante de Snacks of the World aportará fuego a tu aperitivo! Una bolsa extragrande llena de bocados crujientes con un toque picante.",
+          "target": "美味的香辣脆口零食混合装\n适合真正的嗜辣人士\n超大袋装，250克\n喜欢带有独特风味的零食吗？这款Snacks of the World超辣混合装，为你的零食时刻增添火辣滋味！一大袋香脆小食，带有辛辣风味。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3218561",
+    "source": "Superflexibles y resistentes\n10 minifiguras diferentes\nExtensible hasta 3 veces su longitud\n¿Listo para la acción? ¡Estos modernos Stretcherz Stretch Squad mini están listos! En este paquete de 10 unidades encontrarás divertidas y coloridas figuras que puedes estirar hasta 3 veces su longitud. Sí, en serio, doblar, tirar, girar... ¡siempre vuelven a su forma original!",
+    "target": "柔韧且耐用\n10个不同的迷你人偶\n可拉伸至原长的3倍\n准备好行动了吗？这些时尚的Stretcherz Stretch Squad mini人偶已经就绪！这款10件装包含有趣、色彩缤纷的人偶，可拉伸至原长的3倍。可以弯曲、拉伸、扭转，并恢复原来的形状！",
+    "context": {
+      "name": "Stretch squad minis Stretcherz",
+      "cat1": "Juguetes",
+      "cat2": "Peluches y muñecas",
+      "spec": "",
+      "description": "Superflexibles y resistentes\n10 minifiguras diferentes\nExtensible hasta 3 veces su longitud\n¿Listo para la acción? ¡Estos modernos Stretcherz Stretch Squad mini están listos! En este paquete de 10 unidades encontrarás divertidas y coloridas figuras que puedes estirar hasta 3 veces su longitud. Sí, en serio, doblar, tirar, girar... ¡siempre vuelven a su forma original!",
+      "details": "{'Número del artículo': '3218561', 'Color': 'Multicolor', 'Edad adecuada': 'A partir de 3 años', 'Cantidad': '10 unidades'}"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Superflexibles y resistentes\n10 minifiguras diferentes\nExtensible hasta 3 veces su longitud\n¿Listo para la acción? ¡Estos modernos Stretcherz Stretch Squad mini están listos! En este paquete de 10 unidades encontrarás divertidas y coloridas figuras que puedes estirar hasta 3 veces su longitud. Sí, en serio, doblar, tirar, girar... ¡siempre vuelven a su forma original!",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3218561",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "633a8ef39fdf7bdb618e8a3ab93ce4351eb48b94a554883c88e6e2921eb864f7"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Superflexibles y resistentes\n10 minifiguras diferentes\nExtensible hasta 3 veces su longitud\n¿Listo para la acción? ¡Estos modernos Stretcherz Stretch Squad mini están listos! En este paquete de 10 unidades encontrarás divertidas y coloridas figuras que puedes estirar hasta 3 veces su longitud. Sí, en serio, doblar, tirar, girar... ¡siempre vuelven a su forma original!",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3218561",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "633a8ef39fdf7bdb618e8a3ab93ce4351eb48b94a554883c88e6e2921eb864f7"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "柔韧且耐用\n10个不同的迷你人偶\n可拉伸至原长的3倍\n准备好行动了吗？这些时尚的Stretcherz Stretch Squad mini人偶已经就绪！这款10件装包含有趣、色彩缤纷的人偶，可拉伸至原长的3倍。可以弯曲、拉伸、扭转，并恢复原来的形状！"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Superflexibles y resistentes\n10 minifiguras diferentes\nExtensible hasta 3 veces su longitud\n¿Listo para la acción? ¡Estos modernos Stretcherz Stretch Squad mini están listos! En este paquete de 10 unidades encontrarás divertidas y coloridas figuras que puedes estirar hasta 3 veces su longitud. Sí, en serio, doblar, tirar, girar... ¡siempre vuelven a su forma original!",
+          "target": "柔韧且耐用\n10个不同的迷你人偶\n可拉伸至原长的3倍\n准备好行动了吗？这些时尚的Stretcherz Stretch Squad mini人偶已经就绪！这款10件装包含有趣、色彩缤纷的人偶，可拉伸至原长的3倍。可以弯曲、拉伸、扭转，并恢复原来的形状！",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3219656",
+    "source": "Jawbreaker con palo\nCon chicle en el centro\nHalal y sin gluten",
+    "target": "带棒的Jawbreaker糖果\n中心有口香糖\n清真且不含麸质",
+    "context": {
+      "name": "Jawbreaker Zed Candy USA",
+      "cat1": "Comer y beber",
+      "cat2": "",
+      "spec": "50 gramos",
+      "description": "Jawbreaker con palo\nCon chicle en el centro\nHalal y sin gluten",
+      "details": "{'Número del artículo': '3219656', 'Color': 'Azul', 'Carbohidratos': '89 g', 'Consejos sobre conservación': 'Conservar en un lugar fresco y seco', 'Contenido': '50 g', 'De los cuales azúcares': '76 g', 'De los cuales saturados': '0.9 g', 'Energía': '366 kcal', 'Grasas': '1.1 g', 'Proteínas': '0 g', 'Sal': '0 g'}"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Jawbreaker con palo\nCon chicle en el centro\nHalal y sin gluten",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3219656",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "b30d0025536cca3fa87e33245c53f67dc2bd5437b1c74fff6352e83a7537535f"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Jawbreaker con palo\nCon chicle en el centro\nHalal y sin gluten",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3219656",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "b30d0025536cca3fa87e33245c53f67dc2bd5437b1c74fff6352e83a7537535f"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "带棒的Jawbreaker糖果\n中心有口香糖\n清真且不含麸质"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Jawbreaker con palo\nCon chicle en el centro\nHalal y sin gluten",
+          "target": "带棒的Jawbreaker糖果\n中心有口香糖\n清真且不含麸质",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3219716",
+    "source": "De acero inoxidable\nA elegir entre varias formas y colores\nCon estos pendientes de clip añadirás un toque extra a tu look en un abrir y cerrar de ojos. El juego incluye dos pendientes de clip de diferentes colores y formas para que puedas alternarlos.",
+    "target": "不锈钢材质\n多种形状和颜色可选\n用这些夹式耳环，快速为造型增添亮点。套装包含2只颜色和形状不同的夹式耳环，便于交替佩戴。",
+    "context": {
+      "name": "Pendientes de clip acero inoxidable",
+      "cat1": "Moda",
+      "cat2": "Relojes y joyas",
+      "spec": "2 uds. | diferentes variantes",
+      "description": "De acero inoxidable\nA elegir entre varias formas y colores\nCon estos pendientes de clip añadirás un toque extra a tu look en un abrir y cerrar de ojos. El juego incluye dos pendientes de clip de diferentes colores y formas para que puedas alternarlos.",
+      "details": "{'Número del artículo': '3219716', 'Color': 'Dorado, Plateado', 'Material base': 'Acero inoxidable', 'Cantidad': '2 unidades'}"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "De acero inoxidable\nA elegir entre varias formas y colores\nCon estos pendientes de clip añadirás un toque extra a tu look en un abrir y cerrar de ojos. El juego incluye dos pendientes de clip de diferentes colores y formas para que puedas alternarlos.",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3219716",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "2159b4ad88712dd72bc0372ebf607fc9cb84f17076bfbf515381b0a20b9428d7"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "De acero inoxidable\nA elegir entre varias formas y colores\nCon estos pendientes de clip añadirás un toque extra a tu look en un abrir y cerrar de ojos. El juego incluye dos pendientes de clip de diferentes colores y formas para que puedas alternarlos.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3219716",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "2159b4ad88712dd72bc0372ebf607fc9cb84f17076bfbf515381b0a20b9428d7"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "NUMERIC_ADDED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "source": {},
+            "target": {
+              "2": 1
+            },
+            "extra": {
+              "2": 1
+            }
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "De acero inoxidable\nA elegir entre varias formas y colores\nCon estos pendientes de clip añadirás un toque extra a tu look en un abrir y cerrar de ojos. El juego incluye dos pendientes de clip de diferentes colores y formas para que puedas alternarlos.",
+          "target": "不锈钢材质\n多种形状和颜色可选\n用这些夹式耳环，快速为造型增添亮点。套装包含2只颜色和形状不同的夹式耳环，便于交替佩戴。",
+          "message": "numeric fact added",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3220080",
+    "source": "Admite carga rápida de 60 W\nCable trenzado resistente para una mayor durabilidad\nTransferencia de datos ultrarrápida de hasta 480 Mbps\n¡Carga en un abrir y cerrar de ojos con este cable USB C de Philips! Tanto si quieres cargar tu teléfono, tableta o portátil, este cable lo hace todo. Gracias a su resistente exterior trenzado durará mucho más. También es ideal para la transferencia rápida de datos. Solo tienes que enchufarlo y ¡listo!",
+    "target": "支持60 W快充\n坚固的编织线缆，更加耐用\n数据传输速度高达480 Mbps\n用这款飞利浦USB-C线缆快速充电！无论手机、平板电脑还是笔记本电脑，都能充电。坚固的编织外层使它使用更久，也适合快速传输数据。插上即可使用！",
+    "context": {
+      "name": "Cable de datos y carga Philips De USB-C a USB-C",
+      "cat1": "Multimedia",
+      "cat2": "Cables y divisores",
+      "spec": "1,5 metros",
+      "description": "Admite carga rápida de 60 W\nCable trenzado resistente para una mayor durabilidad\nTransferencia de datos ultrarrápida de hasta 480 Mbps\n¡Carga en un abrir y cerrar de ojos con este cable USB C de Philips! Tanto si quieres cargar tu teléfono, tableta o portátil, este cable lo hace todo. Gracias a su resistente exterior trenzado durará mucho más. También es ideal para la transferencia rápida de datos. Solo tienes que enchufarlo y ¡listo!",
+      "details": "{'Número del artículo': '3220080', 'Color': 'Negro', 'Longitud del cable:': '1.5', 'Tipo de acoplamiento': 'USB-c', 'Tipo de conexión': 'USB-c'}"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Admite carga rápida de 60 W\nCable trenzado resistente para una mayor durabilidad\nTransferencia de datos ultrarrápida de hasta 480 Mbps\n¡Carga en un abrir y cerrar de ojos con este cable USB C de Philips! Tanto si quieres cargar tu teléfono, tableta o portátil, este cable lo hace todo. Gracias a su resistente exterior trenzado durará mucho más. También es ideal para la transferencia rápida de datos. Solo tienes que enchufarlo y ¡listo!",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3220080",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "aa588390713841e6711fa4f482a41252b2bec3a29eab869889b38d41921cbcc2"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Admite carga rápida de 60 W\nCable trenzado resistente para una mayor durabilidad\nTransferencia de datos ultrarrápida de hasta 480 Mbps\n¡Carga en un abrir y cerrar de ojos con este cable USB C de Philips! Tanto si quieres cargar tu teléfono, tableta o portátil, este cable lo hace todo. Gracias a su resistente exterior trenzado durará mucho más. También es ideal para la transferencia rápida de datos. Solo tienes que enchufarlo y ¡listo!",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3220080",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "aa588390713841e6711fa4f482a41252b2bec3a29eab869889b38d41921cbcc2"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "PROTECTED_TOKEN_ADDED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "token_type": "TECH",
+            "value": "usb-c",
+            "expected": 0,
+            "actual": 1
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Admite carga rápida de 60 W\nCable trenzado resistente para una mayor durabilidad\nTransferencia de datos ultrarrápida de hasta 480 Mbps\n¡Carga en un abrir y cerrar de ojos con este cable USB C de Philips! Tanto si quieres cargar tu teléfono, tableta o portátil, este cable lo hace todo. Gracias a su resistente exterior trenzado durará mucho más. También es ideal para la transferencia rápida de datos. Solo tienes que enchufarlo y ¡listo!",
+          "target": "支持60 W快充\n坚固的编织线缆，更加耐用\n数据传输速度高达480 Mbps\n用这款飞利浦USB-C线缆快速充电！无论手机、平板电脑还是笔记本电脑，都能充电。坚固的编织外层使它使用更久，也适合快速传输数据。插上即可使用！",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3220254",
+    "source": "Con una capacidad de 740 ml\nÚtil para guardar objetos pequeños\nProducto hecho de plástico\nMantén tus cosas ordenadas y organizadas con este práctico juego de tres pequeñas cajas de almacenamiento. Ideal para guardar joyas, artículos de oficina, artículos de manualidades o pequeños accesorios.",
+    "target": "容量740毫升\n适合存放小物件\n塑料制品\n用这套实用的3只小型收纳盒，将物品收纳整齐。适合存放首饰、办公用品、手工材料或小配件。",
+    "context": {
+      "name": "Cajas de almacenamiento con tapa",
+      "cat1": "",
+      "cat2": "Accesorios para el hogar",
+      "spec": "3 uds. | 17,5x10,5x8 cm | varios colores",
+      "description": "Con una capacidad de 740 ml\nÚtil para guardar objetos pequeños\nProducto hecho de plástico\nMantén tus cosas ordenadas y organizadas con este práctico juego de tres pequeñas cajas de almacenamiento. Ideal para guardar joyas, artículos de oficina, artículos de manualidades o pequeños accesorios.",
+      "details": "{'Número del artículo': '3220254', 'Color': 'Multicolor, Transparente', 'Apilable': 'Sí', 'Cantidad': '3 unidades', 'Con mangos': 'No', 'Con ruedas giratorias': 'No', 'Con tapa': 'Sí', 'Contenido': '740 ml'}"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Con una capacidad de 740 ml\nÚtil para guardar objetos pequeños\nProducto hecho de plástico\nMantén tus cosas ordenadas y organizadas con este práctico juego de tres pequeñas cajas de almacenamiento. Ideal para guardar joyas, artículos de oficina, artículos de manualidades o pequeños accesorios.",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3220254",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "41b04bfe0c40573dba42d4d578d48bb65ed6c9c9cffb6c37a82d3c8a0d6810b2"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Con una capacidad de 740 ml\nÚtil para guardar objetos pequeños\nProducto hecho de plástico\nMantén tus cosas ordenadas y organizadas con este práctico juego de tres pequeñas cajas de almacenamiento. Ideal para guardar joyas, artículos de oficina, artículos de manualidades o pequeños accesorios.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3220254",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "41b04bfe0c40573dba42d4d578d48bb65ed6c9c9cffb6c37a82d3c8a0d6810b2"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "NUMERIC_ADDED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "source": {
+              "740": 1
+            },
+            "target": {
+              "740": 1,
+              "3": 1
+            },
+            "extra": {
+              "3": 1
+            }
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Con una capacidad de 740 ml\nÚtil para guardar objetos pequeños\nProducto hecho de plástico\nMantén tus cosas ordenadas y organizadas con este práctico juego de tres pequeñas cajas de almacenamiento. Ideal para guardar joyas, artículos de oficina, artículos de manualidades o pequeños accesorios.",
+          "target": "容量740毫升\n适合存放小物件\n塑料制品\n用这套实用的3只小型收纳盒，将物品收纳整齐。适合存放首饰、办公用品、手工材料或小配件。",
+          "message": "numeric fact added",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3220963",
+    "source": "Con 2 vagones\nCon iluminación led (pilas no incluidas)",
+    "target": "带2节车厢\n带LED照明（不包含电池）",
+    "context": {
+      "name": "Tren de Pascua",
+      "cat1": "Vivienda",
+      "cat2": "Decoración de temporada",
+      "spec": "30x12,5 cm | diferentes variantes",
+      "description": "Con 2 vagones\nCon iluminación led (pilas no incluidas)",
+      "details": "{'Número del artículo': '3220963', 'Color': 'Multicolor', 'Código de batería': 'AAA', 'Destinado a': 'Interior', 'Número de pilas necesarias': '2', 'Pilas incluidas': 'No', 'Tipo de temporada': 'Primavera'}"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Con 2 vagones\nCon iluminación led (pilas no incluidas)",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3220963",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "bbb761ffb426d0250f2449ec168aa704fdf9581645549ec927ee0564ce11ec24"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Con 2 vagones\nCon iluminación led (pilas no incluidas)",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3220963",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "bbb761ffb426d0250f2449ec168aa704fdf9581645549ec927ee0564ce11ec24"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "iluminación",
+            "expected_target": "照明灯",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Con 2 vagones\nCon iluminación led (pilas no incluidas)",
+          "target": "带2节车厢\n带LED照明（不包含电池）",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3223091",
+    "source": "El lado exfoliante es potente en agua fría y suave en agua tibia.\nNo rayan\nSe mantienen frescas e inodoras incluso después de semanas de uso\nHaz que la limpieza sea mucho más fácil con este estropajo Multy i-Scrub. Ideales para eliminar la suciedad incrustada y mantener limpias las superficies de cocción, los hornos y el baño. Gracias a su acción doble, podrás hacer cualquier trabajo: exfoliante y absorbente todo en uno. Se mantienen flexibles y nuevas para que siempre tengas a mano una esponja higiénica. Perfectas para el uso diario en la cocina y en toda la casa.",
+    "target": "擦洗面在冷水中清洁力强，在温水中柔软\n不会刮伤表面\n使用数周后仍保持清新、无异味\n这款Multy i-Scrub百洁海绵让清洁更轻松，适合去除顽固污垢，清洁灶台、烤箱和浴室。兼具擦洗和吸水功能，便于完成各项清洁工作。保持柔韧如新，让你随手可用洁净海绵，适合厨房及全屋日常使用。",
+    "context": {
+      "name": "Estropajos 2 en 1 Multy",
+      "cat1": "Hogar",
+      "cat2": "Artículos de limpieza",
+      "spec": "3 uds.",
+      "description": "El lado exfoliante es potente en agua fría y suave en agua tibia.\nNo rayan\nSe mantienen frescas e inodoras incluso después de semanas de uso\nHaz que la limpieza sea mucho más fácil con este estropajo Multy i-Scrub. Ideales para eliminar la suciedad incrustada y mantener limpias las superficies de cocción, los hornos y el baño. Gracias a su acción doble, podrás hacer cualquier trabajo: exfoliante y absorbente todo en uno. Se mantienen flexibles y nuevas para que siempre tengas a mano una esponja higiénica. Perfectas para el uso diario en la cocina y en toda la casa.",
+      "details": "{'Número del artículo': '3223091', 'Medidas (incl. envase) (largo x ancho x alto)': '11.4 x 7.4 x 7.5 cm', 'Color': 'Multicolor', 'Cantidad': '3 unidades'}"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "El lado exfoliante es potente en agua fría y suave en agua tibia.\nNo rayan\nSe mantienen frescas e inodoras incluso después de semanas de uso\nHaz que la limpieza sea mucho más fácil con este estropajo Multy i-Scrub. Ideales para eliminar la suciedad incrustada y mantener limpias las superficies de cocción, los hornos y el baño. Gracias a su acción doble, podrás hacer cualquier trabajo: exfoliante y absorbente todo en uno. Se mantienen flexibles y nuevas para que siempre tengas a mano una esponja higiénica. Perfectas para el uso diario en la cocina y en toda la casa.",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3223091",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "4e24c42515c58f16cc18943ca40a399e34d62d6941bddea94f42f283c4783001"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "El lado exfoliante es potente en agua fría y suave en agua tibia.\nNo rayan\nSe mantienen frescas e inodoras incluso después de semanas de uso\nHaz que la limpieza sea mucho más fácil con este estropajo Multy i-Scrub. Ideales para eliminar la suciedad incrustada y mantener limpias las superficies de cocción, los hornos y el baño. Gracias a su acción doble, podrás hacer cualquier trabajo: exfoliante y absorbente todo en uno. Se mantienen flexibles y nuevas para que siempre tengas a mano una esponja higiénica. Perfectas para el uso diario en la cocina y en toda la casa.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3223091",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "4e24c42515c58f16cc18943ca40a399e34d62d6941bddea94f42f283c4783001"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "擦洗面在冷水中清洁力强，在温水中柔软\n不会刮伤表面\n使用数周后仍保持清新、无异味\n这款Multy i-Scrub百洁海绵让清洁更轻松，适合去除顽固污垢，清洁灶台、烤箱和浴室。兼具擦洗和吸水功能，便于完成各项清洁工作。保持柔韧如新，让你随手可用洁净海绵，适合厨房及全屋日常使用。"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "El lado exfoliante es potente en agua fría y suave en agua tibia.\nNo rayan\nSe mantienen frescas e inodoras incluso después de semanas de uso\nHaz que la limpieza sea mucho más fácil con este estropajo Multy i-Scrub. Ideales para eliminar la suciedad incrustada y mantener limpias las superficies de cocción, los hornos y el baño. Gracias a su acción doble, podrás hacer cualquier trabajo: exfoliante y absorbente todo en uno. Se mantienen flexibles y nuevas para que siempre tengas a mano una esponja higiénica. Perfectas para el uso diario en la cocina y en toda la casa.",
+          "target": "擦洗面在冷水中清洁力强，在温水中柔软\n不会刮伤表面\n使用数周后仍保持清新、无异味\n这款Multy i-Scrub百洁海绵让清洁更轻松，适合去除顽固污垢，清洁灶台、烤箱和浴室。兼具擦洗和吸水功能，便于完成各项清洁工作。保持柔韧如新，让你随手可用洁净海绵，适合厨房及全屋日常使用。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3223203",
+    "source": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+    "target": "卸除彩妆，让肌肤洁净清爽\n添加Olus滋养油，适合敏感肌肤\n由95%天然成分制成，不含香精和塑料\nAlvira Sensitive卸妆湿巾适合居家、外出或旅行携带，如参加音乐节。适合卸除彩妆、保持肌肤清爽。温和配方适合敏感肌肤，清洁不刺激。实用的3包装，让家中和包中都能备有湿巾。",
+    "context": {
+      "name": "Toallitas de limpieza facial Alvira Sensitive",
+      "cat1": "Cuidado personal",
+      "cat2": "Cuidado facial",
+      "spec": "3x 25 unidades",
+      "description": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+      "details": "Apto para tipo de parte del cuerpo: Rostro; Cantidad: 75 unidades; Efecto limpiador: Sí; Sin perfume: Sí; Sustancia: Paño; Tipo de dispensador: Bolsa; Número del artículo: 3223203"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+        "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+        "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+          "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-26\\2026-08-26_130145\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-26/2026-08-26_130145",
+          "file_hash": "7aa34749c60e85fdede52763c445b98504451bf565ec05b18f926322baf062f7",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-28\\2026-08-28_073710\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-28/2026-08-28_073710",
+          "file_hash": "9f3985b8c93914d1d14e7c7b10cd5a9c9281df376c514dcca8685c5bb3b284ae",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        },
+        {
+          "rank": 1,
+          "text": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+          "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+          "field_hash": "f7784a363eb22181495334555ee9efb69f1abd672b163acbc7e366360bb90ae1"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "卸除彩妆，让肌肤洁净清爽\n添加Olus滋养油，适合敏感肌肤\n由95%天然成分制成，不含香精和塑料\nAlvira Sensitive卸妆湿巾适合居家、外出或旅行携带，如参加音乐节。适合卸除彩妆、保持肌肤清爽。温和配方适合敏感肌肤，清洁不刺激。实用的3包装，让家中和包中都能备有湿巾。"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Eliminan el maquillaje y dejan la piel limpia y fresca\nEnriquecidas con aceite nutritivo olus, adecuado para pieles sensibles\nProducto fabricado con un 95 % de ingredientes naturales y sin perfumes ni plásticos\nLas toallitas desmaquillantes Alvira Sensitive son ideales para usar en casa, cuando sales y de lo más prácticas para llevar de viaje, como a un festival de música. Ideales para eliminar el maquillaje y mantener la piel fresca. Su fórmula suave es agradable para la piel sensible y limpia sin irritar. Gracias al práctico paquete de 3, nunca te quedarás sin ellas y siempre tendrás un juego de toallitas a mano en casa y en el bolso.",
+          "target": "卸除彩妆，让肌肤洁净清爽\n添加Olus滋养油，适合敏感肌肤\n由95%天然成分制成，不含香精和塑料\nAlvira Sensitive卸妆湿巾适合居家、外出或旅行携带，如参加音乐节。适合卸除彩妆、保持肌肤清爽。温和配方适合敏感肌肤，清洁不刺激。实用的3包装，让家中和包中都能备有湿巾。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3223424",
+    "source": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+    "target": "可擦墨水\n8种不同颜色套装\n这些可擦凝胶笔非常适合上学、做作业、记笔记或进行创意书写。如果写错了，只需用笔顶部即可轻松擦除墨水，让您的作品整洁无痕，无需使用修正液。该套装包含8种不同颜色，便于交替使用，清晰区分笔记与主题，让您一目了然。",
+    "context": {
+      "name": "Bolígrafos de gel borrables",
+      "cat1": "Oficina y papelería",
+      "cat2": "Papelería",
+      "spec": "8 unidades | diferentes variantes",
+      "description": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+      "details": "Color: Multicolor; Borrable: Sí; Cantidad: Paquete de 8; Capacidad de borrado de tinta: Borrable; Tipo de bolígrafo: Bolígrafo de gel; Número del artículo: 3223424"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+        "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+        "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        },
+        {
+          "rank": 1,
+          "text": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "8c456c11bb5540af8a13cabcec089d1db55c38d12d30bd91611b7e1ae3b225dd"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "NUMERIC_ADDED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "source": {},
+            "target": {
+              "8": 2
+            },
+            "extra": {
+              "8": 2
+            }
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Tinta borrable\nJuego de ocho colores diferentes\nEstos bolígrafos de gel borrables son ideales para el colegio, los deberes, las notas o la escritura creativa. Si te equivocas, puedes borrar la tinta fácilmente con la parte superior del bolígrafo. Así tu trabajo quedará impecable, sin rayas ni líquido corrector. El set incluye ocho colores diferentes, muy útiles para ir alternando y para diferenciar claramente las notas y los temas, lo que te da una visión general más clara.",
+          "target": "可擦墨水\n8种不同颜色套装\n这些可擦凝胶笔非常适合上学、做作业、记笔记或进行创意书写。如果写错了，只需用笔顶部即可轻松擦除墨水，让您的作品整洁无痕，无需使用修正液。该套装包含8种不同颜色，便于交替使用，清晰区分笔记与主题，让您一目了然。",
+          "message": "numeric fact added",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3223992",
+    "source": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+    "target": "清晰的2K图像\n水平转动和俯仰功能，便于查看各个方向\n夜视距离可达12米\n用这款智能摄像头轻松查看家中情况。清晰的2K画质呈现清楚画面，水平转动和俯仰功能便于查看各角度。智能AI可识别人、动物和车辆，并发送即时通知。居家或度假时都很实用，也能带来安心感。连接应用程序，即可从各处实时查看。",
+    "context": {
+      "name": "Cámara wifi de interior TP-link",
+      "cat1": "Multimedia",
+      "cat2": "Herramientas",
+      "spec": "2K QHD",
+      "description": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+      "details": "Color: Blanco; Material: Plástico; Bluetooth: No; Con posibilidad de grabación: Sí; Con visión nocturna: Sí; Destinado a: Interior; Instalación: De pie; Método de fijación: Independiente; Por cable / inalámbrico: Conectado; Tipo de alimentación: Alimentación de red; Tipo de tarjeta de memoria: Micro-sd/trans-flash; Número del artículo: 3223992"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+        "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+        "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        },
+        {
+          "rank": 1,
+          "text": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "1d95efa0f92823e7ec7263abccb720a06be3aee2d2140d4df841c6b314f28efd"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "PROTECTED_TOKEN_CHANGED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "token_type": "TECH",
+            "value": "ia",
+            "expected": 1,
+            "actual": 0
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "target": "清晰的2K图像\n水平转动和俯仰功能，便于查看各个方向\n夜视距离可达12米\n用这款智能摄像头轻松查看家中情况。清晰的2K画质呈现清楚画面，水平转动和俯仰功能便于查看各角度。智能AI可识别人、动物和车辆，并发送即时通知。居家或度假时都很实用，也能带来安心感。连接应用程序，即可从各处实时查看。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        },
+        {
+          "rule_id": "PROTECTED_TOKEN_ADDED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "token_type": "TECH",
+            "value": "ai",
+            "expected": 0,
+            "actual": 1
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "target": "清晰的2K图像\n水平转动和俯仰功能，便于查看各个方向\n夜视距离可达12米\n用这款智能摄像头轻松查看家中情况。清晰的2K画质呈现清楚画面，水平转动和俯仰功能便于查看各角度。智能AI可识别人、动物和车辆，并发送即时通知。居家或度假时都很实用，也能带来安心感。连接应用程序，即可从各处实时查看。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        },
+        {
+          "rule_id": "PROTECTED_TOKEN_MISSING",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "token_type": "TECH",
+            "value": "IA",
+            "expected": 2,
+            "actual": 0
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Imágenes 2K nítidas para una visión clara\nPanorámica e inclinación para ver en todas direcciones\nVisión nocturna de hasta 12 metros\nVigila fácilmente tu casa con esta cámara inteligente. Gracias a la nítida calidad de imagen 2K, todo se ve con gran claridad, mientras que la función de panorámica e inclinación te permite seguir cada ángulo. La IA inteligente reconoce personas, animales y vehículos y te envía notificaciones instantáneas. Práctica para casa, estando de vacaciones o simplemente para sentirse seguro. Solo tienes que conectarla a la aplicación y podrás ver todo en directo desde cualquier lugar.",
+          "target": "清晰的2K图像\n水平转动和俯仰功能，便于查看各个方向\n夜视距离可达12米\n用这款智能摄像头轻松查看家中情况。清晰的2K画质呈现清楚画面，水平转动和俯仰功能便于查看各角度。智能AI可识别人、动物和车辆，并发送即时通知。居家或度假时都很实用，也能带来安心感。连接应用程序，即可从各处实时查看。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  }
+]
