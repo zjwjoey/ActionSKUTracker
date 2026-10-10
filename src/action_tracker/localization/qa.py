@@ -124,6 +124,9 @@ _SOURCE_BOUND_EXACT_TECH = {
     "usb", "usb-a", "usb-c", "micro-usb", "micro-sd", "hdmi", "led", "mdf",
     "fsc", "bci", "tcx", "a4", "b5", "wifi", "magsafe", "playstation", "k-pop", "power-fast",
     "sds-plus", "transflash", "eprel", "torx",
+    # Exact same-field commercial/game spans; the residual scanner splits
+    # hyphens into words, so their full source-bound spelling is required.
+    "re-load", "skip-bo", "uno-flip",
 }
 
 
@@ -417,6 +420,14 @@ def _has_casefold_token(text: str, token: str) -> bool:
 
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
     aliases = list(_SEMANTIC_TARGET_ALIASES.get(source_term.casefold(), (canonical,)))
+    # In these complete phrases illumination describes light usage/effects,
+    # rather than an additional lamp product. Do not waive generic product
+    # nouns or borrow the qualifying phrase from another source field.
+    if source_term.casefold() == "iluminación":
+        if re.search(r"\biluminación\s+focal\b", source_text, re.I):
+            aliases.append("照明")
+        if re.search(r"\befectos?\s+de\s+iluminación\b", source_text, re.I):
+            aliases.extend(("灯光效果", "光效"))
     # Capsules are not always medicines. Recognize detergent capsules only
     # from a complete phrase in this field; other fields cannot supply it.
     detergent_capsules = bool(re.search(
@@ -562,7 +573,7 @@ def _semantic_numeric_equivalents(source_text: str, target: str) -> Counter[str]
         (r"\b(\d+)\s+estaciones?\b", {"4": "四季", "3": "三季", "2": "两季"}),
         (r"\b(\d+)\s+hojas?\b", {"3": ("三层", "三张", "三页", "三刀头")} ),
         (r"\b(\d+)\s+capas?\b", {"3": ("三层", "三层纸", "三层餐巾")} ),
-        (r"\b(\d+)\s+en\s+1\b", {"3": "三合一", "2": "二合一", "4": "四合一"}),
+        (r"\b(\d+)\s+en\s+1\b", {"3": ("三合一", "三效合一"), "2": "二合一", "4": "四合一"}),
         (r"\b(\d+)\s+personas?\b", {"1": ("单人", "一人"), "2": ("双人", "两人")}),
         (r"\b(\d+)\s+(?:tonos|colores)\b", {"2": "双色"}),
         (r"\b(1)\s+(?:tamaño|size)\b", {"1": ("均码", "均一尺码", "单一尺码")}),
@@ -820,6 +831,13 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         target_arabic = _arabic_numbers(target)
         duplicated = Counter({value: count for value, count in target_arabic.items() if value not in all_source_numbers})
         duplicated -= _semantic_numeric_extras(source_text, target)
+        # This complete functional phrase is an explicit quantity, unlike
+        # an ordinary Chinese article such as 一条. It needs its own-field
+        # source phrase even if another field happens to contain number 3.
+        three_effect_claims = len(re.findall(r"三效合一", target))
+        three_in_one_source = len(re.findall(r"\b3\s+en\s+1\b", source_text, re.I))
+        if three_effect_claims > three_in_one_source:
+            duplicated["3"] += three_effect_claims - three_in_one_source
         for value, count in target_numbers.items():
             if value in target_arabic or value not in all_source_numbers:
                 continue

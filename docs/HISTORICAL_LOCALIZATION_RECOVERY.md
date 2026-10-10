@@ -214,3 +214,22 @@ and remain Owner review; diagnostic Guard failures do not grant approval.
 Two source-backed pen examples verify that valid existing renderings survive.
 Unrecognized LU/FAB uppercase brand/model tokens remain blocked pending
 trusted brand evidence, rather than bypassing protection for NO_BRAND cleanup.
+
+## 2026-10-10: field-bound description Guard corrections
+
+Five independently reviewed description12 cases exposed false blocks for
+iluminación focal, efectos de iluminación, intact Re-load/Skip-bo/UNO-Flip
+source brands and 三效合一 for the same-field 3 en 1 phrase. Existing Guard
+aliases now accept these exact source-bound meanings and spellings. Generic
+illumination product nouns, partial brand spellings, unrelated Spanish prose,
+changed units/models and evidence borrowed from other fields remain blocked.
+An explicit 三效合一 claim additionally requires a same-field 3 en 1 source
+and cannot be duplicated beyond source occurrences. The wider existing
+cross-field numeric relocation behavior is unchanged and needs further audit.
+
+Five real fixtures retain source text, source/file hashes, SKU context and old
+Guard failures; semantic review is recorded separately from formal approval.
+Twenty-one new positive/negative tests pass. Full regression: 991 passed in
+113.80 seconds, JUnit archived in the runtime historical report directory.
+Runtime dictionary baseline is unchanged. Description12 candidates are still
+pending formal immutable Apply at this code checkpoint.
