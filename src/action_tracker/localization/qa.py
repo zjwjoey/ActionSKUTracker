@@ -479,7 +479,7 @@ def _numbers(value: str) -> Counter[str]:
     # such as ``一种``/``一天`` occur in ordinary descriptions even when the
     # Spanish source contains no number.  ``块`` is included for phrases such
     # as ``三块面板``.
-    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋双位端口环块伏瓦毫升升克公斤厘米毫米米小时款")
+    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋双位端口环块层伏瓦毫升升克公斤厘米毫米米小时款")
     digit_chars = set(chinese_digits) | set("0123456789")
     for index, char in enumerate(text):
         if char not in chinese_digits:

@@ -86,6 +86,15 @@ def reviewed_write_status(review):
     return "READY"
 
 
+def reviewed_target_status(review, current_target):
+    """An older reviewed manifest cannot overwrite a later Chinese repair."""
+    if "before" not in review:
+        return "TARGET_BASELINE_REVIEW_REQUIRED"
+    if review["before"] != current_target:
+        return "TARGET_CHANGED_REVIEW_REQUIRED"
+    return "READY"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, required=True)
@@ -143,6 +152,9 @@ def main():
             if record.get(CANONICAL_TO_ZH[field]) == target:
                 outcomes.append({"sku": sku, "field": field,
                     "status": "NO_OP" if already_ready(record, args.database, field, target) else "METADATA_REVIEW_REQUIRED"}); continue
+            target_status = reviewed_target_status(review, record.get(CANONICAL_TO_ZH[field]))
+            if target_status != "READY":
+                outcomes.append({"sku": sku, "field": field, "status": target_status}); continue
             review_status = reviewed_write_status(review)
             if review_status != "READY":
                 outcomes.append({"sku": sku, "field": field, "status": review_status}); continue

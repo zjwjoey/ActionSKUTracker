@@ -164,3 +164,15 @@ def test_provider_candidate_cannot_become_semantic_approval():
     assert gate({**reviewed, "risk_level": "HIGH"}) == "OWNER_REVIEW_REQUIRED"
     assert gate({**reviewed, "semantic_status": "PENDING"}) == "SEMANTIC_REVIEW_REQUIRED"
     assert gate({**reviewed, "review_note": ""}) == "SEMANTIC_REVIEW_REQUIRED"
+
+
+def test_reviewed_manifest_cannot_overwrite_a_later_chinese_correction():
+    import runpy
+    from pathlib import Path
+    gate = runpy.run_path(str(Path(__file__).resolve().parents[1] /
+                             "scripts/run_historical_localization_pilot.py"))["reviewed_target_status"]
+    assert gate({"before": None}, None) == "READY"
+    assert gate({"before": "旧西语残留"}, "旧西语残留") == "READY"
+    assert gate({"before": "旧西语残留"}, "人工纠正值") == "TARGET_CHANGED_REVIEW_REQUIRED"
+    assert gate({"before": None}, "人工纠正值") == "TARGET_CHANGED_REVIEW_REQUIRED"
+    assert gate({}, None) == "TARGET_BASELINE_REVIEW_REQUIRED"

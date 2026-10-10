@@ -90,6 +90,27 @@ otherwise they remain METADATA_REVIEW_REQUIRED. Optional source restoration and
 validated backup execute under the same RunLock. Production uses the real
 runtime directory as projection root so it shares the daily-run lock.
 
+New writes also require an explicit `before` target equal to the current exact
+Chinese localization value. A missing baseline or a later Chinese correction
+routes to target review instead of overwriting it from an older manifest.
+Approved equal-target Resume retains the provenance-backed NO_OP path.
+
+`localization.pipeline.translate_pending_requests` provides an atomic finite
+provider-batch checkpoint using the existing TranslationRequest/provider
+contract. Completed responses survive interrupted calls and are reused on
+Resume; a changed source plan, context, policy or provider/model is rejected.
+Every response remains PENDING_SEMANTIC_REVIEW. This helper does not write
+Registry, approvals, patches or PRIMARY, and does not infer missing sources.
+
+Real-history regressions retain source artifact hashes for SKU 1325690
+(full-width Chinese detail separators and unchanged boolean polarity),
+2533753 (Chinese numeric layer count), 2523375 (nonsterile mistranslation with
+conflicting source material), and 3214854 (unapproved category synonym).
+The parser preserves duplicate detail keys and order across ASCII/full-width
+semicolon delimiters. Numeric QA recognizes Chinese digits followed by 层;
+lexical words such as 五金 remain outside the numeric context. These changes
+fix false flags, never create semantic approval or auto-correct Chinese text.
+
 The pilot manifest covers all six fields for each selected SKU; its size is
 not the number of approved or applied Chinese fields. Candidate, review,
 clone-validation and production-Apply counts are recorded separately in the

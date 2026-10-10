@@ -4,6 +4,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from dataclasses import replace
 from typing import Any, Mapping
+import hashlib
+import json
+from pathlib import Path
+from dataclasses import asdict
 
 from .contracts import SourceFacts, source_hash
 from .engine import LocalizationEngine
@@ -27,6 +31,63 @@ class TranslationCandidate:
     request_hash: str
     response_hash: str
     qa: Mapping[str, Any]
+
+
+def translate_pending_requests(requests: tuple[TranslationRequest, ...], provider: TranslationProvider,
+                               checkpoint: Path) -> dict[str, Any]:
+    """Resume a finite provider batch; successes remain unapproved candidates.
+
+    The checkpoint binds the entire request plan and provider/model. It never
+    writes Registry, PRIMARY or approval metadata. Provider failures propagate
+    after completed responses have been atomically saved. Callers must retain
+    source evidence and run the normal semantic review/QA/Apply chain.
+    """
+    plan = {"provider": provider.provider, "model": provider.model,
+            "requests": [asdict(request) for request in requests]}
+    plan_hash = hashlib.sha256(json.dumps(plan, ensure_ascii=False, sort_keys=True,
+                                         separators=(",", ":")).encode("utf-8")).hexdigest()
+    identities = [(request.sku, request.field_name) for request in requests]
+    if len(set(identities)) != len(identities):
+        raise ValueError("CANDIDATE_BATCH_DUPLICATE_FIELD")
+    if any(len(request.requested_fields) != 1 or not request.source_text.strip() for request in requests):
+        raise ValueError("CANDIDATE_BATCH_SINGLE_TRUSTED_SOURCE_REQUIRED")
+    if checkpoint.exists():
+        state = json.loads(checkpoint.read_text(encoding="utf-8"))
+        if state.get("plan_hash") != plan_hash:
+            raise ValueError("CANDIDATE_BATCH_PLAN_CHANGED")
+    else:
+        state = {"plan_hash": plan_hash, "plan": plan, "responses": []}
+    responses = state["responses"]
+    if len(responses) > len(requests):
+        raise ValueError("CANDIDATE_BATCH_INVALID_CHECKPOINT")
+    for index, row in enumerate(responses):
+        request = requests[index]
+        if (row.get("sku"), row.get("field"), row.get("source_hash")) != (
+                request.sku, request.field_name, request.source_hash):
+            raise ValueError("CANDIDATE_BATCH_INVALID_CHECKPOINT")
+        if row.get("decision") != "PENDING_SEMANTIC_REVIEW" or row.get("semantic_status") != "PENDING":
+            raise ValueError("CANDIDATE_BATCH_INVALID_CHECKPOINT")
+    def save():
+        checkpoint.parent.mkdir(parents=True, exist_ok=True)
+        temporary = checkpoint.with_suffix(checkpoint.suffix + ".writing")
+        temporary.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporary.replace(checkpoint)
+    save()  # Persist the finite plan even when the first provider call fails.
+    skipped = len(responses)
+    for request in requests[skipped:]:
+        response = provider.translate(request)
+        target = str(response.fields.get(request.field_name) or "").strip()
+        if not target or response.source_hash != request.source_hash:
+            raise ValueError("CANDIDATE_BATCH_INVALID_PROVIDER_RESPONSE")
+        responses.append({"sku": request.sku, "field": request.field_name, "source": request.source_text,
+                          "source_hash": request.source_hash, "after": target,
+                          "decision": "PENDING_SEMANTIC_REVIEW", "semantic_status": "PENDING",
+                          "provider": response.provider, "model": response.model,
+                          "request_id": response.request_id, "request_hash": response.request_hash,
+                          "response_hash": response.response_hash})
+        save()
+    return {"responses": responses, "provider_calls": len(responses) - skipped,
+            "reused_responses": skipped, "production_writes": False, "plan_hash": plan_hash}
 
 
 def make_request(record: Mapping[str, Any], requested_fields: tuple[str, ...], registry: LocalizationRegistry | None = None, *, extra_terms: tuple[Mapping[str, Any], ...] = ()) -> TranslationRequest:

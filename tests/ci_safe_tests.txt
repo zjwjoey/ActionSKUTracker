@@ -97,3 +97,5 @@ tests/workflow_v2/test_runtime_closure.py
 tests/workflow_v2/test_review_approval.py
 tests/test_repository_closure.py
 tests/test_historical_real_spec_regression.py
+tests/test_translation_candidate_resume.py
+tests/test_historical_real_quality_regression.py

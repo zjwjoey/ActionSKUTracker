@@ -66,7 +66,10 @@ def parse_structured_details(text: str) -> tuple[StructuredDetail, ...]:
                 return tuple(result)
         except (ValueError, TypeError, SyntaxError):
             pass
-    parts = [item.strip() for item in re.split(r"[;\n]+", raw) if item.strip()]
+    # Chinese compatibility exports use the full-width semicolon. Treat it
+    # as the same pair delimiter; otherwise all following boolean fields
+    # become one value and are incorrectly reported as missing.
+    parts = [item.strip() for item in re.split(r"[;；\n]+", raw) if item.strip()]
     result: list[StructuredDetail] = []
     for part in parts:
         match = re.match(r"^\s*([^:：]+?)\s*[:：]{1,2}\s*(.*?)\s*$", part)
