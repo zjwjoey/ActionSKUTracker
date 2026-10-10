@@ -116,3 +116,4 @@ tests/test_historical_quadruple_outlet.py
 tests/test_historical_existing_description_aliases.py
 tests/test_historical_description17_guard_cases.py
 tests/test_finite_batch_adapter_identity.py
+tests/test_historical_neon_description.py

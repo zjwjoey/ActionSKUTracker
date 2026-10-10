@@ -456,6 +456,10 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         if (re.search(r"\bbarra\s+de\s+pantalla\b", source_text, re.I)
                 and re.search(r"\bopciones\s+de\s+iluminación\b", source_text, re.I)):
             aliases.extend(("屏幕挂灯", "屏幕灯"))
+        if re.search(r"\blámpara\s+de\s+neón\b", source_text, re.I):
+            aliases.append("霓虹灯")
+        if re.search(r"\blámpara\s+de\s+pared\s+(?:solar\s+)?de\s+neón\b", source_text, re.I):
+            aliases.append("霓虹壁灯")
     # Capsules are not always medicines. Recognize detergent capsules only
     # from a complete phrase in this field; other fields cannot supply it.
     detergent_capsules = bool(re.search(
