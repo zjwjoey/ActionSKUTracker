@@ -1,0 +1,137 @@
+[
+  {
+    "sku": "3204904",
+    "source": "{'Número del artículo': '3204904', 'Aclarado': 'Sí', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '600 g', 'Efecto exfoliante': 'Sí', 'Método de extracción': 'Aclarado', 'Sin perfume': 'No', 'Tipo de dispensador': 'Bote', 'Tipo de peeling / mascarilla': 'Peeling/exfoliación'}",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "{'Número del artículo': '3204904', 'Aclarado': 'Sí', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '600 g', 'Efecto exfoliante': 'Sí', 'Método de extracción': 'Aclarado', 'Sin perfume': 'No', 'Tipo de dispensador': 'Bote', 'Tipo de peeling / mascarilla': 'Peeling/exfoliación'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3204904",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "5a00bc746ba6fcf91d2861e000b23d1ab3e184f74fa6af655cdae15f246cd069"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "{'Número del artículo': '3204904', 'Aclarado': 'Sí', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '600 g', 'Efecto exfoliante': 'Sí', 'Método de extracción': 'Aclarado', 'Sin perfume': 'No', 'Tipo de dispensador': 'Bote', 'Tipo de peeling / mascarilla': 'Peeling/exfoliación'}",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3204904",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "5a00bc746ba6fcf91d2861e000b23d1ab3e184f74fa6af655cdae15f246cd069"
+        }
+      ]
+    },
+    "context": {
+      "name": "Exfoliante con azúcar Cherry Crush",
+      "cat1": "Cuidado personal",
+      "cat2": "Cuidado facial",
+      "spec": "600 gramos",
+      "description": "Exfoliante: elimina las células muertas de la piel\nEl azúcar hidrata y ayuda a retener la humedad de la piel\nProducto vegano\nEste exfoliante corporal de azúcar puede mejorar la textura de la piel y promover un cutis saludable y radiante, al tiempo que la deja suave y flexible.",
+      "details": "{'Número del artículo': '3204904', 'Aclarado': 'Sí', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '600 g', 'Efecto exfoliante': 'Sí', 'Método de extracción': 'Aclarado', 'Sin perfume': 'No', 'Tipo de dispensador': 'Bote', 'Tipo de peeling / mascarilla': 'Peeling/exfoliación'}"
+    },
+    "formal_approval": false,
+    "candidate": "{'商品编号': '3204904', '是否需冲洗': '是', '适用身体部位': '全身', '净含量': '600克', '去角质效果': '是', '提取方式': '冲洗', '无香型': '否', ' dispenser类型': '罐装', '磨砂/面膜类型': '磨砂/去角质'}",
+    "target": "{'商品编号': '3204904', '是否需冲洗': '是', '适用身体部位': '全身', '净含量': '600克', '去角质效果': '是', '去除方式': '冲洗', '无香型': '否', '包装/分配器类型': '罐装', '面部去角质产品类型': '磨砂/去角质'}",
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "DETAIL_BOOLEAN_FIELD_MISSING",
+          "severity": "BLOCKER",
+          "field_name": "details",
+          "evidence": {
+            "source_attribute": "\\bperfume\\b"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "{'Número del artículo': '3204904', 'Aclarado': 'Sí', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '600 g', 'Efecto exfoliante': 'Sí', 'Método de extracción': 'Aclarado', 'Sin perfume': 'No', 'Tipo de dispensador': 'Bote', 'Tipo de peeling / mascarilla': 'Peeling/exfoliación'}",
+          "target": "{'商品编号': '3204904', '是否需冲洗': '是', '适用身体部位': '全身', '净含量': '600克', '去角质效果': '是', '去除方式': '冲洗', '无香型': '否', '包装/分配器类型': '罐装', '面部去角质产品类型': '磨砂/去角质'}",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "expected_behavior": "FRAGRANCE_POLARITY_PRESERVED"
+  },
+  {
+    "sku": "3202953",
+    "source": "{'Número del artículo': '3202953', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '500 ml', 'Contiene partículas exfoliantes': 'No', 'Efecto limpiador': 'Sí', 'Olor': 'Flores', 'Sin jabón': 'No', 'Sin perfume': 'No', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella'}",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "{'Número del artículo': '3202953', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '500 ml', 'Contiene partículas exfoliantes': 'No', 'Efecto limpiador': 'Sí', 'Olor': 'Flores', 'Sin jabón': 'No', 'Sin perfume': 'No', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3202953",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "0b81d7d09a945f3f3a8722290af146e5fa3432f0b372ad0b35e387672f5b4aa8"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "{'Número del artículo': '3202953', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '500 ml', 'Contiene partículas exfoliantes': 'No', 'Efecto limpiador': 'Sí', 'Olor': 'Flores', 'Sin jabón': 'No', 'Sin perfume': 'No', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella'}",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3202953",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "0b81d7d09a945f3f3a8722290af146e5fa3432f0b372ad0b35e387672f5b4aa8"
+        }
+      ]
+    },
+    "context": {
+      "name": "Espuma de baño",
+      "cat1": "Cuidado personal",
+      "cat2": "Cuidado corporal",
+      "spec": "500 ml | diferentes variantes",
+      "description": "En frasco elegante\nEsta espuma de baño te da una agradable sensación de frescor.",
+      "details": "{'Número del artículo': '3202953', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '500 ml', 'Contiene partículas exfoliantes': 'No', 'Efecto limpiador': 'Sí', 'Olor': 'Flores', 'Sin jabón': 'No', 'Sin perfume': 'No', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella'}"
+    },
+    "formal_approval": false,
+    "candidate": "{'商品编号': '3202953', '适用身体部位': '全身', '容量': '500毫升', '是否含去角质颗粒': '否', '清洁效果': '有', '香味': '花香', '是否含皂基': '否', '是否无香': '否', '成分': '有效', '分配器类型': '瓶装'}",
+    "expected_behavior": "SOURCE_REVIEW_REQUIRED",
+    "source_review_reason": "Sustancia:Válido异常来源，且候选将Sin jabón:No错误反转为不含皂基；不能猜来源物态，整个详情待来源复核。"
+  },
+  {
+    "sku": "3207076",
+    "source": "{'Número del artículo': '3207076', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '1 litro', 'Género': 'Hombre', 'Sin jabón': 'No', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella', 'Uso previsto': 'Ducha'}",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "{'Número del artículo': '3207076', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '1 litro', 'Género': 'Hombre', 'Sin jabón': 'No', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella', 'Uso previsto': 'Ducha'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3207076",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "fe0fac26e456faa9b620c1263ab796ae4109fb9640819a7ece5ef6fe6b834b43"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "{'Número del artículo': '3207076', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '1 litro', 'Género': 'Hombre', 'Sin jabón': 'No', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella', 'Uso previsto': 'Ducha'}",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3207076",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "fe0fac26e456faa9b620c1263ab796ae4109fb9640819a7ece5ef6fe6b834b43"
+        }
+      ]
+    },
+    "context": {
+      "name": "Gel de ducha Neón",
+      "cat1": "Cuidado personal",
+      "cat2": "Cuidado corporal",
+      "spec": "1 litro | diferentes variantes",
+      "description": "Agradable y refrescante gel de ducha\n3 en 1: para cuerpo, cabello y cara\nEn una bonita botella, ideal como regalo",
+      "details": "{'Número del artículo': '3207076', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '1 litro', 'Género': 'Hombre', 'Sin jabón': 'No', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella', 'Uso previsto': 'Ducha'}"
+    },
+    "formal_approval": false,
+    "candidate": "{'商品编号': '3207076', '适用身体部位': '全身', '容量': '1升', '适用性别': '男士', '是否含皂': '否', '有效成分': '有效', '分配器类型': '瓶装', '预期用途': '淋浴'}",
+    "expected_behavior": "SOURCE_REVIEW_REQUIRED",
+    "source_review_reason": "Sustancia:Válido异常来源；Sin jabón:No被候选反转为是否含皂否，并新增有效成分概念；不猜来源物态。"
+  }
+]

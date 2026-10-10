@@ -270,6 +270,26 @@ Guard/canonical QA, one eyelash-unit ambiguity requiring Owner, and two
 remaining Guard blockers (Play-Doh series residual and candy gomas noun).
 These blocker candidates are not approved or applied by this code checkpoint.
 
+### 2026-10-10 details11 boolean labels and source anomalies
+
+All 100 details11 candidates were independently read with complete archived
+own-field source and SKU context: 47 KEEP, 34 ordinary corrections, 19 Owner
+holds. Shared QA initially passed 80; one correct Sin perfume:No -> 无香型:否
+was falsely marked as missing. Fragrance label recognition now includes
+香型/香味/无香/有香 while retaining boolean polarity, cardinality and duplicate
+checks. Soap attributes jabón/jabon now use the same source-negative truth
+comparison: Sin jabón:No must never become 是否含皂:否.
+
+Three real source fixtures retain archival hashes and full context. Invalid
+Sustancia:Válido cases contain expected SOURCE_REVIEW_REQUIRED behavior, not
+guessed gold translations. Sixteen tests cover both booleans, alternative
+labels, accents, duplicate attributes, missing fields, cross-field isolation
+and the existing no-ironing rule. Other ordinary corrections preserve color
+gris topo as 灰褐色, distinguish sheets from pages, remove an imported cable
+unit, and retain explicit quantities, allergen facts and source-only materials.
+Nineteen source-conflict or high-risk cases remain held; QA PASS alone never
+confers semantic approval or establishes Apply completion.
+
 ## 2026-10-10: description13 source context and dimensional units
 
 Six real SKU cases retain full source/context, archival hashes and failed
