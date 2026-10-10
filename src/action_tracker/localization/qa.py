@@ -532,6 +532,12 @@ def _numbers(value: str) -> Counter[str]:
         text,
     )
     numbers = Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
+    # The historical outlet-strip title explicitly names four sockets. Count
+    # only the complete own-field noun phrase, not a generic multiplier,
+    # brand fragment or a quantity borrowed from another field.
+    quadruple_outlets = re.findall(r"\bregleta\s+de\s+enchufes\s+cu[áa]druple\b", text, re.I)
+    if quadruple_outlets:
+        numbers["4"] += len(quadruple_outlets)
     # Spelled-out quantities are still own-field source facts. Restrict this
     # to complete cardinal + counted-noun phrases, not brand/game names or
     # pronouns. Unsupported compound numbers must not become their last digit.
