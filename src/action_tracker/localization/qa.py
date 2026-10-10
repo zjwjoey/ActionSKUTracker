@@ -437,6 +437,17 @@ def _has_casefold_token(text: str, token: str) -> bool:
 
 
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
+    # An appearance simile is not a claim of actual wood composition. Only
+    # consume it when no separate wood occurrence remains in this field.
+    # Bamboo fibre likewise names a textile material, not a solid bamboo item.
+    if source_term.casefold() == "madera":
+        remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
+        if remaining != source_text and not re.search(r"\bmadera\b", remaining, re.I):
+            return ("木纹", "木质外观", "木材外观")
+    if source_term.casefold() == "bambú":
+        remaining = re.sub(r"\bfibras?\s+de\s+bambú\b", " ", source_text, flags=re.I)
+        if remaining != source_text and not re.search(r"\bbambú\b", remaining, re.I):
+            return ("竹纤维",)
     aliases = list(_SEMANTIC_TARGET_ALIASES.get(source_term.casefold(), (canonical,)))
     if re.fullmatch(r"\d+\s+lavados", source_term, re.I):
         aliases.extend(("洗衣", "清洗", "水洗"))
