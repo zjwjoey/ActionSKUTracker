@@ -290,6 +290,18 @@ unit, and retain explicit quantities, allergen facts and source-only materials.
 Nineteen source-conflict or high-risk cases remain held; QA PASS alone never
 confers semantic approval or establishes Apply completion.
 
+### 2026-10-10 details12 sugar/lactose isolation
+
+The independently reviewed M&M's Mini's details (3211791) explicitly contain
+both Sin azúcar:No and Sin lactosa:No. The shared boolean checker previously
+counted 无乳糖 twice, once as generic sugar and again as lactose. Generic sugar
+recognition now excludes the 乳糖 substring, while the separate lactose check
+still requires its field and verifies both negative values. A real archived
+fixture and six tests cover the correct candidate, each flipped/missing fact,
+and lactose-only text masquerading as the generic sugar field. No quantity,
+allergen or own-field source requirement is waived. Source-conflict cases in
+the same batch remain held independently of Guard results.
+
 ## 2026-10-10: description13 source context and dimensional units
 
 Six real SKU cases retain full source/context, archival hashes and failed

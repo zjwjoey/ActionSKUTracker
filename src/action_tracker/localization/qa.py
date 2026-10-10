@@ -693,7 +693,7 @@ def _detail_boolean_findings(source_text, target):
     attributes = ((r"\balcohol\b", r"酒精"), (r"\bsilicona\b", r"硅(?:酮|胶)?"),
         (r"\bgluten\b", r"麸质"), (r"\blactosa\b", r"乳糖"),
         (r"\bperfume\b", r"香(?:料|精|型|味)|(?:无|有)香"),
-        (r"\bjab[oó]n\b", r"皂"), (r"\baz[uú]car(?:es)?\b", r"糖"))
+        (r"\bjab[oó]n\b", r"皂"), (r"\baz[uú]car(?:es)?\b", r"(?<!乳)糖"))
     bools = {"si": True, "sí": True, "yes": True, "true": True, "是": True,
              "no": False, "false": False, "否": False}
     source_pairs = parse_structured_details(source_text)
