@@ -58,5 +58,50 @@
       "field_hash": "b7da6901e5c4818d1b6c4785389633b3d31d845a4541985f667d878f1b03b469"
     },
     "expected_behavior": "UNAPPROVED_CATEGORY_BLOCKED"
+  },
+  {
+    "sku": "3016045",
+    "field": "name",
+    "source": "Tarro con tapa madera",
+    "target": "木盖罐子",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Tarro con tapa madera",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "5f196a3d6e12db156b232ec186f095130fdd400b8c1a0593ac45bfa8f917649a"
+    },
+    "expected_behavior": "WOOD_COMPOUND_EQUIVALENCE_KEEP_FACT"
+  },
+  {
+    "sku": "3203195",
+    "field": "name",
+    "source": "Virutas de madera decorativas",
+    "target": "装饰木屑",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Virutas de madera decorativas",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "70e81c70545150602b827a2853af45db519218d4b1c17df3b893aa86471b3675"
+    },
+    "expected_behavior": "WOOD_COMPOUND_EQUIVALENCE_KEEP_FACT"
+  },
+  {
+    "sku": "3204372",
+    "field": "name",
+    "source": "Caja de madera de mango",
+    "target": "芒果木盒",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Caja de madera de mango",
+      "reference": "F:\\按日期整理\\action表格\\20260713\\20260713Action商品全量_西语版_不带图.xlsx::商品全量",
+      "observed_at": "2026-07-13",
+      "file_hash": "9eda0b3143e661a7e080ad46b71fd6b2649bc6dfd2ffa283d827ba1d9a459df2",
+      "field_hash": "60e14d1be6a4955d221de81cf1181e6a5388547a5ea1e4499502e61883615710"
+    },
+    "expected_behavior": "WOOD_COMPOUND_EQUIVALENCE_KEEP_FACT"
   }
 ]

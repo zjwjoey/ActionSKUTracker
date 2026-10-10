@@ -5,6 +5,8 @@ from pathlib import Path
 from action_tracker.localization.contracts import SourceFacts
 from action_tracker.localization.qa import guard_translation
 from action_tracker.localization.normalization.structured_details import parse_structured_details
+from action_tracker.localization.contracts import SemanticFact
+import pytest
 
 CASES = json.loads((Path(__file__).parent / "fixtures" /
                     "historical_quality_review_20261010.json").read_text(encoding="utf8"))
@@ -65,3 +67,14 @@ def test_all_real_cases_have_immutable_source_breadcrumbs():
         assert len(row["source_evidence"]["file_hash"]) == 64
         assert len(row["source_evidence"]["field_hash"]) == 64
         assert row["source_evidence"]["reference"]
+
+
+@pytest.mark.parametrize("sku,target", [("3016045", "木盖罐子"), ("3203195", "装饰木屑"),
+                                        ("3204372", "芒果木盒")])
+def test_real_wood_compounds_preserve_material_without_allowing_woodgrain(sku, target):
+    row = case(sku)
+    source = SourceFacts.from_record({"sku": sku, "name_es": row["source"]})
+    fact = SemanticFact("MATERIAL", "madera", "木质", "木质", "name_es")
+    assert guard_translation(source, {"name": target}, ("name",), semantic_facts=(fact,))["status"] == "PASS"
+    result = guard_translation(source, {"name": "木纹塑料制品"}, ("name",), semantic_facts=(fact,))
+    assert any(f["rule_id"] == "SEMANTIC_FACT_DROPPED" for f in result["findings"])
