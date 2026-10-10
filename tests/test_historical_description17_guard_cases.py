@@ -23,7 +23,7 @@ def test_real_candidate_guard_with_own_source(row):
 @pytest.mark.parametrize('source,target',[
     ('Goma de borrar','橡皮'),
     ('Barra de pantalla con opciones de iluminación','屏幕挂灯'),
-    ('Mascarilla que se coloca como un paño sobre la cara','植物纤维面膜布'),
+    ('Mascarilla que se coloca como un paño sobre la cara','片状面膜布'),
     ('Tiene cuatro posiciones para controlar el caudal de agua','有4个档位控制水流'),
 ])
 def test_complete_own_field_phrase(source,target):

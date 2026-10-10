@@ -15,6 +15,12 @@ from urllib.parse import urlparse
 from .base import ProviderError, TranslationRequest, TranslationResponse
 from ..protection.tokens import ProtectedTokenError, protect_text, restore_text
 
+_ECOMMERCE_DOMAIN_PROMPT = (
+    "The content is from an e-commerce retail product catalog. "
+    "Translate product names, specifications and descriptions accurately and concisely."
+)
+_OTHER_DOMAIN_PROMPT = "The content is from the {domain} domain. Translate the supplied text accurately and concisely."
+
 
 def _canonical(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
@@ -102,6 +108,20 @@ class QwenMTProvider:
     _last_request_started_at: float | None = field(default=None, init=False, repr=False)
     _optional_options_disabled: bool = field(default=False, init=False, repr=False)
 
+    def finite_batch_identity(self) -> dict[str, Any]:
+        """Bind semantic adapter settings without storing credentials.
+
+        Retry pacing and transient optional-option fallback are execution
+        state, not a new declared translation configuration.
+        """
+        return {
+            "contract": "QWEN_MT_FINITE_ADAPTER_V1",
+            "endpoint_sha256": hashlib.sha256(self.base_url.strip().rstrip('/').encode('utf-8')).hexdigest(),
+            "include_optional_options": self.include_optional_options,
+            "domain_prompt_sha256": hashlib.sha256(_canonical([
+                _ECOMMERCE_DOMAIN_PROMPT, _OTHER_DOMAIN_PROMPT]).encode('utf-8')).hexdigest(),
+        }
+
     def _wait_for_request_slot(self) -> None:
         """Smooth request starts across *all* translate() calls.
 
@@ -143,12 +163,9 @@ class QwenMTProvider:
             return options
 
         domain = str(request.domain or "e-commerce").strip() or "e-commerce"
-        domain_prompt = (
-            "The content is from an e-commerce retail product catalog. "
-            "Translate product names, specifications and descriptions accurately and concisely."
+        domain_prompt = (_ECOMMERCE_DOMAIN_PROMPT
             if domain.casefold() in {"e-commerce", "ecommerce", "retail"}
-            else f"The content is from the {domain} domain. Translate the supplied text accurately and concisely."
-        )
+            else _OTHER_DOMAIN_PROMPT.format(domain=domain))
         options["domains"] = domain_prompt
         if request.terms:
             # The dedicated MT endpoint only accepts source/target pairs in

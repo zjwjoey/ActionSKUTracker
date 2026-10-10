@@ -42,8 +42,12 @@ def translate_pending_requests(requests: tuple[TranslationRequest, ...], provide
     after completed responses have been atomically saved. Callers must retain
     source evidence and run the normal semantic review/QA/Apply chain.
     """
-    plan = {"provider": provider.provider, "model": provider.model,
-            "requests": [asdict(request) for request in requests]}
+    legacy_plan = {"provider": provider.provider, "model": provider.model,
+                   "requests": [asdict(request) for request in requests]}
+    identity = getattr(provider, "finite_batch_identity", None)
+    plan = {**legacy_plan, "checkpoint_contract": "FINITE_PROVIDER_BATCH_V2",
+            "adapter_identity": identity() if callable(identity) else {
+                "contract": "PROVIDER_MODEL_IDENTITY_V1"}}
     plan_hash = hashlib.sha256(json.dumps(plan, ensure_ascii=False, sort_keys=True,
                                          separators=(",", ":")).encode("utf-8")).hexdigest()
     identities = [(request.sku, request.field_name) for request in requests]
@@ -53,9 +57,16 @@ def translate_pending_requests(requests: tuple[TranslationRequest, ...], provide
         raise ValueError("CANDIDATE_BATCH_SINGLE_TRUSTED_SOURCE_REQUIRED")
     if checkpoint.exists():
         state = json.loads(checkpoint.read_text(encoding="utf-8"))
-        if state.get("plan_hash") != plan_hash:
+        legacy = "checkpoint_contract" not in (state.get("plan") or {})
+        expected_plan = legacy_plan if legacy else plan
+        expected_hash = hashlib.sha256(json.dumps(expected_plan, ensure_ascii=False, sort_keys=True,
+                                                 separators=(",", ":")).encode("utf-8")).hexdigest()
+        if state.get("plan_hash") != expected_hash or state.get("plan") != json.loads(json.dumps(expected_plan)):
             raise ValueError("CANDIDATE_BATCH_PLAN_CHANGED")
+        if legacy and len(state.get("responses", [])) != len(requests):
+            raise ValueError("CANDIDATE_BATCH_LEGACY_CONFIG_REVIEW_REQUIRED")
     else:
+        legacy = False
         state = {"plan_hash": plan_hash, "plan": plan, "responses": []}
     responses = state["responses"]
     if len(responses) > len(requests):
@@ -67,6 +78,15 @@ def translate_pending_requests(requests: tuple[TranslationRequest, ...], provide
             raise ValueError("CANDIDATE_BATCH_INVALID_CHECKPOINT")
         if row.get("decision") != "PENDING_SEMANTIC_REVIEW" or row.get("semantic_status") != "PENDING":
             raise ValueError("CANDIDATE_BATCH_INVALID_CHECKPOINT")
+        if (row.get("source") != request.source_text or not str(row.get("after") or "").strip()
+                or row.get("provider") != provider.provider or row.get("model") != provider.model):
+            raise ValueError("CANDIDATE_BATCH_INVALID_CHECKPOINT")
+    if legacy:
+        # A completed old plan remains evidence, not proof that its adapter
+        # configuration matches today. Never rewrite it or make new calls.
+        return {"responses": responses, "provider_calls": 0, "reused_responses": len(responses),
+                "production_writes": False, "plan_hash": state["plan_hash"],
+                "cache_configuration_status": "LEGACY_CONFIGURATION_UNVERIFIED"}
     def save():
         checkpoint.parent.mkdir(parents=True, exist_ok=True)
         temporary = checkpoint.with_suffix(checkpoint.suffix + ".writing")
@@ -87,7 +107,8 @@ def translate_pending_requests(requests: tuple[TranslationRequest, ...], provide
                           "response_hash": response.response_hash})
         save()
     return {"responses": responses, "provider_calls": len(responses) - skipped,
-            "reused_responses": skipped, "production_writes": False, "plan_hash": plan_hash}
+            "reused_responses": skipped, "production_writes": False, "plan_hash": plan_hash,
+            "cache_configuration_status": "BOUND_ADAPTER_IDENTITY" if callable(identity) else "PROVIDER_MODEL_ONLY"}
 
 
 def make_request(record: Mapping[str, Any], requested_fields: tuple[str, ...], registry: LocalizationRegistry | None = None, *, extra_terms: tuple[Mapping[str, Any], ...] = ()) -> TranslationRequest:
