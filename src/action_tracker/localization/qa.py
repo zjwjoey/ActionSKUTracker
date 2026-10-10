@@ -706,6 +706,29 @@ def _detail_source_value_findings(source_text, target):
         and p.value.strip().casefold() in {"válido", "valido"}]
 
 
+def _detail_charging_speed_findings(source_text, target):
+    """Check a selected speed, not the alternatives in its attribute label."""
+    source_items = [p for p in parse_structured_details(source_text)
+        if re.fullmatch(r"cargador\s+r[aá]pido\s*/\s*lento", p.key.strip(), re.I)
+        and p.value.strip().casefold() in {"rápido", "rapido", "lento"}]
+    target_items = [p for p in parse_structured_details(target)
+        if "充电" in p.key or "充电器" in p.key or re.search(r"快充|慢充", p.key)]
+    findings = []
+    if source_items and len(source_items) != len(target_items):
+        return [QAFinding("DETAIL_CHARGING_SPEED_MISSING", "BLOCKER", "details", {},
+            source=source_text, target=target, message="selected charging speed is missing", blocking=True)]
+    for src, dst in zip(source_items, target_items):
+        expected_fast = src.value.strip().casefold() in {"rápido", "rapido"}
+        fast = bool(re.fullmatch(r"快速(?:充电(?:器)?)?|快充(?:充电器)?", dst.value.strip()))
+        slow = bool(re.fullmatch(r"慢速(?:充电(?:器)?)?|慢充(?:充电器)?|缓慢(?:充电)?", dst.value.strip()))
+        if fast != expected_fast or slow == expected_fast:
+            findings.append(QAFinding("DETAIL_CHARGING_SPEED_CHANGED", "BLOCKER", "details",
+                {"source_key": src.key, "source_value": src.value,
+                 "target_key": dst.key, "target_value": dst.value},
+                source=source_text, target=target, message="selected charging speed changed or ambiguous", blocking=True))
+    return findings
+
+
 def _detail_boolean_findings(source_text, target):
     """Compare presence truth, including explicit negative source labels."""
     attributes = ((r"\balcohol\b", r"酒精"), (r"\bsilicona\b", r"硅(?:酮|胶)?"),
@@ -768,6 +791,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             continue
         if field_name == "details":
             findings.extend(_detail_source_value_findings(source_text, target))
+            findings.extend(_detail_charging_speed_findings(source_text, target))
             findings.extend(_detail_boolean_findings(source_text, target))
             findings.extend(_detail_care_findings(source_text, target))
             if (re.search(r"\bpincel(?:es)?\b", str(getattr(source, "name_es", "") or ""), re.I)
