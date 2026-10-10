@@ -28,6 +28,7 @@ _UNIT_ALIASES = {
 
 
 def _units(value: str) -> set[str]:
+    value = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)([23])(?![A-Za-z0-9])", lambda m: m[1] + m[2] + {"2": "²", "3": "³"}[m[3]], value, flags=re.I)
     units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(value)}
     units.update(_UNIT_ALIASES.get(unit, unit) for unit in _CHINESE_UNIT_RE.findall(value))
     return units
@@ -216,10 +217,15 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
                 allowed.add("www")
     # Multiword commercial spans must occur complete in this same field.
     # Interior prose words (of/the/mini) are not general residual exceptions.
-    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini", "Play-Doh Create & Celebrate"):
+    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini", "Play-Doh Create & Celebrate", "Max & More", "Dr. Candy Lolli Popperz"):
         pattern = rf"(?<![A-Za-z0-9]){re.escape(phrase)}(?![A-Za-z0-9])"
         if re.search(pattern, source, re.I) and re.search(pattern, rendered, re.I):
             allowed.update(re.findall(r"[A-Za-z]+", phrase))
+    # Pro is a model suffix only in the complete same-field iPhone model
+    # expression. Ordinary Spanish "pro" remains subject to residual QA.
+    for model in re.findall(r"\biPhone\s+[A-Za-z0-9/]+\s+pro\b", source, re.I):
+        if re.search(rf"(?<![A-Za-z0-9]){re.escape(model)}(?![A-Za-z0-9])", rendered, re.I):
+            allowed.add("pro")
     return allowed
 
 
@@ -461,6 +467,12 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             aliases.extend(("灯光效果", "光效"))
         if re.search(r"\biluminación\s+ambiental\b", source_text, re.I):
             aliases.extend(("氛围照明", "环境照明"))
+        if re.search(r"\biluminación\s+de\s+ambiente\b", source_text, re.I):
+            aliases.extend(("氛围照明", "环境照明"))
+        if re.search(r"\biluminación\s+multicolor\s+RGB\b", source_text, re.I):
+            aliases.extend(("RGB灯光", "RGB 灯光", "RGB照明", "RGB 照明"))
+        if re.search(r"\biluminación\s+led\s+destelleante\b", source_text, re.I):
+            aliases.extend(("LED灯光", "LED 灯光"))
         if re.search(r"\biluminación\s+led\b", source_text, re.I):
             aliases.extend(("LED照明", "LED灯光"))
         if re.search(r"\biluminación\s+(?:de|con)\s+(?:hilo|cable)\s+de\s+cobre\b", source_text, re.I):
@@ -548,6 +560,12 @@ def _canonical_numeric_token(token: str) -> str:
 
 def _numbers(value: str) -> Counter[str]:
     text = str(value or "")
+    # ASCII area exponents are unit syntax, never a second count. Keep
+    # unrelated model digits and dimensions intact.
+    text = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)2(?![A-Za-z0-9])", r"\1\2²", text, flags=re.I)
+    # Two comma-separated integer ranges unambiguously form a list. A single
+    # decimal range such as 28-29,5 must retain its decimal separator.
+    text = re.sub(r"(?<![\d.,])(\d{1,2}-\d{1,2})(?:,\s*)(\d{1,2}-\d{1,2})(?![\d.,])", r"\1 \2", text)
     # Action source occasionally uses an apostrophe as a decimal separator
     # (``9'5x13 cm``).  Normalize only the digit-to-digit form; apostrophes in
     # ordinary text remain untouched.

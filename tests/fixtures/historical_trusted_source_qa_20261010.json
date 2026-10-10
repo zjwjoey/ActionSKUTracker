@@ -1,0 +1,466 @@
+[
+  {
+    "sku": "2542126",
+    "field": "description",
+    "source": "Se puede escribir con tiza\nFácil de limpiar\nSuficiente para un área de 2,5 m2\nEsta pintura especial convierte cualquier pared o puerta en una pizarra en la que escribir.",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Se puede escribir con tiza\nFácil de limpiar\nSuficiente para un área de 2,5 m2\nEsta pintura especial convierte cualquier pared o puerta en una pizarra en la que escribir.",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::2542126",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "708f9efb1435bad2393416dc0feab2f5d18352ad3460323ab6643b5a1fa5f64d"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Se puede escribir con tiza\nFácil de limpiar\nSuficiente para un área de 2,5 m2\nEsta pintura especial convierte cualquier pared o puerta en una pizarra en la que escribir.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::2542126",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "708f9efb1435bad2393416dc0feab2f5d18352ad3460323ab6643b5a1fa5f64d"
+        }
+      ]
+    },
+    "reviewed_value": "可用粉笔书写，容易清洁，可覆盖 2.5 平方米。使用这款专用涂料，可把墙面或门变成可书写的黑板。",
+    "context": {
+      "name_es": "Pintura de pizarra Spectrum negro",
+      "cat1_es": "Bricolaje",
+      "cat2_es": null,
+      "spec_es": "250 ml",
+      "unit_price_es": null,
+      "desc_es": "Se puede escribir con tiza\nFácil de limpiar\nSuficiente para un área de 2,5 m2\nEsta pintura especial convierte cualquier pared o puerta en una pizarra en la que escribir.",
+      "details_es": "{'Número del artículo': '2542126', 'Color': 'Negro', 'Material base': 'A base de agua', 'A base de agua': 'Sí', 'Acabado': 'Mate', 'Consistencia': 'Líquido', 'Contenido': '250 ml', 'Destinado a': 'Interior', 'Tipo de pintura': 'Capa superior'}"
+    }
+  },
+  {
+    "sku": "2582174",
+    "field": "spec",
+    "source": "Apto para iPhone X/XS/11 pro",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Apto para iPhone X/XS/11 pro",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "e30a7347a882a7f1a04e9f18595b843fe7ca2d82a07ae8a29ff6a16b24ac748c"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Apto para iPhone X/XS/11 pro",
+          "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+          "observed_at": "2026-01-09",
+          "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+          "field_hash": "e30a7347a882a7f1a04e9f18595b843fe7ca2d82a07ae8a29ff6a16b24ac748c"
+        },
+        {
+          "rank": 3,
+          "text": "Apto para iPhone X/XS/11 pro",
+          "reference": "F:\\ActionSKUTracker\\runtime\\master\\Action_Master.xlsx::08_LONG_TERM_MASTER::SKU=2582174",
+          "observed_at": "2026-04-05",
+          "file_hash": "1ac7e016748dbb6cee87daf08d67b2e2ee3c07e1290251c299b1ecf741a6401c",
+          "field_hash": "e30a7347a882a7f1a04e9f18595b843fe7ca2d82a07ae8a29ff6a16b24ac748c"
+        },
+        {
+          "rank": 2,
+          "text": "Apto para iPhone X/XS/11 pro",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::2582174",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "e30a7347a882a7f1a04e9f18595b843fe7ca2d82a07ae8a29ff6a16b24ac748c"
+        }
+      ]
+    },
+    "reviewed_value": "适用于 iPhone X/XS/11 pro",
+    "context": {
+      "name_es": "Protector de pantalla Lab31",
+      "cat1_es": "Multimedia",
+      "cat2_es": "Cascos de teléfono",
+      "spec_es": "Apto para iPhone X/XS/11 pro",
+      "unit_price_es": null,
+      "desc_es": "Compatible con iPhone X/XS/11 pro\nElaborado de vidrio templado 9H\nCon filtro de luz azul y revestimiento antibacteriano\nProtege tu teléfono móvil Apple de arañazos y golpes con este protector de pantalla de vidrio. Apto para diferentes modelos de iPhone.",
+      "details_es": "{'Número del artículo': '2582174', 'Color': 'Transparente', 'Material': 'Vidrio', 'Apto para tipo de smartphone': 'Apple'}"
+    }
+  },
+  {
+    "sku": "3008153",
+    "field": "details",
+    "source": "Color: Diseño; Material: Plástico; Calzado abierto o cerrado: Dedos de los pies abiertos/parte trasera abierta; Género: Unisex; Material suela: Goma; Talla de calzado: 28-29,30-31; Tipo de material superior: Goma / plástico; Número del artículo: 3008153",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Color: Diseño; Material: Plástico; Calzado abierto o cerrado: Dedos de los pies abiertos/parte trasera abierta; Género: Unisex; Material suela: Goma; Talla de calzado: 28-29,30-31; Tipo de material superior: Goma / plástico; Número del artículo: 3008153",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+        "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+        "field_hash": "fe87b25e41ac67038254b9acf792ef265148b24588b868975a47799f5816c84f"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Color: Diseño; Material: Plástico; Calzado abierto o cerrado: Dedos de los pies abiertos/parte trasera abierta; Género: Unisex; Material suela: Goma; Talla de calzado: 28-29,30-31; Tipo de material superior: Goma / plástico; Número del artículo: 3008153",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "fe87b25e41ac67038254b9acf792ef265148b24588b868975a47799f5816c84f"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Diseño; Material: Plástico; Calzado abierto o cerrado: Dedos de los pies abiertos/parte trasera abierta; Género: Unisex; Material suela: Goma; Talla de calzado: 28-29,30-31; Tipo de material superior: Goma / plástico; Número del artículo: 3008153",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "fe87b25e41ac67038254b9acf792ef265148b24588b868975a47799f5816c84f"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Diseño; Material: Plástico; Calzado abierto o cerrado: Dedos de los pies abiertos/parte trasera abierta; Género: Unisex; Material suela: Goma; Talla de calzado: 28-29,30-31; Tipo de material superior: Goma / plástico; Número del artículo: 3008153",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "fe87b25e41ac67038254b9acf792ef265148b24588b868975a47799f5816c84f"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Diseño; Material: Plástico; Calzado abierto o cerrado: Dedos de los pies abiertos/parte trasera abierta; Género: Unisex; Material suela: Goma; Talla de calzado: 28-29,30-31; Tipo de material superior: Goma / plástico; Número del artículo: 3008153",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "fe87b25e41ac67038254b9acf792ef265148b24588b868975a47799f5816c84f"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Diseño; Material: Plástico; Calzado abierto o cerrado: Dedos de los pies abiertos/parte trasera abierta; Género: Unisex; Material suela: Goma; Talla de calzado: 28-29,30-31; Tipo de material superior: Goma / plástico; Número del artículo: 3008153",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "fe87b25e41ac67038254b9acf792ef265148b24588b868975a47799f5816c84f"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Diseño; Material: Plástico; Calzado abierto o cerrado: Dedos de los pies abiertos/parte trasera abierta; Género: Unisex; Material suela: Goma; Talla de calzado: 28-29,30-31; Tipo de material superior: Goma / plástico; Número del artículo: 3008153",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "fe87b25e41ac67038254b9acf792ef265148b24588b868975a47799f5816c84f"
+        }
+      ]
+    },
+    "reviewed_value": "颜色: 图案\n材质: 塑料\n露趾或闭趾: 露趾/露后跟\n适用性别: 中性\n鞋底材质: 橡胶\n鞋码: 28-29, 30-31\n表层材质类型: 橡胶/塑料\n商品编号: 3008153",
+    "context": {
+      "name_es": "Chanclas de piscina",
+      "cat1_es": "Moda",
+      "cat2_es": "Zapatos",
+      "spec_es": "Números 28-33 | diferentes variantes",
+      "unit_price_es": null,
+      "desc_es": "Chanclas infantiles con impresiones 3D de personajes célebres de televisión\nElaboradas de plástico ligero\nDisponibles en varios modelos de figuras y colores",
+      "details_es": "Color: Diseño; Material: Plástico; Calzado abierto o cerrado: Dedos de los pies abiertos/parte trasera abierta; Género: Unisex; Material suela: Goma; Talla de calzado: 28-29,30-31; Tipo de material superior: Goma / plástico; Número del artículo: 3008153"
+    }
+  },
+  {
+    "sku": "3202438",
+    "field": "description",
+    "source": "Laterales iluminados con iluminación multicolor RGB\nCon parte inferior antideslizante\nAmortigua el sonido de las ruedas de la silla\nProtege el suelo y la silla con esta alfombra de amortiguamiento acústico de Battletron. Lleva tu entorno de juego al siguiente nivel con las luces LED RGB de colores en el contorno de la alfombra.",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Laterales iluminados con iluminación multicolor RGB\nCon parte inferior antideslizante\nAmortigua el sonido de las ruedas de la silla\nProtege el suelo y la silla con esta alfombra de amortiguamiento acústico de Battletron. Lleva tu entorno de juego al siguiente nivel con las luces LED RGB de colores en el contorno de la alfombra.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+        "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+        "field_hash": "240a790f8867d80c1987d1ba122c054400118448a6990d87490fac7ec7a5b7b5"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Laterales iluminados con iluminación multicolor RGB\nCon parte inferior antideslizante\nAmortigua el sonido de las ruedas de la silla\nProtege el suelo y la silla con esta alfombra de amortiguamiento acústico de Battletron. Lleva tu entorno de juego al siguiente nivel con las luces LED RGB de colores en el contorno de la alfombra.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "240a790f8867d80c1987d1ba122c054400118448a6990d87490fac7ec7a5b7b5"
+        },
+        {
+          "rank": 1,
+          "text": "Laterales iluminados con iluminación multicolor RGB\nCon parte inferior antideslizante\nAmortigua el sonido de las ruedas de la silla\nProtege el suelo y la silla con esta alfombra de amortiguamiento acústico de Battletron. Lleva tu entorno de juego al siguiente nivel con las luces LED RGB de colores en el contorno de la alfombra.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "240a790f8867d80c1987d1ba122c054400118448a6990d87490fac7ec7a5b7b5"
+        },
+        {
+          "rank": 1,
+          "text": "Laterales iluminados con iluminación multicolor RGB\nCon parte inferior antideslizante\nAmortigua el sonido de las ruedas de la silla\nProtege el suelo y la silla con esta alfombra de amortiguamiento acústico de Battletron. Lleva tu entorno de juego al siguiente nivel con las luces LED RGB de colores en el contorno de la alfombra.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "240a790f8867d80c1987d1ba122c054400118448a6990d87490fac7ec7a5b7b5"
+        },
+        {
+          "rank": 1,
+          "text": "Laterales iluminados con iluminación multicolor RGB\nCon parte inferior antideslizante\nAmortigua el sonido de las ruedas de la silla\nProtege el suelo y la silla con esta alfombra de amortiguamiento acústico de Battletron. Lleva tu entorno de juego al siguiente nivel con las luces LED RGB de colores en el contorno de la alfombra.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "240a790f8867d80c1987d1ba122c054400118448a6990d87490fac7ec7a5b7b5"
+        },
+        {
+          "rank": 1,
+          "text": "Laterales iluminados con iluminación multicolor RGB\nCon parte inferior antideslizante\nAmortigua el sonido de las ruedas de la silla\nProtege el suelo y la silla con esta alfombra de amortiguamiento acústico de Battletron. Lleva tu entorno de juego al siguiente nivel con las luces LED RGB de colores en el contorno de la alfombra.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "240a790f8867d80c1987d1ba122c054400118448a6990d87490fac7ec7a5b7b5"
+        },
+        {
+          "rank": 1,
+          "text": "Laterales iluminados con iluminación multicolor RGB\nCon parte inferior antideslizante\nAmortigua el sonido de las ruedas de la silla\nProtege el suelo y la silla con esta alfombra de amortiguamiento acústico de Battletron. Lleva tu entorno de juego al siguiente nivel con las luces LED RGB de colores en el contorno de la alfombra.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "240a790f8867d80c1987d1ba122c054400118448a6990d87490fac7ec7a5b7b5"
+        },
+        {
+          "rank": 2,
+          "text": "Laterales iluminados con iluminación multicolor RGB\nCon parte inferior antideslizante\nAmortigua el sonido de las ruedas de la silla\nProtege el suelo y la silla con esta alfombra de amortiguamiento acústico de Battletron. Lleva tu entorno de juego al siguiente nivel con las luces LED RGB de colores en el contorno de la alfombra.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3202438",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "240a790f8867d80c1987d1ba122c054400118448a6990d87490fac7ec7a5b7b5"
+        }
+      ]
+    },
+    "reviewed_value": "边缘带多色 RGB 灯光，底部防滑，可缓冲椅轮噪声。Battletron 隔音地垫可保护地板和椅子；周边多色 LED RGB 灯光可提升游戏环境氛围。",
+    "context": {
+      "name_es": "Alfombra gaming con luz Battletron",
+      "cat1_es": "Multimedia",
+      "cat2_es": "Videojuegos",
+      "spec_es": "115x115 cm",
+      "unit_price_es": null,
+      "desc_es": "Laterales iluminados con iluminación multicolor RGB\nCon parte inferior antideslizante\nAmortigua el sonido de las ruedas de la silla\nProtege el suelo y la silla con esta alfombra de amortiguamiento acústico de Battletron. Lleva tu entorno de juego al siguiente nivel con las luces LED RGB de colores en el contorno de la alfombra.",
+      "details_es": "Medidas (incl. envase) (largo x ancho x alto): 115 x 115 x 0.3 cm; Color: Negro; Apto para videojuegos: Sí; Longitud del cable: 2.5 m; Longitud del cable: 2.5; Número de botones: 1; Potencia: 0.5; Potencia: 0.5 vatio; Tipo de alimentación: Mediante otro producto; Tipo de conexión: USB-c; Tipo de interruptores programables: 13; Voltaje: 5; Voltaje: 5 Voltio; Número del artículo: 3202438"
+    }
+  },
+  {
+    "sku": "3221160",
+    "field": "description",
+    "source": "Con base arcoíris\nCasquillo E14\nCon cable de 120 cm\nDale un toque elegante a tu interior con esta lámpara de mesa. La llamativa base en forma de arco y la pantalla de tela le dan un aspecto contemporáneo que encaja en cualquier espacio. Perfecta como iluminación de ambiente en el salón, el dormitorio o en un escritorio.",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Con base arcoíris\nCasquillo E14\nCon cable de 120 cm\nDale un toque elegante a tu interior con esta lámpara de mesa. La llamativa base en forma de arco y la pantalla de tela le dan un aspecto contemporáneo que encaja en cualquier espacio. Perfecta como iluminación de ambiente en el salón, el dormitorio o en un escritorio.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+        "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+        "field_hash": "aed19ae2e856274522f47e808e3eac3c3a015e9b234683801036b3e19e8a1022"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Con base arcoíris\nCasquillo E14\nCon cable de 120 cm\nDale un toque elegante a tu interior con esta lámpara de mesa. La llamativa base en forma de arco y la pantalla de tela le dan un aspecto contemporáneo que encaja en cualquier espacio. Perfecta como iluminación de ambiente en el salón, el dormitorio o en un escritorio.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "aed19ae2e856274522f47e808e3eac3c3a015e9b234683801036b3e19e8a1022"
+        },
+        {
+          "rank": 1,
+          "text": "Con base arcoíris\nCasquillo E14\nCon cable de 120 cm\nDale un toque elegante a tu interior con esta lámpara de mesa. La llamativa base en forma de arco y la pantalla de tela le dan un aspecto contemporáneo que encaja en cualquier espacio. Perfecta como iluminación de ambiente en el salón, el dormitorio o en un escritorio.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "aed19ae2e856274522f47e808e3eac3c3a015e9b234683801036b3e19e8a1022"
+        },
+        {
+          "rank": 1,
+          "text": "Con base arcoíris\nCasquillo E14\nCon cable de 120 cm\nDale un toque elegante a tu interior con esta lámpara de mesa. La llamativa base en forma de arco y la pantalla de tela le dan un aspecto contemporáneo que encaja en cualquier espacio. Perfecta como iluminación de ambiente en el salón, el dormitorio o en un escritorio.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "aed19ae2e856274522f47e808e3eac3c3a015e9b234683801036b3e19e8a1022"
+        },
+        {
+          "rank": 1,
+          "text": "Con base arcoíris\nCasquillo E14\nCon cable de 120 cm\nDale un toque elegante a tu interior con esta lámpara de mesa. La llamativa base en forma de arco y la pantalla de tela le dan un aspecto contemporáneo que encaja en cualquier espacio. Perfecta como iluminación de ambiente en el salón, el dormitorio o en un escritorio.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "aed19ae2e856274522f47e808e3eac3c3a015e9b234683801036b3e19e8a1022"
+        },
+        {
+          "rank": 1,
+          "text": "Con base arcoíris\nCasquillo E14\nCon cable de 120 cm\nDale un toque elegante a tu interior con esta lámpara de mesa. La llamativa base en forma de arco y la pantalla de tela le dan un aspecto contemporáneo que encaja en cualquier espacio. Perfecta como iluminación de ambiente en el salón, el dormitorio o en un escritorio.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "aed19ae2e856274522f47e808e3eac3c3a015e9b234683801036b3e19e8a1022"
+        },
+        {
+          "rank": 1,
+          "text": "Con base arcoíris\nCasquillo E14\nCon cable de 120 cm\nDale un toque elegante a tu interior con esta lámpara de mesa. La llamativa base en forma de arco y la pantalla de tela le dan un aspecto contemporáneo que encaja en cualquier espacio. Perfecta como iluminación de ambiente en el salón, el dormitorio o en un escritorio.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "aed19ae2e856274522f47e808e3eac3c3a015e9b234683801036b3e19e8a1022"
+        }
+      ]
+    },
+    "reviewed_value": "采用彩虹拱形底座，配 E14 灯座和 120 厘米电源线。醒目的拱形底座与布艺灯罩带来现代外观，为家居增添优雅，适合在客厅、卧室或书桌上营造氛围照明。",
+    "context": {
+      "name_es": "Lámpara de mesa",
+      "cat1_es": "Vivienda",
+      "cat2_es": "Lámparas",
+      "spec_es": "20x11x32 cm | varios colores",
+      "unit_price_es": null,
+      "desc_es": "Con base arcoíris\nCasquillo E14\nCon cable de 120 cm\nDale un toque elegante a tu interior con esta lámpara de mesa. La llamativa base en forma de arco y la pantalla de tela le dan un aspecto contemporáneo que encaja en cualquier espacio. Perfecta como iluminación de ambiente en el salón, el dormitorio o en un escritorio.",
+      "details_es": "Color: Blanco, Negro; Casquillo de la lámpara: E14; Destinado a: Interior; Función: Iluminación ambiente; Incluye fuente de luz: No; Incluye mando a distancia: No; Método de fijación: Independiente; Regulable: No; Tipo de alimentación: Alimentación de red; Tipo de lámpara: Mesa, Escritorio; Tipos de fuentes de luz: 1; Número del artículo: 3221160"
+    }
+  },
+  {
+    "sku": "3221364",
+    "field": "description",
+    "source": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+        "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+        "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 1,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        },
+        {
+          "rank": 2,
+          "text": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3221364",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "de3dde221cd02735135edf6863eb6b5cce58b08fa5ec5fea5558191964000f38"
+        }
+      ]
+    },
+    "reviewed_value": "包含 12 种颜色，提供哑光和闪亮眼影，产品为纯素。多种色彩可用于打造不同妆容。Max & More 另有价格实惠的细眼影刷，方便更好地晕染；这款多用途眼影盘可让你每次创造新风格。",
+    "context": {
+      "name_es": "Paleta de sombras de ojos FAB Factory",
+      "cat1_es": "Cuidado personal",
+      "cat2_es": "Maquillaje",
+      "spec_es": "6,8 gramos",
+      "unit_price_es": null,
+      "desc_es": "Contiene 12 colores diferentes\nCon sombras de ojos mates y brillantes\nProducto vegano\nCon esta paleta de sombras de ojos crearás cualquier tipo estilo de maquillaje que te apetezca. Tienes 12 colores diferentes entre los que elegir, que van desde el mate hasta el brillante. Max & More también cuenta con unos pinceles finos de sombras de ojos a un gran precio, para lograr una difuminación mejorada. Saca a relucir el maquillador o la maquilladora que llevas dentro y crea un nuevo estilo cada vez con esta versátil paleta de sombras de ojos.",
+      "details_es": "Con espejo: No; Contenido: 6.8 g; Incluye brocha(s): No; Sustancia: Polvo - compacto; Tipo de cosmética para los ojos: Sombra de ojos; Número del artículo: 3221364"
+    }
+  }
+]
