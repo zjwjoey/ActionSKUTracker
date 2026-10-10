@@ -17,3 +17,15 @@
 Apply 只使用现有 `run_historical_localization_pilot.py` 正式链路及用户自主审批委托。其事务之前自动备份并验证恢复，事务之后核对保护表、字段 diff、完整性和 Master Sync，再实际重复 Resume 验证幂等。当前进度与实际入库数以验收 JSON 和 CURRENT_STATE 的后续记录为准，不以候选或 preflight 数量冒充入库。
 
 2026-10-10 22:36 的另一轮 `daily-run --dry-run`（PID 22900）持有共享生产锁，本轮第一次 Apply 被 `RUN_ALREADY_ACTIVE` 拒绝，没有写库；不删除锁、不终止另一用户任务，等待释放后再通过正式入口。
+
+## 最终验收
+
+504项全部完成独立审查，246项通过语义、字段QA、Canonical及自主审批：品名124、描述72、详情50。实际PRIMARY文本变更246字段、234SKU，42项直接复用旧中文，204项修正候选后补译；所有字段原先为空，已有PRIMARY中文覆盖0，纯元数据Apply0。258项保持为空/待复核，其中149项机械QA PASS但独立审查不批准。QA从330 PASS /174 FAIL变为395 PASS /109 FAIL，QA数不等于Apply数。
+
+正式提交 `2026-10-10_historical_archive_all246_20261010_3f4cee1060ce`。246项全部绑定当前来源、APPROVED/FRESH；Native Master Sync SUCCESS。同一批次真实Resume：0 Apply、246 NO_OP、ALREADY_SYNCED。完整性ok、外键0违规，8项保护表/数据不变；75历史文件SHA复核全部未改变。备份恢复核验通过。
+
+当前4244历史SKU的25464中文字段，仍为空4717；来源可信432、缺失3460、版本冲突469、语言待复核355、明确空源1。历史表本次累计实际补入277（此前31+本轮246），535个精确来源单一中文候选剩258待复核。其余171个多中文版本和无精确来源配对的数据仍需处理；整个历史翻译优化目标尚未完成。
+
+最终证据：`remaining504_final_summary.json`、`remaining_all246_apply/acceptance_final.json`、`remaining_all246_apply/verification.json`、`remaining_all246_resume/pilot_review_apply.json`、`remaining258_manual_review_index.json`。早期`acceptance.json`草稿空值统计混入CURRENT及unit_price，已由`acceptance_supersession.json`明确作废该指标，正式统计限定历史六字段，未改任何Apply结论或历史记录。
+
+代码提交08ac633和7638176；最终全量回归1278 PASS，包含六种daily Registry/Resolver兼容场景的隔离测试。本地独立分支改进未部署到生产默认daily入口；没有修改正式词典、生产默认开关或执行模型参数训练。外部翻译服务调用0次，实际Source Recovery/审批/补丁/Apply使用现有正式链路。

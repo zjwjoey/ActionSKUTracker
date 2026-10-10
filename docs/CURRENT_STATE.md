@@ -65,3 +65,13 @@ main protection 只读查询显示未保护；建议 PR required、Ubuntu/Window
 其余 486 个候选已完成机械 QA，316 PASS、170 FAIL，尚未独立语义审查或 Apply。原 535 个候选共剩 504 个未入库；不能把 316 个机械 PASS 当成语义批准。QA 及待复核问题包括木纹外观被误按木材材质保护、iPhone 型号残留判定、PPP/DPI 标记差异，以及旧表把盒装茶误写为收纳盒、把淋浴收纳架误写为花洒支架。核心代码未修改，保留 `cb1e72f` 和此前完整回归 1,267 PASS 的身份，不声称本次重新运行完整代码测试。
 
 验收后中文仍空 4,963 个：可信来源 678（677 与 PRIMARY 精确一致、1 个旧 `null.` 前缀差异）、缺源 3,460、版本冲突 469、语言复核 355、明确空源 1。所有匹配证据、冻结审查、实际入库与 Resume、待复核及剩余清单保存在 `runtime/reports/historical_localization_20261009/user_archive_chinese_20261010/`；入口为 `final_summary.json` 和 `pilot49_apply/acceptance.json`。全量独立语义审查、剩余恢复及整体验收继续进行，任务未完成。
+
+## 2026-10-10 剩余504项中文候选复审完成
+
+504项已全部独立核对西语来源及中文：246项经QA、自主审批、Immutable Patch、正式Apply和Master Sync实际补入，涉及234个SKU（品名124、描述72、详情50）；258项保持待复核。42项复用归档正确中文，204项修正候选后补译，已有PRIMARY中文覆盖0、纯元数据Apply0。机械QA由330 PASS /174 FAIL改善为395 PASS /109 FAIL，其中149个PASS仍被语义或来源审查阻断，未批准或入库。
+
+最新验收PRIMARY head：`2026-10-10_historical_archive_all246_20261010_3f4cee1060ce`。246项来源绑定APPROVED/FRESH，Master Sync SUCCESS；同批实际Resume为0 Apply、246 NO_OP、ALREADY_SYNCED。完整性ok、外键无违规，八项受保护数据不变，75份只读历史文件SHA复核均未改变。当前4244个历史SKU的六字段仍空4717项：可信来源432、缺源3460、版本冲突469、语言待复核355、明确空源1。历史表累计实际补入277项（此前31+本轮246）。
+
+独立分支核心提交`08ac633`、`7638176`修复木纹外观和竹纤维限定词保护，并阻断外观来源被擅称实木。真实来源fixture及负例加入CI_SAFE，最终完整回归1278 PASS，包含六种隔离daily兼容场景；本地代码尚未部署到生产默认daily入口，正式词典及默认开关不变，外部模型服务调用0。全六字段独立语义审查及整个历史优化目标仍未完成。
+
+详见[504项审查报告](HISTORICAL_ARCHIVE_504_REVIEW_20261010.md)。正式运行证据位于上述归档报告目录：`remaining504_final_summary.json`、`remaining_all246_apply/acceptance_final.json`、`remaining_all246_resume/pilot_review_apply.json`、`remaining258_manual_review_index.json`。早期`acceptance.json`草稿的空值指标已由`acceptance_supersession.json`明确作废，正式统计只涵盖历史六字段，实际Apply结论不变。
