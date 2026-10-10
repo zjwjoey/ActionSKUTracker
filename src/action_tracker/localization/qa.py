@@ -48,6 +48,7 @@ _SEMANTIC_TARGET_ALIASES = {
     "ampollas de aceite": ("安瓶", "安瓿"),
     "gomas": ("橡皮筋", "橡胶圈", "松紧带"),
     "goma": ("橡胶",),
+    "goma de borrar": ("橡皮擦", "橡皮"),
     "calcetines": ("袜子", "短袜", "长袜", "低帮袜", "运动袜"),
     "detergente": ("洗洁精", "洗涤剂", "清洁剂", "马桶清洁剂"),
     "cartulina": ("彩色手工卡纸", "卡纸", "手工卡纸"),
@@ -452,6 +453,9 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             aliases.extend(("铜线灯串", "灯串"))
         if re.search(r"\bmodos?\s+de\s+iluminación\b", source_text, re.I):
             aliases.extend(("照明模式", "灯光模式"))
+        if (re.search(r"\bbarra\s+de\s+pantalla\b", source_text, re.I)
+                and re.search(r"\bopciones\s+de\s+iluminación\b", source_text, re.I)):
+            aliases.extend(("屏幕挂灯", "屏幕灯"))
     # Capsules are not always medicines. Recognize detergent capsules only
     # from a complete phrase in this field; other fields cannot supply it.
     detergent_capsules = bool(re.search(
@@ -473,6 +477,11 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             aliases.append("擦干布")
         if re.search(r"\bpaños?\s+(?:para|de)\s+pulir\b", source_text, re.I):
             aliases.append("抛光布")
+        # The cloth is a placement simile, not a separate cleaning product.
+        # Require the complete facial-mask phrase in this source field.
+        if (re.search(r"\bmascarillas?\b", source_text, re.I)
+                and re.search(r"\bcomo\s+un\s+paño\s+sobre\s+la\s+cara\b", source_text, re.I)):
+            aliases.extend(("布片", "面膜布", "面膜"))
     if source_term.casefold() == 'calcetines':
         if re.search(r'\b(?:de|para)\s+beb[eé]s?\b',source_text,re.I):aliases.append('婴儿袜')
         for marker,alias in [('invisibles','隐形袜'),('rizo','毛圈袜')]:
@@ -550,7 +559,7 @@ def _numbers(value: str) -> Counter[str]:
     # pronouns. Unsupported compound numbers must not become their last digit.
     spanish_cardinals = {"dos": "2", "tres": "3", "cuatro": "4", "cinco": "5",
                          "seis": "6", "siete": "7", "ocho": "8", "nueve": "9", "diez": "10"}
-    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas|pendientes|cajas|colores)"
+    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas|pendientes|cajas|colores|posiciones)"
     for match in re.finditer(rf"\b({'|'.join(spanish_cardinals)})\s+(?:pequeñ[oa]s\s+)?{counted_nouns}\b", text, re.I):
         prefix = text[:match.start()]
         # A conjunction after a counted noun starts another quantity, e.g.
