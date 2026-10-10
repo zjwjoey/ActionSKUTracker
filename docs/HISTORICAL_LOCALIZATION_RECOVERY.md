@@ -302,6 +302,24 @@ and lactose-only text masquerading as the generic sugar field. No quantity,
 allergen or own-field source requirement is waived. Source-conflict cases in
 the same batch remain held independently of Guard results.
 
+### 2026-10-10 details13 rinse instructions and generic UV
+
+Independent reading found Aclarado:No translated as 是否免洗:否 for 3215869,
+reversing how to use a leave-in conditioner. The existing structured boolean
+guard now recognizes exactly Aclarado and checks 冲洗/免洗 with opposite truth;
+another field cannot authorize a reversal. No additional formula or ingredient
+claim is inferred. Generic standalone UV may be rendered 紫外线 only in its
+own field, with occurrence counts retained. UV（紫外线） is one occurrence,
+not two facts; UVA/UVB/UVC/UV-A/UVX retain identifier protection.
+
+Three real archived fixtures and fifteen tests cover positive translations,
+the previously undetected reversal, both boolean values, omitted instructions,
+other-field leakage, lost/extra UV occurrences and suffix/model exclusions.
+All 100 details13 candidates were independently read: 55 KEEP, 30 ordinary
+corrections, 15 source-conflict/uncertain cases held for Owner. Candidate and QA
+counts do not establish Apply completion. Runtime Spanish, Presence, prices
+and lifecycle events are unchanged by this code edit.
+
 ## 2026-10-10: description13 source context and dimensional units
 
 Six real SKU cases retain full source/context, archival hashes and failed

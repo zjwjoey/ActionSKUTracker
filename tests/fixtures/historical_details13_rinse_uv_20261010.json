@@ -1,0 +1,190 @@
+[
+  {
+    "sku": "3215869",
+    "source": "{'Número del artículo': '3215869', 'Aclarado': 'No', 'Apto para tipo de cabello': 'Cabello seco', 'Contenido': '200 ml', 'Efecto deseado': 'Reparación, Alimentación', 'Tipo de crema de enjuague / tratamiento': 'Tratamiento antisequedad del cabello'}",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "{'Número del artículo': '3215869', 'Aclarado': 'No', 'Apto para tipo de cabello': 'Cabello seco', 'Contenido': '200 ml', 'Efecto deseado': 'Reparación, Alimentación', 'Tipo de crema de enjuague / tratamiento': 'Tratamiento antisequedad del cabello'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3215869",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "5ce90a1e06280e8df72dad91fe8db33eb9d27144e3554ab4a94547f167279d1d"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "{'Número del artículo': '3215869', 'Aclarado': 'No', 'Apto para tipo de cabello': 'Cabello seco', 'Contenido': '200 ml', 'Efecto deseado': 'Reparación, Alimentación', 'Tipo de crema de enjuague / tratamiento': 'Tratamiento antisequedad del cabello'}",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3215869",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "5ce90a1e06280e8df72dad91fe8db33eb9d27144e3554ab4a94547f167279d1d"
+        }
+      ]
+    },
+    "context": {
+      "name": "Acondicionador sin aclarado Hairmasters Reparación capilar",
+      "cat1": "Cuidado personal",
+      "cat2": "Cuidado del cabello",
+      "spec": "200 ml",
+      "description": "Ayuda a reparar y fortalecer el cabello dañado\nEnriquecido con proteínas y aceite de aguacate\nProducto vegano\nEste acondicionador sin aclarado no apelmaza el cabello y le da un agradable impulso.",
+      "details": "{'Número del artículo': '3215869', 'Aclarado': 'No', 'Apto para tipo de cabello': 'Cabello seco', 'Contenido': '200 ml', 'Efecto deseado': 'Reparación, Alimentación', 'Tipo de crema de enjuague / tratamiento': 'Tratamiento antisequedad del cabello'}"
+    },
+    "candidate": "{'商品编号': '3215869', '是否免洗': '否', '适用发质': '干性发质', '净含量': '200毫升', '预期功效': '修护、滋养', '洗发水/护理类型': '防干发护理'}",
+    "target": "{'商品编号': '3215869', '是否需冲洗': '否', '适用发质': '干性发质', '净含量': '200毫升', '预期功效': '修护、滋养', '冲洗护发乳/护理产品类型': '头发防干燥护理'}",
+    "formal_approval": false,
+    "before_module_guard": {
+      "status": "PASS",
+      "fact_status": "PASS",
+      "findings": [],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": true
+    }
+  },
+  {
+    "sku": "3215704",
+    "source": "{'Número del artículo': '3215704', 'Color': 'Multicolor', 'Cantidad': '3 unidades', 'Contenido': '9 ml', 'Incluye lámpara UV': 'No', 'Requiere lámpara UV': 'Sí', 'Tipo de aplicador': 'Cepillo', 'Tipo de cosmética de uñas': 'Esmalte de uñas', 'Tipo de dispensador': 'Botella'}",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "{'Número del artículo': '3215704', 'Color': 'Multicolor', 'Cantidad': '3 unidades', 'Contenido': '9 ml', 'Incluye lámpara UV': 'No', 'Requiere lámpara UV': 'Sí', 'Tipo de aplicador': 'Cepillo', 'Tipo de cosmética de uñas': 'Esmalte de uñas', 'Tipo de dispensador': 'Botella'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3215704",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "af41872aac3eb90b9fc5043062c722fc63ecf48db67158cfcb0526ed03bbdb9f"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "{'Número del artículo': '3215704', 'Color': 'Multicolor', 'Cantidad': '3 unidades', 'Contenido': '9 ml', 'Incluye lámpara UV': 'No', 'Requiere lámpara UV': 'Sí', 'Tipo de aplicador': 'Cepillo', 'Tipo de cosmética de uñas': 'Esmalte de uñas', 'Tipo de dispensador': 'Botella'}",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3215704",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "af41872aac3eb90b9fc5043062c722fc63ecf48db67158cfcb0526ed03bbdb9f"
+        }
+      ]
+    },
+    "context": {
+      "name": "Esmalte de uñas de gel Jacky-M",
+      "cat1": "Cuidado personal",
+      "cat2": "",
+      "spec": "",
+      "description": "Esmalte de uñas en gel en 3 colores alegres\nSe endurece bajo una lámpara UV\nFórmula vegana\nDale a tus uñas un cambio de color con este juego de esmalte de uñas en gel en 3 alegres tonos. Endurece el esmalte bajo una lámpara UV para obtener un resultado profesional. Combina tus tonos favoritos para crear infinitos looks de uñas. Las capas de base y de acabado se venden por separado.",
+      "details": "{'Número del artículo': '3215704', 'Color': 'Multicolor', 'Cantidad': '3 unidades', 'Contenido': '9 ml', 'Incluye lámpara UV': 'No', 'Requiere lámpara UV': 'Sí', 'Tipo de aplicador': 'Cepillo', 'Tipo de cosmética de uñas': 'Esmalte de uñas', 'Tipo de dispensador': 'Botella'}"
+    },
+    "candidate": "{'商品编号': '3215704', '颜色': '多色', '数量': '3支', '容量': '9毫升', '是否含紫外线灯': '否', '是否需配紫外线灯': '是', '涂抹器类型': '刷头', '指甲化妆品类型': '指甲油', '分配器类型': '瓶装'}",
+    "target": "{'商品编号': '3215704', '颜色': '多色', '数量': '3支', '容量': '9毫升', '是否含紫外线灯': '否', '是否需配紫外线灯': '是', '涂抹器类型': '刷头', '指甲化妆品类型': '指甲油', '分配器类型': '瓶装'}",
+    "formal_approval": false,
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "PROTECTED_TOKEN_MISSING",
+          "severity": "BLOCKER",
+          "field_name": "details",
+          "evidence": {
+            "token_type": "TECH",
+            "value": "UV",
+            "expected": 2,
+            "actual": 0
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "{'Número del artículo': '3215704', 'Color': 'Multicolor', 'Cantidad': '3 unidades', 'Contenido': '9 ml', 'Incluye lámpara UV': 'No', 'Requiere lámpara UV': 'Sí', 'Tipo de aplicador': 'Cepillo', 'Tipo de cosmética de uñas': 'Esmalte de uñas', 'Tipo de dispensador': 'Botella'}",
+          "target": "{'商品编号': '3215704', '颜色': '多色', '数量': '3支', '容量': '9毫升', '是否含紫外线灯': '否', '是否需配紫外线灯': '是', '涂抹器类型': '刷头', '指甲化妆品类型': '指甲油', '分配器类型': '瓶装'}",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        },
+        {
+          "rule_id": "PROTECTED_TOKEN_MISSING",
+          "severity": "BLOCKER",
+          "field_name": "details",
+          "evidence": {
+            "token_type": "TECH",
+            "value": "UV",
+            "expected": 2,
+            "actual": 0
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "{'Número del artículo': '3215704', 'Color': 'Multicolor', 'Cantidad': '3 unidades', 'Contenido': '9 ml', 'Incluye lámpara UV': 'No', 'Requiere lámpara UV': 'Sí', 'Tipo de aplicador': 'Cepillo', 'Tipo de cosmética de uñas': 'Esmalte de uñas', 'Tipo de dispensador': 'Botella'}",
+          "target": "{'商品编号': '3215704', '颜色': '多色', '数量': '3支', '容量': '9毫升', '是否含紫外线灯': '否', '是否需配紫外线灯': '是', '涂抹器类型': '刷头', '指甲化妆品类型': '指甲油', '分配器类型': '瓶装'}",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    }
+  },
+  {
+    "sku": "3215706",
+    "source": "{'Número del artículo': '3215706', 'Medidas (incl. envase) (largo x ancho x alto)': '9.5 x 14 x 2.5 cm', 'Color': 'Blanco', 'Incluye lámpara UV': 'Sí', 'Potencia': '12 vatio', 'Tipo de alimentación': 'Alimentación de red', 'Tipo de tratamiento para las uñas': 'Manicura', 'Voltaje': '5 Voltio'}",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "{'Número del artículo': '3215706', 'Medidas (incl. envase) (largo x ancho x alto)': '9.5 x 14 x 2.5 cm', 'Color': 'Blanco', 'Incluye lámpara UV': 'Sí', 'Potencia': '12 vatio', 'Tipo de alimentación': 'Alimentación de red', 'Tipo de tratamiento para las uñas': 'Manicura', 'Voltaje': '5 Voltio'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3215706",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "b76008925944578bc7753c76c71a5cb59bb40d48d500667a7b324e84a4e40e0c"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "{'Número del artículo': '3215706', 'Medidas (incl. envase) (largo x ancho x alto)': '9.5 x 14 x 2.5 cm', 'Color': 'Blanco', 'Incluye lámpara UV': 'Sí', 'Potencia': '12 vatio', 'Tipo de alimentación': 'Alimentación de red', 'Tipo de tratamiento para las uñas': 'Manicura', 'Voltaje': '5 Voltio'}",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3215706",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "b76008925944578bc7753c76c71a5cb59bb40d48d500667a7b324e84a4e40e0c"
+        }
+      ]
+    },
+    "context": {
+      "name": "Minilámpara UV para uñas Jacky-M",
+      "cat1": "Cuidado personal",
+      "cat2": "Maquillaje",
+      "spec": "12 vatios | 13x6,7 cm",
+      "description": "Perfecta para endurecer uñas adhesivas o esmaltes de gel\nTiene 2 posiciones de temporizador: 60 segundos y 120 segundos\nCompacto y portátil\nEsta minilámpara de uñas ultravioleta es muy práctica para el endurecimiento rápido y uniforme de esmaltes de uñas o pegatinas de gel. Su diseño compacto y plegable facilita su transporte o almacenamiento. Con 2 ajustes de temporizador de 60 y 120 segundos, puedes establecer el tiempo exacto para las diferentes capas de tus uñas de gel. En resumen, ¡una herramienta perfecta para usar en casa o dondequiera que vayas!",
+      "details": "{'Número del artículo': '3215706', 'Medidas (incl. envase) (largo x ancho x alto)': '9.5 x 14 x 2.5 cm', 'Color': 'Blanco', 'Incluye lámpara UV': 'Sí', 'Potencia': '12 vatio', 'Tipo de alimentación': 'Alimentación de red', 'Tipo de tratamiento para las uñas': 'Manicura', 'Voltaje': '5 Voltio'}"
+    },
+    "candidate": "{'商品编号': '3215706', '尺寸（含包装，长×宽×高）': '9.5 × 14 × 2.5厘米', '颜色': '白色', '是否含紫外线灯': '是', '功率': '12瓦', '供电方式': '市电供电', '美甲护理类型': '美甲', '电压': '5伏'}",
+    "target": "{'商品编号': '3215706', '尺寸（含包装，长×宽×高）': '9.5 × 14 × 2.5厘米', '颜色': '白色', '是否含紫外线灯': '是', '功率': '12瓦', '供电方式': '市电供电', '美甲护理类型': '美甲', '电压': '5伏'}",
+    "formal_approval": false,
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "PROTECTED_TOKEN_MISSING",
+          "severity": "BLOCKER",
+          "field_name": "details",
+          "evidence": {
+            "token_type": "TECH",
+            "value": "UV",
+            "expected": 1,
+            "actual": 0
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "{'Número del artículo': '3215706', 'Medidas (incl. envase) (largo x ancho x alto)': '9.5 x 14 x 2.5 cm', 'Color': 'Blanco', 'Incluye lámpara UV': 'Sí', 'Potencia': '12 vatio', 'Tipo de alimentación': 'Alimentación de red', 'Tipo de tratamiento para las uñas': 'Manicura', 'Voltaje': '5 Voltio'}",
+          "target": "{'商品编号': '3215706', '尺寸（含包装，长×宽×高）': '9.5 × 14 × 2.5厘米', '颜色': '白色', '是否含紫外线灯': '是', '功率': '12瓦', '供电方式': '市电供电', '美甲护理类型': '美甲', '电压': '5伏'}",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    }
+  }
+]

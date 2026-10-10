@@ -354,6 +354,13 @@ def _is_allowed_translated_strict_token(source_text: str, token: str, target: st
 
 
 def _is_allowed_translated_tech_token(source_text: str, source_token: str, target: str) -> bool:
+    if str(source_token or "").casefold() == "uv":
+        # Generic UV may be localized, but UVA/UVB/UVC/model suffixes may not.
+        pattern = r"(?<![A-Za-z0-9_-])UV(?![A-Za-z0-9_-])"
+        expected = len(re.findall(pattern, source_text, re.I))
+        normalized = re.sub(r"UV\s*[（(]\s*紫外线\s*[）)]|紫外线\s*[（(]\s*UV\s*[）)]", "UV", target, flags=re.I)
+        rendered = len(re.findall(pattern, normalized, re.I)) + normalized.count("紫外线")
+        return expected > 0 and rendered == expected
     # A flavour phrase is not a device/model identifier. Keep this confined
     # to the complete phrase in the same source field, never BBQ model codes.
     if str(source_token or "").casefold() == "bbq":
@@ -693,7 +700,8 @@ def _detail_boolean_findings(source_text, target):
     attributes = ((r"\balcohol\b", r"酒精"), (r"\bsilicona\b", r"硅(?:酮|胶)?"),
         (r"\bgluten\b", r"麸质"), (r"\blactosa\b", r"乳糖"),
         (r"\bperfume\b", r"香(?:料|精|型|味)|(?:无|有)香"),
-        (r"\bjab[oó]n\b", r"皂"), (r"\baz[uú]car(?:es)?\b", r"(?<!乳)糖"))
+        (r"\bjab[oó]n\b", r"皂"), (r"\baz[uú]car(?:es)?\b", r"(?<!乳)糖"),
+        (r"^aclarado$", r"冲洗|免洗"))
     bools = {"si": True, "sí": True, "yes": True, "true": True, "是": True,
              "no": False, "false": False, "否": False}
     source_pairs = parse_structured_details(source_text)
@@ -708,6 +716,8 @@ def _detail_boolean_findings(source_text, target):
         for src, dst in zip(source_items, target_items):
             source_negative = bool(re.match(r"^(?:sin\b|libre de\b|no contiene\b|no incluye\b)", src.key.strip(), re.I))
             target_negative = bool(re.search(r"无|不含|未添加|不添加|零", dst.key))
+            if source_pattern == r"^aclarado$" and "免洗" in dst.key:
+                target_negative = True
             source_present = bools[src.value.strip().casefold()] != source_negative
             target_present = bools[dst.value.strip().casefold()] != target_negative
             if source_present != target_present:
