@@ -6,6 +6,13 @@ from typing import Any, Mapping
 from .contracts import SemanticFact, SourceFacts
 
 _TERM_MAP = {
+    "marcadores grandes": ("PRODUCT_TYPE", "记号笔"),
+    "marcadores acrílicos": ("PRODUCT_TYPE", "丙烯马克笔"),
+    "marcadores dobles de pizarra blanca": ("PRODUCT_TYPE", "白板笔"),
+    "marcadores de punta fina y pincel": ("PRODUCT_TYPE", "记号笔"),
+    "brocha para polvos": ("PRODUCT_TYPE", "散粉刷"),
+    "recortacejas": ("PRODUCT_TYPE", "修眉器"),
+    "ampollas de aceite": ("PRODUCT_TYPE", "安瓶"),
     "goma de borrar": ("PRODUCT_TYPE", "橡皮擦"), "gomas de borrar": ("PRODUCT_TYPE", "橡皮擦"),
     "gomas": ("PRODUCT_TYPE", "橡皮筋"), "barra de cola": ("PRODUCT_TYPE", "胶棒"),
     "alfombrilla para cortar": ("PRODUCT_TYPE", "切割垫"), "papel de cocina": ("PRODUCT_TYPE", "厨房纸"), "paño": ("PRODUCT_TYPE", "清洁布"),
@@ -102,6 +109,14 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
                 semantic = kind if kind in {"PRODUCT_TYPE", "BRAND", "SERIES", "MODEL", "TECH_TOKEN", "MATERIAL", "FUNCTION", "CARE", "COMPATIBILITY", "DESCRIPTION_FACT"} else "DESCRIPTION_FACT"
                 add(semantic, term, zh, field, "term_dictionary")
         for term, (kind, zh) in _TERM_MAP.items():
+            if term.startswith("marcadores"):
+                # A book/web marker is not a pen. Remove only that complete
+                # noun phrase; a separate pen phrase in this field survives.
+                pen_text = re.sub(
+                    r"\bmarcadores(?:\s+(?:grandes|acrílicos|dobles))*\s+(?:de|para)\s+(?:libros|lectura|páginas|navegador)\b",
+                    " ", lower, flags=re.I)
+                if not re.search(rf"(?<!\w){re.escape(term)}(?!\w)", pen_text):
+                    continue
             # In canvas/artist products, ``Tipo de paño / panel`` is a
             # panel/primer specification, not a cleaning-cloth product fact.
             # Keep the source evidence in details, but do not make the generic

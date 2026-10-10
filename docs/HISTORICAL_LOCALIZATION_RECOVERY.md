@@ -198,3 +198,19 @@ another field remain blocked. Quantity and model protection is unchanged.
 Two real-source fixtures retain archival file and field hashes; negative
 tests cover medicine, dishwashing, partial phrases and cross-field leakage.
 No runtime dictionary baseline is published by this change.
+
+## 2026-10-10: product noun error detection from actual name16 candidates
+
+Seven source-backed cases now cover marker pens versus bookmarks, powder
+brushes versus decorating brushes, eyebrow trimmers versus contour brushes,
+and oil ampoules versus hair masks. Complete source phrases seed PRODUCT_TYPE
+facts through the existing semantic parser and Guard. Book/browser marker
+phrases are excluded in their own field without suppressing a separate pen
+phrase. Generic brushes and foot blisters do not acquire cosmetic facts.
+Facts stay attached to their source field; description evidence cannot create
+a product noun fact in the name. Existing numeric/model protection remains.
+The five wrong identity candidates have no approved gold target in fixtures
+and remain Owner review; diagnostic Guard failures do not grant approval.
+Two source-backed pen examples verify that valid existing renderings survive.
+Unrecognized LU/FAB uppercase brand/model tokens remain blocked pending
+trusted brand evidence, rather than bypassing protection for NO_BRAND cleanup.

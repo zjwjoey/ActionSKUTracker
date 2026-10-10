@@ -39,6 +39,13 @@ _STRICT_TOKEN_TYPES = {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "C
 # seeded semantic map; they prevent the Guard from rejecting valid outputs
 # such as ``paño -> 抹布`` and ``madera -> 木制``.
 _SEMANTIC_TARGET_ALIASES = {
+    "marcadores grandes": ("记号笔", "马克笔"),
+    "marcadores acrílicos": ("丙烯马克笔", "丙烯记号笔"),
+    "marcadores dobles de pizarra blanca": ("白板笔", "白板记号笔"),
+    "marcadores de punta fina y pincel": ("记号笔", "马克笔"),
+    "brocha para polvos": ("散粉刷", "蜜粉刷", "定妆粉刷"),
+    "recortacejas": ("修眉器", "眉毛修剪器"),
+    "ampollas de aceite": ("安瓶", "安瓿"),
     "gomas": ("橡皮筋", "橡胶圈", "松紧带"),
     "goma": ("橡胶",),
     "calcetines": ("袜子", "短袜", "长袜", "低帮袜", "运动袜"),
