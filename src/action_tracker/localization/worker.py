@@ -141,6 +141,7 @@ class TranslationQueueWorker:
                         provider=getattr(self.resolver, "provider", None),
                         terminology=terminology,
                         semantic_facts=semantic_facts,
+                        generation_semantic_facts=self.resolver.engine.generation_semantic_facts(SourceFacts.from_record(record)),
                         context=context,
                     )
                     resolution_value = repaired.value

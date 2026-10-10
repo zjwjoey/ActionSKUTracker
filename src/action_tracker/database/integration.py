@@ -277,6 +277,8 @@ def regenerate_compatibility_exports(cfg: Mapping[str, Any], commit_id: str) -> 
     if repo.current_head() != commit_id:
         raise ProductionDatabaseError("EXPORT_SYNC_COMMIT_NOT_CURRENT_HEAD")
     records = repo.load_current_export_records()
+    historical = [record for record in repo.load_current_export_records(include_non_current=True)
+                  if record.get("status") != "CURRENT"]
     known = repo.load_known_skus()
     offline = repo.load_offline_skus()
     master = Path(cfg["paths"]["master"])
@@ -288,6 +290,7 @@ def regenerate_compatibility_exports(cfg: Mapping[str, Any], commit_id: str) -> 
         dict(cfg), updated_records={str(r["sku"]): r for r in records},
         price_events=[], event_events=[], return_backup=True,
         compatibility_projection=True, run_log_revisions=run_log_revisions,
+        historical_localizations=historical,
     )
     known_tmp, _ = st.stage_known_skus(state_dir, known)
     offline_tmp, _ = st.stage_offline_skus(state_dir, offline)

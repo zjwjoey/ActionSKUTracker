@@ -1,0 +1,687 @@
+[
+  {
+    "sku": "3223925",
+    "source": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+    "target": "彩泥柔软，易于揉捏\n可重复使用，罐子盖紧后可保持可塑性\n多色套装，可混色并不断创作\n这套 Play-Doh Create & Celebrate 彩泥可制作各种色彩的有趣作品。彩泥柔软、易塑形，适合小手操作和创意活动，可在家中玩耍、制作手工或探索新形状和造型。",
+    "before": "20罐多色彩泥，质地柔软、易揉捏；密封保存可保持可塑性。适合儿童混色、塑形和创意游戏。",
+    "context": {
+      "name": "Play-Doh Create & Celebrate",
+      "cat1": "Juguetes",
+      "cat2": "Manualidades para niños",
+      "spec": "20 unidades",
+      "description": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+      "details": "Color: Multicolor; Edad adecuada: A partir de 2 años; Cantidad: 20 unidades; Número del artículo: 3223925"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-04\\2026-09-04_031405\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-04/2026-09-04_031405",
+        "file_hash": "d6797c65265143429bb2f97139f79fb16d527faf180340a4a6d5a9deff1bc0ac",
+        "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+          "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-26\\2026-08-26_130145\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-26/2026-08-26_130145",
+          "file_hash": "7aa34749c60e85fdede52763c445b98504451bf565ec05b18f926322baf062f7",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-28\\2026-08-28_073710\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-28/2026-08-28_073710",
+          "file_hash": "9f3985b8c93914d1d14e7c7b10cd5a9c9281df376c514dcca8685c5bb3b284ae",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+          "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_184646\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_184646",
+          "file_hash": "25e78152339d143bd5b8808efc9833c8202ff31f264118c57720a039dc852b51",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_155325\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_155325",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_164431\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_164431",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_024429\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_024429",
+          "file_hash": "87f966bee1380fa0cf174b37dee21f9193f2cc69007a2a20ad44548d5ff07d0c",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_035941\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_035941",
+          "file_hash": "739c048fd236408c8c8d316472d0d3a09959f0dc515b1e76092903c32f8d8d7c",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-01\\2026-09-01_113916\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-01/2026-09-01_113916",
+          "file_hash": "3516a29a90edb0699efbe4d017b16f58373e99589541d0bb909da6c74c38e8bd",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-02\\2026-09-02_030100\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-02/2026-09-02_030100",
+          "file_hash": "da28948e4ea50de9a25b26000489daf25cc7a3583e90171b309416fdaa15b053",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_053952\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_053952",
+          "file_hash": "acab9b4f807a580a8dce1aeceea9bc02d191c55335b8d62f9071f666203d1e54",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_072729\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_072729",
+          "file_hash": "4cb785cdf6115e10194a22ee58b15d9367dac1a9abe5998e8ca1b8dd24922162",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        },
+        {
+          "rank": 1,
+          "text": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-04\\2026-09-04_031405\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-04/2026-09-04_031405",
+          "file_hash": "d6797c65265143429bb2f97139f79fb16d527faf180340a4a6d5a9deff1bc0ac",
+          "field_hash": "d98f1337e391629ae7371f0d53c9f5b42c7e7929237711bb13ed18c2e225fc22"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "彩泥柔软，易于揉捏\n可重复使用，罐子盖紧后可保持可塑性\n多色套装，可混色并不断创作\n这套 Play-Doh Create & Celebrate 彩泥可制作各种色彩的有趣作品。彩泥柔软、易塑形，适合小手操作和创意活动，可在家中玩耍、制作手工或探索新形状和造型。"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Plastilina suave y fácil de amasar\nReutilizable, se mantien moldeable si se cierran bien los frascos\nJuego con varios colores para mezclar y crear infinitamente\nCon este juego de plastilina Play-Doh Create & Celebrate harás las creaciones más divertidas en todo tipo de colores. La plastilina suave es fácil de moldear, perfecta para manos pequeñas y momentos creativos. Ideal para jugar en casa, hacer bricolaje o descubrir nuevas formas y figuras.",
+          "target": "彩泥柔软，易于揉捏\n可重复使用，罐子盖紧后可保持可塑性\n多色套装，可混色并不断创作\n这套 Play-Doh Create & Celebrate 彩泥可制作各种色彩的有趣作品。彩泥柔软、易塑形，适合小手操作和创意活动，可在家中玩耍、制作手工或探索新形状和造型。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3225810",
+    "source": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+    "target": "美味的水果口味\n柔软外层，内层有嚼劲\n这些 Coco 水果味可剥皮软糖带来独特的甜食体验：先剥开柔软外层，再享用里面的软糖。",
+    "before": "150克装，水果口味；可先剥开柔软外层，再食用内部有嚼劲的软糖，提供独特互动口感",
+    "context": {
+      "name": "Gominolas pelables Cokoc",
+      "cat1": "Comer y beber",
+      "cat2": "Caramelos",
+      "spec": "150 gramos | diferentes variantes",
+      "description": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+      "details": "Carbohidratos: 54 g; Consejos sobre conservación: Conservar en un lugar fresco y seco; Contenido: 150 g; De los cuales azúcares: 48 g; De los cuales saturados: 0 g; Energía: 219 kcal; Grasas: 0 g; Halal: No; Ocasión especial: No; Proteínas: 2 g; Sal: 0.15 g; Sin azúcar: No; Tipo de caramelo: Chicles a base de gelatina; Número del artículo: 3225810"
+    },
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-09\\2026-09-09_032720\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-09/2026-09-09_032720",
+        "file_hash": "339695cbd6fc9f04ee405a2ac8bfda30c1b2a3f01a02c018d24cd82e4ce9a094",
+        "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "PRIMARY:product_fact_versions:ee3b183e0c2563102a412b836ff33976b1f52eb3fda4f24ae1c901b89973d845",
+          "observed_at": "2026-09-09T01:55:03.872623+00:00",
+          "file_hash": "7b5c688a0246e0caae68518702d2c4a5f3fe913d0b9e2f5b2e0cd45c86515b36",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+          "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-26\\2026-08-26_130145\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-26/2026-08-26_130145",
+          "file_hash": "7aa34749c60e85fdede52763c445b98504451bf565ec05b18f926322baf062f7",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-28\\2026-08-28_073710\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-28/2026-08-28_073710",
+          "file_hash": "9f3985b8c93914d1d14e7c7b10cd5a9c9281df376c514dcca8685c5bb3b284ae",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+          "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_184646\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_184646",
+          "file_hash": "25e78152339d143bd5b8808efc9833c8202ff31f264118c57720a039dc852b51",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_155325\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_155325",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_164431\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_164431",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_024429\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_024429",
+          "file_hash": "87f966bee1380fa0cf174b37dee21f9193f2cc69007a2a20ad44548d5ff07d0c",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_035941\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_035941",
+          "file_hash": "739c048fd236408c8c8d316472d0d3a09959f0dc515b1e76092903c32f8d8d7c",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-01\\2026-09-01_113916\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-01/2026-09-01_113916",
+          "file_hash": "3516a29a90edb0699efbe4d017b16f58373e99589541d0bb909da6c74c38e8bd",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-02\\2026-09-02_030100\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-02/2026-09-02_030100",
+          "file_hash": "da28948e4ea50de9a25b26000489daf25cc7a3583e90171b309416fdaa15b053",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_053952\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_053952",
+          "file_hash": "acab9b4f807a580a8dce1aeceea9bc02d191c55335b8d62f9071f666203d1e54",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_072729\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_072729",
+          "file_hash": "4cb785cdf6115e10194a22ee58b15d9367dac1a9abe5998e8ca1b8dd24922162",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-04\\2026-09-04_031405\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-04/2026-09-04_031405",
+          "file_hash": "d6797c65265143429bb2f97139f79fb16d527faf180340a4a6d5a9deff1bc0ac",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-05\\2026-09-05_033927\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-05/2026-09-05_033927",
+          "file_hash": "cbcbe98b81c7b03080b5f06dce3e5867fca1daf4964ba2bd060d5c295b85856e",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-06\\2026-09-06_043721\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-06/2026-09-06_043721",
+          "file_hash": "6defd8200076fca7df433fc26646c46e8b6f774a8bec4c030b9983038a9f3f63",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-07\\2026-09-07_025601\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-07/2026-09-07_025601",
+          "file_hash": "26d802f096b9257fba9056a52f2738ed119ac17afc1f3d6eac30154b045e1846",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-08\\2026-09-08_035740\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-08/2026-09-08_035740",
+          "file_hash": "5b389ccee24ef37c0dc5e55268ab4c79ba0c6f0db25837e7fd37dc2ae7cdf7a1",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        },
+        {
+          "rank": 1,
+          "text": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-09\\2026-09-09_032720\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-09/2026-09-09_032720",
+          "file_hash": "339695cbd6fc9f04ee405a2ac8bfda30c1b2a3f01a02c018d24cd82e4ce9a094",
+          "field_hash": "2266a8e85d779d88271abcdb996fcb4a73242fdf9de980d12f9266521b2af9e7"
+        }
+      ]
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "gomas",
+            "expected_target": "橡皮筋",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Delicioso sabor a fruta\nCapa exterior suave con interior chewy\nEstas gomas pelables de Coco con sabor a fruta proporcionan una experiencia dulce única. Primero, pela la capa exterior suave y, a continuación, disfruta de la gominola del interior.",
+          "target": "美味的水果口味\n柔软外层，内层有嚼劲\n这些 Coco 水果味可剥皮软糖带来独特的甜食体验：先剥开柔软外层，再享用里面的软糖。",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  }
+]

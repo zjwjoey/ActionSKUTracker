@@ -1,0 +1,184 @@
+[
+  {
+    "sku": "3217781",
+    "field": "name",
+    "source": "Marcadores grandes",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Marcadores grandes",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "a11f5c32d9b434110fd34eeed1a72c7d4e5836cc0a89518ac37141b52dc1c9b4"
+    },
+    "context": {
+      "name": "Marcadores grandes",
+      "cat1": "",
+      "cat2": "Papelería",
+      "spec": "8 unidades | diferentes variantes",
+      "description": "Con punta de 6 mm y 4 mm\nPermanente en la mayoría de las superficies",
+      "details": "{'Número del artículo': '3217781', 'Color': 'Multicolor', 'Borrable': 'No', 'Cantidad': '8 unidades', 'Tipo de agarre': 'Agarre normal'}"
+    },
+    "observed_qwen_candidate": "大号书签",
+    "source_term": "marcadores grandes",
+    "expected_behavior": "BLOCK_KNOWN_WRONG_PRODUCT_NOUN_NO_APPROVED_GOLD_TARGET",
+    "source_backed_target": null,
+    "formal_approval": false
+  },
+  {
+    "sku": "3218261",
+    "field": "name",
+    "source": "Marcadores acrílicos grandes DécoTime",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Marcadores acrílicos grandes DécoTime",
+      "reference": "F:\\按日期整理\\action表格\\20260701\\20260701Action商品全量_西语版_不带图.xlsx::格式化模板",
+      "observed_at": "2026-07-01",
+      "file_hash": "f43364151895559d04dccce824dfed681fcda62a4e5375a7dc19a5114745fbf4",
+      "field_hash": "b709ff163858671abece42f938afa2c56de65b37bb202033d857275edfcd8f29"
+    },
+    "context": {
+      "name": "Marcadores acrílicos grandes DécoTime",
+      "cat1": "",
+      "cat2": "",
+      "spec": "",
+      "description": "",
+      "details": ""
+    },
+    "observed_qwen_candidate": "DécoTime 大号亚克力书签",
+    "source_term": "marcadores acrílicos",
+    "expected_behavior": "BLOCK_KNOWN_WRONG_PRODUCT_NOUN_NO_APPROVED_GOLD_TARGET",
+    "source_backed_target": null,
+    "formal_approval": false
+  },
+  {
+    "sku": "3218267",
+    "field": "name",
+    "source": "Marcadores dobles de pizarra blanca DécoTime",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Marcadores dobles de pizarra blanca DécoTime",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "86c0a810bcb32cb6da1329c1ae43a08f6c947c7f308b04c455a339d915f4d5a9"
+    },
+    "context": {
+      "name": "Marcadores dobles de pizarra blanca DécoTime",
+      "cat1": "",
+      "cat2": "Accesorios de oficina",
+      "spec": "3 uds.",
+      "description": "3 colores diferentes: verde, azul y negro\nMarcadores de 2 puntas\nDe secado rápido",
+      "details": "{'Número del artículo': '3218267', 'Color': 'Multicolor', 'Cantidad': '3 unidades'}"
+    },
+    "observed_qwen_candidate": "DécoTime 双头白板笔",
+    "source_term": "marcadores dobles de pizarra blanca",
+    "expected_behavior": "ACCEPT_SOURCE_BACKED_PEN_NOUN",
+    "source_backed_target": "双头白板笔",
+    "formal_approval": false
+  },
+  {
+    "sku": "3218742",
+    "field": "name",
+    "source": "Brocha para polvos Belluto Accessories",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Brocha para polvos Belluto Accessories",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "bd28dd285b632b8a6beb2ba0aa605e32a54ea0a3dab26e63e1caac1c22a8b199"
+    },
+    "context": {
+      "name": "Brocha para polvos Belluto Accessories",
+      "cat1": "Cuidado personal",
+      "cat2": "Maquillaje",
+      "spec": "Varios colores",
+      "description": "",
+      "details": ""
+    },
+    "observed_qwen_candidate": "Belluto配件粉刷",
+    "source_term": "brocha para polvos",
+    "expected_behavior": "BLOCK_KNOWN_WRONG_PRODUCT_NOUN_NO_APPROVED_GOLD_TARGET",
+    "source_backed_target": null,
+    "formal_approval": false
+  },
+  {
+    "sku": "3218974",
+    "field": "name",
+    "source": "Recortacejas ELLE",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Recortacejas ELLE",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "f2ec806393889f87e9765d41ceb935fcad8250be8a1a336243ccca5e3bc256d0"
+    },
+    "context": {
+      "name": "Recortacejas ELLE",
+      "cat1": "Cuidado personal",
+      "cat2": "Depilación y afeitado",
+      "spec": "3 piezas | 3,7 voltios",
+      "description": "Incluye cable UBS-C y cepillo de limpieza\nTiempo de carga: 30 minutos. Tiempo de uso: 90 minutos\nImpermeable y con cabezal de acero inoxidable\n¿Buscas una solución fácil para retocarte las cejas sin complicaciones? En ese caso, el recortacejas ELLE es perfecto. Ideal para correcciones ligeras y precisas sin complicaciones.",
+      "details": "{'Número del artículo': '3218974', 'Color': 'Negro', 'Material': 'Acero inoxidable', 'Duración máxima de la batería': '1.5 hora', 'Recargable': 'Sí', 'Resistente al agua': 'Sí', 'Tipo de alimentación': 'Batería', 'Voltaje': '3.7 Voltio'}"
+    },
+    "observed_qwen_candidate": "ELLE修容刷",
+    "source_term": "recortacejas",
+    "expected_behavior": "BLOCK_KNOWN_WRONG_PRODUCT_NOUN_NO_APPROVED_GOLD_TARGET",
+    "source_backed_target": null,
+    "formal_approval": false
+  },
+  {
+    "sku": "3218978",
+    "field": "name",
+    "source": "Ampollas de aceite de argán para el cabello The Beauty Dept.",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Ampollas de aceite de argán para el cabello The Beauty Dept.",
+      "reference": "F:\\按日期整理\\action表格\\20260727\\20260727Action商品全量_西语版_不带图.xlsx::商品全量",
+      "observed_at": "2026-07-27",
+      "file_hash": "1826cdae894aa62848d6d3a3af64c1b05d5d3620d23c4837bf7e17e01fa2cc72",
+      "field_hash": "b908f7c5fcbdf622903b34707de4128b29d7da1520517d366810fe2e9e3bc7ee"
+    },
+    "context": {
+      "name": "Ampollas de aceite de argán para el cabello The Beauty Dept.",
+      "cat1": "Cuidado personal",
+      "cat2": "Cuidado del cabello",
+      "spec": "3x 15 ml",
+      "description": "",
+      "details": ""
+    },
+    "observed_qwen_candidate": "The Beauty Dept. 摩洛哥坚果油发膜",
+    "source_term": "ampollas de aceite",
+    "expected_behavior": "BLOCK_KNOWN_WRONG_PRODUCT_NOUN_NO_APPROVED_GOLD_TARGET",
+    "source_backed_target": null,
+    "formal_approval": false
+  },
+  {
+    "sku": "3219060",
+    "field": "name",
+    "source": "Set de marcadores de punta fina y pincel",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Set de marcadores de punta fina y pincel",
+      "reference": "F:\\按日期整理\\action表格\\20260706\\20260706Action商品全量_西语版_不带图.xlsx::Action ES 商品",
+      "observed_at": "2026-07-06",
+      "file_hash": "0b4bdbdeda7d8d3705870fbd65f545337c362cdd71662c8355dc9c225f429b96",
+      "field_hash": "ef377be199069b1c15134a17cf40824c7463f1ac5280e0e4b1d844d5c68cb73a"
+    },
+    "context": {
+      "name": "Set de marcadores de punta fina y pincel",
+      "cat1": "Oficina y papelería",
+      "cat2": "Papelería",
+      "spec": "40 unidades",
+      "description": "",
+      "details": ""
+    },
+    "observed_qwen_candidate": "细头与画笔式记号笔套装",
+    "source_term": "marcadores de punta fina y pincel",
+    "expected_behavior": "ACCEPT_SOURCE_BACKED_PEN_NOUN",
+    "source_backed_target": "细头与画笔式记号笔套装",
+    "formal_approval": false
+  }
+]

@@ -1,0 +1,420 @@
+# Historical localization recovery
+
+## Implemented on the isolated development branch
+
+`python -m action_tracker.localization.history_audit` performs a read-only
+inventory of all non-CURRENT products using the existing repository, historical
+workbook readers, canonical source hashes and Fact QA.
+
+Required arguments: `--database`, `--master`, `--snapshots`, `--output`.
+Optional arguments: `--backup`, `--history-sources`, `--verified-archive`.
+
+The backup is a SQLite Backup API snapshot. A separate restored copy must pass
+integrity, foreign keys and logical hashes of every table. Existing backups
+cannot be overwritten.
+
+Evidence priorities are official fact versions and QA-verified snapshots,
+SKU-bound historical source workbooks, then Long Term Master. Different source
+versions remain in the evidence report. Conflicting values at the selected
+priority require review. Chinese or replacement characters in a purported
+Spanish field require source review. Blank archive cells do not prove an empty
+official field. Master provides no description/details evidence.
+
+The optional verified archive requires a confirmed historical/official review
+status plus an exact Spanish Action URL/SKU match. Its verification date is not
+treated as the original collection time. Existing Chinese is a reuse candidate
+only when its paired Spanish field equals the selected source.
+
+Outputs include all six canonical fields per historical SKU, source versions,
+file hashes, previous Chinese, archived Chinese, QA findings, binding diagnostics,
+unavailable/conflicting sources, STALE rows and a diverse 100-SKU pilot manifest.
+Cat3 and selling points are not supported standalone fields in the current
+localization contract and are not invented or flattened into other fields.
+
+UI button text and HTML transport residue are rejected using the shared
+data-quality classifiers before source selection. Such evidence stays in the
+versions list and requires source review, never an official-empty designation.
+The reviewed Apply runner independently rejects these values even when an
+older audit artifact incorrectly labels them EVIDENCE_AVAILABLE. Regression
+coverage includes SKU 2546793's batch-09 button-text source.
+
+`tests/fixtures/historical_spec_review_20261010.json` retains source artifact
+references, file and field hashes, SKU context, provider candidates and the
+five semantically reviewed targets actually applied in specification batch 10.
+Offline CI-safe tests reject corrupted numeric facts, reproduce SKU 3218603's
+decimal-dimension error and verify that description changes leave specification
+hashes unchanged. These five cases cover specification regression only; they
+do not constitute full six-field semantic acceptance or the complete future
+daily-run acceptance matrix.
+
+Real specification QA regressions 3221778 and 3221803 permit `ledes` → `LED`
+only when `ledes` is present in the target field's Spanish source. A negative
+test keeps LED additions blocked when the word appears only in description
+context. This changes QA equivalence, not source facts or dictionary approval.
+SKU 3224354 covers the English plural spelling `LEDs` under the same
+field-source boundary.
+
+Fact QA findings are candidates for review, not confirmed semantic errors.
+Fact QA PASS is not semantic approval. This command creates no translation
+tasks, revisions, approvals, patches, Apply commits or lifecycle events.
+
+## Safety fix
+
+The existing CommitBundle category backlog writer now verifies CURRENT status
+before enqueueing a category gap. Historical source restoration does not create
+today's category backlog entries. A temporary-database regression verifies
+unchanged product facts, zero observations/prices/events and retry idempotency.
+
+## Explicit delegated approval
+
+Owner authorization `codex:user-reply:call_cf3d61a3ddbd4005967b91e176358501`
+permits the auditable `HISTORICAL_OWNER_DELEGATION_V1` contract. The exact
+`service:historical-localization-review` identity is retained in approval events
+and field provenance. It is never represented as a human.
+
+Each finite grant binds revision IDs, SKU, field, aggregate source and target
+hashes, reviewed evidence artifact SHA, authorization evidence and UTC expiry.
+Approval, patch staging and Apply independently verify the grant, current
+historical scope, current revision, freshness, QA, canonical QA, open blockers
+and current PRIMARY source. Unrelated service calls retain the human-only gate.
+Delegated Apply does not support unit price modifications.
+
+The runner `scripts/run_historical_localization_pilot.py` accepts finite,
+semantically reviewed corrections for the six canonical text fields. It does
+not approve unreviewed provider candidates. New writes require explicit CODEX
+semantic PASS, a nonempty review note and LOW/MEDIUM risk; HIGH risk stays in
+the Owner queue. Provider-supplied PASS cannot substitute for semantic review.
+Existing equal targets require
+approved current provenance and Registry readiness before returning NO_OP;
+otherwise they remain METADATA_REVIEW_REQUIRED. Optional source restoration and
+validated backup execute under the same RunLock. Production uses the real
+runtime directory as projection root so it shares the daily-run lock.
+
+New writes also require an explicit `before` target equal to the current exact
+Chinese localization value. A missing baseline or a later Chinese correction
+routes to target review instead of overwriting it from an older manifest.
+Approved equal-target Resume retains the provenance-backed NO_OP path.
+
+`localization.pipeline.translate_pending_requests` provides an atomic finite
+provider-batch checkpoint using the existing TranslationRequest/provider
+contract. Completed responses survive interrupted calls and are reused on
+Resume; a changed source plan, context, policy or provider/model is rejected.
+Every response remains PENDING_SEMANTIC_REVIEW. This helper does not write
+Registry, approvals, patches or PRIMARY, and does not infer missing sources.
+
+Real-history regressions retain source artifact hashes for SKU 1325690
+(full-width Chinese detail separators and unchanged boolean polarity),
+2533753 (Chinese numeric layer count), 2523375 (nonsterile mistranslation with
+conflicting source material), and 3214854 (unapproved category synonym).
+The parser preserves duplicate detail keys and order across ASCII/full-width
+semicolon delimiters. Numeric QA recognizes Chinese digits followed by 层;
+lexical words such as 五金 remain outside the numeric context. These changes
+fix false flags, never create semantic approval or auto-correct Chinese text.
+
+Real-history daily compatibility tests capture three actually applied and
+source-bound fields of SKU 3218603. Isolated temporary Registry databases
+verify missing-source NEW, approved reuse, one-field source changes,
+HISTORICAL-to-CURRENT reuse, repeated same-day ingestion, and unavailable
+sources. Changed facts in these tests are explicitly simulated, not official
+source versions or guessed translation standards. Registry ingestion now
+preserves missing/None evidence as unavailable instead of coercing it to
+official-empty strings; a business display name is never an ES fallback.
+Existing source/field hash contracts and immutable historical rows are retained.
+
+Further real-history QA regressions cover SKU 3205379/3206321: `karaoke`
+may render as 卡拉OK only when present in the same field's source and every
+OK token belongs to that complete phrase. Standalone/extra OK and invented
+OK99 models remain blocked. SKU 2529728 retains 竹签 as a bamboo-material
+compound; 竹纹塑料签 cannot satisfy the material fact. These aliases leave
+semantic approval and source-conflict routing unchanged.
+
+The pilot manifest covers all six fields for each selected SKU; its size is
+not the number of approved or applied Chinese fields. Candidate, review,
+clone-validation and production-Apply counts are recorded separately in the
+runtime reports. QA PASS alone is never semantic approval.
+Historical approval reads the exact ES localization fields; a missing source
+does not inherit an unverified business-name fallback. Source restoration uses
+separate CommitBundle run IDs from Chinese Apply. Each subsequent batch needs
+a distinct `--batch-id` and output directory.
+
+The historical runner also reads the actual Chinese localization projection,
+not the business-name fallback used for display. A reviewed legacy Chinese
+name can be recovered through the normal approval and Apply chain if the
+localization is missing; an existing display value does not count as Apply.
+Read-only audits distinguish a missing Chinese row (`NO_LOCALIZATION`) from
+an existing row without aggregate freshness metadata (`NO_FRESHNESS_STATUS`).
+Reconstructed aggregates do not invent an official observation timestamp;
+original field dates remain in source evidence.
+
+Current SKU, localization, prices, events, observations and lifecycle hashes
+matched the original backup. Repeat execution and final production acceptance
+must be recorded in runtime reports.
+
+The `stale.jsonl` report lists all fields belonging to aggregate-STALE SKU;
+its row count is not a count of individually stale fields. Field bindings and
+freshness remain explicit in each row for individual investigation.
+
+Real SKU3209565 exposed a false technical-token failure for `BBQ style`
+translated as `烧烤风味`. The lexical equivalence requires that complete
+phrase in the field's own Spanish source and the explicit flavour rendering.
+It does not waive bare BBQ identifiers, BBQ-120 models, or tokens borrowed
+from another field. The fixture retains the original archival evidence and
+tests omitted flavour and cross-field/model counterexamples.
+
+SKU3210285 exposes a trusted-brand/unit collision: `3M` in its title is a
+brand, not a length. Name QA masks only exact, omitted, field-bound BRAND
+spans before unit extraction; actual `3 m`/`3m`, missing brand evidence and
+wrong-field brand evidence still fail. SKU3211913 exposes the compound noun
+`goma de borrar`: semantic parsing records an eraser product type without
+asserting rubber material from that noun. A separate `de goma` or details
+material remains protected. Both cases carry real archived source evidence
+and counterexample assertions; the published dictionary is unchanged.
+
+The historical reviewed pilot's optional `--rebind-kept-values` mode accepts
+independently reviewed KEEP values and uses the existing
+`include_noop_rebinds` immutable patch path. Equal targets with valid approved
+Registry/PRIMARY provenance remain NO_OP; unapproved equal targets require
+the explicit option, exact before value, verified source, low/medium semantic
+approval, full QA and delegated approval. Changed KEEP values remain blocked.
+This preserves correct Chinese and allows future incremental reuse without
+retranslation. Source binding repairs are separate from text backfill counts.
+
+The history source configuration paths now point at the existing read-only
+`F:/按日期整理/action表格` archive. Neither those files nor production Master is
+modified by audit. Approved historical compatibility projection changes only
+paired ES/ZH name, category and specification cells on existing historical
+Master rows. Current rows and business history are preserved. Production
+checkout changes pre-existing before this task are preserved.
+# 2026-10-10: source-bound detergent capsule nouns
+
+Historical SKUs 3217413 and 3217414 exposed Guard false failures: the
+semantic seed expected 胶囊 / 洗洁精 even when the field explicitly described
+detergent capsules. The existing semantic alias function now accepts
+洗涤凝珠 only for complete detergent-capsule phrases in the same field.
+洗衣凝珠 additionally requires a laundry marker (color, ropa or colada)
+and is excluded when the source mentions dishes or a dishwasher.
+Unrelated medicine capsules, bare detergent, and evidence present only in
+another field remain blocked. Quantity and model protection is unchanged.
+Two real-source fixtures retain archival file and field hashes; negative
+tests cover medicine, dishwashing, partial phrases and cross-field leakage.
+No runtime dictionary baseline is published by this change.
+
+## 2026-10-10: product noun error detection from actual name16 candidates
+
+Seven source-backed cases now cover marker pens versus bookmarks, powder
+brushes versus decorating brushes, eyebrow trimmers versus contour brushes,
+and oil ampoules versus hair masks. Complete source phrases seed PRODUCT_TYPE
+facts through the existing semantic parser and Guard. Book/browser marker
+phrases are excluded in their own field without suppressing a separate pen
+phrase. Generic brushes and foot blisters do not acquire cosmetic facts.
+Facts stay attached to their source field; description evidence cannot create
+a product noun fact in the name. Existing numeric/model protection remains.
+The five wrong identity candidates have no approved gold target in fixtures
+and remain Owner review; diagnostic Guard failures do not grant approval.
+Two source-backed pen examples verify that valid existing renderings survive.
+Unrecognized LU/FAB uppercase brand/model tokens remain blocked pending
+trusted brand evidence, rather than bypassing protection for NO_BRAND cleanup.
+
+## 2026-10-10: field-bound description Guard corrections
+
+Five independently reviewed description12 cases exposed false blocks for
+iluminación focal, efectos de iluminación, intact Re-load/Skip-bo/UNO-Flip
+source brands and 三效合一 for the same-field 3 en 1 phrase. Existing Guard
+aliases now accept these exact source-bound meanings and spellings. Generic
+illumination product nouns, partial brand spellings, unrelated Spanish prose,
+changed units/models and evidence borrowed from other fields remain blocked.
+An explicit 三效合一 claim additionally requires a same-field 3 en 1 source
+and cannot be duplicated beyond source occurrences. The wider existing
+cross-field numeric relocation behavior is unchanged and needs further audit.
+
+Five real fixtures retain source text, source/file hashes, SKU context and old
+Guard failures; semantic review is recorded separately from formal approval.
+Twenty-one new positive/negative tests pass. Full regression: 991 passed in
+113.80 seconds, JUnit archived in the runtime historical report directory.
+Runtime dictionary baseline is unchanged. Description12 candidates are still
+pending formal immutable Apply at this code checkpoint.
+
+## 2026-10-10: non-spec quantities must belong to their own source
+
+Real SKU3015660 showed that appending the specification length 10 metres or
+structured-details lumen 1300 to its description still passed numeric Guard.
+Neither value occurs in that description. Non-spec numeric additions now use
+only the target field's own source, rather than the entire SKU payload.
+Canonical specification numeric relocation keeps its existing compatibility
+contract; general source-bound Chinese quantity interpretation still needs
+further audit. Spanish articles rendered as Chinese classifiers remain valid.
+
+Fourteen additional tests cover the full five real SKU contexts, three
+intentionally corrupted LED candidates, five non-spec field scopes and a
+Spanish article. No mutated target is marked as gold. Full regression:
+1005 passed in 94.95 seconds. All167 committed description12 targets were
+rechecked under the stricter Guard with zero failures. Code is local to this
+independent branch; no dictionary baseline or production settings changed.
+
+## 2026-10-10: spelled Spanish quantities in their counted-noun scope
+
+The new numeric scope exposed a valid existing charger description containing
+both numeric 2 ports and spelled dos dispositivos. Its correct Chinese is
+retained. Thermal paper also explicitly contains cinco rollos; this permits
+five rolls without permitting its other-field dimensions. Numeric QA now
+counts standalone dos through diez only with an explicit bounded counted noun
+(units, pieces, pairs, rolls, devices, ports, eyelashes). Compound cardinal
+suffixes, standalone words and brand/game names acquire no invented count.
+Chinese 五卷 now represents the explicit roll count. Spanish source is unchanged.
+
+Two real-source fixtures plus twelve additional tests cover preservation,
+wrong quantities, cross-field leakage and non-quantity/compound exclusions.
+Full regression: 1017 passed in 96.12 seconds. Independently reviewed impact:
+24 existing fields, one correct KEEP, twenty ordinary corrections passing
+Guard/canonical QA, one eyelash-unit ambiguity requiring Owner, and two
+remaining Guard blockers (Play-Doh series residual and candy gomas noun).
+These blocker candidates are not approved or applied by this code checkpoint.
+
+### 2026-10-10 details11 boolean labels and source anomalies
+
+All 100 details11 candidates were independently read with complete archived
+own-field source and SKU context: 47 KEEP, 34 ordinary corrections, 19 Owner
+holds. Shared QA initially passed 80; one correct Sin perfume:No -> 无香型:否
+was falsely marked as missing. Fragrance label recognition now includes
+香型/香味/无香/有香 while retaining boolean polarity, cardinality and duplicate
+checks. Soap attributes jabón/jabon now use the same source-negative truth
+comparison: Sin jabón:No must never become 是否含皂:否.
+
+Three real source fixtures retain archival hashes and full context. Invalid
+Sustancia:Válido cases contain expected SOURCE_REVIEW_REQUIRED behavior, not
+guessed gold translations. Sixteen tests cover both booleans, alternative
+labels, accents, duplicate attributes, missing fields, cross-field isolation
+and the existing no-ironing rule. Other ordinary corrections preserve color
+gris topo as 灰褐色, distinguish sheets from pages, remove an imported cable
+unit, and retain explicit quantities, allergen facts and source-only materials.
+Nineteen source-conflict or high-risk cases remain held; QA PASS alone never
+confers semantic approval or establishes Apply completion.
+
+### 2026-10-10 details12 sugar/lactose isolation
+
+The independently reviewed M&M's Mini's details (3211791) explicitly contain
+both Sin azúcar:No and Sin lactosa:No. The shared boolean checker previously
+counted 无乳糖 twice, once as generic sugar and again as lactose. Generic sugar
+recognition now excludes the 乳糖 substring, while the separate lactose check
+still requires its field and verifies both negative values. A real archived
+fixture and six tests cover the correct candidate, each flipped/missing fact,
+and lactose-only text masquerading as the generic sugar field. No quantity,
+allergen or own-field source requirement is waived. Source-conflict cases in
+the same batch remain held independently of Guard results.
+
+### 2026-10-10 details13 rinse instructions and generic UV
+
+Independent reading found Aclarado:No translated as 是否免洗:否 for 3215869,
+reversing how to use a leave-in conditioner. The existing structured boolean
+guard now recognizes exactly Aclarado and checks 冲洗/免洗 with opposite truth;
+another field cannot authorize a reversal. No additional formula or ingredient
+claim is inferred. Generic standalone UV may be rendered 紫外线 only in its
+own field, with occurrence counts retained. UV（紫外线） is one occurrence,
+not two facts; UVA/UVB/UVC/UV-A/UVX retain identifier protection.
+
+Three real archived fixtures and fifteen tests cover positive translations,
+the previously undetected reversal, both boolean values, omitted instructions,
+other-field leakage, lost/extra UV occurrences and suffix/model exclusions.
+All 100 details13 candidates were independently read: 55 KEEP, 30 ordinary
+corrections, 15 source-conflict/uncertain cases held for Owner. Candidate and QA
+counts do not establish Apply completion. Runtime Spanish, Presence, prices
+and lifecycle events are unchanged by this code edit.
+
+### 2026-10-10 unresolved source physical-state gate
+
+Scanning all 4244 historical records found 18 own-source Sustancia:Válido
+anomalies: 11 already have Chinese and seven are missing. All 18 complete
+sources and current Chinese values were independently read. Some existing
+translations invent gel/foam, some render 有效成分:有效, and one silently omits
+the source attribute. No definitive physical-state translation is supported
+by this own-field source; none is approved, cleared or overwritten.
+
+The shared details Guard now blocks exactly the known typed value
+Sustancia:Válido/Valido for source review. Official Spanish remains nonempty;
+the finding is not an official-empty or missing-source classification. Three
+real fixtures retain full source evidence/current values and no guessed target.
+Eleven tests cover the source anomaly, accent/case variants, valid liquid/cream/
+powder values, no source mutation and isolation from other requested fields.
+The explicit Owner queue is a finite source-anomaly audit, not a claim of
+complete independent review of all 25464 historical Chinese fields.
+
+## 2026-10-10: description13 source context and dimensional units
+
+Six real SKU cases retain full source/context, archival hashes and failed
+Guard outputs. Exact same-field Pro-max/T-Rex/gsm tokens now survive residual
+checking without waiving missing sources or accepting another field's tokens.
+Complete iluminación ambiental/modos de iluminación phrases allow their
+lighting-use meanings. Spelled quantities now cover speakers, pockets, modes
+and hours; conjunctions between quantities retain both, while compound number
+suffixes cannot acquire the wrong last-digit value. The independent reviewer
+also restored PC and explicit powder-brush terms in ordinary candidates.
+
+Area units retain their powers: mm²/cm²/m²/km² map to 平方毫米/平方厘米/平方米/
+平方千米 and cannot become linear measures. Numeric values, cable models and
+unit powers stay protected. Thirty new tests include six real positive cases
+and mutated/missing/cross-field/compound negative cases. Full regression:
+1047 passed in84.77 seconds. Description13 all200 independently reviewed,
+165 Guard/canonical PASS and35 high-risk Owner; immutable Apply still pending
+at this code checkpoint. No runtime dictionary baseline or settings published.
+
+
+### 2026-10-10 description14 source-bound QA refinement
+
+All 200 description14 candidates were independently compared with their own complete Spanish description and saved SKU context: 92 candidate KEEP, 79 ordinary source-supported corrections, 29 Owner holds. Before refinement 159 passed and 12 ordinary candidates were blocked. Candidate/review counts are not applied counts.
+
+The shared QA now supports same-field complete commercial spans Snacks of the World / Stretcherz Stretch Squad mini and exact Jawbreaker / i-Scrub / Olus, without allowing these from another field or partial multiword brand fragments. Added source-bound IA → AI and USB C → USB-C spellings; no absent interface/model may be inferred. Spanish quantity recognition covers earrings, boxes (including pequenas modifier), and colors, with compound-number protection retained. The complete own-source iluminación led phrase accepts LED照明 without making bare iluminación interchangeable with light effects. Source capuchones de goma retains explicit 橡胶 in the reviewed target rather than waiving the material check.
+
+Eleven real evidence fixtures preserve selected source artifact hashes, complete saved context and pre-change failures; they explicitly confer no formal approval. Counterexamples reject other-field borrowing, altered quantities, partial brand names, added standards and missing acronyms. Full regression must pass before formal Apply.
+
+Owner holds include health/safety claims, contradictory Halal flags, page/sheet counts, compartment counts, uncertain faux fur/leather, coffee/cocoa source mismatch and the cap-description double negation. Full independent six-field semantic audit and live online daily-run validation remain incomplete.
+
+The complete existing-field guard scan exposed two false regressions for Chinese 四种/两种; non-singular Chinese 种 counts are now recognized while generic 一种 remains excluded. This prevents enforcing new Spanish color counts without accepting their Chinese equivalents. Full suite rerun required after this adjustment.
+
+
+### 2026-10-10 existing-description retries
+
+SKU3223925's own description contains the complete Play-Doh Create & Celebrate span. Shared residual QA preserves only that complete same-field commercial name; partial names and names borrowed from another source field stay blocked. SKU3225810's description explicitly contains both gomas pelables and gominola, proving confectionery rather than rubber bands. The semantic parser now emits the source-scoped soft-candy product fact, suppresses only the generic rubber-band occurrence consumed by that complete phrase, and retains separately mentioned rubber-band facts. A gummy marker in another field is insufficient, and dictionary broad matches cannot reintroduce the wrong product identity. Real source artifacts/hashes and negative cases are preserved; none confer approval. Existing corrections remove unsupported 20-unit/150-g facts imported from other fields and retain own-source brands.
+
+### 2026-10-10 details14 selected charging speed
+
+SKU3216817's own structured Cargador rápido / lento selects Rápido. Its model candidate incorrectly placed both alternatives in the value. Shared details QA now compares the known selected fast/slow value, blocking opposite, ambiguous, missing, duplicate and uninterpretable selections. Alternative labels may retain both options; the selected value must preserve the source choice. Only the exact Spanish attribute with a known selection activates this check; other source attributes and requested fields are unaffected. It does not infer charging protocols, ports or cable power from context. Fifteen CI_SAFE tests include a real source artifact with hashes and full saved context; the fixture confers no formal approval.
+
+Details14's 100 candidates were independently read against complete own sources and SKU context: 36 KEEP, 53 ordinary corrections, 11 source/Owner holds before final Gate. The material wording for SKU3217697 preserves own-source Madera MDF explicitly as 木质MDF板材 rather than bypassing its material QA. Candidate/review counts remain distinct from actual Apply. Full independent six-field semantic audit and live online daily-run verification remain incomplete.
+
+### 2026-10-10 details15 hair-tie sense and existing care corrections
+
+The complete own-field Goma(s) para (la) cola de caballo phrase names a hair accessory, not an assertion of rubber composition. Shared semantic parsing consumes only that phrase's generic goma occurrence and emits 发圈. Independently stated rubber material or other rubber bands remain protected; another field cannot disambiguate generic goma and dictionary broad matches cannot restore the consumed material assertion. Two real evidence fixtures cover missing details SKU3219801 and already-correct existing details SKU2564827. The existing correct value is retained without another translation or Apply. Twelve CI_SAFE tests preserve hashes, blocked pre-change evidence and explicit negative cases; they confer no approval.
+
+Details15's 97 real Qwen calls completed and an actual Resume reused all97 responses with zero provider calls. All97 own-field sources and saved contexts were independently read. A separate finite audit of39 existing details found30 ordinary source-supported corrections, primarily Sin planchado translated as optional easy care, and9 source/Owner holds. Duplicate Chinese pet-food keys were given distinct category/form labels without dropping source values. These reviewed candidates still require the formal QA/Approval/Immutable Patch/Apply/Integrity/Master Sync pipeline; candidate counts are not applied counts.
+
+### 2026-10-10 existing quadruple-outlet numeric evidence
+
+Revalidation of prior independent reviews exposed SKU3213413's correctly translated 4插孔插线板 as a numeric false positive. Its own historical title Regleta de enchufes cuádruple explicitly supports four sockets. Numeric QA now counts only this complete noun phrase; it does not authorize an isolated multiplier, partial/model fragment or another field's quantity. Repeats and unrelated quantities stay protected. Eleven CI_SAFE tests include the real archived source/hash and unchanged existing Chinese. No new translation, approval or Apply is conferred by the fixture; the already-correct value remains unchanged.
+
+### 2026-10-10 existing-description specific noun QA
+
+Same-field iluminación de/con hilo/cable de cobre permits the specific 灯串 noun; paño para/de secar and paño para/de pulir permit 擦干布 and 抛光布. These aliases do not apply to generic nouns or qualifications in another source field, and do not waive quantity, LED or measurement checks. Twelve CI_SAFE tests include two real existing-description fixtures. They validate the noun choices only, not overall semantic approval or completeness. Separate independent review found other ordinary problems in those descriptions: an unsupported outdoor-use qualifier and omitted original usage text. Corrections still require the native Approval/Immutable Patch/Apply pipeline. Correct terms are retained; no official source is rewritten.
+
+### 2026-10-10 description17 real source Guard cases
+
+The complete goma de borrar phrase permits 橡皮 as well as 橡皮擦; generic goma retains its rubber meaning. Same-field barra de pantalla plus opciones de iluminación permits 屏幕挂灯. A facial-mask source explicitly using como un paño sobre la cara identifies a cloth-placement simile and permits 面膜/面膜布/布片 instead of requiring a cleaning cloth. Spelled cardinal plus posiciones now counts the explicitly stated control positions; unsupported compound-number suffixes stay blocked. Four real source/evidence fixtures retain blocked pre-change candidates, full context and artifact hashes without conferring approval. Tests require the own-field phrase and preserve protected USB/numeric facts; all candidate corrections still require native QA/Approval/Immutable Patch/Apply and batch integrity, Master Sync and actual Resume checks.
+
+### 2026-10-10 finite provider checkpoint configuration binding
+
+Offline reproduction confirmed that endpoint and optional translation settings could change while the finite batch reused the old plan hash. New checkpoints use FINITE_PROVIDER_BATCH_V2 and bind Qwen's endpoint hash, declared optional-options setting and actual shared domain-prompt text hash. Credentials and raw endpoint URLs are not saved. Runtime retry timing and transient fallback remain execution state, allowing ordinary Resume. The adapter contract version covers wire/protection behavior and must be bumped when those semantics change. Providers without an adapter identity are explicitly reported as PROVIDER_MODEL_ONLY.
+
+Completed legacy checkpoints remain read-only candidate evidence with LEGACY_CONFIGURATION_UNVERIFIED, zero provider calls and pending semantic review; their adapter identity is never silently inferred or migrated. Incomplete legacy checkpoints stop before provider calls pending configuration evidence. Source/model changes, mismatched saved plans and corrupt response source/target/model are blocked. Nine offline CI_SAFE regression cases use an archived historical source without claiming real model calls or approval. Existing Translation/QA/Approval/Apply remains authoritative.
+
+### 2026-10-10 description18 neon lamp sense
+
+Shared illumination QA permits 霓虹灯 only with the complete own-field lámpara de neón phrase. 霓虹壁灯 requires the more specific lámpara de pared (solar) de neón phrase; a generic lamp, generic lighting, or a qualifier from another field is insufficient. Eight CI_SAFE cases include the real archived source, blocked pre-change candidate and full context. Quantity and LED protection remain active. The fixture confers no formal approval, and all existing-description repairs still use the native immutable Apply pipeline.
+
+### 2026-10-10 historical headphone fit preservation
+
+Two independently reviewed historical specs (3013368 and 3200696) exposed a shared QA false negative: own-source Over-ear passed with generic 头戴式 Chinese. The existing field-scoped VARIANT parser now recognizes this complete technical term, and semantic QA requires 包耳式, 罩耳式, 耳罩式 or 全包耳式 rather than generic headband style. Negated fit expressions do not satisfy the source assertion. Other source fields cannot impose fit on a generic title or specification, and number/interface guards remain active. Twenty-one CI_SAFE cases include both real archived source hashes and the recorded pre-change PASS; fixture expectations confer no approval or Apply. The native review, QA, immutable patch, integrity, Sync and Resume contracts remain required.
+
+### 2026-10-10 wash-count usage and translated-unit suffix QA
+
+The 300-group existing-spec review exposed seven numeric wash counts reduced to unqualified 次 and SKU3224693's 800 vatios rendered as 800 瓦s, all previously passing QA. The existing own-field VARIANT parser now protects complete numeric lavados phrases as wash usage; equivalent 洗涤/洗衣/清洗/水洗 renderings still require the original number. Washed-fabric adjectives, partial identifiers and another field's count supply no fact. Numeric Chinese units carrying Latin s/es suffixes produce a blocking MALFORMED_TRANSLATED_UNIT diagnostic; QA does not silently edit them. A separated model label is not a plural suffix.
+
+Twenty-two CI_SAFE cases include the real archived source hashes and pre-change PASS, numeric and field isolation checks, and unresolved cosmetic shade inputs without guessed gold translations. The full regression passed 1,267 cases. Source quantity conflicts and shade ambiguity remain explicit review holds; QA PASS alone never promotes them to approval. Native reviewed Apply, integrity, Sync and actual Resume remain authoritative.

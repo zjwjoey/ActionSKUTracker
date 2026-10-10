@@ -158,6 +158,26 @@ def test_database_boolean_parser_does_not_treat_false_text_as_true():
     assert _to_bool("true") is True
 
 
+def test_historical_source_restore_does_not_enqueue_current_category_gap(tmp_path: Path):
+    db = tmp_path / "history.db"
+    writer = ProductionWriter(db)
+    initial = CommitBundle(run_id="history-seed", observation_date="2026-10-09", qa_state="PASS",
+        current_products=({"sku": "1001", "name_es": "Producto", "status": "HISTORICAL", "current_price": 2.5},))
+    head = writer.commit(initial)
+    with connect(db) as conn:
+        before = tuple(conn.execute("SELECT * FROM products").fetchone())
+    restore = CommitBundle(run_id="history-source-restore", observation_date="2026-10-09",
+        qa_state="PASS", base_commit_id=head,
+        localization_updates=({"sku": "1001", "language": "es", "name": "Producto", "cat1": "Hogar"},),
+        run_record={"operation": "HISTORICAL_SOURCE_RECOVERY"})
+    restored = writer.commit(restore)
+    assert writer.commit(restore) == restored
+    with connect(db) as conn:
+        assert tuple(conn.execute("SELECT * FROM products").fetchone()) == before
+        for table in ("category_backlog", "category_backlog_events", "observations", "price_history", "event_history"):
+            assert conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
+
+
 def test_writer_normalizes_official_text_and_rejects_equal_original_price(tmp_path: Path):
     db = tmp_path / "action.db"
     bundle = CommitBundle(

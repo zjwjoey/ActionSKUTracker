@@ -8,6 +8,7 @@ from typing import Any, Mapping
 from .contracts import SourceFacts
 from .policy import FIXED_CAT1, has_ordinary_spanish
 from .protection.tokens import ProtectedTokenError, protect_text, restore_text
+from .normalization.structured_details import parse_structured_details
 
 
 FACT_QA_POLICY_VERSION = "FACT_QA_V2"
@@ -15,18 +16,19 @@ EMPTY_SOURCE_LOCALIZATION_CONTRACT_VERSION = "EMPTY_SOURCE_LOCALIZATION_CONTRACT
 NAME_IDENTITY_FACT_PRESERVATION_VERSION = "NAME_IDENTITY_FACT_PRESERVATION_V1"
 
 
-_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9])", re.I)
-_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|平方千米|平方米|平方厘米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
+_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u024f])\d+(?:[.,]\d+)?\s*(km²|cm²|mm²|m²|mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9\u00c0-\u024f])", re.I)
+_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|平方千米|平方米|平方厘米|平方毫米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
 _UNIT_ALIASES = {
     "毫安时": "mah", "安时": "ah", "瓦时": "wh", "千瓦时": "kwh", "毫瓦": "mw", "千瓦": "kw",
     "赫兹": "hz", "伏特": "v", "瓦": "w", "分贝": "db", "千卡": "kcal", "千卡路里": "kcal", "摄氏度": "°c", "厘米": "cm", "毫米": "mm",
     "千米": "km", "米": "m", "千克": "kg", "公斤": "kg", "克": "g", "毫克": "mg", "微克": "μg",
     "毫升": "ml", "厘升": "cl", "分升": "dl", "升": "l", "百分比": "%",
-    "平方米": "m", "平方厘米": "cm", "平方千米": "km",
+    "平方米": "m²", "平方厘米": "cm²", "平方千米": "km²", "平方毫米": "mm²",
 }
 
 
 def _units(value: str) -> set[str]:
+    value = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)([23])(?![A-Za-z0-9])", lambda m: m[1] + m[2] + {"2": "²", "3": "³"}[m[3]], value, flags=re.I)
     units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(value)}
     units.update(_UNIT_ALIASES.get(unit, unit) for unit in _CHINESE_UNIT_RE.findall(value))
     return units
@@ -38,8 +40,17 @@ _STRICT_TOKEN_TYPES = {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "C
 # seeded semantic map; they prevent the Guard from rejecting valid outputs
 # such as ``paño -> 抹布`` and ``madera -> 木制``.
 _SEMANTIC_TARGET_ALIASES = {
+    "marcadores grandes": ("记号笔", "马克笔"),
+    "marcadores acrílicos": ("丙烯马克笔", "丙烯记号笔"),
+    "marcadores dobles de pizarra blanca": ("白板笔", "白板记号笔"),
+    "marcadores de punta fina y pincel": ("记号笔", "马克笔"),
+    "brocha para polvos": ("散粉刷", "蜜粉刷", "定妆粉刷"),
+    "recortacejas": ("修眉器", "眉毛修剪器"),
+    "ampollas de aceite": ("安瓶", "安瓿"),
     "gomas": ("橡皮筋", "橡胶圈", "松紧带"),
     "goma": ("橡胶",),
+    "over-ear": ("包耳式", "罩耳式", "耳罩式", "全包耳式"),
+    "goma de borrar": ("橡皮擦", "橡皮"),
     "calcetines": ("袜子", "短袜", "长袜", "低帮袜", "运动袜"),
     "detergente": ("洗洁精", "洗涤剂", "清洁剂", "马桶清洁剂"),
     "cartulina": ("彩色手工卡纸", "卡纸", "手工卡纸"),
@@ -49,7 +60,8 @@ _SEMANTIC_TARGET_ALIASES = {
     # ``超细纤维`` or the shorter ``微纤维``; both preserve the material fact.
     "microfibra": ("超细纤维", "微纤维"),
     "microfibras": ("超细纤维", "微纤维"),
-    "madera": ("木质", "木材", "木制", "木头"),
+    "madera": ("木质", "木材", "木制", "木头", "木盖", "木屑", "芒果木"),
+    "bambú": ("竹制", "竹材", "竹子", "竹签", "竹筷"),
 }
 
 # A small, explicit allowlist for semantic translations that are rendered as
@@ -59,6 +71,12 @@ _SEMANTIC_TARGET_ALIASES = {
 # source-bound instead of weakening the protected-token guard globally.
 _TRANSLATED_STRICT_TOKEN_ALLOWLIST = {
     "bricolaje": {"DIY"},
+    # Real historical specs 3221778/3221803 spell the LED plural ``ledes``.
+    # This equivalence is permitted only in this field's own source text.
+    "ledes": {"LED"},
+    "LEDs": {"LED"},
+    "USB C": {"USB-C"},
+    "IA": {"AI"},
 }
 
 # Some short technical acronyms are official source terminology rather than
@@ -66,6 +84,7 @@ _TRANSLATED_STRICT_TOKEN_ALLOWLIST = {
 # explicit; otherwise the protected-token guard would mistake a correct
 # translation such as ``GLP -> 液化石油气`` for a dropped token.
 _TRANSLATED_TECH_TOKEN_ALIASES = {
+    "ia": ("AI", "人工智能"),
     "glp": ("液化石油气",),
     "lpg": ("液化石油气",),
     # Source technical abbreviations that are legitimately localized in the
@@ -111,6 +130,9 @@ _SOURCE_BOUND_EXACT_TECH = {
     "usb", "usb-a", "usb-c", "micro-usb", "micro-sd", "hdmi", "led", "mdf",
     "fsc", "bci", "tcx", "a4", "b5", "wifi", "magsafe", "playstation", "k-pop", "power-fast",
     "sds-plus", "transflash", "eprel", "torx",
+    # Exact same-field commercial/game spans; the residual scanner splits
+    # hyphens into words, so their full source-bound spelling is required.
+    "re-load", "skip-bo", "uno-flip", "pro-max", "t-rex", "gsm", "jawbreaker", "i-scrub", "olus",
 }
 
 
@@ -193,6 +215,17 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
             allowed.update(part for part in domain.split(".") if part)
             if "www." + domain.casefold() in target_fold:
                 allowed.add("www")
+    # Multiword commercial spans must occur complete in this same field.
+    # Interior prose words (of/the/mini) are not general residual exceptions.
+    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini", "Play-Doh Create & Celebrate", "Max & More", "Dr. Candy Lolli Popperz"):
+        pattern = rf"(?<![A-Za-z0-9]){re.escape(phrase)}(?![A-Za-z0-9])"
+        if re.search(pattern, source, re.I) and re.search(pattern, rendered, re.I):
+            allowed.update(re.findall(r"[A-Za-z]+", phrase))
+    # Pro is a model suffix only in the complete same-field iPhone model
+    # expression. Ordinary Spanish "pro" remains subject to residual QA.
+    for model in re.findall(r"\biPhone\s+[A-Za-z0-9/]+\s+pro\b", source, re.I):
+        if re.search(rf"(?<![A-Za-z0-9]){re.escape(model)}(?![A-Za-z0-9])", rendered, re.I):
+            allowed.add("pro")
     return allowed
 
 
@@ -249,7 +282,7 @@ _ALLOWED_LATIN_DISPLAY_TOKENS = {
     "dura-beam", "dura beam", "bloxx", "style", "choco", "trio",
     "do & dry", "essentials", "power activ", "nex",
     "fsc", "bci", "pefc", "tüv", "hdmi", "usb", "usb-c", "xl", "xxl",
-    "omega", "dvd", "ph", "pH",
+    "omega", "dvd", "ph", "pH", "polo",
 }
 
 _SOURCE_FIELD_BY_TARGET = {
@@ -313,8 +346,14 @@ def _omittable_display_term(term: Mapping[str, Any], semantic_facts: tuple[Any, 
     )
 
 
-def _is_allowed_translated_strict_token(source_text: str, token: str) -> bool:
+def _is_allowed_translated_strict_token(source_text: str, token: str, target: str = "", actual_count: int = 1) -> bool:
     token_key = str(token or "").casefold()
+    # The Chinese lexical rendering of karaoke contains the uppercase
+    # letters OK. It is not a new model identifier. Require the complete
+    # phrase and account for every OK token; standalone/extra OK stays blocked.
+    if token_key == "ok":
+        return (_source_term_present(source_text, "karaoke") and
+                len(re.findall(r"卡拉\s*OK(?![A-Za-z0-9])", target, re.I)) == actual_count)
     return any(
         token_key in {candidate.casefold() for candidate in targets}
         and _source_term_present(source_text, source_term)
@@ -323,15 +362,39 @@ def _is_allowed_translated_strict_token(source_text: str, token: str) -> bool:
 
 
 def _is_allowed_translated_tech_token(source_text: str, source_token: str, target: str) -> bool:
+    if str(source_token or "").casefold() == "uv":
+        # Generic UV may be localized, but UVA/UVB/UVC/model suffixes may not.
+        pattern = r"(?<![A-Za-z0-9_-])UV(?![A-Za-z0-9_-])"
+        expected = len(re.findall(pattern, source_text, re.I))
+        normalized = re.sub(r"UV\s*[（(]\s*紫外线\s*[）)]|紫外线\s*[（(]\s*UV\s*[）)]", "UV", target, flags=re.I)
+        rendered = len(re.findall(pattern, normalized, re.I)) + normalized.count("紫外线")
+        return expected > 0 and rendered == expected
+    # A flavour phrase is not a device/model identifier. Keep this confined
+    # to the complete phrase in the same source field, never BBQ model codes.
+    if str(source_token or "").casefold() == "bbq":
+        return bool(re.search(r"\bBBQ\s+style\b", source_text, re.I) and "烧烤风味" in target)
     aliases = _TRANSLATED_TECH_TOKEN_ALIASES.get(str(source_token or "").casefold(), ())
     return _source_term_present(source_text, source_token) and any(
         alias.casefold() in str(target or "").casefold() for alias in aliases
     )
 
 
-def _is_omittable_display_brand_tech(source_text: str, source_token: str, target: str) -> bool:
+def _is_omittable_display_brand_tech(source_text: str, source_token: str, target: str, *, semantic_facts=(), field_name="") -> bool:
     token = str(source_token or "").casefold()
-    return token in _OMITTABLE_DISPLAY_BRAND_TECH and _source_term_present(source_text, source_token) and not _has_casefold_token(target, source_token)
+    if _has_casefold_token(target, source_token):
+        return False
+    if token in _OMITTABLE_DISPLAY_BRAND_TECH and _source_term_present(source_text, source_token):
+        return True
+    # A source-scoped, trusted BRAND fact resolves an uppercase brand such
+    # as DAY. Unknown acronyms remain technical identifiers, never brands
+    # inferred solely from their spelling.
+    return field_name == 'name' and any(
+        str(getattr(fact,'semantic_type','')) == 'BRAND'
+        and _fact_applies_to_field(fact,field_name)
+        and str(getattr(fact,'source_text','')).casefold() == token
+        and _source_term_present(source_text,source_token)
+        for fact in semantic_facts
+    )
 
 
 def _is_ordinary_spanish_uppercase_token(source_text: str, source_token: str) -> bool:
@@ -380,11 +443,85 @@ def _has_casefold_token(text: str, token: str) -> bool:
 
 
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
+    # An appearance simile is not a claim of actual wood composition. Only
+    # consume it when no separate wood occurrence remains in this field.
+    # Bamboo fibre likewise names a textile material, not a solid bamboo item.
+    if source_term.casefold() == "madera":
+        remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
+        if remaining != source_text and not re.search(r"\bmadera\b", remaining, re.I):
+            return ("木纹", "木质外观", "木材外观")
+    if source_term.casefold() == "bambú":
+        remaining = re.sub(r"\bfibras?\s+de\s+bambú\b", " ", source_text, flags=re.I)
+        if remaining != source_text and not re.search(r"\bbambú\b", remaining, re.I):
+            return ("竹纤维",)
     aliases = list(_SEMANTIC_TARGET_ALIASES.get(source_term.casefold(), (canonical,)))
+    if re.fullmatch(r"\d+\s+lavados", source_term, re.I):
+        aliases.extend(("洗衣", "清洗", "水洗"))
+    # In these complete phrases illumination describes light usage/effects,
+    # rather than an additional lamp product. Do not waive generic product
+    # nouns or borrow the qualifying phrase from another source field.
+    if source_term.casefold() == "iluminación":
+        if re.search(r"\biluminación\s+focal\b", source_text, re.I):
+            aliases.append("照明")
+        if re.search(r"\befectos?\s+de\s+iluminación\b", source_text, re.I):
+            aliases.extend(("灯光效果", "光效"))
+        if re.search(r"\biluminación\s+ambiental\b", source_text, re.I):
+            aliases.extend(("氛围照明", "环境照明"))
+        if re.search(r"\biluminación\s+de\s+ambiente\b", source_text, re.I):
+            aliases.extend(("氛围照明", "环境照明"))
+        if re.search(r"\biluminación\s+multicolor\s+RGB\b", source_text, re.I):
+            aliases.extend(("RGB灯光", "RGB 灯光", "RGB照明", "RGB 照明"))
+        if re.search(r"\biluminación\s+led\s+destelleante\b", source_text, re.I):
+            aliases.extend(("LED灯光", "LED 灯光"))
+        if re.search(r"\biluminación\s+led\b", source_text, re.I):
+            aliases.extend(("LED照明", "LED灯光"))
+        if re.search(r"\biluminación\s+(?:de|con)\s+(?:hilo|cable)\s+de\s+cobre\b", source_text, re.I):
+            aliases.extend(("铜线灯串", "灯串"))
+        if re.search(r"\bmodos?\s+de\s+iluminación\b", source_text, re.I):
+            aliases.extend(("照明模式", "灯光模式"))
+        if (re.search(r"\bbarra\s+de\s+pantalla\b", source_text, re.I)
+                and re.search(r"\bopciones\s+de\s+iluminación\b", source_text, re.I)):
+            aliases.extend(("屏幕挂灯", "屏幕灯"))
+        if re.search(r"\blámpara\s+de\s+neón\b", source_text, re.I):
+            aliases.append("霓虹灯")
+        if re.search(r"\blámpara\s+de\s+pared\s+(?:solar\s+)?de\s+neón\b", source_text, re.I):
+            aliases.append("霓虹壁灯")
+    # Capsules are not always medicines. Recognize detergent capsules only
+    # from a complete phrase in this field; other fields cannot supply it.
+    detergent_capsules = bool(re.search(
+        r"\b(?:detergentes?\s+en\s+cápsulas|cápsulas\s+de\s+(?:lavado|detergente))\b",
+        source_text, re.I))
+    if source_term.casefold() in {"cápsulas", "detergente"} and detergent_capsules:
+        aliases.append("洗涤凝珠")
+        # Laundry-specific Chinese needs an explicit laundry marker, and
+        # dishwashing text must not receive this narrower interpretation.
+        if (re.search(r"\b(?:color|ropa|colada)\b", source_text, re.I)
+                and not re.search(r"\b(?:lavavajillas|vajilla|platos)\b", source_text, re.I)):
+            aliases.append("洗衣凝珠")
     # ``paño húmedo`` is a wet wipe, not a generic cleaning cloth.  Keep this
     # context-bound so ordinary ``paño`` facts do not accept ``湿巾``.
     if source_term.casefold() in {"paño", "paños"} and "húmed" in str(source_text or "").casefold():
         aliases.append("湿巾")
+    if source_term.casefold() in {"paño", "paños"}:
+        if re.search(r"\bpaños?\s+(?:para|de)\s+secar\b", source_text, re.I):
+            aliases.append("擦干布")
+        if re.search(r"\bpaños?\s+(?:para|de)\s+pulir\b", source_text, re.I):
+            aliases.append("抛光布")
+        # The cloth is a placement simile, not a separate cleaning product.
+        # Require the complete facial-mask phrase in this source field.
+        if (re.search(r"\bmascarillas?\b", source_text, re.I)
+                and re.search(r"\bcomo\s+un\s+paño\s+sobre\s+la\s+cara\b", source_text, re.I)):
+            aliases.extend(("布片", "面膜布", "面膜"))
+    if source_term.casefold() == 'calcetines':
+        if re.search(r'\b(?:de|para)\s+beb[eé]s?\b',source_text,re.I):aliases.append('婴儿袜')
+        for marker,alias in [('invisibles','隐形袜'),('rizo','毛圈袜')]:
+            if _source_term_present(source_text,marker):aliases.append(alias)
+    if source_term.casefold() == 'gomas' and re.search(r'\bgomas\s+(?:de|del)\s+pelo\b',source_text,re.I):
+        aliases.append('发圈')
+    if source_term.casefold() == 'bambú' and re.search(r'\bcestas?\s+de\s+bambú\b',source_text,re.I):
+        aliases.append('竹篮')
+    if source_term.casefold() == 'madera' and re.search(r'\bmadera\s+de\s+teca\b',source_text,re.I):
+        aliases.append('柚木')
     return tuple(dict.fromkeys(aliases))
 
 
@@ -421,8 +558,15 @@ def _canonical_numeric_token(token: str) -> str:
     return raw.replace(",", ".")
 
 
-def _numbers(value: str) -> Counter[str]:
+def _normalize_numeric_syntax(value: str) -> str:
+    """Use identical numeric syntax in preservation and addition checks."""
     text = str(value or "")
+    # ASCII area exponents are unit syntax, never a second count. Keep
+    # unrelated model digits and dimensions intact.
+    text = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)2(?![A-Za-z0-9])", r"\1\2²", text, flags=re.I)
+    # Two comma-separated integer ranges unambiguously form a list. A single
+    # decimal range such as 28-29,5 must retain its decimal separator.
+    text = re.sub(r"(?<![\d.,])(\d{1,2}-\d{1,2})(?:,\s*)(\d{1,2}-\d{1,2})(?![\d.,])", r"\1 \2", text)
     # Action source occasionally uses an apostrophe as a decimal separator
     # (``9'5x13 cm``).  Normalize only the digit-to-digit form; apostrophes in
     # ordinary text remain untouched.
@@ -440,7 +584,32 @@ def _numbers(value: str) -> Counter[str]:
         lambda match: match.group(1).replace(",", " "),
         text,
     )
+    return text
+
+
+def _numbers(value: str) -> Counter[str]:
+    text = _normalize_numeric_syntax(value)
     numbers = Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
+    # The historical outlet-strip title explicitly names four sockets. Count
+    # only the complete own-field noun phrase, not a generic multiplier,
+    # brand fragment or a quantity borrowed from another field.
+    quadruple_outlets = re.findall(r"\bregleta\s+de\s+enchufes\s+cu[áa]druple\b", text, re.I)
+    if quadruple_outlets:
+        numbers["4"] += len(quadruple_outlets)
+    # Spelled-out quantities are still own-field source facts. Restrict this
+    # to complete cardinal + counted-noun phrases, not brand/game names or
+    # pronouns. Unsupported compound numbers must not become their last digit.
+    spanish_cardinals = {"dos": "2", "tres": "3", "cuatro": "4", "cinco": "5",
+                         "seis": "6", "siete": "7", "ocho": "8", "nueve": "9", "diez": "10"}
+    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas|pendientes|cajas|colores|posiciones)"
+    for match in re.finditer(rf"\b({'|'.join(spanish_cardinals)})\s+(?:pequeñ[oa]s\s+)?{counted_nouns}\b", text, re.I):
+        prefix = text[:match.start()]
+        # A conjunction after a counted noun starts another quantity, e.g.
+        # dos horas y tres modos. Only a preceding numeric cardinal makes
+        # this an unsupported compound suffix (treinta y cinco rollos).
+        if re.search(r"\b(?:veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos|seiscientos|setecientos|ochocientos|novecientos|mil)\s*(?:(?:y|e)\s*)?$", prefix, re.I):
+            continue
+        numbers[spanish_cardinals[match.group(1).casefold()]] += 1
     # Chinese display text commonly renders source numerals as characters,
     # e.g. ``3 en 1`` -> ``三合一``.  Count those simple digit forms as the
     # same facts without weakening the Arabic-number checks.
@@ -451,7 +620,7 @@ def _numbers(value: str) -> Counter[str]:
     # such as ``一种``/``一天`` occur in ordinary descriptions even when the
     # Spanish source contains no number.  ``块`` is included for phrases such
     # as ``三块面板``.
-    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋双位端口环块伏瓦毫升升克公斤厘米毫米米小时款")
+    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋卷双位端口环块层伏瓦毫升升克公斤厘米毫米米小时款")
     digit_chars = set(chinese_digits) | set("0123456789")
     for index, char in enumerate(text):
         if char not in chinese_digits:
@@ -468,19 +637,14 @@ def _numbers(value: str) -> Counter[str]:
             connector_context = previous != "/" or (index >= 2 and text[index - 2] in digit_chars)
         if following in connectors:
             connector_context = connector_context or following != "/" or (index + 2 < len(text) and text[index + 2] in digit_chars)
-        if connector_context or following in quantity_units or previous in quantity_units:
+        if connector_context or following in quantity_units or previous in quantity_units or (following == "种" and chinese_digits[char] != "1"):
             numbers[chinese_digits[char]] += 1
     return numbers
 
 
 def _arabic_numbers(value: str) -> Counter[str]:
     """Return only explicit Arabic-digit numbers from a value."""
-    text = re.sub(r"(?<![A-Za-z0-9])(\d{1,3})\s(?=\d{3}(?!\d))", r"\1", str(value or ""))
-    text = re.sub(
-        r"(?<!\d)(\d{1,2}(?:,\d{1,2}){2,})(?!\d)",
-        lambda match: match.group(1).replace(",", " "),
-        text,
-    )
+    text = _normalize_numeric_syntax(value)
     return Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
 
 
@@ -504,8 +668,9 @@ def _semantic_numeric_equivalents(source_text: str, target: str) -> Counter[str]
         (r"\b(\d+)\s+estaciones?\b", {"4": "四季", "3": "三季", "2": "两季"}),
         (r"\b(\d+)\s+hojas?\b", {"3": ("三层", "三张", "三页", "三刀头")} ),
         (r"\b(\d+)\s+capas?\b", {"3": ("三层", "三层纸", "三层餐巾")} ),
-        (r"\b(\d+)\s+en\s+1\b", {"3": "三合一", "2": "二合一", "4": "四合一"}),
+        (r"\b(\d+)\s+en\s+1\b", {"3": ("三合一", "三效合一"), "2": "二合一", "4": "四合一"}),
         (r"\b(\d+)\s+personas?\b", {"1": ("单人", "一人"), "2": ("双人", "两人")}),
+        (r"\b(\d+)\s+(?:tonos|colores)\b", {"2": "双色"}),
         (r"\b(1)\s+(?:tamaño|size)\b", {"1": ("均码", "均一尺码", "单一尺码")}),
         (r"\bn\.\s*[ºo]?\s*(\d+)\b", {"1": "一号", "2": "二号", "3": "三号"}),
     )
@@ -589,6 +754,83 @@ def _allowed_display_latin_tokens(source_text: str, target: str) -> set[str]:
     return allowed
 
 
+def _detail_source_value_findings(source_text, target):
+    # Historical Action text contains this invalid physical-state value.
+    # Preserve the official source; do not infer gel/liquid or an efficacy claim.
+    return [QAFinding("SOURCE_DETAILS_TYPED_VALUE_INVALID", "BLOCKER", "details",
+        {"source_key": p.key, "source_value": p.value}, source=source_text, target=target,
+        message="physical-state source value requires source review", blocking=True)
+        for p in parse_structured_details(source_text)
+        if p.key.strip().casefold() == "sustancia"
+        and p.value.strip().casefold() in {"válido", "valido"}]
+
+
+def _detail_charging_speed_findings(source_text, target):
+    """Check a selected speed, not the alternatives in its attribute label."""
+    source_items = [p for p in parse_structured_details(source_text)
+        if re.fullmatch(r"cargador\s+r[aá]pido\s*/\s*lento", p.key.strip(), re.I)
+        and p.value.strip().casefold() in {"rápido", "rapido", "lento"}]
+    target_items = [p for p in parse_structured_details(target)
+        if "充电" in p.key or "充电器" in p.key or re.search(r"快充|慢充", p.key)]
+    findings = []
+    if source_items and len(source_items) != len(target_items):
+        return [QAFinding("DETAIL_CHARGING_SPEED_MISSING", "BLOCKER", "details", {},
+            source=source_text, target=target, message="selected charging speed is missing", blocking=True)]
+    for src, dst in zip(source_items, target_items):
+        expected_fast = src.value.strip().casefold() in {"rápido", "rapido"}
+        fast = bool(re.fullmatch(r"快速(?:充电(?:器)?)?|快充(?:充电器)?", dst.value.strip()))
+        slow = bool(re.fullmatch(r"慢速(?:充电(?:器)?)?|慢充(?:充电器)?|缓慢(?:充电)?", dst.value.strip()))
+        if fast != expected_fast or slow == expected_fast:
+            findings.append(QAFinding("DETAIL_CHARGING_SPEED_CHANGED", "BLOCKER", "details",
+                {"source_key": src.key, "source_value": src.value,
+                 "target_key": dst.key, "target_value": dst.value},
+                source=source_text, target=target, message="selected charging speed changed or ambiguous", blocking=True))
+    return findings
+
+
+def _detail_boolean_findings(source_text, target):
+    """Compare presence truth, including explicit negative source labels."""
+    attributes = ((r"\balcohol\b", r"酒精"), (r"\bsilicona\b", r"硅(?:酮|胶)?"),
+        (r"\bgluten\b", r"麸质"), (r"\blactosa\b", r"乳糖"),
+        (r"\bperfume\b", r"香(?:料|精|型|味)|(?:无|有)香"),
+        (r"\bjab[oó]n\b", r"皂"), (r"\baz[uú]car(?:es)?\b", r"(?<!乳)糖"),
+        (r"^aclarado$", r"冲洗|免洗"))
+    bools = {"si": True, "sí": True, "yes": True, "true": True, "是": True,
+             "no": False, "false": False, "否": False}
+    source_pairs = parse_structured_details(source_text)
+    target_pairs = parse_structured_details(target)
+    findings = []
+    for source_pattern, target_pattern in attributes:
+        source_items = [p for p in source_pairs if re.search(source_pattern, p.key, re.I) and p.value.strip().casefold() in bools]
+        target_items = [p for p in target_pairs if re.search(target_pattern, p.key) and p.value.strip().casefold() in bools]
+        if source_items and len(source_items) != len(target_items):
+            findings.append(QAFinding("DETAIL_BOOLEAN_FIELD_MISSING", "BLOCKER", "details", {"source_attribute": source_pattern}, source=source_text, target=target, blocking=True))
+            continue
+        for src, dst in zip(source_items, target_items):
+            source_negative = bool(re.match(r"^(?:sin\b|libre de\b|no contiene\b|no incluye\b)", src.key.strip(), re.I))
+            target_negative = bool(re.search(r"无|不含|未添加|不添加|零", dst.key))
+            if source_pattern == r"^aclarado$" and "免洗" in dst.key:
+                target_negative = True
+            source_present = bools[src.value.strip().casefold()] != source_negative
+            target_present = bools[dst.value.strip().casefold()] != target_negative
+            if source_present != target_present:
+                findings.append(QAFinding("DETAIL_BOOLEAN_POLARITY_CHANGED", "BLOCKER", "details",
+                    {"source_key": src.key, "source_value": src.value, "target_key": dst.key, "target_value": dst.value},
+                    source=source_text, target=target, message="boolean fact polarity changed", blocking=True))
+    return findings
+
+
+def _detail_care_findings(source_text, target):
+    source_pairs = parse_structured_details(source_text)
+    target_pairs = parse_structured_details(target)
+    no_iron = any(re.search(r"instrucciones\s+de\s+planchado", p.key, re.I)
+        and re.fullmatch(r"sin planchado|no planchar", p.value.strip(), re.I) for p in source_pairs)
+    if no_iron and any("熨烫" in p.key and re.search(r"无需|不用|免熨|不必", p.value) for p in target_pairs):
+        return [QAFinding("CARE_INSTRUCTION_CHANGED", "BLOCKER", "details", {},
+            source=source_text, target=target, message="care instruction changed into an optional/easy-care claim", blocking=True)]
+    return []
+
+
 def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = ()) -> tuple[QAFinding, ...]:
     findings: list[QAFinding] = []
     for field_name in requested_fields:
@@ -606,6 +848,48 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if not source_text.strip():
             findings.append(QAFinding("EMPTY_SOURCE_TARGET_NONEMPTY", "BLOCKER", field_name, {"target": target}, source=source_text, target=target, message="target content exists without official source", blocking=True))
             continue
+        wood_appearance_remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
+        if (wood_appearance_remaining != source_text
+                and not re.search(r"\bmadera\b", wood_appearance_remaining, re.I)):
+            # Mentioning the correct appearance must not conceal an extra
+            # assertion of wood composition in another part of the target.
+            composition_target = re.sub(r"木质外观|木材外观", "", target)
+            if re.search(r"实木|木制|木材|木质", composition_target):
+                findings.append(QAFinding("APPEARANCE_AS_MATERIAL_ASSERTED", "BLOCKER", field_name,
+                    {"source_qualifier": "aspecto de madera"}, source=source_text, target=target,
+                    message="wood appearance was promoted to wood composition", blocking=True))
+        # Chinese units do not take a Latin plural suffix. Historical
+        # ``800 vatios -> 800 瓦s`` passed numeric/unit preservation despite
+        # visibly broken Chinese. This gate diagnoses; it never repairs text.
+        malformed_units = re.findall(
+            r"(?<![0-9])\d+(?:[.,]\d+)?\s*(?:毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|伏特|瓦|分贝|千卡|摄氏度|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|件|个)(?:es|s)(?![A-Za-z])",
+            target, re.I,
+        )
+        if malformed_units:
+            findings.append(QAFinding("MALFORMED_TRANSLATED_UNIT", "ERROR", field_name,
+                {"spans": malformed_units}, source=source_text, target=target,
+                message="Chinese numeric unit retains a Latin plural suffix", blocking=True))
+        if field_name == "details":
+            findings.extend(_detail_source_value_findings(source_text, target))
+            findings.extend(_detail_charging_speed_findings(source_text, target))
+            findings.extend(_detail_boolean_findings(source_text, target))
+            findings.extend(_detail_care_findings(source_text, target))
+            if (re.search(r"\bpincel(?:es)?\b", str(getattr(source, "name_es", "") or ""), re.I)
+                    and re.search(r"material\s+cabello", source_text, re.I) and "发丝" in target):
+                findings.append(QAFinding("DETAIL_SUBJECT_CHANGED", "BLOCKER", field_name,
+                    {"source_subject": "brush bristles", "target_subject": "human hair"}, source=source_text, target=target, blocking=True))
+        source_nonsterile = bool(re.search(r"\bno\s+est[eé]ril(?:es)?\b", source_text, re.I))
+        target_nonsterile = bool(re.search(r"非无菌|非灭菌|未灭菌|未经灭菌|不是无菌|未进行灭菌", target))
+        if source_nonsterile and not target_nonsterile:
+            findings.append(QAFinding("STERILITY_STATUS_CHANGED" if "无菌" in target else "STERILITY_STATUS_DROPPED",
+                "BLOCKER", field_name, {"source_status": "NON_STERILE"}, source=source_text, target=target, blocking=True))
+        elif not source_nonsterile and re.search(r"\best[eé]ril(?:es)?\b", source_text, re.I) and target_nonsterile:
+            findings.append(QAFinding("STERILITY_STATUS_CHANGED", "BLOCKER", field_name,
+                {"source_status": "STERILE"}, source=source_text, target=target, blocking=True))
+        if (re.search(r"\bmicrofibras?\b", " ".join(str(getattr(source, key, "") or "") for key in ("name_es", "spec_es", "desc_es", "details_es")), re.I)
+                and re.search(r"鸡毛掸|羽毛掸", target)):
+            findings.append(QAFinding("MATERIAL_CONFLICT_WITH_SOURCE", "BLOCKER", field_name,
+                {"source_material": "microfibra", "target_material": "feather"}, source=source_text, target=target, blocking=True))
         if "null" in target.casefold() or "undefined" in target.casefold():
             findings.append(QAFinding("NULL_UNDEFINED_RESIDUAL", "BLOCKER", field_name, {"value": target}, source=source_text, target=target, blocking=True))
         allowed_display_tokens = _allowed_display_latin_tokens(source_text, target)
@@ -635,7 +919,16 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             if not _fact_applies_to_field(fact, field_name):
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
-            if _source_term_present(source_text, source_term) and not any(alias.casefold() in target.casefold() for alias in aliases):
+            represented = any(alias.casefold() in target.casefold() for alias in aliases)
+            if source_term.casefold() == "over-ear" and fact_type == "VARIANT":
+                # A negated fit cannot satisfy a positive source assertion.
+                # Generic headband style and conflicting fits alone must fail.
+                affirmative_target = re.sub(
+                    r"(?:不是|并非|不采用|不属于|不具备|不支持|不|非)\s*(?:全)?(?:包耳式|罩耳式|耳罩式)",
+                    "", target,
+                )
+                represented = any(alias in affirmative_target for alias in aliases)
+            if _source_term_present(source_text, source_term) and not represented:
                 findings.append(QAFinding(
                     "SEMANTIC_FACT_DROPPED", "ERROR", field_name,
                     {
@@ -651,22 +944,37 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     blocking=True,
                 ))
         source_numbers, target_numbers = _numbers(source_text), _numbers(target)
-        # A planner may legitimately move an official numeric fact from
-        # description/details into the canonical spec field.  Keep dropped
-        # checks field-local, but only call a target number "added" when it
-        # is absent from every official Spanish source field.
-        all_source_text = " ".join(
-            str(getattr(source, attr, "") or "")
-            for attr in ("name_es", "spec_es", "desc_es", "details_es", "cat1_es", "cat2_es")
-        )
-        all_source_numbers = _numbers(all_source_text)
+        # Ordinary translations cannot import quantities from other fields.
+        # Preserve the established canonical-spec relocation contract only
+        # for spec; independent source numbers avoid joined thousands groups.
+        allowed_source_numbers = source_numbers.copy()
+        if field_name == "spec":
+            allowed_source_numbers = Counter()
+            for attr in ("name_es", "spec_es", "desc_es", "details_es", "cat1_es", "cat2_es"):
+                allowed_source_numbers.update(_numbers(str(getattr(source, attr, "") or "")))
         dropped = source_numbers - target_numbers
         dropped -= _semantic_numeric_equivalents(source_text, target)
         if field_name == "name":
             # No-brand display removes digits embedded in brand spans such as
             # ``Lab31``/``Cool2Party``. Do not waive standalone quantities or
             # compact technical models here.
-            dropped -= _brand_embedded_numeric_values(source_text)
+            brand_numeric_waivers = _brand_embedded_numeric_values(source_text)
+            verified_brand_numbers: Counter[str] = Counter()
+            seen_brands = set()
+            for fact in semantic_facts:
+                brand=str(getattr(fact,'source_text','') or '')
+                if (str(getattr(fact,'semantic_type',''))=='BRAND'
+                    and _fact_applies_to_field(fact,field_name)
+                    and _source_term_present(source_text,brand)
+                    and not _has_casefold_token(target,brand)
+                    and brand.casefold() not in seen_brands):
+                    # Count only this verified omitted brand span. A second
+                    # standalone 9 in "9th Avenue, 9 unidades" stays protected.
+                    verified_brand_numbers.update(_numbers(brand))
+                    seen_brands.add(brand.casefold())
+            # Heuristic and verified roles may refer to the same Lab31 span;
+            # union their counts rather than waive it twice.
+            dropped -= brand_numeric_waivers | verified_brand_numbers
         # Brand/series tokens can contain digits that are not product facts.
         # Under the no-brand display policy, ``7Up`` may be removed from the
         # Chinese name; its ``7`` must not become a NUMERIC_DROPPED blocker.
@@ -674,23 +982,28 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             dropped["7"] -= 1
             if dropped["7"] <= 0:
                 del dropped["7"]
-        # Repetition of a number that is already present in another official
-        # field is not an invented fact (for example ``40cm`` plus
-        # ``40×40cm`` rendered into the canonical spec).  Only values absent
-        # from the complete official payload are additions.
+        # Canonical spec may repeat an official relocated number (40cm plus
+        # 40×40cm). Other fields require their own source evidence.
         # Chinese classifiers such as ``一条``/``一天`` are often introduced
         # by a faithful translation of Spanish articles (``una``/``uno``),
         # not by an added numeric fact.  Treat explicit Arabic digits as
         # additions unconditionally; only count a Chinese numeral as an
         # addition when that numeric value is already present in the official
-        # source payload and is repeated beyond its source count.
+        # allowed source scope and is repeated beyond its source count.
         target_arabic = _arabic_numbers(target)
-        duplicated = Counter({value: count for value, count in target_arabic.items() if value not in all_source_numbers})
+        duplicated = Counter({value: count for value, count in target_arabic.items() if value not in allowed_source_numbers})
         duplicated -= _semantic_numeric_extras(source_text, target)
+        # This complete functional phrase is an explicit quantity, unlike
+        # an ordinary Chinese article such as 一条. It needs its own-field
+        # source phrase even if another field happens to contain number 3.
+        three_effect_claims = len(re.findall(r"三效合一", target))
+        three_in_one_source = len(re.findall(r"\b3\s+en\s+1\b", source_text, re.I))
+        if three_effect_claims > three_in_one_source:
+            duplicated["3"] += three_effect_claims - three_in_one_source
         for value, count in target_numbers.items():
-            if value in target_arabic or value not in all_source_numbers:
+            if value in target_arabic or value not in allowed_source_numbers:
                 continue
-            extra = count - all_source_numbers.get(value, 0)
+            extra = count - allowed_source_numbers.get(value, 0)
             if extra > 0:
                 duplicated[value] += extra
         if dropped:
@@ -699,14 +1012,19 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             findings.append(QAFinding("NUMERIC_ADDED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "extra": dict(duplicated)}, source=source_text, target=target, message="numeric fact added", blocking=True))
         protected = protect_text(source_text)
         target_protected = protect_text(target)
-        source_strict = Counter((kind, value.casefold()) for kind, value in zip(protected.token_types, protected.tokens) if kind in _STRICT_TOKEN_TYPES)
-        target_strict = Counter((kind, value.casefold()) for kind, value in zip(target_protected.token_types, target_protected.tokens) if kind in _STRICT_TOKEN_TYPES)
+        def strict_key(kind, value):
+            # Quantified technical tokens already use whitespace equivalence
+            # below for preservation; their changed/added comparison must
+            # use the same rule. Models and certification IDs stay literal.
+            return re.sub(r"\s+", "", value).casefold() if kind in {"CAPACITY", "BATTERY_CAPACITY"} else value.casefold()
+        source_strict = Counter((kind, strict_key(kind, value)) for kind, value in zip(protected.token_types, protected.tokens) if kind in _STRICT_TOKEN_TYPES)
+        target_strict = Counter((kind, strict_key(kind, value)) for kind, value in zip(target_protected.token_types, target_protected.tokens) if kind in _STRICT_TOKEN_TYPES)
         for (kind, value), expected_count in source_strict.items():
             actual_count = target_strict.get((kind, value), 0)
             if actual_count < expected_count:
                 if kind == "TECH" and _is_ordinary_spanish_uppercase_token(source_text, value):
                     continue
-                if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target):
+                if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                     continue
                 if kind == "TECH" and _is_allowed_translated_tech_token(source_text, value, target):
                     continue
@@ -720,7 +1038,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         allow_fixed_category_tokens = field_name == "cat1" and target in FIXED_CAT1
         for (kind, value), actual_count in target_strict.items():
             if actual_count > source_strict.get((kind, value), 0) and not allow_fixed_category_tokens:
-                if _is_allowed_translated_strict_token(source_text, value):
+                if _is_allowed_translated_strict_token(source_text, value, target, actual_count):
                     continue
                 if kind == "TECH" and _has_casefold_token(source_text, value):
                     continue
@@ -730,7 +1048,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             if kind in {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "CAPACITY", "BATTERY_CAPACITY", "POWER", "VOLTAGE"}:
                 if kind == "TECH" and _is_ordinary_spanish_uppercase_token(source_text, value):
                     continue
-                if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target):
+                if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                     continue
                 if kind == "TECH":
                     expected_count = source_text.casefold().count(value.casefold())
@@ -746,12 +1064,22 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 if actual_count < expected_count:
                     if kind == "TECH" and _is_allowed_translated_tech_token(source_text, value, target):
                         continue
-                    if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target):
+                    if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                         continue
                     findings.append(QAFinding("PROTECTED_TOKEN_MISSING", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
                 elif actual_count > expected_count:
                     findings.append(QAFinding("PROTECTED_TOKEN_DUPLICATED", "BLOCKER", field_name, {"token_type": kind, "value": value, "expected": expected_count, "actual": actual_count}, source=source_text, target=target, blocking=True))
-        source_units = _units(source_text)
+        unit_source = source_text
+        if field_name == "name":
+            for fact in semantic_facts:
+                brand = str(getattr(fact, "source_text", "") or "")
+                if (str(getattr(fact, "semantic_type", "")) == "BRAND"
+                        and _fact_applies_to_field(fact, field_name) and brand
+                        and not _has_casefold_token(target, brand)):
+                    # A trusted, field-bound 3M brand is not three metres.
+                    # Match exact spelling, so a separate 3 m/3m stays a unit.
+                    unit_source = re.sub(rf"(?<!\w){re.escape(brand)}(?!\w)", " ", unit_source)
+        source_units = _units(unit_source)
         target_units = _units(target)
         for unit in source_units:
             if unit == "%" and _zero_percent_is_semantically_rendered(source_text, target):

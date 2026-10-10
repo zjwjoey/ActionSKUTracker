@@ -1,0 +1,447 @@
+[
+  {
+    "sku": "3216440",
+    "field": "description",
+    "source": "Ideal para pintar\n10 hojas en formato A4\nPapel de 260 gsm\nCrea tus propias obras de arte con este papel lienzo.",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Ideal para pintar\n10 hojas en formato A4\nPapel de 260 gsm\nCrea tus propias obras de arte con este papel lienzo.",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216440",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "5cc32915eb5998cd0b61042fa753939724a8d56b1120a4045919d9bd8b613ee5"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Ideal para pintar\n10 hojas en formato A4\nPapel de 260 gsm\nCrea tus propias obras de arte con este papel lienzo.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216440",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "5cc32915eb5998cd0b61042fa753939724a8d56b1120a4045919d9bd8b613ee5"
+        }
+      ]
+    },
+    "context": {
+      "name": "Papel de lienzo A4",
+      "cat1": "Hobby",
+      "cat2": "Pintura",
+      "spec": "Diferentes variantes | 10 hojas",
+      "description": "Ideal para pintar\n10 hojas en formato A4\nPapel de 260 gsm\nCrea tus propias obras de arte con este papel lienzo.",
+      "details": "{'Número del artículo': '3216440', 'Color': 'Blanco', 'Material': 'Cartón', 'Cantidad': '10 hojas', 'Cubierta': 'Cubierta dura', 'Formato del papel': 'A4', 'Número de páginas': '10', 'Perforado': 'No', 'Relleno de página': 'Blanco'}"
+    },
+    "target": "适合绘画\n10张A4规格纸张\n260gsm（克/平方米）纸张\n用这款画布纸创作自己的艺术作品。",
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "适合绘画\n10张A4规格纸张\n260gsm（克/平方米）纸张\n用这款画布纸创作自己的艺术作品。"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Ideal para pintar\n10 hojas en formato A4\nPapel de 260 gsm\nCrea tus propias obras de arte con este papel lienzo.",
+          "target": "适合绘画\n10张A4规格纸张\n260gsm（克/平方米）纸张\n用这款画布纸创作自己的艺术作品。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "semantic_status": "PASS",
+    "review_model": "CODEX",
+    "formal_approval": false
+  },
+  {
+    "sku": "3216678",
+    "field": "description",
+    "source": "2 en 1: se puede utilizar como barra de sonido o dos altavoces independientes\nEquipado con luz RGB para una iluminación ambiental colorida y personalizable\nCon jack de 3,5 mm y conector USB-A, también apto para su uso con un PC",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "2 en 1: se puede utilizar como barra de sonido o dos altavoces independientes\nEquipado con luz RGB para una iluminación ambiental colorida y personalizable\nCon jack de 3,5 mm y conector USB-A, también apto para su uso con un PC",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216678",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "cf5dfac8e32185d8cb93be8757cfe3488257f110c3e7c1134733f1a0f372caac"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "2 en 1: se puede utilizar como barra de sonido o dos altavoces independientes\nEquipado con luz RGB para una iluminación ambiental colorida y personalizable\nCon jack de 3,5 mm y conector USB-A, también apto para su uso con un PC",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216678",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "cf5dfac8e32185d8cb93be8757cfe3488257f110c3e7c1134733f1a0f372caac"
+        }
+      ]
+    },
+    "context": {
+      "name": "Barra de sonido 2 en 1 Battletron",
+      "cat1": "Multimedia",
+      "cat2": "Accesorios multimedia",
+      "spec": "2 piezas | 10 vatios | 43x8x8 cm",
+      "description": "2 en 1: se puede utilizar como barra de sonido o dos altavoces independientes\nEquipado con luz RGB para una iluminación ambiental colorida y personalizable\nCon jack de 3,5 mm y conector USB-A, también apto para su uso con un PC",
+      "details": "{'Número del artículo': '3216678', 'Color': 'Negro', 'Tipo de alimentación': 'Alimentación de red'}"
+    },
+    "target": "二合一：可用作音响条或两个独立的扬声器\n配备RGB灯，可实现多彩且可定制的氛围照明\n配有3.5毫米音频插孔和USB-A接口，也可用于PC电脑",
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "iluminación",
+            "expected_target": "照明灯",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "2 en 1: se puede utilizar como barra de sonido o dos altavoces independientes\nEquipado con luz RGB para una iluminación ambiental colorida y personalizable\nCon jack de 3,5 mm y conector USB-A, también apto para su uso con un PC",
+          "target": "二合一：可用作音响条或两个独立的扬声器\n配备RGB灯，可实现多彩且可定制的氛围照明\n配有3.5毫米音频插孔和USB-A接口，也可用于电脑",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        },
+        {
+          "rule_id": "NUMERIC_ADDED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "source": {
+              "2": 1,
+              "1": 1,
+              "3.5": 1
+            },
+            "target": {
+              "3.5": 1,
+              "2": 2,
+              "1": 1
+            },
+            "extra": {
+              "2": 1
+            }
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "2 en 1: se puede utilizar como barra de sonido o dos altavoces independientes\nEquipado con luz RGB para una iluminación ambiental colorida y personalizable\nCon jack de 3,5 mm y conector USB-A, también apto para su uso con un PC",
+          "target": "二合一：可用作音响条或两个独立的扬声器\n配备RGB灯，可实现多彩且可定制的氛围照明\n配有3.5毫米音频插孔和USB-A接口，也可用于电脑",
+          "message": "numeric fact added",
+          "repairable": false,
+          "blocking": true
+        },
+        {
+          "rule_id": "PROTECTED_TOKEN_CHANGED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "token_type": "TECH",
+            "value": "pc",
+            "expected": 1,
+            "actual": 0
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "2 en 1: se puede utilizar como barra de sonido o dos altavoces independientes\nEquipado con luz RGB para una iluminación ambiental colorida y personalizable\nCon jack de 3,5 mm y conector USB-A, también apto para su uso con un PC",
+          "target": "二合一：可用作音响条或两个独立的扬声器\n配备RGB灯，可实现多彩且可定制的氛围照明\n配有3.5毫米音频插孔和USB-A接口，也可用于电脑",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        },
+        {
+          "rule_id": "PROTECTED_TOKEN_MISSING",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "token_type": "TECH",
+            "value": "PC",
+            "expected": 1,
+            "actual": 0
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "2 en 1: se puede utilizar como barra de sonido o dos altavoces independientes\nEquipado con luz RGB para una iluminación ambiental colorida y personalizable\nCon jack de 3,5 mm y conector USB-A, también apto para su uso con un PC",
+          "target": "二合一：可用作音响条或两个独立的扬声器\n配备RGB灯，可实现多彩且可定制的氛围照明\n配有3.5毫米音频插孔和USB-A接口，也可用于电脑",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "semantic_status": "PASS",
+    "review_model": "CODEX",
+    "formal_approval": false
+  },
+  {
+    "sku": "3216807",
+    "field": "description",
+    "source": "Fácil de usar\nCon interruptor de encendido y apagado\nCon este práctico enchufe Pro-max con interruptor, tú decides cuándo se conecta la corriente.",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Fácil de usar\nCon interruptor de encendido y apagado\nCon este práctico enchufe Pro-max con interruptor, tú decides cuándo se conecta la corriente.",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216807",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "b7193b4877f7f7cd2e955022ef8c4ee893fa39dfebf625d7c61abfd68ca340c6"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Fácil de usar\nCon interruptor de encendido y apagado\nCon este práctico enchufe Pro-max con interruptor, tú decides cuándo se conecta la corriente.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216807",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "b7193b4877f7f7cd2e955022ef8c4ee893fa39dfebf625d7c61abfd68ca340c6"
+        }
+      ]
+    },
+    "context": {
+      "name": "Enchufe con interruptor Pro-max",
+      "cat1": "",
+      "cat2": "Alargadores",
+      "spec": "3680 vatios",
+      "description": "Fácil de usar\nCon interruptor de encendido y apagado\nCon este práctico enchufe Pro-max con interruptor, tú decides cuándo se conecta la corriente.",
+      "details": "{'Número del artículo': '3216807', 'Color': 'Gris', 'Material': 'Plástico', 'Con interruptor de encendido y apagado': 'Sí', 'Con reloj despertador incorporado': 'No', 'Destinado a': 'Interior', 'Incluye tapa abatible': 'No', 'Número de enchufes': '1', 'Potencia': '3680 vatio', 'Protección para niños': 'No', 'Tipo de toma de corriente / enchufe / toma de pared': 'Conector con 2 clavijas', 'Toma de corriente múltiple': 'No'}"
+    },
+    "target": "易于使用\n带开关\n有了这款实用的Pro-max带开关插座，您可以自行决定何时接通电源。",
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "易于使用\n带开关\n有了这款实用的Pro-max带开关插座，您可以自行决定何时接通电源。"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Fácil de usar\nCon interruptor de encendido y apagado\nCon este práctico enchufe Pro-max con interruptor, tú decides cuándo se conecta la corriente.",
+          "target": "易于使用\n带开关\n有了这款实用的Pro-max带开关插座，您可以自行决定何时接通电源。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "semantic_status": "PASS",
+    "review_model": "CODEX",
+    "formal_approval": false
+  },
+  {
+    "sku": "3216818",
+    "field": "description",
+    "source": "Admite una potencia máxima de 3680 vatios\nCon cable H05VV-F 3G1,5 mm²: flexible y seguro para el uso doméstico\nCable revestido con tejido trenzado",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Admite una potencia máxima de 3680 vatios\nCon cable H05VV-F 3G1,5 mm²: flexible y seguro para el uso doméstico\nCable revestido con tejido trenzado",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216818",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "0abf839df117ef7dc062731f42e3c75d110eb21595b833d399ac19b5f8d6ed32"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Admite una potencia máxima de 3680 vatios\nCon cable H05VV-F 3G1,5 mm²: flexible y seguro para el uso doméstico\nCable revestido con tejido trenzado",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216818",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "0abf839df117ef7dc062731f42e3c75d110eb21595b833d399ac19b5f8d6ed32"
+        }
+      ]
+    },
+    "context": {
+      "name": "Alargador Pro-max",
+      "cat1": "Bricolaje",
+      "cat2": "Alargadores",
+      "spec": "3 metros | varios colores",
+      "description": "Admite una potencia máxima de 3680 vatios\nCon cable H05VV-F 3G1,5 mm²: flexible y seguro para el uso doméstico\nCable revestido con tejido trenzado",
+      "details": "{'Número del artículo': '3216818', 'Color': 'Verde, Blanco, Negro', 'Con interruptor de encendido y apagado': 'No', 'Número de enchufes': '1'}"
+    },
+    "target": "最大功率可达3680瓦\n配备H05VV-F 3G1.5平方毫米电缆：柔韧且安全，适用于家庭使用\n编织面料包覆的电缆",
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "UNIT_DROPPED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "unit": "mm"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Admite una potencia máxima de 3680 vatios\nCon cable H05VV-F 3G1,5 mm²: flexible y seguro para el uso doméstico\nCable revestido con tejido trenzado",
+          "target": "最大功率可达3680瓦\n配备H05VV-F 3G1.5平方毫米电缆：柔韧且安全，适用于家庭使用\n编织面料包覆的电缆",
+          "message": "technical unit dropped",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "semantic_status": "PASS",
+    "review_model": "CODEX",
+    "formal_approval": false
+  },
+  {
+    "sku": "3216829",
+    "field": "description",
+    "source": "Luz trasera con haces láser que crean un efecto de carril bici en el suelo\nDiferentes modos de iluminación\nMontaje fácil\n¡Destaca en la oscuridad con esta luz trasera Walfort! Gracias a los potentes ledes y rayos láser, no solo serás fácilmente visible, sino que también crearás un efecto de carril bici en el suelo. ¡Increíblemente práctico y seguro! Con múltiples posiciones de luz y un montaje sencillo, esta luz trasera es ideal para cualquier ciclista.",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Luz trasera con haces láser que crean un efecto de carril bici en el suelo\nDiferentes modos de iluminación\nMontaje fácil\n¡Destaca en la oscuridad con esta luz trasera Walfort! Gracias a los potentes ledes y rayos láser, no solo serás fácilmente visible, sino que también crearás un efecto de carril bici en el suelo. ¡Increíblemente práctico y seguro! Con múltiples posiciones de luz y un montaje sencillo, esta luz trasera es ideal para cualquier ciclista.",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216829",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "4aeaaa9407bfe59187933e2a31bbf84ebf3edad6372dece016bbe8889585b670"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Luz trasera con haces láser que crean un efecto de carril bici en el suelo\nDiferentes modos de iluminación\nMontaje fácil\n¡Destaca en la oscuridad con esta luz trasera Walfort! Gracias a los potentes ledes y rayos láser, no solo serás fácilmente visible, sino que también crearás un efecto de carril bici en el suelo. ¡Increíblemente práctico y seguro! Con múltiples posiciones de luz y un montaje sencillo, esta luz trasera es ideal para cualquier ciclista.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216829",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "4aeaaa9407bfe59187933e2a31bbf84ebf3edad6372dece016bbe8889585b670"
+        }
+      ]
+    },
+    "context": {
+      "name": "Luz trasera con láser Walfort",
+      "cat1": "Bricolaje",
+      "cat2": "",
+      "spec": "10 lúmenes",
+      "description": "Luz trasera con haces láser que crean un efecto de carril bici en el suelo\nDiferentes modos de iluminación\nMontaje fácil\n¡Destaca en la oscuridad con esta luz trasera Walfort! Gracias a los potentes ledes y rayos láser, no solo serás fácilmente visible, sino que también crearás un efecto de carril bici en el suelo. ¡Increíblemente práctico y seguro! Con múltiples posiciones de luz y un montaje sencillo, esta luz trasera es ideal para cualquier ciclista.",
+      "details": "{'Número del artículo': '3216829', 'Color': 'Rojo', 'Color suave': 'Rojo', 'Lumen': '10', 'Tipo de fuente de luz': 'Lámpara LED'}"
+    },
+    "target": "尾灯配有激光束，在地面上营造出自行车道效果\n多种照明模式\n安装简便\n这款Walfort尾灯让你在黑暗中格外醒目！凭借强劲的LED灯和激光束，不仅让你轻松被看见，还能在地面投射出自行车道般的光影效果。实用又安全，令人惊叹！拥有多种灯光模式，安装简单，是每位骑行者的理想之选。",
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "iluminación",
+            "expected_target": "照明灯",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Luz trasera con haces láser que crean un efecto de carril bici en el suelo\nDiferentes modos de iluminación\nMontaje fácil\n¡Destaca en la oscuridad con esta luz trasera Walfort! Gracias a los potentes ledes y rayos láser, no solo serás fácilmente visible, sino que también crearás un efecto de carril bici en el suelo. ¡Increíblemente práctico y seguro! Con múltiples posiciones de luz y un montaje sencillo, esta luz trasera es ideal para cualquier ciclista.",
+          "target": "尾灯配有激光束，在地面上营造出自行车道效果\n多种照明模式\n安装简便\n这款Walfort尾灯让你在黑暗中格外醒目！凭借强劲的LED灯和激光束，不仅让你轻松被看见，还能在地面投射出自行车道般的光影效果。实用又安全，令人惊叹！拥有多种灯光模式，安装简单，是每位骑行者的理想之选。",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "semantic_status": "PASS",
+    "review_model": "CODEX",
+    "formal_approval": false
+  },
+  {
+    "sku": "3217336",
+    "field": "description",
+    "source": "Coche de metal incluido\nDinosaurio robusto y bucle para mayor emoción\nPerfecto para aficionados a las acrobacias y las carreras\n¡Apuesta por la acción con el Teamsterz T-Rex Twister! Lanza tu coche por el bucle y escapa al hambriento T-Rex. Superdivertido para hacer carreras emocionantes y acrobacias geniales. Incluye un coche de metal, listo para la aventura. ¿Quién se atreve a derrotar a este dinosaurio? ¡Disfruta de un sinfín de diversión con este espectacular set!",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Coche de metal incluido\nDinosaurio robusto y bucle para mayor emoción\nPerfecto para aficionados a las acrobacias y las carreras\n¡Apuesta por la acción con el Teamsterz T-Rex Twister! Lanza tu coche por el bucle y escapa al hambriento T-Rex. Superdivertido para hacer carreras emocionantes y acrobacias geniales. Incluye un coche de metal, listo para la aventura. ¿Quién se atreve a derrotar a este dinosaurio? ¡Disfruta de un sinfín de diversión con este espectacular set!",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3217336",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "b70c633022b2ccbad776b47b8e540a76c75db0accba502f72e990ccde26343ee"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Coche de metal incluido\nDinosaurio robusto y bucle para mayor emoción\nPerfecto para aficionados a las acrobacias y las carreras\n¡Apuesta por la acción con el Teamsterz T-Rex Twister! Lanza tu coche por el bucle y escapa al hambriento T-Rex. Superdivertido para hacer carreras emocionantes y acrobacias geniales. Incluye un coche de metal, listo para la aventura. ¿Quién se atreve a derrotar a este dinosaurio? ¡Disfruta de un sinfín de diversión con este espectacular set!",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3217336",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "b70c633022b2ccbad776b47b8e540a76c75db0accba502f72e990ccde26343ee"
+        }
+      ]
+    },
+    "context": {
+      "name": "Pista de carreras T-Rex Twister Teamsterz Beast Machines",
+      "cat1": "Juguetes",
+      "cat2": "Coches de juguete",
+      "spec": "Coche incluido",
+      "description": "Coche de metal incluido\nDinosaurio robusto y bucle para mayor emoción\nPerfecto para aficionados a las acrobacias y las carreras\n¡Apuesta por la acción con el Teamsterz T-Rex Twister! Lanza tu coche por el bucle y escapa al hambriento T-Rex. Superdivertido para hacer carreras emocionantes y acrobacias geniales. Incluye un coche de metal, listo para la aventura. ¿Quién se atreve a derrotar a este dinosaurio? ¡Disfruta de un sinfín de diversión con este espectacular set!",
+      "details": "{'Número del artículo': '3217336', 'Color': 'Multicolor', 'Material': 'Plástico', 'Edad adecuada': 'A partir de 3 años', 'Incluye accesorios': 'Sí', 'Tipo de piezas de recambio / accesorios para trenes / coche': 'CARRIL DE CARRERAS DE COCHES DE JUGUETE'}"
+    },
+    "target": "附带金属赛车\n坚固的恐龙造型与环形赛道，带来更多刺激乐趣\n非常适合特技与赛车爱好者\n快来体验Teamsterz T-Rex Twister带来的精彩冒险吧！将赛车投入环形赛道，让它成功逃脱饥饿的霸王龙。超好玩，既能进行刺激的竞速，又能玩出炫酷的特技。套装内含一辆金属赛车，随时开启冒险之旅。究竟谁能战胜这只威猛的恐龙呢？尽情享受这套超赞玩具带来的无尽乐趣吧！",
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "附带金属赛车\n坚固的恐龙造型与环形赛道，带来更多刺激乐趣\n非常适合特技与赛车爱好者\n快来体验Teamsterz T-Rex Twister带来的精彩冒险吧！将赛车投入环形赛道，让它成功逃脱饥饿的霸王龙。超好玩，既能进行刺激的竞速，又能玩出炫酷的特技。套装内含一辆金属赛车，随时开启冒险之旅。究竟谁能战胜这只威猛的恐龙呢？尽情享受这套超赞玩具带来的无尽乐趣吧！"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Coche de metal incluido\nDinosaurio robusto y bucle para mayor emoción\nPerfecto para aficionados a las acrobacias y las carreras\n¡Apuesta por la acción con el Teamsterz T-Rex Twister! Lanza tu coche por el bucle y escapa al hambriento T-Rex. Superdivertido para hacer carreras emocionantes y acrobacias geniales. Incluye un coche de metal, listo para la aventura. ¿Quién se atreve a derrotar a este dinosaurio? ¡Disfruta de un sinfín de diversión con este espectacular set!",
+          "target": "附带金属赛车\n坚固的恐龙造型与环形赛道，带来更多刺激乐趣\n非常适合特技与赛车爱好者\n快来体验Teamsterz T-Rex Twister带来的精彩冒险吧！将赛车投入环形赛道，让它成功逃脱饥饿的霸王龙。超好玩，既能进行刺激的竞速，又能玩出炫酷的特技。套装内含一辆金属赛车，随时开启冒险之旅。究竟谁能战胜这只威猛的恐龙呢？尽情享受这套超赞玩具带来的无尽乐趣吧！",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "semantic_status": "PASS",
+    "review_model": "CODEX",
+    "formal_approval": false
+  }
+]

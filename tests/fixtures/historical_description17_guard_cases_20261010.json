@@ -1,0 +1,1438 @@
+[
+  {
+    "sku": "3200594",
+    "source": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+    "target": "套装包含3支铅笔、2支圆珠笔、1支记号笔、1个卷笔刀和1块橡皮。有了这套实用的Staedtler文具，工作时所需物品随手可取。",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-14\\2026-09-14_023843\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-14/2026-09-14_023843",
+        "file_hash": "68ed74d816b973eafbe1b026b2b990a35b0f626c865b99ac39ae88cb9c7023e8",
+        "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "PRIMARY:product_fact_versions:98a88ab159a4a84eb0a04c0d18bdb6b5b5476ede3e22f249805f3016e2b063b9",
+          "observed_at": "2026-09-09T01:55:03.872623+00:00",
+          "file_hash": "b0b0af458fe802121cfd6d44c23d2654e130c26eb9b3e4294fa25504cbe1caed",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "PRIMARY:product_fact_versions:4f25594919ce21508730aefe83dbf458b3a4cb868c06d4b973ef7299eb6acbe5",
+          "observed_at": "2026-09-10T01:36:54.428053+00:00",
+          "file_hash": "8c7959cd41f2e8e26a14147c6ab6666c54511eaac8f69ade933bd8a2a6cec5a4",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "PRIMARY:product_fact_versions:c03df419cbb432ee46c555425a60b7924eaaf11a87a80e3f5cc21790441958ea",
+          "observed_at": "2026-09-11T01:16:46.314653+00:00",
+          "file_hash": "8c7959cd41f2e8e26a14147c6ab6666c54511eaac8f69ade933bd8a2a6cec5a4",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "PRIMARY:product_fact_versions:0c3d3e5a03c63926768452b9940db02699da066fa2e63129bb904aa874f206ec",
+          "observed_at": "2026-09-12T01:15:44.773817+00:00",
+          "file_hash": "8c7959cd41f2e8e26a14147c6ab6666c54511eaac8f69ade933bd8a2a6cec5a4",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "PRIMARY:product_fact_versions:d546d2d2e6599e4743c568a7b6ffa7a19baa5deb60a0d5572d2c9081e49e0a12",
+          "observed_at": "2026-09-13T01:14:31.774514+00:00",
+          "file_hash": "8c7959cd41f2e8e26a14147c6ab6666c54511eaac8f69ade933bd8a2a6cec5a4",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "PRIMARY:product_fact_versions:7d68a2d1b64c0a1d6e0e6a470d3a7f9641e47eb21b0ffbab2476d9cd98bba08a",
+          "observed_at": "2026-09-14T01:03:26.649955+00:00",
+          "file_hash": "8c7959cd41f2e8e26a14147c6ab6666c54511eaac8f69ade933bd8a2a6cec5a4",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+          "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-26\\2026-08-26_130145\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-26/2026-08-26_130145",
+          "file_hash": "7aa34749c60e85fdede52763c445b98504451bf565ec05b18f926322baf062f7",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-28\\2026-08-28_073710\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-28/2026-08-28_073710",
+          "file_hash": "9f3985b8c93914d1d14e7c7b10cd5a9c9281df376c514dcca8685c5bb3b284ae",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+          "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_184646\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_184646",
+          "file_hash": "25e78152339d143bd5b8808efc9833c8202ff31f264118c57720a039dc852b51",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_155325\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_155325",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_164431\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_164431",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_024429\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_024429",
+          "file_hash": "87f966bee1380fa0cf174b37dee21f9193f2cc69007a2a20ad44548d5ff07d0c",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_035941\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_035941",
+          "file_hash": "739c048fd236408c8c8d316472d0d3a09959f0dc515b1e76092903c32f8d8d7c",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-01\\2026-09-01_113916\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-01/2026-09-01_113916",
+          "file_hash": "3516a29a90edb0699efbe4d017b16f58373e99589541d0bb909da6c74c38e8bd",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-02\\2026-09-02_030100\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-02/2026-09-02_030100",
+          "file_hash": "da28948e4ea50de9a25b26000489daf25cc7a3583e90171b309416fdaa15b053",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_053952\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_053952",
+          "file_hash": "acab9b4f807a580a8dce1aeceea9bc02d191c55335b8d62f9071f666203d1e54",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_072729\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_072729",
+          "file_hash": "4cb785cdf6115e10194a22ee58b15d9367dac1a9abe5998e8ca1b8dd24922162",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-04\\2026-09-04_031405\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-04/2026-09-04_031405",
+          "file_hash": "d6797c65265143429bb2f97139f79fb16d527faf180340a4a6d5a9deff1bc0ac",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-05\\2026-09-05_033927\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-05/2026-09-05_033927",
+          "file_hash": "cbcbe98b81c7b03080b5f06dce3e5867fca1daf4964ba2bd060d5c295b85856e",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-06\\2026-09-06_043721\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-06/2026-09-06_043721",
+          "file_hash": "6defd8200076fca7df433fc26646c46e8b6f774a8bec4c030b9983038a9f3f63",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-07\\2026-09-07_025601\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-07/2026-09-07_025601",
+          "file_hash": "26d802f096b9257fba9056a52f2738ed119ac17afc1f3d6eac30154b045e1846",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-08\\2026-09-08_035740\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-08/2026-09-08_035740",
+          "file_hash": "5b389ccee24ef37c0dc5e55268ab4c79ba0c6f0db25837e7fd37dc2ae7cdf7a1",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-09\\2026-09-09_032720\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-09/2026-09-09_032720",
+          "file_hash": "339695cbd6fc9f04ee405a2ac8bfda30c1b2a3f01a02c018d24cd82e4ce9a094",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-10\\2026-09-10_030315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-10/2026-09-10_030315",
+          "file_hash": "109d7c359ce39fef295a09848f9e39d4d95146ed372a2c17e15720dcd8c26dd6",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-11\\2026-09-11_025141\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-11/2026-09-11_025141",
+          "file_hash": "f4417c2d6c8d12f1c30eb846e0321b9d2dc24a84fb0cb159d516f2f81a54991b",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-12\\2026-09-12_024403\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-12/2026-09-12_024403",
+          "file_hash": "f48b372b326424f44d7d2658813928d03675eccc04e32c1259972901e7c52684",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-13\\2026-09-13_024933\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-13/2026-09-13_024933",
+          "file_hash": "fcaa491f0a37ad6e2f2e31eed9f759a1c6e1f8a144c4978fb760be8eafdf19de",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        },
+        {
+          "rank": 1,
+          "text": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-14\\2026-09-14_023843\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-14/2026-09-14_023843",
+          "file_hash": "68ed74d816b973eafbe1b026b2b990a35b0f626c865b99ac39ae88cb9c7023e8",
+          "field_hash": "2a696b06abdbac1bf51f2c93d0df1c8fdfd2dbe6db63faa24255c5cdf4adda61"
+        }
+      ]
+    },
+    "context": {
+      "name": "Juego de papelería Staedtler",
+      "cat1": "Oficina y papelería",
+      "cat2": "Material escolar",
+      "spec": "8 piezas",
+      "description": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+      "details": "Material: Madera, Plástico; Cantidad: 8 piezas; Incluye caja de almacenaje: No; Número del artículo: 3200594"
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "goma de borrar",
+            "expected_target": "橡皮擦",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "El juego incluye: 3 lápices, 2 bolígrafos, 1 rotulador, 1 sacapuntas y 1 goma de borrar\nCon este práctico juego de Staedtler lo tendrás todo a mano mientras trabajas.",
+          "target": "套装包含3支铅笔、2支圆珠笔、1支记号笔、1个卷笔刀和1块橡皮。有了这套实用的Staedtler文具，工作时所需物品随手可取。",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3202689",
+    "source": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+    "target": "这款实用的屏幕挂灯可为键盘补充照明，并支持调光，通过USB-A供电，有3种灯光可选。它让居家办公或游戏更有趣，让你看清键盘，并通过不同照明选项为房间营造合适的氛围。",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_184646\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_184646",
+        "file_hash": "25e78152339d143bd5b8808efc9833c8202ff31f264118c57720a039dc852b51",
+        "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+          "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-26\\2026-08-26_130145\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-26/2026-08-26_130145",
+          "file_hash": "7aa34749c60e85fdede52763c445b98504451bf565ec05b18f926322baf062f7",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-28\\2026-08-28_073710\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-28/2026-08-28_073710",
+          "file_hash": "9f3985b8c93914d1d14e7c7b10cd5a9c9281df376c514dcca8685c5bb3b284ae",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+          "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 1,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_184646\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_184646",
+          "file_hash": "25e78152339d143bd5b8808efc9833c8202ff31f264118c57720a039dc852b51",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        },
+        {
+          "rank": 2,
+          "text": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3202689",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "31abbd68e192701b8813c79e66d8bafcd6d468f24778e5d6737b0591b04b87bc"
+        }
+      ]
+    },
+    "context": {
+      "name": "Barra de luz para pantalla Eurodomest",
+      "cat1": "Multimedia",
+      "cat2": "Videojuegos",
+      "spec": "30x2 cm | 130 lúmenes",
+      "description": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+      "details": "Color: Negro; Color suave: Blanco cálido, Blanco; Material: Plástico; Destinado a: Interior; Enlace EPREL: Abrir; Forma: Rectangular; Pilas incluidas: No; Tipo de fuente de luz: Lámpara LED; Número del artículo: 3202689"
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "iluminación",
+            "expected_target": "照明灯",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Ideal para una luz adicional en el teclado (atenuable)\nAlimentación mediante USB-A\nPuedes escoger entre 3 tipos de luz\nTrabajar en casa o jugar será mucho más divertido con esta práctica barra de pantalla. Así siempre podrás ver bien tu teclado y crear el ambiente perfecto en tu habitación con las diferentes opciones de iluminación.",
+          "target": "这款实用的屏幕挂灯可为键盘补充照明，并支持调光，通过USB-A供电，有3种灯光可选。它让居家办公或游戏更有趣，让你看清键盘，并通过不同照明选项为房间营造合适的氛围。",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3204159",
+    "source": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+    "target": "即用型片状面膜，可像布片一样敷在脸上，韩国制造，以植物纤维为基础。The MASK Dr.面膜易于被肌肤吸收，令面容更显光彩，使肌肤柔软光滑，或呈现水润光泽。",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-11\\2026-09-11_025141\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-11/2026-09-11_025141",
+        "file_hash": "f4417c2d6c8d12f1c30eb846e0321b9d2dc24a84fb0cb159d516f2f81a54991b",
+        "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "PRIMARY:product_fact_versions:69efa8489d5cf2b93902fc76b30b5a93f57ef5a6792d9d462f27c1ede333eed5",
+          "observed_at": "2026-09-09T01:55:03.872623+00:00",
+          "file_hash": "a65c09331df41409380e41622fe681a5ac0633bae2af5175f02ba885d82d801d",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "PRIMARY:product_fact_versions:7226b0889aedc0c73adbdf3321c243a0ce71e6c6740cfbf544851551c2eaf72d",
+          "observed_at": "2026-09-10T01:36:54.428053+00:00",
+          "file_hash": "8ff1fe07156afe9b05951ffcd260cd7cb9b52483f551e06d88e02b1415fdee52",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "PRIMARY:product_fact_versions:cceb173816b0af70d4c00f013aa512ff4f5867c4ef3cc1a7ca361e7c2369ebcd",
+          "observed_at": "2026-09-11T01:16:46.314653+00:00",
+          "file_hash": "8ff1fe07156afe9b05951ffcd260cd7cb9b52483f551e06d88e02b1415fdee52",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+          "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-26\\2026-08-26_130145\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-26/2026-08-26_130145",
+          "file_hash": "7aa34749c60e85fdede52763c445b98504451bf565ec05b18f926322baf062f7",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-28\\2026-08-28_073710\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-28/2026-08-28_073710",
+          "file_hash": "9f3985b8c93914d1d14e7c7b10cd5a9c9281df376c514dcca8685c5bb3b284ae",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+          "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_184646\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_184646",
+          "file_hash": "25e78152339d143bd5b8808efc9833c8202ff31f264118c57720a039dc852b51",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_155325\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_155325",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_164431\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_164431",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_024429\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_024429",
+          "file_hash": "87f966bee1380fa0cf174b37dee21f9193f2cc69007a2a20ad44548d5ff07d0c",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_035941\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_035941",
+          "file_hash": "739c048fd236408c8c8d316472d0d3a09959f0dc515b1e76092903c32f8d8d7c",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-01\\2026-09-01_113916\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-01/2026-09-01_113916",
+          "file_hash": "3516a29a90edb0699efbe4d017b16f58373e99589541d0bb909da6c74c38e8bd",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-02\\2026-09-02_030100\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-02/2026-09-02_030100",
+          "file_hash": "da28948e4ea50de9a25b26000489daf25cc7a3583e90171b309416fdaa15b053",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_053952\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_053952",
+          "file_hash": "acab9b4f807a580a8dce1aeceea9bc02d191c55335b8d62f9071f666203d1e54",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_072729\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_072729",
+          "file_hash": "4cb785cdf6115e10194a22ee58b15d9367dac1a9abe5998e8ca1b8dd24922162",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-04\\2026-09-04_031405\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-04/2026-09-04_031405",
+          "file_hash": "d6797c65265143429bb2f97139f79fb16d527faf180340a4a6d5a9deff1bc0ac",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-05\\2026-09-05_033927\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-05/2026-09-05_033927",
+          "file_hash": "cbcbe98b81c7b03080b5f06dce3e5867fca1daf4964ba2bd060d5c295b85856e",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-06\\2026-09-06_043721\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-06/2026-09-06_043721",
+          "file_hash": "6defd8200076fca7df433fc26646c46e8b6f774a8bec4c030b9983038a9f3f63",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-07\\2026-09-07_025601\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-07/2026-09-07_025601",
+          "file_hash": "26d802f096b9257fba9056a52f2738ed119ac17afc1f3d6eac30154b045e1846",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-08\\2026-09-08_035740\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-08/2026-09-08_035740",
+          "file_hash": "5b389ccee24ef37c0dc5e55268ab4c79ba0c6f0db25837e7fd37dc2ae7cdf7a1",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-09\\2026-09-09_032720\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-09/2026-09-09_032720",
+          "file_hash": "339695cbd6fc9f04ee405a2ac8bfda30c1b2a3f01a02c018d24cd82e4ce9a094",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-10\\2026-09-10_030315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-10/2026-09-10_030315",
+          "file_hash": "109d7c359ce39fef295a09848f9e39d4d95146ed372a2c17e15720dcd8c26dd6",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        },
+        {
+          "rank": 1,
+          "text": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-11\\2026-09-11_025141\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-11/2026-09-11_025141",
+          "file_hash": "f4417c2d6c8d12f1c30eb846e0321b9d2dc24a84fb0cb159d516f2f81a54991b",
+          "field_hash": "708aba0ee82279014aaea46917ac0714acb94c63378a23d91fcc813b978029f6"
+        }
+      ]
+    },
+    "context": {
+      "name": "Mascarilla facial coreana the MASK Dr. Intensive Treatment",
+      "cat1": "Cuidado personal",
+      "cat2": "Cuidado facial",
+      "spec": "Diferentes variantes",
+      "description": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+      "details": "Aclarado: No; Apto para tipo de parte del cuerpo: Rostro; Contenido: 20 ml; Efecto hidratante: Sí; Efecto limpiador: Sí; Efecto restaurador: Sí; Género: Unisex; Sustancia: Paño; Tipo de dispensador: Saquito; Uso previsto: Rostro; Número del artículo: 3204159"
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "paño",
+            "expected_target": "清洁布",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Mascarilla lista para usar que se coloca como un paño sobre la cara\nProducto hecho en Corea\nA base de fibras vegetales\nLas mascarillas de The MASK Dr. se absorben fácilmente en la piel; además, realzan el rostro y proporcionan una piel suave y lisa o un bonito brillo hidratado.",
+          "target": "即用型片状面膜，可像布片一样敷在脸上，韩国制造，以植物纤维为基础。The MASK Dr.面膜易于被肌肤吸收，令面容更显光彩，使肌肤柔软光滑，或呈现水润光泽。",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  },
+  {
+    "sku": "3204436",
+    "source": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+    "target": "这款FERM植物滴灌器可精确、均匀且有效地浇灌植物和花卉，有4个档位控制水流，提供3年保修。适合对水分过多或过少敏感的植物，也适合在外出度假等不在家时需要定期供水的植物。",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-05\\2026-09-05_033927\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-05/2026-09-05_033927",
+        "file_hash": "cbcbe98b81c7b03080b5f06dce3e5867fca1daf4964ba2bd060d5c295b85856e",
+        "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+          "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-26\\2026-08-26_130145\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-26/2026-08-26_130145",
+          "file_hash": "7aa34749c60e85fdede52763c445b98504451bf565ec05b18f926322baf062f7",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-28\\2026-08-28_073710\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-28/2026-08-28_073710",
+          "file_hash": "9f3985b8c93914d1d14e7c7b10cd5a9c9281df376c514dcca8685c5bb3b284ae",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+          "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_184646\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_184646",
+          "file_hash": "25e78152339d143bd5b8808efc9833c8202ff31f264118c57720a039dc852b51",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_155325\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_155325",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_164431\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_164431",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_024429\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_024429",
+          "file_hash": "87f966bee1380fa0cf174b37dee21f9193f2cc69007a2a20ad44548d5ff07d0c",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_035941\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_035941",
+          "file_hash": "739c048fd236408c8c8d316472d0d3a09959f0dc515b1e76092903c32f8d8d7c",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-01\\2026-09-01_113916\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-01/2026-09-01_113916",
+          "file_hash": "3516a29a90edb0699efbe4d017b16f58373e99589541d0bb909da6c74c38e8bd",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-02\\2026-09-02_030100\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-02/2026-09-02_030100",
+          "file_hash": "da28948e4ea50de9a25b26000489daf25cc7a3583e90171b309416fdaa15b053",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_053952\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_053952",
+          "file_hash": "acab9b4f807a580a8dce1aeceea9bc02d191c55335b8d62f9071f666203d1e54",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_072729\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_072729",
+          "file_hash": "4cb785cdf6115e10194a22ee58b15d9367dac1a9abe5998e8ca1b8dd24922162",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-04\\2026-09-04_031405\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-04/2026-09-04_031405",
+          "file_hash": "d6797c65265143429bb2f97139f79fb16d527faf180340a4a6d5a9deff1bc0ac",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        },
+        {
+          "rank": 1,
+          "text": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-05\\2026-09-05_033927\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-05/2026-09-05_033927",
+          "file_hash": "cbcbe98b81c7b03080b5f06dce3e5867fca1daf4964ba2bd060d5c295b85856e",
+          "field_hash": "aa5867c57bea8d0847640e9ec764862f91c5c8b86b3d1d217dca7f488029b1d7"
+        }
+      ]
+    },
+    "context": {
+      "name": "Gotero de agua para plantas FERM",
+      "cat1": "Jardín",
+      "cat2": "Mangueras de jardín y aspersores",
+      "spec": "500 ml",
+      "description": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+      "details": "Número del artículo: 3204436"
+    },
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "NUMERIC_ADDED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "source": {
+              "3": 1
+            },
+            "target": {
+              "4": 1,
+              "3": 1
+            },
+            "extra": {
+              "4": 1
+            }
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Riega plantas y flores de forma precisa, uniforme y eficaz\nTiene cuatro posiciones para controlar el caudal de agua\n3 años de garantía\nEste gotero para plantas FERM es ideal para plantas sensibles al exceso o la falta de agua, o para plantas que necesitan agua regularmente durante tu ausencia, como cuando sales de vacaciones.",
+          "target": "这款FERM植物滴灌器可精确、均匀且有效地浇灌植物和花卉，有4个档位控制水流，提供3年保修。适合对水分过多或过少敏感的植物，也适合在外出度假等不在家时需要定期供水的植物。",
+          "message": "numeric fact added",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "formal_approval": false
+  }
+]

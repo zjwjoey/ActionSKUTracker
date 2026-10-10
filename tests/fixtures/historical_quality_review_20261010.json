@@ -1,0 +1,197 @@
+[
+  {
+    "sku": "1325690",
+    "field": "details",
+    "source": "Apto para tipo de transporte: Coche; Con efecto antibacteriano: No; Contenido: 500 ml; Incluye tapón dosificador: No; Rellenable: No; Sin silicona: No; Sustancia: Líquido; Tipo de cuidado para la carrocería del coche: Combinación; Tipo de dispensador: Botella exprimible; Lista de ingredientes: Ver lista de ingredientes; Número del artículo: 1325690",
+    "target": "适用交通工具类型：汽车；抗菌效果：否；含量：500毫升；含计量盖：否；可重新填充：否；无硅：否；形态：液体；汽车车身护理类型：组合；分配器类型：挤压瓶；配料表：见成分表；商品编号：1325690",
+    "source_evidence": {
+      "rank": 1,
+      "text": "Apto para tipo de transporte: Coche; Con efecto antibacteriano: No; Contenido: 500 ml; Incluye tapón dosificador: No; Rellenable: No; Sin silicona: No; Sustancia: Líquido; Tipo de cuidado para la carrocería del coche: Combinación; Tipo de dispensador: Botella exprimible; Lista de ingredientes: Ver lista de ingredientes; Número del artículo: 1325690",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-25\\2026-09-25_045634\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-25/2026-09-25_045634",
+      "file_hash": "e890328378e2485152506974d43d4c4ac7513bdb328a2e9eadf6b67f493be1a0",
+      "field_hash": "3327a22a089d9d073464f9a8a2b34143178624938500ea090e5893c9eb1fdeb2"
+    },
+    "expected_behavior": "DETAIL_DELIMITER_EQUIVALENCE_KEEP_TEXT"
+  },
+  {
+    "sku": "2523375",
+    "field": "description",
+    "source": "Guantes de látex y no estériles\nExcelente ajuste y buen agarre\nEstos guantes de vinilo protegen tus manos y evitan la transmisión de bacterias y suciedad. Ideales para las tareas de limpieza, pintura o cocina.",
+    "target": "无菌一次性手套，原文标注含乳胶。\n贴合度好，抓握稳固。\n可保护双手并减少细菌和污垢传播，适合清洁、刷漆或烹饪。",
+    "source_evidence": {
+      "rank": 1,
+      "text": "Guantes de látex y no estériles\nExcelente ajuste y buen agarre\nEstos guantes de vinilo protegen tus manos y evitan la transmisión de bacterias y suciedad. Ideales para las tareas de limpieza, pintura o cocina.",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-05\\2026-09-05_033927\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-05/2026-09-05_033927",
+      "file_hash": "cbcbe98b81c7b03080b5f06dce3e5867fca1daf4964ba2bd060d5c295b85856e",
+      "field_hash": "93c9cbfb80571db0bbe1037ced44c872591989e00551ba69ead8ddfa4245ab49"
+    },
+    "expected_behavior": "OWNER_REVIEW_SOURCE_CONFLICT_NO_GOLD_TARGET"
+  },
+  {
+    "sku": "2533753",
+    "field": "description",
+    "source": "Consta de 5 capas, con capa doble antiadherente\nApto para todas las fuentes de calor\nPrepara verduras o salsas en este cazo de material pesado. Después de disfrutar cocinando, ponlo simplemente en el lavavajillas. Este cazo se calienta 2 veces más rápido que uno convencional, lo que ahorra tiempo y hasta un 50 % de energía. Ideal para cocinar y ahorrar energía.",
+    "target": "五层结构，带双层不粘涂层；适用于所有热源；用这款厚重材质的奶锅烹制蔬菜或酱汁。享受烹饪后，直接放入洗碗机即可。这款奶锅加热速度比普通锅快2倍，节省时间并节能高达50%。是烹饪和节能的理想选择。",
+    "source_evidence": {
+      "rank": 1,
+      "text": "Consta de 5 capas, con capa doble antiadherente\nApto para todas las fuentes de calor\nPrepara verduras o salsas en este cazo de material pesado. Después de disfrutar cocinando, ponlo simplemente en el lavavajillas. Este cazo se calienta 2 veces más rápido que uno convencional, lo que ahorra tiempo y hasta un 50 % de energía. Ideal para cocinar y ahorrar energía.",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-10\\2026-09-10_030315\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-10/2026-09-10_030315",
+      "file_hash": "109d7c359ce39fef295a09848f9e39d4d95146ed372a2c17e15720dcd8c26dd6",
+      "field_hash": "42ab55660225d67255b932e05f0f927f745511b4bdb34e0b971a8c650b7b2861"
+    },
+    "expected_behavior": "CHINESE_NUMERIC_EQUIVALENCE_KEEP_TEXT"
+  },
+  {
+    "sku": "3214854",
+    "field": "cat1",
+    "source": "Vivienda",
+    "target": "住宅",
+    "source_evidence": {
+      "rank": 1,
+      "text": "Vivienda",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-26\\2026-09-26_034832\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-26/2026-09-26_034832",
+      "file_hash": "648c99b7f1d1765c098806319819451aaf71053da7cfe6b6e45b12b47e603977",
+      "field_hash": "b7da6901e5c4818d1b6c4785389633b3d31d845a4541985f667d878f1b03b469"
+    },
+    "expected_behavior": "UNAPPROVED_CATEGORY_BLOCKED"
+  },
+  {
+    "sku": "3016045",
+    "field": "name",
+    "source": "Tarro con tapa madera",
+    "target": "木盖罐子",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Tarro con tapa madera",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "5f196a3d6e12db156b232ec186f095130fdd400b8c1a0593ac45bfa8f917649a"
+    },
+    "expected_behavior": "WOOD_COMPOUND_EQUIVALENCE_KEEP_FACT"
+  },
+  {
+    "sku": "3203195",
+    "field": "name",
+    "source": "Virutas de madera decorativas",
+    "target": "装饰木屑",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Virutas de madera decorativas",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "70e81c70545150602b827a2853af45db519218d4b1c17df3b893aa86471b3675"
+    },
+    "expected_behavior": "WOOD_COMPOUND_EQUIVALENCE_KEEP_FACT"
+  },
+  {
+    "sku": "3204372",
+    "field": "name",
+    "source": "Caja de madera de mango",
+    "target": "芒果木盒",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Caja de madera de mango",
+      "reference": "F:\\按日期整理\\action表格\\20260713\\20260713Action商品全量_西语版_不带图.xlsx::商品全量",
+      "observed_at": "2026-07-13",
+      "file_hash": "9eda0b3143e661a7e080ad46b71fd6b2649bc6dfd2ffa283d827ba1d9a459df2",
+      "field_hash": "60e14d1be6a4955d221de81cf1181e6a5388547a5ea1e4499502e61883615710"
+    },
+    "expected_behavior": "WOOD_COMPOUND_EQUIVALENCE_KEEP_FACT"
+  },
+  {
+    "sku": "3205379",
+    "field": "name",
+    "source": "Micrófono de karaoke inalámbrico con luz",
+    "target": "带灯无线卡拉OK麦克风",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Micrófono de karaoke inalámbrico con luz",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "1c7dc8751b44ebb813fbf33938fbed1b8857d749833c9897e7ec5f4cd328f2c6"
+    },
+    "expected_behavior": "SOURCE_SCOPED_KARAOKE_LEXICAL_TOKEN_EQUIVALENCE"
+  },
+  {
+    "sku": "3206321",
+    "field": "name",
+    "source": "Juego de karaoke inalámbrico Fresh ’n Rebel Kids",
+    "target": "儿童无线卡拉OK套装",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Juego de karaoke inalámbrico Fresh ’n Rebel Kids",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "0288424b65a61c10657258544e51c49007eca019aa580d8f67bde547c57272c5"
+    },
+    "expected_behavior": "SOURCE_SCOPED_KARAOKE_LEXICAL_TOKEN_EQUIVALENCE"
+  },
+  {
+    "sku": "2529728",
+    "field": "name",
+    "source": "Palillos de bambú",
+    "target": "竹签",
+    "source_evidence": {
+      "rank": 1,
+      "text": "Palillos de bambú",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-21\\2026-09-21_023932\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-21/2026-09-21_023932",
+      "file_hash": "2dfae288d978bdfb504d5c13975c79f8b5780c9f695a0a5b818e057f71eb78f0",
+      "field_hash": "ef2b4e6194f7f146c5d00391232c50b96665af5b248ffd24d2498ab38d18a5b8"
+    },
+    "expected_behavior": "BAMBOO_COMPOUND_EQUIVALENCE_KEEP_TEXT"
+  },
+  {
+    "sku": "3209565",
+    "field": "name",
+    "source": "Patatas fritas Chio #BBQ style",
+    "target": "烧烤风味薯片",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Patatas fritas Chio #BBQ style",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "822b1812f19aabe01c67248e188a24e3cc0153721620332cbf38125a6dcf1576"
+    },
+    "expected_behavior": "FIELD_SCOPED_BBQ_STYLE_FLAVOUR_TRANSLATION_NOT_MODEL_WAIVER"
+  },
+  {
+    "sku": "3211913",
+    "field": "name",
+    "source": "Figura XL de goma de borrar",
+    "target": "XL造型橡皮擦",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Figura XL de goma de borrar",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "4060877807baa5a74fa0d38c3aa24589cce64eb67d4bacaeb7905dc4251ce2b9"
+    },
+    "expected_behavior": "LEXICAL_OR_TRUSTED_BRAND_DISAMBIGUATION_WITH_FACT_PRESERVATION"
+  },
+  {
+    "sku": "3210285",
+    "field": "name",
+    "source": "Pinzas decorativas 3M Command",
+    "target": "装饰夹",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Pinzas decorativas 3M Command",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "2547f1b147a856feaa754837b688551823f5b14997f023ab6643aef2ca3e39ab"
+    },
+    "expected_behavior": "LEXICAL_OR_TRUSTED_BRAND_DISAMBIGUATION_WITH_FACT_PRESERVATION"
+  }
+]

@@ -634,6 +634,7 @@ class ProductionWriter:
             str(row.get("sku") or row.get("official_sku") or ""): str(row.get("product_url") or "")
             for row in products
             if not row.get("_historical_minimal")
+            and str(row.get("status") or "CURRENT") == "CURRENT"
         }
         for row in localizations:
             if str(row.get("language") or "").strip() != "es":
@@ -648,6 +649,11 @@ class ProductionWriter:
                     "desc_es": row.get("description"), "details_es": row.get("details"),
                 })
             if not sku or cat2 or not source_hash:
+                continue
+            # Historical evidence recovery is not a current collection gap.
+            # Do not enqueue archived products for today's category repair.
+            product = db.execute("SELECT status FROM products WHERE official_sku=?", (sku,)).fetchone()
+            if product is None or (str(product[0]) != "CURRENT" and sku not in urls):
                 continue
             queue_id = f"category-gap-{sku}-{source_hash[:16]}"
             db.execute(
@@ -1336,6 +1342,7 @@ def apply_approved_localization_patches(
     actor: str = "system",
     run_id: str | None = None,
     unit_prices: Mapping[str, Any] | None = None,
+    delegated_approval: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Apply only approved immutable patches in one SQLite transaction.
 
@@ -1345,6 +1352,8 @@ def apply_approved_localization_patches(
     """
     if not expected_base_commit_id:
         raise ProductionDatabaseError("LOCALIZATION_APPLY_BASE_COMMIT_REQUIRED")
+    if delegated_approval is not None and unit_prices:
+        raise ProductionDatabaseError("DELEGATION_UNIT_PRICES_NOT_ALLOWED")
     path = Path(path); migrate_v2(path, role="PRIMARY")
     from .immutable_patches import ImmutablePatchError, _append_event, _columns, _validate_patch_apply_in_connection
     from ..services.hashing import localization_field_source_hash, localization_source_hash
@@ -1390,10 +1399,28 @@ def apply_approved_localization_patches(
                     except json.JSONDecodeError:
                         source_name = ""
                 try:
+                    service_actors = ()
+                    if delegated_approval is not None:
+                        from ..localization.delegated_approval import validate_delegation, validate_delegated_revision
+                        delegated_actor = str(delegated_approval.get("actor") or "")
+                        delegation_digest = validate_delegation(delegated_approval, delegated_actor)
+                        approval_record = json.loads(approval_probe[0] or "{}") if approval_probe else {}
+                        if approval_record.get("delegation_hash") != delegation_digest:
+                            raise ProductionDatabaseError("DELEGATION_PATCH_BINDING_MISMATCH")
+                        review = validate_delegated_revision(db, delegated_approval, actor=delegated_actor,
+                                    revision_id=str(approval_record.get("revision_id") or ""))
+                        if (review["sku"] != patch["official_sku"] or review["field"] != patch["field_name"]
+                                or review["source_hash"] != source_hash):
+                            raise ProductionDatabaseError("DELEGATION_PATCH_SCOPE_MISMATCH")
+                        from ..localization.hashes import value_hash
+                        if value_hash(str(patch.get("new_value") or "")) != review["target_hash"]:
+                            raise ProductionDatabaseError("DELEGATION_PATCH_TARGET_MISMATCH")
+                        service_actors = (delegated_actor,)
                     validated = _validate_patch_apply_in_connection(
                         db, patch_id=patch_id, current_source_hash=source_hash,
                         source_name=source_name, current_value=current_value,
                         expected_base_commit_id=expected_base_commit_id,
+                        authorized_service_actors=service_actors,
                     )
                 except ImmutablePatchError as exc:
                     raise ProductionDatabaseError(str(exc) + ":" + patch_id) from exc

@@ -1,0 +1,1115 @@
+[
+  {
+    "sku": "2546726",
+    "field": "details",
+    "source": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+    "before": "适用身体部位：全身；适用肤质：所有肤质；含量：250ml；清洁效果：是；适用性别：男；气味：清新；形态：凝胶；分配器类型：瓶；用途：身体、面部；商品编号：2546726",
+    "candidate_value": "适用身体部位：全身；适用肤质：所有肤质；含量：250ml；清洁效果：是；适用性别：男；气味：清新；形态：凝胶；分配器类型：瓶；用途：身体、面部；商品编号：2546726",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-10\\2026-09-10_030315\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-10/2026-09-10_030315",
+        "file_hash": "109d7c359ce39fef295a09848f9e39d4d95146ed372a2c17e15720dcd8c26dd6",
+        "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "PRIMARY:product_fact_versions:6d4c0c1314e4573799fa6fe56baf136c6c9b0575449d6cf28493613e4a58f10c",
+          "observed_at": "2026-09-09T01:55:03.872623+00:00",
+          "file_hash": "04465d8a8638daa9ef62edc0cf2621a16275de97a57f64ee147d5192e89d4da9",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "PRIMARY:product_fact_versions:5fc1b0a111b4defa7d0b0027ab3fd27f7049b5b19f56959a431acf2edb732828",
+          "observed_at": "2026-09-10T01:36:54.428053+00:00",
+          "file_hash": "5e8e8e9c16b2aa30612d3a302f371ca06e15f8e162c7dd39f94a94134b5cfc5f",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+          "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-26\\2026-08-26_130145\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-26/2026-08-26_130145",
+          "file_hash": "7aa34749c60e85fdede52763c445b98504451bf565ec05b18f926322baf062f7",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-28\\2026-08-28_073710\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-28/2026-08-28_073710",
+          "file_hash": "9f3985b8c93914d1d14e7c7b10cd5a9c9281df376c514dcca8685c5bb3b284ae",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+          "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_184646\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_184646",
+          "file_hash": "25e78152339d143bd5b8808efc9833c8202ff31f264118c57720a039dc852b51",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_155325\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_155325",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_164431\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_164431",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_024429\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_024429",
+          "file_hash": "87f966bee1380fa0cf174b37dee21f9193f2cc69007a2a20ad44548d5ff07d0c",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_035941\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_035941",
+          "file_hash": "739c048fd236408c8c8d316472d0d3a09959f0dc515b1e76092903c32f8d8d7c",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-01\\2026-09-01_113916\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-01/2026-09-01_113916",
+          "file_hash": "3516a29a90edb0699efbe4d017b16f58373e99589541d0bb909da6c74c38e8bd",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-02\\2026-09-02_030100\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-02/2026-09-02_030100",
+          "file_hash": "da28948e4ea50de9a25b26000489daf25cc7a3583e90171b309416fdaa15b053",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_053952\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_053952",
+          "file_hash": "acab9b4f807a580a8dce1aeceea9bc02d191c55335b8d62f9071f666203d1e54",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_072729\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_072729",
+          "file_hash": "4cb785cdf6115e10194a22ee58b15d9367dac1a9abe5998e8ca1b8dd24922162",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-04\\2026-09-04_031405\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-04/2026-09-04_031405",
+          "file_hash": "d6797c65265143429bb2f97139f79fb16d527faf180340a4a6d5a9deff1bc0ac",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-05\\2026-09-05_033927\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-05/2026-09-05_033927",
+          "file_hash": "cbcbe98b81c7b03080b5f06dce3e5867fca1daf4964ba2bd060d5c295b85856e",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-06\\2026-09-06_043721\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-06/2026-09-06_043721",
+          "file_hash": "6defd8200076fca7df433fc26646c46e8b6f774a8bec4c030b9983038a9f3f63",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-07\\2026-09-07_025601\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-07/2026-09-07_025601",
+          "file_hash": "26d802f096b9257fba9056a52f2738ed119ac17afc1f3d6eac30154b045e1846",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-08\\2026-09-08_035740\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-08/2026-09-08_035740",
+          "file_hash": "5b389ccee24ef37c0dc5e55268ab4c79ba0c6f0db25837e7fd37dc2ae7cdf7a1",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-09\\2026-09-09_032720\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-09/2026-09-09_032720",
+          "file_hash": "339695cbd6fc9f04ee405a2ac8bfda30c1b2a3f01a02c018d24cd82e4ce9a094",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 1,
+          "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-10\\2026-09-10_030315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-10/2026-09-10_030315",
+          "file_hash": "109d7c359ce39fef295a09848f9e39d4d95146ed372a2c17e15720dcd8c26dd6",
+          "field_hash": "6b69a3e5f0112b808406ee984a330e5ba9f93f68e57641f357edffc12609ef34"
+        },
+        {
+          "rank": 2,
+          "text": "{'Número del artículo': '2546726', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Apto para tipo de piel': 'Todo tipo de pieles', 'Contenido': '250 ml', 'Efecto limpiador': 'Sí', 'Género': 'Hombre', 'Olor': 'Fresco', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella', 'Uso previsto': 'Cuerpo, Rostro'}",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::2546726",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "d15f641c5b905fa8acd35c3734d3fc40420e7d80a082436afd977c79a0069f79"
+        }
+      ]
+    },
+    "context": {
+      "name": "Gel de ducha Nivea Men Silver Protect",
+      "cat1": "Cuidado personal",
+      "cat2": "Artículos de baño y ducha",
+      "spec": "250 ml",
+      "description": "pH neutro\nCuida la piel\nDespués de una ducha con este gel de ducha Nivea Men tendrás una sensación de frescor y limpieza duradera.",
+      "details": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Apto para tipo de piel: Todo tipo de pieles; Contenido: 250 ml; Efecto limpiador: Sí; Género: Hombre; Olor: Fresco; Sustancia: Válido; Tipo de dispensador: Botella; Uso previsto: Cuerpo, Rostro; Número del artículo: 2546726"
+    },
+    "decision": "REVIEW_REQUIRED",
+    "semantic_status": "REVIEW_REQUIRED",
+    "risk_level": "HIGH",
+    "review_model": "CODEX",
+    "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+    "review_note": "逐项核对结构化来源：物态Sustancia值Válido无法支持任何确定物态。有效/有效成分误把无意义源值解释为功效，固体/液体等猜测也无来源支持；须补充可信同版本来源事实，不改官方西语为空。",
+    "formal_approval": false
+  },
+  {
+    "sku": "3017008",
+    "field": "details",
+    "source": "{'Número del artículo': '3017008', 'Apto para tipo de cabello': 'Todo tipo de cabellos', 'Contenido': '350 ml', 'Producto de peinado resistente': 'Extra resistente', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella exprimible'}",
+    "before": "{'商品编号': '3017008', '适用发质': '所有发质', '净含量': '350毫升', '定型效果': '超强定型', '成分': '有效', '包装类型': '挤压瓶'}",
+    "candidate_value": "{'商品编号': '3017008', '适用发质': '所有发质', '净含量': '350毫升', '定型效果': '超强定型', '成分': '有效', '包装类型': '挤压瓶'}",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "{'Número del artículo': '3017008', 'Apto para tipo de cabello': 'Todo tipo de cabellos', 'Contenido': '350 ml', 'Producto de peinado resistente': 'Extra resistente', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella exprimible'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3017008",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "a3bbec697806cbafbc4cd24a4bdc75093a061922596338b9260922bbaad49373"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "{'Número del artículo': '3017008', 'Apto para tipo de cabello': 'Todo tipo de cabellos', 'Contenido': '350 ml', 'Producto de peinado resistente': 'Extra resistente', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella exprimible'}",
+          "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3017008",
+          "observed_at": "",
+          "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+          "field_hash": "a3bbec697806cbafbc4cd24a4bdc75093a061922596338b9260922bbaad49373"
+        }
+      ]
+    },
+    "context": {
+      "name": "Gel de peinado Fixeeze Iron Men",
+      "cat1": "Cuidado personal",
+      "cat2": "Cuidado del cabello",
+      "spec": "Superfijación | 10 | 350 ml",
+      "description": "Fijación ultrafuerte que dura todo el día\nNo deja ningún residuo\nFácil de aclarar",
+      "details": "{'Número del artículo': '3017008', 'Apto para tipo de cabello': 'Todo tipo de cabellos', 'Contenido': '350 ml', 'Producto de peinado resistente': 'Extra resistente', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella exprimible'}"
+    },
+    "decision": "REVIEW_REQUIRED",
+    "semantic_status": "REVIEW_REQUIRED",
+    "risk_level": "HIGH",
+    "review_model": "CODEX",
+    "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+    "review_note": "逐项核对结构化来源：物态Sustancia值Válido无法支持任何确定物态。有效/有效成分误把无意义源值解释为功效，固体/液体等猜测也无来源支持；须补充可信同版本来源事实，不改官方西语为空。",
+    "formal_approval": false
+  },
+  {
+    "sku": "3210041",
+    "field": "details",
+    "source": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+    "before": "颜色：黄色；数量：2件；含量：70g；固定方式：独立式；可重新填充：否；商品编号：3210041",
+    "candidate_value": "颜色：黄色；数量：2件；含量：70g；固定方式：独立式；可重新填充：否；商品编号：3210041",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-10-01\\2026-10-01_073814\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-10-01/2026-10-01_073814",
+        "file_hash": "34c047c86c6f9510b983dc39e368b3d68ee4dbf0f8749ee8c2b98eb1b21116a1",
+        "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:228819fce09b6f97fd38315c072ae6d4f47f9837e1d51a48a486f3299b0bcadb",
+          "observed_at": "2026-09-09T01:55:03.872623+00:00",
+          "file_hash": "9548f49e088c63bc4a3800769bc78396174fde3c6d161aabb3b14440136f6693",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:02e9f10bfe5712986ebd99b6960760ef71a7b5101570bc1a87539dfc84bc2ab1",
+          "observed_at": "2026-09-10T01:36:54.428053+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:9dd3e2096d8048b1a85217854b6fbd05674a72fb636bdfc9772dceda2213fdc0",
+          "observed_at": "2026-09-11T01:16:46.314653+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:742e4b58e6cef48401b4ea453b662a1ba0ed9363dbbe6d7a184715a365edb19d",
+          "observed_at": "2026-09-12T01:15:44.773817+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:f3754806de95ec6a37cd7a665d00a37803d83ffa1cd7db47120af7109089d3be",
+          "observed_at": "2026-09-13T01:14:31.774514+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:c8c25e88d3caac894d7b93728bce3b4add4b917d5e40154c580e66eb009bc884",
+          "observed_at": "2026-09-14T01:03:26.649955+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:911ff639630a83c249824e1653c339359dd66e70ff5130021ddfb68e9228742b",
+          "observed_at": "2026-09-15T01:45:14.661316+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:6c8a2560077f2078b5f7ba40e9dacffd1f440a7361d5339edb59d0a1218dd155",
+          "observed_at": "2026-09-16T03:04:05.584573+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:f5ea850209dbfe0c69fa2a3c4964b1729af70d93b978dafc4d4a52563c7074e8",
+          "observed_at": "2026-09-17T01:23:02.639979+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:6e0459fe7b6cc2a2f266c76dd0de103ebf7df28f7aa53b2dec846fccf97a0c63",
+          "observed_at": "2026-09-18T01:19:11.313526+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:894d54248a06d5d2bad0225b0b5c292739346adc67f682af081041feb690052b",
+          "observed_at": "2026-09-19T01:35:01.909782+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:1bcc5af7d61dbd08c1330f753766203434c38a253d1d6ef42e71f3cec74e071b",
+          "observed_at": "2026-09-20T05:56:15.236798+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:53d874d8600f1fad887dbcf6f8e79999da562e3f301f86f6103cf68c07b616cf",
+          "observed_at": "2026-09-21T01:03:04.691426+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:e643cece9f4ab3491622e80bfab48228e8dd28f32e2a8e92ccf9145f6068440a",
+          "observed_at": "2026-09-22T01:09:04.113617+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:659e33fff350e06b5c8fbba36136779b7e2299641fac9277ab2bd9908dc5769a",
+          "observed_at": "2026-09-23T02:35:52.234314+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:d8953153c6f4da9c3d59153fcc84bf5cdc2208c2628cdc5ab0b19698a12c36bd",
+          "observed_at": "2026-09-24T03:46:27.334814+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:0da3e1dbe8d29ece92123dc3737fcc95f5035714b182481f54bf08db23e14887",
+          "observed_at": "2026-09-25T03:56:54.259321+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:573d60ec4596d37eef59bd91dec3e3188b8c820c4c1c8180c54f0d9f908dd64d",
+          "observed_at": "2026-09-26T02:11:32.568736+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:4d3e8016032255aec1746902881605781e51a11bf5fe8581b82542f5397dba81",
+          "observed_at": "2026-09-27T13:30:17.882973+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:3ac979ea7e4ca3fe8a2971a285caa447ab4c402022b3dd3e4be8c38bb7ed9243",
+          "observed_at": "2026-09-28T02:10:50.521956+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "PRIMARY:product_fact_versions:d5cce0cb8951461f241cca0f7f5d8b3b9b23ff5aed2ff00bb5a216edff6ac9f2",
+          "observed_at": "2026-09-30T01:14:48.071404+00:00",
+          "file_hash": "792054c015f0dac09989efa686946eb6eb8cd0da55cdbb4efa1e2b541351ad6b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-24\\2026-08-24_024113\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-24/2026-08-24_024113",
+          "file_hash": "55353380aec3747bf67092169cc9866ff14a1a77e20a655952bec2e7c7531b1c",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+          "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-26\\2026-08-26_130145\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-26/2026-08-26_130145",
+          "file_hash": "7aa34749c60e85fdede52763c445b98504451bf565ec05b18f926322baf062f7",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-28\\2026-08-28_073710\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-28/2026-08-28_073710",
+          "file_hash": "9f3985b8c93914d1d14e7c7b10cd5a9c9281df376c514dcca8685c5bb3b284ae",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+          "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_184646\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_184646",
+          "file_hash": "25e78152339d143bd5b8808efc9833c8202ff31f264118c57720a039dc852b51",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_155325\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_155325",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-30\\2026-08-30_164431\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-30/2026-08-30_164431",
+          "file_hash": "cade76d02390e97865fb2c97f97a48ebf0e4c19c54c42e302fc015992270c42c",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_024429\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_024429",
+          "file_hash": "87f966bee1380fa0cf174b37dee21f9193f2cc69007a2a20ad44548d5ff07d0c",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-31\\2026-08-31_035941\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-31/2026-08-31_035941",
+          "file_hash": "739c048fd236408c8c8d316472d0d3a09959f0dc515b1e76092903c32f8d8d7c",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-01\\2026-09-01_113916\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-01/2026-09-01_113916",
+          "file_hash": "3516a29a90edb0699efbe4d017b16f58373e99589541d0bb909da6c74c38e8bd",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-02\\2026-09-02_030100\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-02/2026-09-02_030100",
+          "file_hash": "da28948e4ea50de9a25b26000489daf25cc7a3583e90171b309416fdaa15b053",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_053952\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_053952",
+          "file_hash": "acab9b4f807a580a8dce1aeceea9bc02d191c55335b8d62f9071f666203d1e54",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_072729\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_072729",
+          "file_hash": "4cb785cdf6115e10194a22ee58b15d9367dac1a9abe5998e8ca1b8dd24922162",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-04\\2026-09-04_031405\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-04/2026-09-04_031405",
+          "file_hash": "d6797c65265143429bb2f97139f79fb16d527faf180340a4a6d5a9deff1bc0ac",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-05\\2026-09-05_033927\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-05/2026-09-05_033927",
+          "file_hash": "cbcbe98b81c7b03080b5f06dce3e5867fca1daf4964ba2bd060d5c295b85856e",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-06\\2026-09-06_043721\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-06/2026-09-06_043721",
+          "file_hash": "6defd8200076fca7df433fc26646c46e8b6f774a8bec4c030b9983038a9f3f63",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-07\\2026-09-07_025601\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-07/2026-09-07_025601",
+          "file_hash": "26d802f096b9257fba9056a52f2738ed119ac17afc1f3d6eac30154b045e1846",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-08\\2026-09-08_035740\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-08/2026-09-08_035740",
+          "file_hash": "5b389ccee24ef37c0dc5e55268ab4c79ba0c6f0db25837e7fd37dc2ae7cdf7a1",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-09\\2026-09-09_032720\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-09/2026-09-09_032720",
+          "file_hash": "339695cbd6fc9f04ee405a2ac8bfda30c1b2a3f01a02c018d24cd82e4ce9a094",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-10\\2026-09-10_030315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-10/2026-09-10_030315",
+          "file_hash": "109d7c359ce39fef295a09848f9e39d4d95146ed372a2c17e15720dcd8c26dd6",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-11\\2026-09-11_025141\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-11/2026-09-11_025141",
+          "file_hash": "f4417c2d6c8d12f1c30eb846e0321b9d2dc24a84fb0cb159d516f2f81a54991b",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-12\\2026-09-12_024403\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-12/2026-09-12_024403",
+          "file_hash": "f48b372b326424f44d7d2658813928d03675eccc04e32c1259972901e7c52684",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-13\\2026-09-13_024933\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-13/2026-09-13_024933",
+          "file_hash": "fcaa491f0a37ad6e2f2e31eed9f759a1c6e1f8a144c4978fb760be8eafdf19de",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-14\\2026-09-14_023843\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-14/2026-09-14_023843",
+          "file_hash": "68ed74d816b973eafbe1b026b2b990a35b0f626c865b99ac39ae88cb9c7023e8",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-15\\2026-09-15_032052\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-15/2026-09-15_032052",
+          "file_hash": "7884099a02785fa380cf37bbda9ee9b81ba64da124df274f7e1f42089353a267",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-16\\2026-09-16_043656\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-16/2026-09-16_043656",
+          "file_hash": "bb6d8b1cfea3fa6c62b040d268eb16cf6adadeffda63ddd8dd2ba53a0ec40df5",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-17\\2026-09-17_025959\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-17/2026-09-17_025959",
+          "file_hash": "d94f00443bd3ea834dc161d328ee96bc28496b34f66a04580da18dc858d2acbb",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-18\\2026-09-18_024832\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-18/2026-09-18_024832",
+          "file_hash": "b62b9f872a403e9eebca3bb50847d2c113547f70ea1b07b874e18293f1909dc7",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-19\\2026-09-19_030744\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-19/2026-09-19_030744",
+          "file_hash": "99b307664a6624caecf8917b8b9d748aed19689ff7e9516abd7fd677a7b8f0f1",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-20\\2026-09-20_040329\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-20/2026-09-20_040329",
+          "file_hash": "3923b02c5f3791b2cd03df7f516000a710ee0fd01fe5dc1708a2074bcaf234a1",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-20\\2026-09-20_071021\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-20/2026-09-20_071021",
+          "file_hash": "c06922ffe39ad896241ff3731c602f43b8098adddd790b5c36693790d58b85af",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-21\\2026-09-21_023932\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-21/2026-09-21_023932",
+          "file_hash": "2dfae288d978bdfb504d5c13975c79f8b5780c9f695a0a5b818e057f71eb78f0",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-22\\2026-09-22_024029\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-22/2026-09-22_024029",
+          "file_hash": "6ec7eba4d151abb2348ce4c3dcaefb76552118ac8a352f42f738be95321568cf",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-23\\2026-09-23_035057\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-23/2026-09-23_035057",
+          "file_hash": "181dab3f8114007240051322306ebfb2a0a7d10a2a8176aa8b18145f20f5804d",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-24\\2026-09-24_050219\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-24/2026-09-24_050219",
+          "file_hash": "ae0d9bbd69613a0bc03892a2a8a5c662e2471162ed97c081a54151095982dab8",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-25\\2026-09-25_031156\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-25/2026-09-25_031156",
+          "file_hash": "a6c6bb06b7ceee97c969c2e487498c0203a69ab8367bf3d2aa707269f8457e7a",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-25\\2026-09-25_045634\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-25/2026-09-25_045634",
+          "file_hash": "e890328378e2485152506974d43d4c4ac7513bdb328a2e9eadf6b67f493be1a0",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-26\\2026-09-26_034832\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-26/2026-09-26_034832",
+          "file_hash": "648c99b7f1d1765c098806319819451aaf71053da7cfe6b6e45b12b47e603977",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-27\\2026-09-27_143844\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-27/2026-09-27_143844",
+          "file_hash": "ddf6f20b391b63bebd2cbd60a957b0ad657a6b7f8baea283fb261e8bcfed8376",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-28\\2026-09-28_025912\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-28/2026-09-28_025912",
+          "file_hash": "16639e3f7f0c044f0c6145c24b0e867a316bb676f6a0150eb1b9996c5bc0d036",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-28\\2026-09-28_034717\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-28/2026-09-28_034717",
+          "file_hash": "60e7168de1d0024ec9c3cb5bed4bcb456c8b16dba9be12a3fbded80132d7f4e9",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-30\\2026-09-30_024336\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-30/2026-09-30_024336",
+          "file_hash": "f7ab310cfc048e8b5600d5de179c2852adf738d5a8131a07da16d56eebc0f106",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        },
+        {
+          "rank": 1,
+          "text": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-10-01\\2026-10-01_073814\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-10-01/2026-10-01_073814",
+          "file_hash": "34c047c86c6f9510b983dc39e368b3d68ee4dbf0f8749ee8c2b98eb1b21116a1",
+          "field_hash": "fc464666a4dc75c7dcf89c06e71e71ee9b5782601c4fd4d0108756699b958a91"
+        }
+      ]
+    },
+    "context": {
+      "name": "Ambientadores para frigorífico",
+      "cat1": "Hogar",
+      "cat2": "Productos de limpieza",
+      "spec": "2 unidades",
+      "description": "Mantiene tu frigorífico fresco\nFuncionan hasta 30 días\nNeutralizan los malos olores\nColoca el ambientador en el frigorífico y disfruta de una nevera fresca hasta 30 días.",
+      "details": "Color: Amarillo; Cantidad: 2 unidades; Contenido: 70 g; Método de fijación: Independiente; Rellenable: No; Sustancia: Válido; Número del artículo: 3210041"
+    },
+    "decision": "REVIEW_REQUIRED",
+    "semantic_status": "REVIEW_REQUIRED",
+    "risk_level": "HIGH",
+    "review_model": "CODEX",
+    "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+    "review_note": "逐项核对结构化来源：物态Sustancia值Válido无法支持任何确定物态。有效/有效成分误把无意义源值解释为功效，固体/液体等猜测也无来源支持；须补充可信同版本来源事实，不改官方西语为空。",
+    "formal_approval": false
+  }
+]

@@ -1,0 +1,271 @@
+[
+  {
+    "sku": "3015660",
+    "field": "description",
+    "source": "Fácil de acortar cada 20 cm\nPara elegir entre luz multicolor y luz blanco cálido\nFunciona con el mando a distancia incluido\nCon esta tira led RGB de Baltimore, crearás más ambiente en casa de forma sencilla. Ideal como Iluminación focal detrás de un sofá, un espejo o un armario.",
+    "source_hash": "eeca0058e29a5bd010bf96c9ae9c87657b4cae769b4a3e10982968fb195ee657",
+    "target": "每20厘米即可轻松截短\n可选择多彩灯光或暖白灯光\n可用随附遥控器操作\n这款 Baltimore RGB LED灯带能轻松为家中营造氛围，适合作为沙发、镜子或衣柜后的重点照明。",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Fácil de acortar cada 20 cm\nPara elegir entre luz multicolor y luz blanco cálido\nFunciona con el mando a distancia incluido\nCon esta tira led RGB de Baltimore, crearás más ambiente en casa de forma sencilla. Ideal como Iluminación focal detrás de un sofá, un espejo o un armario.",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3015660",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "7e18dc4db3d4f6c32309bd849bd7d0f4a75af0d05a86be55e4af68b287f6f337"
+    },
+    "context": {
+      "name": "Tira LED Baltimore",
+      "cat1": "Bricolaje",
+      "cat2": "Iluminación",
+      "spec": "10 metros",
+      "description": "Fácil de acortar cada 20 cm\nPara elegir entre luz multicolor y luz blanco cálido\nFunciona con el mando a distancia incluido\nCon esta tira led RGB de Baltimore, crearás más ambiente en casa de forma sencilla. Ideal como Iluminación focal detrás de un sofá, un espejo o un armario.",
+      "details": "{'Número del artículo': '3015660', 'A color': 'Sí', 'Conectable': 'No', 'Incluye mando a distancia': 'Sí', 'Longitud del cable:': '1.5', 'Lumen': '1300', 'Tipo de fuente de luz': 'Lámpara LED'}"
+    },
+    "review_model": "CODEX",
+    "semantic_status": "PASS",
+    "formal_approval": false,
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "iluminación",
+            "expected_target": "照明灯",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Fácil de acortar cada 20 cm\nPara elegir entre luz multicolor y luz blanco cálido\nFunciona con el mando a distancia incluido\nCon esta tira led RGB de Baltimore, crearás más ambiente en casa de forma sencilla. Ideal como Iluminación focal detrás de un sofá, un espejo o un armario.",
+          "target": "每20厘米即可轻松截短\n可选择多彩灯光或暖白灯光\n可用随附遥控器操作\n这款 Baltimore RGB LED灯带能轻松为家中营造氛围，适合作为沙发、镜子或衣柜后的重点照明。",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    }
+  },
+  {
+    "sku": "3015707",
+    "field": "description",
+    "source": "3 en 1: Micro USB, USB-C y 8 pines\nAlta velocidad de 480 Mbps\nCable reforzado con revestimiento textil\nEl cable de carga y datos Re-load 3 en 1 es ideal para cargar y transferir archivos rápidamente. Con una generosa longitud de 1,5 metros y un chip original de Apple, además de tres adaptadores diferentes, es una herramienta indispensable para la carga de diferentes dispositivos y la transferir archivos.",
+    "source_hash": "baab873aec3d5a0f9fae75a7d47ea2b36672092fa29db8a11ffd93a3616c3a24",
+    "target": "3合1：Micro USB、USB-C和8针\n传输速度480 Mbps\n织物包覆加固线缆\nRe-load 3合1充电数据线适合快速充电和传输文件。线长1.5米，配有Apple原装芯片及三种不同适配器，便于给不同设备充电和传输文件。",
+    "source_evidence": {
+      "rank": 2,
+      "text": "3 en 1: Micro USB, USB-C y 8 pines\nAlta velocidad de 480 Mbps\nCable reforzado con revestimiento textil\nEl cable de carga y datos Re-load 3 en 1 es ideal para cargar y transferir archivos rápidamente. Con una generosa longitud de 1,5 metros y un chip original de Apple, además de tres adaptadores diferentes, es una herramienta indispensable para la carga de diferentes dispositivos y la transferir archivos.",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3015707",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "a394aba22c9180aaecf3e3e99fd0078255706e63c6685c4309f0353e86501f41"
+    },
+    "context": {
+      "name": "Cable de carga y de datos de alta velocidad 3 en 1 Re-load",
+      "cat1": "Multimedia",
+      "cat2": "Cables y divisores",
+      "spec": "1,5 metros",
+      "description": "3 en 1: Micro USB, USB-C y 8 pines\nAlta velocidad de 480 Mbps\nCable reforzado con revestimiento textil\nEl cable de carga y datos Re-load 3 en 1 es ideal para cargar y transferir archivos rápidamente. Con una generosa longitud de 1,5 metros y un chip original de Apple, además de tres adaptadores diferentes, es una herramienta indispensable para la carga de diferentes dispositivos y la transferir archivos.",
+      "details": "{'Número del artículo': '3015707', 'Color': 'Gris, Negro', 'Longitud del cable:': '1.5', 'Tipo de acoplamiento': 'USB'}"
+    },
+    "review_model": "CODEX",
+    "semantic_status": "PASS",
+    "formal_approval": false,
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "3合1：Micro USB、USB-C和8针\n传输速度480 Mbps\n织物包覆加固线缆\nRe-load 3合1充电数据线适合快速充电和传输文件。线长1.5米，配有Apple原装芯片及三种不同适配器，便于给不同设备充电和传输文件。"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "3 en 1: Micro USB, USB-C y 8 pines\nAlta velocidad de 480 Mbps\nCable reforzado con revestimiento textil\nEl cable de carga y datos Re-load 3 en 1 es ideal para cargar y transferir archivos rápidamente. Con una generosa longitud de 1,5 metros y un chip original de Apple, además de tres adaptadores diferentes, es una herramienta indispensable para la carga de diferentes dispositivos y la transferir archivos.",
+          "target": "3合1：Micro USB、USB-C和8针\n传输速度480 Mbps\n织物包覆加固线缆\nRe-load 3合1充电数据线适合快速充电和传输文件。线长1.5米，配有Apple原装芯片及三种不同适配器，便于给不同设备充电和传输文件。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    }
+  },
+  {
+    "sku": "3207076",
+    "field": "description",
+    "source": "Agradable y refrescante gel de ducha\n3 en 1: para cuerpo, cabello y cara\nEn una bonita botella, ideal como regalo",
+    "source_hash": "50295c059d8cc7f936fcd82d932a4617411edfcd14071e2db658f2973ed2c155",
+    "target": "清爽宜人的沐浴啫喱\n三效合一：适用于身体、头发和面部\n装在精美的瓶子里，非常适合作为礼物",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Agradable y refrescante gel de ducha\n3 en 1: para cuerpo, cabello y cara\nEn una bonita botella, ideal como regalo",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3207076",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "fdb61528b8c80587c95b7ab14b22794b4ac5054c637324b0fdd3dc7f2bb2a867"
+    },
+    "context": {
+      "name": "Gel de ducha Neón",
+      "cat1": "Cuidado personal",
+      "cat2": "Cuidado corporal",
+      "spec": "1 litro | diferentes variantes",
+      "description": "Agradable y refrescante gel de ducha\n3 en 1: para cuerpo, cabello y cara\nEn una bonita botella, ideal como regalo",
+      "details": "{'Número del artículo': '3207076', 'Apto para tipo de parte del cuerpo': 'Todo el cuerpo', 'Contenido': '1 litro', 'Género': 'Hombre', 'Sin jabón': 'No', 'Sustancia': 'Válido', 'Tipo de dispensador': 'Botella', 'Uso previsto': 'Ducha'}"
+    },
+    "review_model": "CODEX",
+    "semantic_status": "PASS",
+    "formal_approval": false,
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "NUMERIC_DROPPED",
+          "severity": "BLOCKER",
+          "field_name": "description",
+          "evidence": {
+            "source": {
+              "3": 1,
+              "1": 1
+            },
+            "target": {
+              "1": 1
+            },
+            "missing": {
+              "3": 1
+            }
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Agradable y refrescante gel de ducha\n3 en 1: para cuerpo, cabello y cara\nEn una bonita botella, ideal como regalo",
+          "target": "清爽宜人的沐浴啫喱\n三效合一：适用于身体、头发和面部\n装在精美的瓶子里，非常适合作为礼物",
+          "message": "numeric fact dropped",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    }
+  },
+  {
+    "sku": "3207899",
+    "field": "description",
+    "source": "Basado en los juegos originales Skip-bo, UNO-Flip y Phase-10\nVersión Express para una experiencia de juego más rápida\nPapel con certificación FSC®: papel sostenible\n¡Con Phase 10 Express, UNO-Flip Express y Skip-Bo Express disfrutarás de juegos de cartas ultrarrápidos y llenos de acción! Perfecto para ir de viaje o para una noche de juegos con familia y amigos.",
+    "source_hash": "7801d1e2ed34307553f33dac7a465dca69e826e8b13c91f48d3be18850701966",
+    "target": "基于原版游戏Skip-bo、UNO-Flip和Phase-10\n极速版，带来更加快速的游戏体验\nFSC®认证纸张：可持续环保纸张\n有了Phase 10 Express、UNO-Flip Express和Skip-Bo Express，您将尽享超快节奏、精彩纷呈的卡牌游戏！非常适合旅行携带，或与家人朋友共度欢乐游戏之夜。",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Basado en los juegos originales Skip-bo, UNO-Flip y Phase-10\nVersión Express para una experiencia de juego más rápida\nPapel con certificación FSC®: papel sostenible\n¡Con Phase 10 Express, UNO-Flip Express y Skip-Bo Express disfrutarás de juegos de cartas ultrarrápidos y llenos de acción! Perfecto para ir de viaje o para una noche de juegos con familia y amigos.",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3207899",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "279655595335b5eda7bc51d5d33debef51ca0e235205e551f32aa38bd03e5098"
+    },
+    "context": {
+      "name": "Juego de cartas Mattel",
+      "cat1": "Juguetes",
+      "cat2": "Juegos",
+      "spec": "Diferentes variantes",
+      "description": "Basado en los juegos originales Skip-bo, UNO-Flip y Phase-10\nVersión Express para una experiencia de juego más rápida\nPapel con certificación FSC®: papel sostenible\n¡Con Phase 10 Express, UNO-Flip Express y Skip-Bo Express disfrutarás de juegos de cartas ultrarrápidos y llenos de acción! Perfecto para ir de viaje o para una noche de juegos con familia y amigos.",
+      "details": "{'Número del artículo': '3207899', 'Color': 'Multicolor', 'Edad adecuada': 'A partir de 7 años', 'Incluye caja de almacenaje': 'Sí', 'Uno o más jugadores': 'Varios jugadores'}"
+    },
+    "review_model": "CODEX",
+    "semantic_status": "PASS",
+    "formal_approval": false,
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "基于原版游戏Skip-bo、UNO-Flip和Phase-10\n极速版，带来更加快速的游戏体验\nFSC®认证纸张：可持续环保纸张\n有了Phase 10 Express、UNO-Flip Express和Skip-Bo Express，您将尽享超快节奏、精彩纷呈的卡牌游戏！非常适合旅行携带，或与家人朋友共度欢乐游戏之夜。"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Basado en los juegos originales Skip-bo, UNO-Flip y Phase-10\nVersión Express para una experiencia de juego más rápida\nPapel con certificación FSC®: papel sostenible\n¡Con Phase 10 Express, UNO-Flip Express y Skip-Bo Express disfrutarás de juegos de cartas ultrarrápidos y llenos de acción! Perfecto para ir de viaje o para una noche de juegos con familia y amigos.",
+          "target": "基于原版游戏Skip-bo、UNO-Flip和Phase-10\n极速版，带来更加快速的游戏体验\nFSC®认证纸张：可持续环保纸张\n有了Phase 10 Express、UNO-Flip Express和Skip-Bo Express，您将尽享超快节奏、精彩纷呈的卡牌游戏！非常适合旅行携带，或与家人朋友共度欢乐游戏之夜。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    }
+  },
+  {
+    "sku": "3207927",
+    "field": "description",
+    "source": "Elige entre 12 colores diferentes y 4 efectos de iluminación\nFunción musical\nIncluye mando a distancia\n¡Crea tu propio espectáculo de luces con esta tira LED flexible de 3 metros! Con 12 colores, 4 efectos de luz y una función musical, transformarás cualquier espacio en una fiesta. ¿Cómo se maneja? Simplemente desde tu silla con el mando a distancia.",
+    "source_hash": "66288f91901c3ed20551e6f30805fca97ee823bc460f855c09e4a6cdf43bf6d4",
+    "target": "可选12种不同颜色和4种灯光效果\n音乐功能\n附带遥控器\n用这条3米长的柔性LED灯带，打造属于你的专属灯光秀吧！拥有12种颜色、4种灯光效果及音乐模式，让你的每个空间都充满派对氛围。操作方式？只需坐在椅子上，用遥控器即可轻松掌控。",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Elige entre 12 colores diferentes y 4 efectos de iluminación\nFunción musical\nIncluye mando a distancia\n¡Crea tu propio espectáculo de luces con esta tira LED flexible de 3 metros! Con 12 colores, 4 efectos de luz y una función musical, transformarás cualquier espacio en una fiesta. ¿Cómo se maneja? Simplemente desde tu silla con el mando a distancia.",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3207927",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "c1c3e0e05a566cb25ba0038482f68771c48a17a3d36af2d05a5de06ff5f47aa3"
+    },
+    "context": {
+      "name": "Tira LED flexible Grundig",
+      "cat1": "Bricolaje",
+      "cat2": "Iluminación",
+      "spec": "3 metros",
+      "description": "Elige entre 12 colores diferentes y 4 efectos de iluminación\nFunción musical\nIncluye mando a distancia\n¡Crea tu propio espectáculo de luces con esta tira LED flexible de 3 metros! Con 12 colores, 4 efectos de luz y una función musical, transformarás cualquier espacio en una fiesta. ¿Cómo se maneja? Simplemente desde tu silla con el mando a distancia.",
+      "details": "{'Número del artículo': '3207927', 'Color suave': 'Blanco cálido, Blanco frío', 'A color': 'Sí', 'Incluye mando a distancia': 'Sí', 'Lumen': '600', 'Regulable': 'Sí', 'Tipo de fuente de luz': 'Lámpara LED'}"
+    },
+    "review_model": "CODEX",
+    "semantic_status": "PASS",
+    "formal_approval": false,
+    "before_module_guard": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "iluminación",
+            "expected_target": "照明灯",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Elige entre 12 colores diferentes y 4 efectos de iluminación\nFunción musical\nIncluye mando a distancia\n¡Crea tu propio espectáculo de luces con esta tira LED flexible de 3 metros! Con 12 colores, 4 efectos de luz y una función musical, transformarás cualquier espacio en una fiesta. ¿Cómo se maneja? Simplemente desde tu silla con el mando a distancia.",
+          "target": "可选12种不同颜色和4种灯光效果\n音乐功能\n附带遥控器\n用这条3米长的柔性LED灯带，打造属于你的专属灯光秀吧！拥有12种颜色、4种灯光效果及音乐模式，让你的每个空间都充满派对氛围。操作方式？只需坐在椅子上，用遥控器即可轻松掌控。",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    }
+  }
+]

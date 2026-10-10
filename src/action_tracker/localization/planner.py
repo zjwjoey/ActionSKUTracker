@@ -24,7 +24,7 @@ def _dict_value(mapping: Mapping[str, Any] | None, *keys: str) -> str:
     return ""
 
 
-def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, knowledge: Mapping[str, Any] | None = None, existing: Mapping[str, Any] | None = None) -> LocalizationPlan:
+def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, knowledge: Mapping[str, Any] | None = None, existing: Mapping[str, Any] | None = None, experimental_size_labels: bool = False) -> LocalizationPlan:
     knowledge = knowledge or {}; existing = existing or {}
     hits: list[str] = []
     def value(field: str, fallback: str = "") -> tuple[str, str]:
@@ -90,7 +90,7 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         c2s = "deterministic_context_terminology"
     spec, ss = value("spec_zh")
     if not spec:
-        spec = format_spec(source.spec_es)
+        spec = format_spec(source.spec_es, experimental_size_labels=experimental_size_labels)
         # Name/description/details can contain selection parameters.  Add
         # them to the specification when the official spec field omitted
         # them, while preserving the source evidence for audit/debugging.
@@ -100,13 +100,13 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         for fact in facts:
             if fact.semantic_type not in {"SIZE_DIMENSION", "CAPACITY", "WEIGHT", "QUANTITY", "VOLTAGE", "POWER", "CURRENT", "FREQUENCY", "BATTERY_CAPACITY", "SOCKET", "INTERFACE", "PROTECTION_RATING", "MODEL", "STANDARD_UNIT", "COLOR", "VARIANT", "COMPATIBILITY"}:
                 continue
-            rendered = format_spec(fact.canonical_value or fact.value)
+            rendered = format_spec(fact.canonical_value or fact.value, experimental_size_labels=experimental_size_labels)
             if rendered and rendered.casefold() not in rendered_spec and rendered.casefold() not in rendered_name and rendered.casefold() not in {x.casefold() for x in extra}:
                 extra.append(rendered)
         if extra:
             spec = "｜".join(x for x in (spec, *extra) if x)
     else:
-        spec = format_spec(spec)
+        spec = format_spec(spec, experimental_size_labels=experimental_size_labels)
     # Unit price is an official, volatile price fact rather than a retained
     # translation.  Re-render it from the current official value on every
     # plan so an older localization cannot freeze yesterday's unit price.

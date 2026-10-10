@@ -223,7 +223,7 @@ class TranslationResolver:
                 for item in term_rows
                 if str(item.get("source") or item.get("source_term") or "").strip()
             }
-            for fact in getattr(plan, "semantic_facts", ()):
+            for fact in self.engine.generation_semantic_facts(source):
                 token = str(fact.source_text or "").strip()
                 expected_source_field = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field_name, field_name)
                 if getattr(fact, "source_field", "") and str(fact.source_field) != expected_source_field:

@@ -30,6 +30,7 @@ def repair_field(record: Mapping[str, Any], field_name: str, candidate: str, *, 
                  parent_revision_id: str | None = None,
                  terminology: tuple[Mapping[str, Any], ...] = (),
                   semantic_facts: tuple[Any, ...] = (),
+                  generation_semantic_facts: tuple[Any, ...] | None = None,
                   context: TranslationContext | None = None) -> RepairResult:
     source = SourceFacts.from_record(record)
     value = normalize_target_text(candidate)
@@ -48,7 +49,8 @@ def repair_field(record: Mapping[str, Any], field_name: str, candidate: str, *, 
             str(item.get("source") or item.get("source_term") or "").strip().casefold()
             for item in provider_terms if isinstance(item, Mapping)
         }
-        for fact in semantic_facts:
+        provider_facts = semantic_facts if generation_semantic_facts is None else generation_semantic_facts
+        for fact in provider_facts:
             if str(getattr(fact, "source_field", "") or "") != expected_source_field:
                 continue
             token = str(getattr(fact, "source_text", "") or "").strip()

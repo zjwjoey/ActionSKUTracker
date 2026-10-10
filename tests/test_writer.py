@@ -19,6 +19,28 @@ def _cfg(tmp_path: Path) -> dict:
     }
 
 
+def test_historical_projection_updates_only_approved_bound_fields():
+    from action_tracker.services.hashing import localization_field_source_hash
+    wb = openpyxl.Workbook(); sheet = wb.active; sheet.title = "08_LONG_TERM_MASTER"
+    for _ in range(6): sheet.append([])
+    sheet.append(writer.LONG_TERM_MASTER_HEADERS)
+    idx = {key: number+1 for number,key in enumerate(writer.LONG_TERM_MASTER_HEADERS)}
+    for sku,status in (("1001","HISTORICAL"),("1002","CURRENT")):
+        row=sheet.max_row+1
+        for column,value in (("身份类型","OFFICIAL_SKU"),("正式SKU",sku),("当前状态",status),("中文品名","旧名"),("西班牙语品名","Producto"),("规格（中文）","旧规格")):
+            sheet.cell(row,idx[column]).value=value
+    record={"sku":"1001","status":"HISTORICAL","name_es":"Producto","name_zh":"商品","spec_es":"2 unidades","spec_zh":"2件"}
+    record["zh_field_provenance"]={"name":{"review_status":"APPROVED","freshness_status":"CURRENT","approved_by":"service:review","source_hash":localization_field_source_hash(record,"name"),"value":"商品"}}
+    before=[list(row)for row in sheet.iter_rows(values_only=True)]
+    writer._project_approved_historical_localizations(wb,[record,{**record,"sku":"1002","status":"CURRENT"}])
+    after=[list(row)for row in sheet.iter_rows(values_only=True)]
+    assert sheet.cell(8,idx["中文品名"]).value=="商品"
+    assert sheet.cell(8,idx["规格（中文）"]).value=="旧规格"
+    assert after[8]==before[8]
+    for n,(old,new)in enumerate(zip(before[7],after[7])):
+        if n != idx["中文品名"]-1: assert old==new
+
+
 def _build_master(path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     wb = openpyxl.Workbook()

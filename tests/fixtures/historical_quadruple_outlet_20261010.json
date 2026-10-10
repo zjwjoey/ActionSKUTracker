@@ -1,0 +1,123 @@
+{
+  "sku": "3213413",
+  "field": "name",
+  "source": "Regleta de enchufes cuádruple",
+  "target": "4插孔插线板",
+  "qa": {
+    "status": "FAIL",
+    "fact_status": "FAIL",
+    "findings": [
+      {
+        "rule_id": "NUMERIC_ADDED",
+        "severity": "BLOCKER",
+        "field_name": "name",
+        "evidence": {
+          "source": {},
+          "target": {
+            "4": 1
+          },
+          "extra": {
+            "4": 1
+          }
+        },
+        "sku": "",
+        "source_hash": "",
+        "source": "Regleta de enchufes cuádruple",
+        "target": "4插孔插线板",
+        "message": "numeric fact added",
+        "repairable": false,
+        "blocking": true
+      }
+    ],
+    "canonical_status": "NOT_RUN",
+    "canonical_qa_status": "NOT_RUN",
+    "overall_ready": false
+  },
+  "source_evidence": {
+    "status": "EVIDENCE_AVAILABLE",
+    "selected": {
+      "rank": 2,
+      "text": "Regleta de enchufes cuádruple",
+      "reference": "F:\\按日期整理\\action表格\\20260720\\20260720Action商品全量_西语版_不带图.xlsx::商品全量",
+      "observed_at": "2026-07-20",
+      "file_hash": "9478539292c647dec3f0e0343a7d22128e54e96dcc171c9f0451aee5a86654e1",
+      "field_hash": "6a24d020b119f1996087065ea169f2adc6e8a8970d207afff28c84afb6b5517a"
+    },
+    "versions": [
+      {
+        "rank": 2,
+        "text": "Regleta de enchufes cuádruple",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "6a24d020b119f1996087065ea169f2adc6e8a8970d207afff28c84afb6b5517a"
+      },
+      {
+        "rank": 2,
+        "text": "Regleta de enchufes cuádruple",
+        "reference": "F:\\按日期整理\\action表格\\20260701\\20260701Action商品全量_西语版_不带图.xlsx::格式化模板",
+        "observed_at": "2026-07-01",
+        "file_hash": "f43364151895559d04dccce824dfed681fcda62a4e5375a7dc19a5114745fbf4",
+        "field_hash": "6a24d020b119f1996087065ea169f2adc6e8a8970d207afff28c84afb6b5517a"
+      },
+      {
+        "rank": 2,
+        "text": "Regleta de enchufes cuádruple",
+        "reference": "F:\\按日期整理\\action表格\\20260706\\20260706Action商品全量_西语版_不带图.xlsx::Action ES 商品",
+        "observed_at": "2026-07-06",
+        "file_hash": "0b4bdbdeda7d8d3705870fbd65f545337c362cdd71662c8355dc9c225f429b96",
+        "field_hash": "6a24d020b119f1996087065ea169f2adc6e8a8970d207afff28c84afb6b5517a"
+      },
+      {
+        "rank": 2,
+        "text": "Regleta de enchufes cuádruple",
+        "reference": "F:\\按日期整理\\action表格\\20260713\\20260713Action商品全量_西语版_不带图.xlsx::商品全量",
+        "observed_at": "2026-07-13",
+        "file_hash": "9eda0b3143e661a7e080ad46b71fd6b2649bc6dfd2ffa283d827ba1d9a459df2",
+        "field_hash": "6a24d020b119f1996087065ea169f2adc6e8a8970d207afff28c84afb6b5517a"
+      },
+      {
+        "rank": 2,
+        "text": "Regleta de enchufes cuádruple",
+        "reference": "F:\\按日期整理\\action表格\\20260720\\20260720Action商品全量_西语版_不带图.xlsx::商品全量",
+        "observed_at": "2026-07-20",
+        "file_hash": "9478539292c647dec3f0e0343a7d22128e54e96dcc171c9f0451aee5a86654e1",
+        "field_hash": "6a24d020b119f1996087065ea169f2adc6e8a8970d207afff28c84afb6b5517a"
+      },
+      {
+        "rank": 3,
+        "text": "Regleta de enchufes cuádruple",
+        "reference": "F:\\ActionSKUTracker\\runtime\\master\\Action_Master.xlsx::08_LONG_TERM_MASTER::SKU=3213413",
+        "observed_at": "2026-07-20",
+        "file_hash": "1ac7e016748dbb6cee87daf08d67b2e2ee3c07e1290251c299b1ecf741a6401c",
+        "field_hash": "6a24d020b119f1996087065ea169f2adc6e8a8970d207afff28c84afb6b5517a"
+      },
+      {
+        "rank": 2,
+        "text": "Regleta de enchufes cuádruple",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3213413",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "6a24d020b119f1996087065ea169f2adc6e8a8970d207afff28c84afb6b5517a"
+      }
+    ]
+  },
+  "prior_review_artifacts": [
+    "F:\\ActionSKUTracker\\runtime\\reports\\historical_localization_20261009\\name12_13_combined_apply_scope.json",
+    "F:\\ActionSKUTracker\\runtime\\reports\\historical_localization_20261009\\name13_apply_scope.json",
+    "F:\\ActionSKUTracker\\runtime\\reports\\historical_localization_20261009\\name13_reviewed_all.json"
+  ],
+  "decision": "REVIEW_REQUIRED",
+  "risk_level": "MEDIUM",
+  "context": {
+    "name": "Regleta de enchufes cuádruple",
+    "cat1": "Bricolaje",
+    "cat2": "Alargadores",
+    "spec": "1,4 metros | 3680 vatios | varios colores",
+    "description": "4 tomas de corriente\nCon entrada para USB-A y USB-C\nForma redonda y práctica",
+    "details": "{'Número del artículo': '3213413', 'Color': 'Negro, Blanco', 'Con interruptor de encendido y apagado': 'Sí', 'Número de enchufes': '4', 'Resistente a la intemperie': 'No'}"
+  },
+  "review_reason": "当前同字段西语明确 cuádruple（四联），既有中文4插孔忠实且先前已独立审核。当前 NUMERIC_ADDED 未识别该数量词，需补做边界明确的规则与真实回归；不重译或改写正确PRIMARY值。",
+  "formal_approval": false,
+  "classification": "QA_FALSE_POSITIVE_PENDING_MODULE_REPAIR"
+}

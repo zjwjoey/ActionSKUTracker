@@ -1,0 +1,366 @@
+[
+  {
+    "sku": "3203980",
+    "field": "name",
+    "source": "Reloj con aspecto de madera",
+    "source_hash": "fe404872f8829af1311b88cb5009fa77ab2cc3ec844dc1006639ac25b5644f6f",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 2,
+        "text": "Reloj con aspecto de madera",
+        "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+        "observed_at": "2026-01-09",
+        "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+        "field_hash": "7d2ba7c564d4d85d87b7c66b1ee5afb44f5eee2aab1ee9739760b35bd7b688c9"
+      },
+      "versions": [
+        {
+          "rank": 2,
+          "text": "Reloj con aspecto de madera",
+          "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+          "observed_at": "2026-01-09",
+          "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+          "field_hash": "7d2ba7c564d4d85d87b7c66b1ee5afb44f5eee2aab1ee9739760b35bd7b688c9"
+        },
+        {
+          "rank": 3,
+          "text": "Reloj con aspecto de madera",
+          "reference": "F:\\ActionSKUTracker\\runtime\\master\\Action_Master.xlsx::08_LONG_TERM_MASTER::SKU=3203980",
+          "observed_at": "2026-01-09",
+          "file_hash": "1ac7e016748dbb6cee87daf08d67b2e2ee3c07e1290251c299b1ecf741a6401c",
+          "field_hash": "7d2ba7c564d4d85d87b7c66b1ee5afb44f5eee2aab1ee9739760b35bd7b688c9"
+        }
+      ]
+    },
+    "reviewed_value": "木纹时钟"
+  },
+  {
+    "sku": "3004723",
+    "field": "description",
+    "source": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+    "source_hash": "66ce64ad41fb2a4d2fc79a958b9482b041300529af20c4c57dd695864ced5b20",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+        "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+        "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeales con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así apenas sobresalen de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "f197ae833d7d36edda2b4131f154bf868ed4ff3bdc9b59d77ca88d014d85813f"
+        }
+      ]
+    },
+    "reviewed_value": "袜子穿着舒适，采用可持续竹纤维，适合搭配运动鞋。低袜口设计使袜子几乎不会露出鞋口。"
+  },
+  {
+    "sku": "3004727",
+    "field": "description",
+    "source": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+    "source_hash": "9536466bee3ffd6ae50d43fe68d32690103563cb2ea7740d1b4e067931bab12d",
+    "source_evidence": {
+      "status": "EVIDENCE_AVAILABLE",
+      "selected": {
+        "rank": 1,
+        "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+        "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+        "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+        "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+        "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+      },
+      "versions": [
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-10\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-10",
+          "file_hash": "51cbaa39939bf43075f006a92be1cafed5463ad49b0b9d896c9c626b4bfa4d5b",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_055143\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_055143",
+          "file_hash": "7a60ce188d480ba99932b48986c0de028277d1d70cacec8054346e2e6671e892",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-11\\2026-08-11_085454\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-11/2026-08-11_085454",
+          "file_hash": "9f9ad91c8ff740d2b2fcf94f0484ed3239adddfe1da8fe5847a834de3f8db531",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-12\\2026-08-12_110723\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-12/2026-08-12_110723",
+          "file_hash": "e9dde5b963bc31f6653472f4eda2dae9a77fabd02eb46bcad3259a1c206c13d7",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_025802\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_025802",
+          "file_hash": "64add1c840239857748c208d3fa91b3d2c5ac418ddd468f43ec90b75bc553102",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+          "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_025509\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_025509",
+          "file_hash": "299cf810dbbdfbaa9c2fdbeaa2ddb14e43b33065aa5de1b3699ebbb4108b2aca",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-14\\2026-08-14_041129\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-14/2026-08-14_041129",
+          "file_hash": "44ca94ff5238beaa0c52830cd621e64e9113889b7cef3daa04385c90526b514f",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_025149\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_025149",
+          "file_hash": "ec8c4897f5077423dde3e795708d2e95146e5077cfbbb8cd4040940ade4234be",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-15\\2026-08-15_052118\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-15/2026-08-15_052118",
+          "file_hash": "67a3680e089b15c050f2e4233e8c40eba5dfd22213cbd62f37a3108ddd123ec8",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+          "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-17\\2026-08-17_030703\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-17/2026-08-17_030703",
+          "file_hash": "da64c96cab73713fdb3275222acb2b4f5e344c0837f216ba3a07b81c8f946bef",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-18\\2026-08-18_030651\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-18/2026-08-18_030651",
+          "file_hash": "b03972b20098df18e5d25c560f3389f1fb1c153708dab6ac2d5a3bf9df9fca43",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-19\\2026-08-19_033136\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-19/2026-08-19_033136",
+          "file_hash": "1f48c60e5b7464fc0022f99bfdd3eaa0f3700e82be1e163c9414d87414ad1a25",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-20\\2026-08-20_052628\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-20/2026-08-20_052628",
+          "file_hash": "a9408dfdb9cf342b71836f1c6045faccf86acba01d36e2e0fd486f1bda5ac991",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_031442\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_031442",
+          "file_hash": "989a053f616d8786a2e993939c00f3e1be2bd609531de77ebd8597c512956996",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-21\\2026-08-21_043315\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-21/2026-08-21_043315",
+          "file_hash": "fe7c56244885d9d39b9fc3b52fc231c91fb90c6d522b98b5f44fdf53a8fdbe77",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        },
+        {
+          "rank": 1,
+          "text": "Calcetines cómodos\nHechos de fibras de bambú sostenible\nIdeal con zapatillas deportivas\nEstos calcetines bajos son ideales para llevarlos con zapatillas deportivas, porque tienen un corte bajo. Así, tus calcetines no sobresaldrán apenas de los zapatos.",
+          "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+          "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+          "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+          "field_hash": "fcfdbd99798787302c20b69c19c0d4bc216764354124c70764cf8ca141e3cfb6"
+        }
+      ]
+    },
+    "reviewed_value": "袜子穿着舒适，采用可持续竹纤维，适合搭配运动鞋。低袜口设计使袜子几乎不会露出鞋口。"
+  }
+]

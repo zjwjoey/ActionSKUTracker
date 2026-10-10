@@ -1,0 +1,54 @@
+{
+  "sku": "3216817",
+  "source": "{'Número del artículo': '3216817', 'Color': 'Negro', 'Cargador rápido / lento': 'Rápido', 'Con adaptador para coche': 'Sí', 'Potencia': '65 vatio', 'Tipo de acoplamiento': 'USB-a, USB-c', 'Voltaje': '24 Voltio'}",
+  "source_hash": "eb6657b3e840822eabcaa0a8eeb5326cddef5aa04f1fc5d38b204875875e1d14",
+  "source_evidence": {
+    "status": "EVIDENCE_AVAILABLE",
+    "selected": {
+      "rank": 2,
+      "text": "{'Número del artículo': '3216817', 'Color': 'Negro', 'Cargador rápido / lento': 'Rápido', 'Con adaptador para coche': 'Sí', 'Potencia': '65 vatio', 'Tipo de acoplamiento': 'USB-a, USB-c', 'Voltaje': '24 Voltio'}",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216817",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "78fa99de500897d7ce4563146a7cf6d6a476f8ee17a4ea3a5c6c26a117b2d243"
+    },
+    "versions": [
+      {
+        "rank": 2,
+        "text": "{'Número del artículo': '3216817', 'Color': 'Negro', 'Cargador rápido / lento': 'Rápido', 'Con adaptador para coche': 'Sí', 'Potencia': '65 vatio', 'Tipo de acoplamiento': 'USB-a, USB-c', 'Voltaje': '24 Voltio'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216817",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "78fa99de500897d7ce4563146a7cf6d6a476f8ee17a4ea3a5c6c26a117b2d243"
+      },
+      {
+        "rank": 2,
+        "text": "{'Número del artículo': '3216817', 'Color': 'Negro', 'Cargador rápido / lento': 'Rápido', 'Con adaptador para coche': 'Sí', 'Potencia': '65 vatio', 'Tipo de acoplamiento': 'USB-a, USB-c', 'Voltaje': '24 Voltio'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3216817",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "78fa99de500897d7ce4563146a7cf6d6a476f8ee17a4ea3a5c6c26a117b2d243"
+      }
+    ]
+  },
+  "context": {
+    "name": "Cargador de coche de 2 puertos Re-load",
+    "cat1": "",
+    "cat2": "Baterías externas y cargadores",
+    "spec": "65 vatios",
+    "description": "Con puerto USB-A y USB-C\nIncluye cable de carga de USB-C a USB-C (100 vatios)\nApto para el encendedor del coche\nCon este cargador de coche podrás cargar fácilmente 2 dispositivos a la vez mientras conduces. Enchufa tu cable USB en uno de los 2 puertos (USB-A o USB-C) y mantente siempre con carga. Ideal para teléfonos, tabletas y mucho más.",
+    "details": "{'Número del artículo': '3216817', 'Color': 'Negro', 'Cargador rápido / lento': 'Rápido', 'Con adaptador para coche': 'Sí', 'Potencia': '65 vatio', 'Tipo de acoplamiento': 'USB-a, USB-c', 'Voltaje': '24 Voltio'}"
+  },
+  "candidate": "{'商品编号': '3216817', '颜色': '黑色', '充电模式': '快充/慢充', '是否带车载适配器': '是', '功率': '65瓦', '接口类型': 'USB-A、USB-C', '电压': '24伏'}",
+  "target": "{'商品编号': '3216817', '颜色': '黑色', '充电速度': '快速', '是否带车载适配器': '是', '功率': '65瓦', '接口类型': 'USB-A、USB-C', '电压': '24伏'}",
+  "formal_approval": false,
+  "expected_behavior": "Reject both speed options as a selected value; accept only own-source Rápido.",
+  "before_module_guard": {
+    "status": "PASS",
+    "fact_status": "PASS",
+    "findings": [],
+    "canonical_status": "NOT_RUN",
+    "canonical_qa_status": "NOT_RUN",
+    "overall_ready": true
+  }
+}

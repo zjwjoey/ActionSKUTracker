@@ -22,7 +22,7 @@ _DETAIL_VALUE_MAP = {
 }
 
 
-def format_spec(value: str) -> str:
+def format_spec(value: str, *, experimental_size_labels: bool = False) -> str:
     value = str(value or "").strip()
     value = re.sub(r"(?<!\d)(\d{1,3})[.](\d{3})(?!\d)", r"\1\2", value)
     value = value.replace("|", "｜").replace("×", "×")
@@ -34,6 +34,8 @@ def format_spec(value: str) -> str:
     value = re.sub(r"\b(\d+)\s*en\s*(\d+)\b", lambda m: f"{m.group(1)}合{m.group(2)}", value, flags=re.I)
     value = re.sub(r"\bvarios modelos\b|\bvarios modelos\b", "多款可选", value, flags=re.I)
     value = re.sub(r"\bnúmeros?\b", "尺码", value, flags=re.I)
+    if experimental_size_labels:
+        value = re.sub(r"\btallas?\b", "尺码", value, flags=re.I)
     value = re.sub(r"\bvatios\b", "W", value, flags=re.I)
     value = re.sub(r"\blavados\b", "次洗涤", value, flags=re.I)
     value = re.sub(r"(?i)\bA partir de\s+(\d+)\s+años\b", r"\1岁以上", value)

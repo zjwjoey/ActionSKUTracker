@@ -6,11 +6,23 @@ from typing import Any, Mapping
 from .contracts import SemanticFact, SourceFacts
 
 _TERM_MAP = {
+    "marcadores grandes": ("PRODUCT_TYPE", "记号笔"),
+    "marcadores acrílicos": ("PRODUCT_TYPE", "丙烯马克笔"),
+    "marcadores dobles de pizarra blanca": ("PRODUCT_TYPE", "白板笔"),
+    "marcadores de punta fina y pincel": ("PRODUCT_TYPE", "记号笔"),
+    "brocha para polvos": ("PRODUCT_TYPE", "散粉刷"),
+    "recortacejas": ("PRODUCT_TYPE", "修眉器"),
+    "ampollas de aceite": ("PRODUCT_TYPE", "安瓶"),
+    "goma de borrar": ("PRODUCT_TYPE", "橡皮擦"), "gomas de borrar": ("PRODUCT_TYPE", "橡皮擦"),
     "gomas": ("PRODUCT_TYPE", "橡皮筋"), "barra de cola": ("PRODUCT_TYPE", "胶棒"),
     "alfombrilla para cortar": ("PRODUCT_TYPE", "切割垫"), "papel de cocina": ("PRODUCT_TYPE", "厨房纸"), "paño": ("PRODUCT_TYPE", "清洁布"),
     "paños": ("PRODUCT_TYPE", "清洁布"), "detergente": ("PRODUCT_TYPE", "洗洁精"),
     "barritas para gato": ("PRODUCT_TYPE", "猫零食条"), "barritas para gatos": ("PRODUCT_TYPE", "猫零食条"),
     "auriculares": ("PRODUCT_TYPE", "耳机"), "cartulina": ("PRODUCT_TYPE", "彩色手工卡纸"),
+    # Official archived headphone specs use this English fit term. It states
+    # ear coverage, not merely the presence of a headband. Keep own-field
+    # provenance and the existing VARIANT contract.
+    "over-ear": ("VARIANT", "包耳式"),
     "cola para madera": ("PRODUCT_TYPE", "木工胶"), "gofres": ("PRODUCT_TYPE", "华夫饼"),
     "microfibra": ("MATERIAL", "超细纤维"), "microfibras": ("MATERIAL", "超细纤维"), "goma": ("MATERIAL", "橡胶"),
     "iluminación": ("PRODUCT_TYPE", "照明灯"), "cápsulas": ("PRODUCT_TYPE", "胶囊"),
@@ -36,8 +48,15 @@ _SEMANTIC_PATTERNS = (
     ("NUTRITION", r"\b(?:vitamina|omega[- ]?3|colágeno|magnesio|proteína)\b"),
 )
 
+_HAIR_TIE_PATTERN = r"\bgomas?\s+para\s+(?:la\s+)?cola\s+de\s+caballo\b"
+_HISTORICAL_QUALITY_TERMS = frozenset({
+    "marcadores grandes", "marcadores acrílicos", "marcadores dobles de pizarra blanca",
+    "marcadores de punta fina y pincel", "brocha para polvos", "recortacejas",
+    "ampollas de aceite", "goma de borrar", "gomas de borrar", "over-ear",
+})
 
-def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None) -> tuple[SemanticFact, ...]:
+
+def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None, historical_quality: bool = True) -> tuple[SemanticFact, ...]:
     dictionaries = dictionaries or {}
     text_fields = (("name_es", source.name_es), ("spec_es", source.spec_es), ("desc_es", source.desc_es), ("details_es", source.details_es))
     facts: list[SemanticFact] = []
@@ -61,6 +80,23 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     if isinstance(tech_rows, Mapping):
         tech_rows = [{"token": key, "canonical_token": value, "token_type": "TECH_TOKEN"} for key, value in tech_rows.items()]
     def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
+        if historical_quality and source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"}:
+            # The complete noun means eraser, not an assertion of rubber
+            # composition or rubber bands. Preserve separate material facts.
+            remaining = re.sub(r"\bgomas?\s+de\s+borrar\b", " ", dict(text_fields).get(field, ""), flags=re.I)
+            # A ponytail tie names an accessory, not its composition. Only
+            # consume this complete own-field phrase; separately stated goma
+            # material or other rubber bands remain protected facts.
+            remaining = re.sub(_HAIR_TIE_PATTERN, " ", remaining, flags=re.I)
+            # The complete peelable-candy phrase is disambiguated only by
+            # an explicit gummy noun in this same source field. A separate
+            # rubber-band occurrence remains a separate product fact.
+            own_text = dict(text_fields).get(field, "")
+            if (re.search(r"\bgomas\s+pelables\b", own_text, re.I)
+                    and re.search(r"\bgominolas?\b", own_text, re.I)):
+                remaining = re.sub(r"\bgomas\s+pelables\b", " ", remaining, flags=re.I)
+            if not re.search(rf"\b{re.escape(source_text)}\b", remaining, re.I):
+                return
         key = (kind, source_text.casefold(), zh, field)
         if key in seen or not source_text or not zh:
             return
@@ -68,6 +104,16 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        # A numeric wash allowance states use, not an unqualified count.
+        # Keep the complete phrase and its own field; do not treat washed
+        # fabric adjectives or a wash count in another field as evidence.
+        for match in re.finditer(r"(?<!\w)\d+\s+lavados\b", text, re.I) if historical_quality else ():
+            add("VARIANT", match.group(0), "洗涤", field, "source_bound_wash_count")
+        for match in re.finditer(_HAIR_TIE_PATTERN, text, re.I) if historical_quality else ():
+            add("PRODUCT_TYPE", match.group(0), "发圈", field, "source_bound_hair_tie_phrase")
+        if (historical_quality and re.search(r"\bgomas\s+pelables\b", text, re.I)
+                and re.search(r"\bgominolas?\b", text, re.I)):
+            add("PRODUCT_TYPE", "gomas pelables", "软糖", field, "source_bound_confectionery_phrase")
         for row in product_rows if isinstance(product_rows, (list, tuple)) else ():
             term = str(row.get("source_term") or "").strip()
             aliases = [term, *re.split(r"\s*[|,;]\s*", str(row.get("source_aliases") or ""))]
@@ -95,6 +141,16 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
                 semantic = kind if kind in {"PRODUCT_TYPE", "BRAND", "SERIES", "MODEL", "TECH_TOKEN", "MATERIAL", "FUNCTION", "CARE", "COMPATIBILITY", "DESCRIPTION_FACT"} else "DESCRIPTION_FACT"
                 add(semantic, term, zh, field, "term_dictionary")
         for term, (kind, zh) in _TERM_MAP.items():
+            if not historical_quality and term in _HISTORICAL_QUALITY_TERMS:
+                continue
+            if term.startswith("marcadores"):
+                # A book/web marker is not a pen. Remove only that complete
+                # noun phrase; a separate pen phrase in this field survives.
+                pen_text = re.sub(
+                    r"\bmarcadores(?:\s+(?:grandes|acrílicos|dobles))*\s+(?:de|para)\s+(?:libros|lectura|páginas|navegador)\b",
+                    " ", lower, flags=re.I)
+                if not re.search(rf"(?<!\w){re.escape(term)}(?!\w)", pen_text):
+                    continue
             # In canvas/artist products, ``Tipo de paño / panel`` is a
             # panel/primer specification, not a cleaning-cloth product fact.
             # Keep the source evidence in details, but do not make the generic

@@ -4,6 +4,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from dataclasses import replace
 from typing import Any, Mapping
+import hashlib
+import json
+from pathlib import Path
+from dataclasses import asdict
 
 from .contracts import SourceFacts, source_hash
 from .engine import LocalizationEngine
@@ -29,6 +33,84 @@ class TranslationCandidate:
     qa: Mapping[str, Any]
 
 
+def translate_pending_requests(requests: tuple[TranslationRequest, ...], provider: TranslationProvider,
+                               checkpoint: Path) -> dict[str, Any]:
+    """Resume a finite provider batch; successes remain unapproved candidates.
+
+    The checkpoint binds the entire request plan and provider/model. It never
+    writes Registry, PRIMARY or approval metadata. Provider failures propagate
+    after completed responses have been atomically saved. Callers must retain
+    source evidence and run the normal semantic review/QA/Apply chain.
+    """
+    legacy_plan = {"provider": provider.provider, "model": provider.model,
+                   "requests": [asdict(request) for request in requests]}
+    identity = getattr(provider, "finite_batch_identity", None)
+    plan = {**legacy_plan, "checkpoint_contract": "FINITE_PROVIDER_BATCH_V2",
+            "adapter_identity": identity() if callable(identity) else {
+                "contract": "PROVIDER_MODEL_IDENTITY_V1"}}
+    plan_hash = hashlib.sha256(json.dumps(plan, ensure_ascii=False, sort_keys=True,
+                                         separators=(",", ":")).encode("utf-8")).hexdigest()
+    identities = [(request.sku, request.field_name) for request in requests]
+    if len(set(identities)) != len(identities):
+        raise ValueError("CANDIDATE_BATCH_DUPLICATE_FIELD")
+    if any(len(request.requested_fields) != 1 or not request.source_text.strip() for request in requests):
+        raise ValueError("CANDIDATE_BATCH_SINGLE_TRUSTED_SOURCE_REQUIRED")
+    if checkpoint.exists():
+        state = json.loads(checkpoint.read_text(encoding="utf-8"))
+        legacy = "checkpoint_contract" not in (state.get("plan") or {})
+        expected_plan = legacy_plan if legacy else plan
+        expected_hash = hashlib.sha256(json.dumps(expected_plan, ensure_ascii=False, sort_keys=True,
+                                                 separators=(",", ":")).encode("utf-8")).hexdigest()
+        if state.get("plan_hash") != expected_hash or state.get("plan") != json.loads(json.dumps(expected_plan)):
+            raise ValueError("CANDIDATE_BATCH_PLAN_CHANGED")
+        if legacy and len(state.get("responses", [])) != len(requests):
+            raise ValueError("CANDIDATE_BATCH_LEGACY_CONFIG_REVIEW_REQUIRED")
+    else:
+        legacy = False
+        state = {"plan_hash": plan_hash, "plan": plan, "responses": []}
+    responses = state["responses"]
+    if len(responses) > len(requests):
+        raise ValueError("CANDIDATE_BATCH_INVALID_CHECKPOINT")
+    for index, row in enumerate(responses):
+        request = requests[index]
+        if (row.get("sku"), row.get("field"), row.get("source_hash")) != (
+                request.sku, request.field_name, request.source_hash):
+            raise ValueError("CANDIDATE_BATCH_INVALID_CHECKPOINT")
+        if row.get("decision") != "PENDING_SEMANTIC_REVIEW" or row.get("semantic_status") != "PENDING":
+            raise ValueError("CANDIDATE_BATCH_INVALID_CHECKPOINT")
+        if (row.get("source") != request.source_text or not str(row.get("after") or "").strip()
+                or row.get("provider") != provider.provider or row.get("model") != provider.model):
+            raise ValueError("CANDIDATE_BATCH_INVALID_CHECKPOINT")
+    if legacy:
+        # A completed old plan remains evidence, not proof that its adapter
+        # configuration matches today. Never rewrite it or make new calls.
+        return {"responses": responses, "provider_calls": 0, "reused_responses": len(responses),
+                "production_writes": False, "plan_hash": state["plan_hash"],
+                "cache_configuration_status": "LEGACY_CONFIGURATION_UNVERIFIED"}
+    def save():
+        checkpoint.parent.mkdir(parents=True, exist_ok=True)
+        temporary = checkpoint.with_suffix(checkpoint.suffix + ".writing")
+        temporary.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporary.replace(checkpoint)
+    save()  # Persist the finite plan even when the first provider call fails.
+    skipped = len(responses)
+    for request in requests[skipped:]:
+        response = provider.translate(request)
+        target = str(response.fields.get(request.field_name) or "").strip()
+        if not target or response.source_hash != request.source_hash:
+            raise ValueError("CANDIDATE_BATCH_INVALID_PROVIDER_RESPONSE")
+        responses.append({"sku": request.sku, "field": request.field_name, "source": request.source_text,
+                          "source_hash": request.source_hash, "after": target,
+                          "decision": "PENDING_SEMANTIC_REVIEW", "semantic_status": "PENDING",
+                          "provider": response.provider, "model": response.model,
+                          "request_id": response.request_id, "request_hash": response.request_hash,
+                          "response_hash": response.response_hash})
+        save()
+    return {"responses": responses, "provider_calls": len(responses) - skipped,
+            "reused_responses": skipped, "production_writes": False, "plan_hash": plan_hash,
+            "cache_configuration_status": "BOUND_ADAPTER_IDENTITY" if callable(identity) else "PROVIDER_MODEL_ONLY"}
+
+
 def make_request(record: Mapping[str, Any], requested_fields: tuple[str, ...], registry: LocalizationRegistry | None = None, *, extra_terms: tuple[Mapping[str, Any], ...] = ()) -> TranslationRequest:
     source = SourceFacts.from_record(record)
     source_fields = {field: str(getattr(source, {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}[field]) or "") for field in requested_fields}
@@ -47,7 +129,7 @@ def translate_candidate(record: Mapping[str, Any], requested_fields: tuple[str, 
     display_tokens: list[str] = []
     semantic_types = {"PRODUCT_TYPE", "FUNCTION", "MATERIAL", "COMPATIBILITY", "CARE", "NUTRITION", "VARIANT", "DETAIL_KEY"}
     seen_terms: set[str] = set()
-    for fact in semantic_facts:
+    for fact in engine.generation_semantic_facts(source):
         source_term = str(fact.source_text or "").strip()
         source_field = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}
         if requested_fields and fact.source_field and not any(fact.source_field == source_field.get(field, field) for field in requested_fields):

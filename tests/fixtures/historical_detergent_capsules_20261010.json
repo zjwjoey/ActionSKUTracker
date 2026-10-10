@@ -1,0 +1,32 @@
+[
+  {
+    "sku": "3217413",
+    "field": "name",
+    "source": "Cápsulas de lavado color Omo Flor de rosa y rocío matutino",
+    "target": "玫瑰与晨露香型彩色衣物洗衣凝珠",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Cápsulas de lavado color Omo Flor de rosa y rocío matutino",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "320fff328dba2e8ca46d5edc9f02520907ba81f74cba94c7c478e1d8dd134634"
+    },
+    "expected_behavior": "FIELD_BOUND_DETERGENT_CAPSULE_NOUN_EQUIVALENCE"
+  },
+  {
+    "sku": "3217414",
+    "field": "name",
+    "source": "Detergente en cápsulas Omo Lavanda y eucalipto",
+    "target": "薰衣草与桉树洗涤凝珠",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Detergente en cápsulas Omo Lavanda y eucalipto",
+      "reference": "F:\\按日期整理\\action表格\\20260701\\20260701Action商品全量_西语版_不带图.xlsx::格式化模板",
+      "observed_at": "2026-07-01",
+      "file_hash": "f43364151895559d04dccce824dfed681fcda62a4e5375a7dc19a5114745fbf4",
+      "field_hash": "2f4a7376ae65ae82be00b66a02cd87ebdb204f6bc55a4ff870d3978f9e70fcea"
+    },
+    "expected_behavior": "FIELD_BOUND_DETERGENT_CAPSULE_NOUN_EQUIVALENCE"
+  }
+]

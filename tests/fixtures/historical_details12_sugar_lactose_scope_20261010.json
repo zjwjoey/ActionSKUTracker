@@ -1,0 +1,59 @@
+{
+  "sku": "3211791",
+  "source": "{'Número del artículo': '3211791', 'Carbohidratos': '70 g', 'Contenido': '225 g', 'Contiene alcohol': 'No', 'De los cuales azúcares': '66 g', 'De los cuales saturados': '12 g', 'Energía': '491 kcal', 'Grasas': '20 g', 'Información sobre alérgenos': 'Contiene cacahuetes', 'Ocasión especial': 'No', 'Proteínas': '5.5 g', 'Sabor': 'Chocolate', 'Sal': '0.21 g', 'Sin azúcar': 'No', 'Sin lactosa': 'No'}",
+  "source_evidence": {
+    "status": "EVIDENCE_AVAILABLE",
+    "selected": {
+      "rank": 2,
+      "text": "{'Número del artículo': '3211791', 'Carbohidratos': '70 g', 'Contenido': '225 g', 'Contiene alcohol': 'No', 'De los cuales azúcares': '66 g', 'De los cuales saturados': '12 g', 'Energía': '491 kcal', 'Grasas': '20 g', 'Información sobre alérgenos': 'Contiene cacahuetes', 'Ocasión especial': 'No', 'Proteínas': '5.5 g', 'Sabor': 'Chocolate', 'Sal': '0.21 g', 'Sin azúcar': 'No', 'Sin lactosa': 'No'}",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3211791",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "00ca2f4b66e6d1dd198e8bc15714459d375f7e20c707be049211d81d9dec70e0"
+    },
+    "versions": [
+      {
+        "rank": 2,
+        "text": "{'Número del artículo': '3211791', 'Carbohidratos': '70 g', 'Contenido': '225 g', 'Contiene alcohol': 'No', 'De los cuales azúcares': '66 g', 'De los cuales saturados': '12 g', 'Energía': '491 kcal', 'Grasas': '20 g', 'Información sobre alérgenos': 'Contiene cacahuetes', 'Ocasión especial': 'No', 'Proteínas': '5.5 g', 'Sabor': 'Chocolate', 'Sal': '0.21 g', 'Sin azúcar': 'No', 'Sin lactosa': 'No'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3211791",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "00ca2f4b66e6d1dd198e8bc15714459d375f7e20c707be049211d81d9dec70e0"
+      }
+    ]
+  },
+  "context": {
+    "name": "M&M's Mini's",
+    "cat1": "Comer y beber",
+    "cat2": "Chocolate",
+    "spec": "225 gramos",
+    "description": "Sabor clásico en formato mini\n¡Los deliciosos y reconocibles M&M's en versión mini!",
+    "details": "{'Número del artículo': '3211791', 'Carbohidratos': '70 g', 'Contenido': '225 g', 'Contiene alcohol': 'No', 'De los cuales azúcares': '66 g', 'De los cuales saturados': '12 g', 'Energía': '491 kcal', 'Grasas': '20 g', 'Información sobre alérgenos': 'Contiene cacahuetes', 'Ocasión especial': 'No', 'Proteínas': '5.5 g', 'Sabor': 'Chocolate', 'Sal': '0.21 g', 'Sin azúcar': 'No', 'Sin lactosa': 'No'}"
+  },
+  "formal_approval": false,
+  "target": "{'商品编号': '3211791', '碳水化合物': '70克', '净含量': '225克', '含酒精': '否', '其中糖分': '66克', '其中饱和脂肪': '12克', '能量': '491千卡', '脂肪': '20克', '过敏原信息': '含有花生', '是否为特殊场合产品': '否', '蛋白质': '5.5克', '口味': '巧克力', '盐': '0.21克', '无糖': '否', '无乳糖': '否'}",
+  "before_module_guard": {
+    "status": "FAIL",
+    "fact_status": "FAIL",
+    "findings": [
+      {
+        "rule_id": "DETAIL_BOOLEAN_FIELD_MISSING",
+        "severity": "BLOCKER",
+        "field_name": "details",
+        "evidence": {
+          "source_attribute": "\\baz[uú]car(?:es)?\\b"
+        },
+        "sku": "",
+        "source_hash": "",
+        "source": "{'Número del artículo': '3211791', 'Carbohidratos': '70 g', 'Contenido': '225 g', 'Contiene alcohol': 'No', 'De los cuales azúcares': '66 g', 'De los cuales saturados': '12 g', 'Energía': '491 kcal', 'Grasas': '20 g', 'Información sobre alérgenos': 'Contiene cacahuetes', 'Ocasión especial': 'No', 'Proteínas': '5.5 g', 'Sabor': 'Chocolate', 'Sal': '0.21 g', 'Sin azúcar': 'No', 'Sin lactosa': 'No'}",
+        "target": "{'商品编号': '3211791', '碳水化合物': '70克', '净含量': '225克', '含酒精': '否', '其中糖分': '66克', '其中饱和脂肪': '12克', '能量': '491千卡', '脂肪': '20克', '过敏原信息': '含有花生', '是否为特殊场合产品': '否', '蛋白质': '5.5克', '口味': '巧克力', '盐': '0.21克', '无糖': '否', '无乳糖': '否'}",
+        "message": "",
+        "repairable": false,
+        "blocking": true
+      }
+    ],
+    "canonical_status": "NOT_RUN",
+    "canonical_qa_status": "NOT_RUN",
+    "overall_ready": false
+  }
+}

@@ -210,6 +210,24 @@ class LocalizationRegistry:
         self._revision_event(revision_id, "AUTO_APPROVED" if auto else "APPROVED", actor)
         return True
 
+    def approve_revision_delegated(self, revision_id: str, *, actor: str, grant: Mapping[str, Any]) -> dict[str, Any]:
+        """Approve one reviewed historical revision under explicit Owner delegation."""
+        from ..delegated_approval import validate_delegated_revision
+        with connect(self.path) as db:
+            db.execute("BEGIN IMMEDIATE")
+            evidence = validate_delegated_revision(db, grant, actor=actor, revision_id=revision_id, require_approved=False)
+            previous = db.execute("SELECT review_status,approved_by FROM translation_revisions WHERE revision_id=?", (revision_id,)).fetchone()
+            if previous[0] == "APPROVED":
+                if previous[1] != actor:
+                    raise PermissionError("DELEGATION_EXISTING_APPROVAL_OWNER")
+                validate_delegated_revision(db, grant, actor=actor, revision_id=revision_id)
+                return {"status": "ALREADY_APPROVED", **evidence}
+            now = _now()
+            db.execute("UPDATE translation_revisions SET review_status='APPROVED',approved_by=?,approved_at=? WHERE revision_id=?", (actor, now, revision_id))
+            db.execute("UPDATE translation_units SET status='APPROVED',updated_at=? WHERE current_revision_id=?", (now, revision_id))
+            db.execute("INSERT INTO translation_revision_events(event_id,revision_id,event_type,actor,evidence_json,occurred_at) VALUES(?,?,?,?,?,?)", (str(uuid.uuid4()), revision_id, "OWNER_DELEGATED_APPROVED", actor, json.dumps(evidence, ensure_ascii=False, sort_keys=True), now))
+            return {"status": "APPROVED", **evidence}
+
     def restore_unit_freshness(self, revision_id: str, *, source_hash: str, actor: str) -> bool:
         """Restore an omitted FRESH state only for a current, approved revision."""
         if not str(actor or "").startswith("human:"):
@@ -321,8 +339,18 @@ class LocalizationRegistry:
             if not facts.sku:
                 skipped += 1
                 continue
-            fields = {"name_es": facts.name_es, "cat1_es": facts.cat1_es, "cat2_es": facts.cat2_es, "spec_es": facts.spec_es, "desc_es": facts.desc_es, "details_es": facts.details_es}
-            source_id = self.register_source(facts.sku, fields, source_hash(facts.as_record()), observed_at=observed_at, source_run_id=source_run_id)
+            # Preserve availability separately from normalized text. Missing
+            # keys/None are unavailable evidence, not an official empty value.
+            # Business display ``name`` is never a Spanish-name fallback here.
+            aliases = {"name_es": (), "cat1_es": (), "cat2_es": (), "spec_es": (),
+                       "desc_es": ("description_es",), "details_es": ("product_details_es",)}
+            fields = {}
+            for key, alternatives in aliases.items():
+                present_key = next((candidate for candidate in (key, *alternatives) if candidate in record), None)
+                raw_value = record.get(present_key) if present_key else None
+                fields[key] = None if raw_value is None else str(raw_value).strip()
+            aggregate_hash = source_hash(fields)
+            source_id = self.register_source(facts.sku, fields, aggregate_hash, observed_at=observed_at, source_run_id=source_run_id)
             source_count += 1
             with connect(self.path) as db:
                 units = db.execute("""SELECT u.unit_id,u.field_name,u.source_text,u.current_revision_id,
@@ -342,8 +370,8 @@ class LocalizationRegistry:
                             and str(unit["review_status"] or "").upper() in {"APPROVED", "HUMAN_REVIEWED", "LOCKED"}):
                         continue
                     canonical = {"name_es": "name", "cat1_es": "cat1", "cat2_es": "cat2", "spec_es": "spec", "desc_es": "description", "details_es": "details"}.get(str(unit["field_name"]), str(unit["field_name"]))
-                    queue_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"translation:{facts.sku}:{source_hash(facts.as_record())}:{canonical}"))
-                    db.execute("INSERT OR IGNORE INTO translation_queue(queue_id,official_sku,language,source_hash,requested_fields,reason,priority,status,run_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", (queue_id, facts.sku, "zh", source_hash(facts.as_record()), canonical, "SOURCE_VERSION_NEW_OR_CHANGED", "NORMAL", "PENDING", source_run_id, _now()))
+                    queue_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"translation:{facts.sku}:{aggregate_hash}:{canonical}"))
+                    db.execute("INSERT OR IGNORE INTO translation_queue(queue_id,official_sku,language,source_hash,requested_fields,reason,priority,status,run_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", (queue_id, facts.sku, "zh", aggregate_hash, canonical, "SOURCE_VERSION_NEW_OR_CHANGED", "NORMAL", "PENDING", source_run_id, _now()))
                     queue_count += 1
         return {"source_versions": source_count, "units": unit_count, "queue_insert_attempts": queue_count, "skipped": skipped}
 
