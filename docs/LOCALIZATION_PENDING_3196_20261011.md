@@ -198,3 +198,16 @@ pass 55 tests. These results confirm local code regressions; the pending
 2D/3D使用既有受保护TECH token流程，不能遗漏、改写或把其中数字用作额外包装数量；名称保留3D前缀。只有A4、USB-C或3D标记而没有商品主体的候选为REVIEW_REQUIRED。新增真实fixture、反例与provider请求断言加入CI_SAFE；63项针对性检查和完整1,412项回归通过。没有发布正式字典、部署daily或宣称线上全日流程通过。
 
 一次真实Qwen调用生成`3D橡皮擦《我的世界》`，主体及技术标记正确，但IP展示违反品名策略，Codex独立修正方案为`3D橡皮擦`。保留旧HIGH商品身份修改及来源lineage，等待Owner审批；本候选Apply0。实际同批生成Resume新网络调用0、复用1响应。总真实新服务调用6，原始候选机械QA5PASS/1FAIL，批准0/入库0；机械PASS不代替语义与Owner审批。原候选IP政策问题未通过本修正自动批准，也不删除描述/详情中的IP。
+
+
+## 详情批次验收、全范围证据复用及容量单位 QA
+
+详情20、详情19两批经正式 Registry/QA/有限自主审批/Immutable Patch/Apply 完成；各自 Master Sync SUCCESS，完整性检查 PASS，原值分别保留20、19字段。保护的商品、Presence、价格历史、事件、生命周期、观测、事实版本、CURRENT本地化和西语字段均未改变。同批实际 Resume 分别20、19条 NO_OP，重复Apply0。后一批 Resume 使用有限锁等待，未干预其他任务。当前继续处理阶段累计完整验收353字段/309SKU：缺失补译3、已有中文修正31、正确原值审批及来源绑定恢复319。其他任务 current_catalog_fix 提交不计入本阶段 Apply。
+
+全范围仍为原3196 SKU的19176字段。累计独立审核733个初始pending字段，380个保留待复核。旧证据核验在对应报告的PRIMARY head完成：2617个独立语义审核字段、4674个批准类目映射字段可复用；这7291字段不是新增审核、生成、审批或Apply。来源/目标/Registry不符的29字段未计入复用，当前均CURRENT，历史自主审批授权不覆盖它们。后续 head 变化时仍须验证对应上下文和证据有效性。
+
+SKU3218650实际详情包含3 kWh/1000h，正确等价渲染3千瓦时/1000小时曾触发PROTECTED_TOKEN_MISSING。现仅在QA比较视图中将千瓦时/瓦时/毫安时/安时归一为kWh/Wh/mAh/Ah；不换算数值，不改原来源、中文、Hash、provider占位符或缓存。相同数字和相同单位维度/次数继续逐项比较；错值、错维度、重复数量和型号变化仍阻断。该商品A color属性原有HIGH来源歧义保留，机械PASS不创建审批或Apply。
+
+新增真实来源fixture及18个回归用例覆盖等价单位、重复/遗漏/额外数值、单位维度、型号保护，以及原生HIGH审批Gate。测试为CI_SAFE：只读仓库fixture并调用纯QA/审批分类函数，不读生产数据、不访问官网、不调用模型。完整回归结果另存运行报告；本修改仅在本地独立分支实现，未push、未部署daily主线，不宣称线上全量daily已验证。
+
+最终完整本地回归1430项通过（104.82秒），18项新容量单位回归通过；此前一次清单更新时序失败及一次Windows本地HTTP10053瞬断日志均保留，HTTP文件单独重跑4项通过。相同当前数据/同候选/同事实抽取对比原4a902e2与修正后QA：380待复核字段中356有候选，只有3218650详情由FAIL变PASS，380字段全部保持待审批/来源复核，不因机械PASS入库。运行证据：capacity_units_full_pytest_final_20261011.txt、owner380_same_snapshot_capacity_qa_comparison.json及两批Apply/Integrity/Resume报告。

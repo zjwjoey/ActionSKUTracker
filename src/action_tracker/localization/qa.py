@@ -42,6 +42,21 @@ def _units(value: str) -> set[str]:
     return units
 _STRICT_TOKEN_TYPES = {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "CAPACITY", "BATTERY_CAPACITY"}
 
+# QA comparison only: these names denote exactly the same units, with no
+# rescaling or inferred quantity. Keep provider placeholders and stored text
+# unchanged, and never normalize letters embedded in a model identifier.
+_CHINESE_CAPACITY_QA_UNITS = {"千瓦时": "kWh", "瓦时": "Wh", "毫安时": "mAh", "安时": "Ah"}
+_CHINESE_CAPACITY_QA_RE = re.compile(
+    r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])"
+    r"(\d+(?:[.,]\d+)?)\s*(千瓦时|瓦时|毫安时|安时)(?![A-Za-z0-9])"
+)
+
+
+def _capacity_scan_view(value: str) -> str:
+    return _CHINESE_CAPACITY_QA_RE.sub(
+        lambda match: match[1] + _CHINESE_CAPACITY_QA_UNITS[match[2]], value
+    )
+
 # Deterministic semantic facts use one canonical target, while natural
 # Chinese allows a small set of equivalent renderings.  These aliases are
 # intentionally conservative and only cover terms already present in the
@@ -1091,8 +1106,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if duplicated:
             findings.append(QAFinding("NUMERIC_ADDED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "extra": dict(duplicated)}, source=source_text, target=target, message="numeric fact added", blocking=True))
         technical_source = _technical_scan_source(source_text)
-        protected = protect_text(technical_source)
-        target_protected = protect_text(target)
+        protected = protect_text(_capacity_scan_view(technical_source))
+        target_protected = protect_text(_capacity_scan_view(target))
         def strict_key(kind, value):
             # Quantified technical tokens already use whitespace equivalence
             # below for preservation; their changed/added comparison must
@@ -1138,8 +1153,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     expected_count, actual_count = source_text.count(value), target.count(value)
                 if kind in {"CAPACITY", "BATTERY_CAPACITY", "POWER", "VOLTAGE"}:
                     compact_value = re.sub(r"\s+", "", value).casefold()
-                    compact_source = re.sub(r"\s+", "", source_text).casefold()
-                    compact_target = re.sub(r"\s+", "", target).casefold()
+                    compact_source = re.sub(r"\s+", "", _capacity_scan_view(source_text)).casefold()
+                    compact_target = re.sub(r"\s+", "", _capacity_scan_view(target)).casefold()
                     expected_count = compact_source.count(compact_value)
                     actual_count = compact_target.count(compact_value)
                 if actual_count < expected_count:
