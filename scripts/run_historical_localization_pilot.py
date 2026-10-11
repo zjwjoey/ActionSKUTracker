@@ -27,6 +27,7 @@ from action_tracker.localization.runtime_builder import build_translation_runtim
 from action_tracker.services.hashing import localization_source_hash, localization_field_source_hash
 from action_tracker.services.runtime import RunLock
 from action_tracker.data_quality.rules import contains_ui_transport_text, contains_html_markup
+from action_tracker.dictionary import normalize_category_key
 
 
 def historical_records(repo, database):
@@ -116,6 +117,24 @@ def reviewed_source_context_status(review, record):
     return "READY"
 
 
+def reviewed_category_mapping_status(review, record, knowledge):
+    """A semantic review cannot approve an unconfirmed category pair."""
+    field = review["field"]
+    if field not in {"cat1", "cat2"}:
+        return "READY"
+    parent = normalize_category_key(record.get("cat1_es"))
+    if field == "cat1":
+        mapped = (knowledge.get("cat1_map") or {}).get(parent)
+    else:
+        child = normalize_category_key(record.get("cat2_es"))
+        mapped = (knowledge.get("cat2_map") or {}).get((parent, child))
+    if not mapped:
+        return "CATEGORY_MAPPING_REVIEW_REQUIRED"
+    if mapped != review["after"]:
+        return "CATEGORY_MAPPING_TARGET_MISMATCH_REVIEW_REQUIRED"
+    return "READY"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, required=True)
@@ -175,6 +194,9 @@ def main():
             context_status = reviewed_source_context_status(review, record)
             if context_status != "READY":
                 outcomes.append({"sku": sku, "field": field, "status": context_status}); continue
+            category_status = reviewed_category_mapping_status(review, record, runtime.resolver.engine.knowledge)
+            if category_status != "READY":
+                outcomes.append({"sku": sku, "field": field, "status": category_status}); continue
             if record.get(CANONICAL_TO_ZH[field]) == target:
                 if already_ready(record, args.database, field, target):
                     outcomes.append({"sku": sku, "field": field, "status": "NO_OP"}); continue

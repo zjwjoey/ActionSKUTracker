@@ -85,7 +85,9 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     # ``Complementos de pintura`` means paint-application accessories, not
     # art/painting accessories.  Keep this source-bound rule deterministic
     # and scoped to the category pair.
-    if (source.cat1_es or "").strip().casefold() == "bricolaje" and (source.cat2_es or "").strip().casefold() == "complementos de pintura":
+    if ((source.cat1_es or "").strip().casefold() == "bricolaje"
+            and (source.cat2_es or "").strip().casefold() == "complementos de pintura"
+            and (not knowledge.get("category_maps_trust_gated") or cat2_lookup == "涂料配件")):
         cat2 = "涂料配件"
         c2s = "deterministic_context_terminology"
     spec, ss = value("spec_zh")

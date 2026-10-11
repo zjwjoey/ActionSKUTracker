@@ -175,3 +175,14 @@ The final local regression suite passes 1,385 tests after the locked context
 check. Focused delegated-approval, scanner and daily compatibility checks
 pass 55 tests. These results confirm local code regressions; the pending
 74-field batch still requires its own native Apply and integrity evidence.
+# 2026-10-11 后续验收及类目审批修正
+
+描述 11 字段批已通过实际 Apply、受保护数据完整性检查、Master Sync 和同批 Resume；11 个字段中 5 个译文修正、6 个原值审批与来源绑定恢复，Resume 重复 Apply 为 0。本轮累计验收 279 字段 / 258 SKU：3 个缺失补译、17 个已有中文修正、259 个原值绑定恢复。此统计仅覆盖当前 3196-SKU 继续处理阶段，不代替此前完整历史 Apply 账本。
+
+又完成 50 个描述的逐字段独立审核：21 个 KEEP、14 个普通修正通过 QA，15 个保留待复核；35 个候选尚未计为入库。原 3196 个 SKU 的全六字段库存为 19,176 字段，8756 个初始 pending 字段只是队列基线，不能代替全量语义审查范围。新库存报告覆盖当前中文、来源及审核证据；此前已批准值仍须核对旧审核证据后复用，不能把非空或 Guard PASS 当作语义完成。
+
+真实历史 SKU 3218152 的 Jardín / Herramientas 字典行仅为 CAT1_CONFIRMED，原加载器却加载其二级“工具”。运行字典共复现 13 个同类误加载，修正后为 0：KnowledgeLoader 按原有知识信任状态加载，CAT1_CONFIRMED 只允许一级映射；Planner 的上下文术语不能在受治理知识快照中绕过二级审批；既有正式历史 runner 在 Registry / delegated approval 前校验已确认父子映射及目标一致性。没有修改正式字典、PRIMARY 西语或 schema，也未另建翻译流程。
+
+新增真实来源 fixture 与临时字典测试验证父类确认、批准映射、错误父类、错误目标、未批准状态、冲突字典及 daily Planner；46 项针对性回归通过，完整回归 1,399 项通过（102.68 秒）。35 个描述候选按修改后的模块重新 QA 全部通过。改动仅在独立分支本地实现，未 push、未部署 daily 主线。完整在线 daily-run 仍未验证。
+
+运行证据位于原 execution 目录：batch07_descriptions11_apply / integrity_verification.json、batch07_descriptions11_resume / pilot_review_apply.json、existing_descriptions50_independent_reviews.json、category_trust_loader_before_fix.json / after_fix.json、goal3196_full_six_fields_inventory_summary.json。运行产物不进入 Git。

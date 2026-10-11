@@ -1,0 +1,74 @@
+[
+  {
+    "sku": "3218152",
+    "field": "cat2",
+    "source": "Herramientas",
+    "current_chinese": "工具",
+    "context": {
+      "name_es": "Cámara PTZ con energía solar LSC Smart Connect",
+      "cat1_es": "Jardín",
+      "cat2_es": "Herramientas",
+      "spec_es": "1296p HD",
+      "desc_es": "Funciona a través de la aplicación LSC\nCon alarma sonora, función de flash y de privacidad\nUtiliza también una tarjeta SD para grabar imágenes (a la venta por separado)\nCon esta cámara LSC Smart Connect con energía solar siempre podrás ver lo que está sucediendo alrededor de tu casa. La cámara incluye una alarma sonora, flash y funciones de privacidad. Es importante montar la cámara en un lugar con suficiente luz solar.",
+      "details_es": "Color: Blanco; Con posibilidad de grabación: Sí; Con visión nocturna: Sí; Destinado a: Exteriores; Instalación: Colgado; Tipo de alimentación: Energía solar; Tipo de tarjeta de memoria: Micro-sd/trans-flash; Ángulo de visión del objetivo: 100 °; Número del artículo: 3218152"
+    },
+    "source_evidence": {
+      "rank": 1,
+      "text": "Herramientas",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-11\\2026-09-11_025141\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-11/2026-09-11_025141",
+      "file_hash": "f4417c2d6c8d12f1c30eb846e0321b9d2dc24a84fb0cb159d516f2f81a54991b",
+      "field_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2"
+    },
+    "dictionary_evidence": {
+      "reference": "F:\\ActionSKUTracker\\runtime\\dictionary\\category_dictionary.csv",
+      "sha256": "54abbaf94b4836115e481a0c97660c40b4907c29234f1d75da4ce4b57db18ffd",
+      "row": {
+        "cat1_es": "Jardín",
+        "cat2_es": "Herramientas",
+        "cat1_code": "C14",
+        "cat1_zh": "园艺户外",
+        "cat2_zh": "工具",
+        "review_status": "CAT1_CONFIRMED",
+        "notes": "15 类固定映射"
+      }
+    },
+    "expected_mapping_available": false
+  },
+  {
+    "sku": "3215740",
+    "field": "cat2",
+    "source": "Decoración",
+    "current_chinese": "家居装饰",
+    "context": {
+      "name_es": "Varillas aromáticas Vivance",
+      "cat1_es": "Hogar",
+      "cat2_es": "Decoración",
+      "spec_es": "500 ml | diferentes variantes",
+      "desc_es": "Con deliciosos aromas\nExtragrande: dura mucho tiempo\nFórmula vegana",
+      "details_es": "Color: Marrón, Gris, Verde; Número del artículo: 3215740"
+    },
+    "source_evidence": {
+      "rank": 1,
+      "text": "Decoración",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-19\\2026-09-19_030744\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-19/2026-09-19_030744",
+      "file_hash": "99b307664a6624caecf8917b8b9d748aed19689ff7e9516abd7fd677a7b8f0f1",
+      "field_hash": "3b9d63b5e645e27ce66777d21b6fd0b4da642a0ab066384e49a28c6445f32254"
+    },
+    "dictionary_evidence": {
+      "reference": "F:\\ActionSKUTracker\\runtime\\dictionary\\category_dictionary.csv",
+      "sha256": "54abbaf94b4836115e481a0c97660c40b4907c29234f1d75da4ce4b57db18ffd",
+      "row": {
+        "cat1_es": "Hogar",
+        "cat2_es": "Decoración",
+        "cat1_code": "C08",
+        "cat1_zh": "家务清洁",
+        "cat2_zh": "家居装饰",
+        "review_status": "HUMAN_REVIEWED",
+        "notes": "15 类固定映射"
+      }
+    },
+    "expected_mapping_available": true
+  }
+]
