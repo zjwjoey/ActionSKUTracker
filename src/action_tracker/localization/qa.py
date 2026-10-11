@@ -21,6 +21,12 @@ NAME_IDENTITY_FACT_PRESERVATION_VERSION = "NAME_IDENTITY_FACT_PRESERVATION_V1"
 # rather than form identifiers: 38×38cm and 8×70ml still carry their units.
 _STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])\d+(?:[.,]\d+)?\s*(km³|cm³|mm³|m³|km²|cm²|mm²|m²|mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])", re.I)
 _CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|立方千米|立方厘米|立方毫米|立方米|平方千米|平方米|平方厘米|平方毫米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
+_SPANISH_LENGTH_UNIT_RE = re.compile(
+    r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])"
+    r"\d+(?:[.,]\d+)?\s*(kilómetros?|centímetros?|milímetros?|metros?)\b"
+    r"(?!\s+(?:cuadrad[oa]s?|cúbic[oa]s?))", re.I,
+)
+_SPANISH_LENGTH_UNITS = {"kilómetro": "km", "centímetro": "cm", "milímetro": "mm", "metro": "m"}
 _HOURLY_CUBIC_RATE_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])\d+(?:[.,]\d+)?\s*(?:m³|立方米)\s*/\s*(?:horas?|h|小时)(?![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])", re.I)
 _UNIT_ALIASES = {
     "毫安时": "mah", "安时": "ah", "瓦时": "wh", "千瓦时": "kwh", "毫瓦": "mw", "千瓦": "kw",
@@ -36,6 +42,10 @@ def _units(value: str) -> set[str]:
     value = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)([23])(?![A-Za-z0-9])", lambda m: m[1] + m[2] + {"2": "²", "3": "³"}[m[3]], value, flags=re.I)
     units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(value)}
     units.update(_UNIT_ALIASES.get(unit, unit) for unit in _CHINESE_UNIT_RE.findall(value))
+    # Plain prose uses full Spanish unit names. Recognize only quantified
+    # length expressions; no rescaling, model substrings or area/volume units.
+    units.update(_SPANISH_LENGTH_UNITS[unit.casefold().removesuffix("s")]
+                 for unit in _SPANISH_LENGTH_UNIT_RE.findall(value))
     # A pump flow is not just a volume: preserve its hourly denominator.
     if _HOURLY_CUBIC_RATE_RE.search(value):
         units.add("m³/h")
@@ -155,7 +165,7 @@ _SOURCE_BOUND_EXACT_TECH = {
     "sds-plus", "transflash", "eprel", "torx",
     # Exact same-field commercial/game spans; the residual scanner splits
     # hyphens into words, so their full source-bound spelling is required.
-    "re-load", "skip-bo", "uno-flip", "pro-max", "t-rex", "gsm", "jawbreaker", "i-scrub", "olus",
+    "re-load", "skip-bo", "uno-flip", "pro-max", "t-rex", "gsm", "jawbreaker", "i-scrub", "olus", "spider-man",
 }
 
 
@@ -535,6 +545,12 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # rather than an additional lamp product. Do not waive generic product
     # nouns or borrow the qualifying phrase from another source field.
     if source_term.casefold() == "iluminación":
+        # Here illumination is the function of the explicitly named wall
+        # lamp, not another product. Require both phrases in this field;
+        # a lamp title cannot authorize an unrelated prose omission.
+        if (re.search(r"\biluminación\s+alrededor\s+de\s+la\s+casa\b", source_text, re.I)
+                and re.search(r"\blámpara\s+de\s+pared\b", source_text, re.I)):
+            aliases.append("照明")
         if re.search(r"\biluminación\s+focal\b", source_text, re.I):
             aliases.append("照明")
         if re.search(r"\befectos?\s+de\s+iluminación\b", source_text, re.I):
