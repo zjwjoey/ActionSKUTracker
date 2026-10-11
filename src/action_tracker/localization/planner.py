@@ -31,12 +31,17 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         v = _dict_value(knowledge.get(field), "value", field) or _dict_value(existing, field, field + "_zh")
         if v: hits.append(field)
         return v or fallback, "knowledge" if v else "deterministic"
-    product_type = next((f.canonical_value or f.value for f in facts if f.semantic_type == "PRODUCT_TYPE"), "")
+    # Name identity must come from its own source or an explicit contextual
+    # disambiguation fact attached to that source. An accessory/negative noun
+    # in description must not become this product's deterministic name.
+    product_type = next((f.canonical_value or f.value for f in facts
+                         if f.semantic_type == "PRODUCT_TYPE" and f.source_field == "name_es"), "")
     brand = next((f.value for f in facts if f.semantic_type == "BRAND"), "")
     allowed_tokens = {f.value for f in facts if f.semantic_type in {"BRAND", "SERIES", "IP_CHARACTER", "MODEL", "TECH_TOKEN", "STANDARD_UNIT", "SOCKET", "INTERFACE"}}
     def clean(value: str) -> bool:
         return bool(value) and not has_ordinary_spanish(value, allowed_tokens=allowed_tokens)
     name, ns = value("name_zh")
+    identity_only_name = False
     if OMIT_BRAND_FROM_CHINESE_DISPLAY and name:
         forbidden_display_tokens = [brand, *(f.value for f in facts if f.semantic_type == "IP_CHARACTER")]
         for token in sorted({str(item).strip() for item in forbidden_display_tokens if str(item).strip()}, key=len, reverse=True):
@@ -53,10 +58,14 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         deduped_identity = list(dict.fromkeys(identity))
         functions = [x for x in deduped_identity if x not in {f.canonical_value or f.value for f in facts if f.semantic_type != "FUNCTION"}]
         other_identity = [x for x in deduped_identity if x not in functions]
+        spatial = [x for x in other_identity if x in {"2D", "3D"}]
+        other_identity = [x for x in other_identity if x not in spatial]
+        identity_only_name = bool(deduped_identity and not product_type)
         display_brand = "" if OMIT_BRAND_FROM_CHINESE_DISPLAY else brand
-        name = "".join(x for x in (display_brand + "牌" if display_brand else "", *functions, product_type, *other_identity) if x)
+        name = "".join(x for x in (display_brand + "牌" if display_brand else "", *spatial, *functions, product_type, *other_identity) if x)
         family = classify_product_family(source, semantic_facts=facts)
         if family.family_id == "CLEANING_CLOTH":
+            identity_only_name = False
             material = "微纤维" if re.search(r"(?<!\w)microfibras?(?!\w)", source.name_es, re.I) else ""
             if re.search(r"\bpara\s+(?:el\s+)?suelo\b", source.name_es, re.I):
                 usage = "地板"
@@ -147,7 +156,7 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
                       "placement": f.placement} for f in planned_facts if f.placement == target)
 
     fields = {
-        "name_zh": LocalizationField(name, ns, "READY" if clean(name) else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("name"), review_reasons=() if clean(name) else ("NAME_REVIEW", "SPANISH_RESIDUAL")),
+        "name_zh": LocalizationField(name, ns, "READY" if clean(name) and not identity_only_name else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("name"), review_reasons=("NAME_PRODUCT_IDENTITY_REVIEW",) if identity_only_name else (() if clean(name) else ("NAME_REVIEW", "SPANISH_RESIDUAL"))),
         "cat1_zh": LocalizationField(cat1, cs, "READY" if cat1 in FIXED_CAT1 else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("cat1"), review_reasons=() if cat1 in FIXED_CAT1 else ("CATEGORY_REVIEW",)),
         "cat2_zh": LocalizationField(cat2, c2s, "READY" if (not source.cat2_es or clean(cat2)) else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("cat2"), review_reasons=() if (not source.cat2_es or clean(cat2)) else ("CATEGORY_REVIEW",)),
         "spec_zh": LocalizationField(spec, ss, "READY" if clean(spec) else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("spec"), review_reasons=() if clean(spec) else ("SPEC_FORMAT_REVIEW",)),
@@ -162,7 +171,7 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     # Spanish source.  Only rows with no usable name at all require a
     # product-type review; this preserves the dictionary-first contract and
     # avoids re-reviewing thousands of established names.
-    if not product_type and source.name_es and not clean(name):
+    if not product_type and source.name_es and (not clean(name) or identity_only_name):
         reasons = tuple(dict.fromkeys((*reasons, "PRODUCT_TYPE_REVIEW")))
     readiness = "AUTO_READY" if all(f.status == "READY" for f in fields.values()) else "REVIEW_REQUIRED"
     return LocalizationPlan(source.sku, source.source_hash, fields, planned_facts, readiness, reasons, tuple(hits), False)

@@ -69,6 +69,24 @@ def stationery_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
     return tuple(spans)
 
 
+def name_eraser_context_span(source: SourceFacts) -> tuple[int, int] | None:
+    """Resolve a title's bare Gomas from an explicit same-product definition.
+
+    Office category alone is insufficient. Only a positive description head
+    naming erasers may disambiguate the title; explicit elastic/hair wording
+    in that title is not overridden. No quantities or IP are imported.
+    """
+    match = re.match(r"\s*(gomas)\b", source.name_es, re.I)
+    if not match or not source.cat1_es.casefold().startswith("oficina"):
+        return None
+    if re.search(r"\bgomas\s+(?:elásticas|elasticas|del\s+pelo|para\b)", source.name_es, re.I):
+        return None
+    description_head = source.desc_es.strip().splitlines()[0] if source.desc_es.strip() else ""
+    if not re.match(r"(?:\d+\s+)?gomas?\s+de\s+borrar\b", description_head, re.I):
+        return None
+    return match.span(1)
+
+
 def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None, historical_quality: bool = True) -> tuple[SemanticFact, ...]:
     dictionaries = dictionaries or {}
     text_fields = (("name_es", source.name_es), ("spec_es", source.spec_es), ("desc_es", source.desc_es), ("details_es", source.details_es))
@@ -92,7 +110,23 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         product_rows = [{"source_term": key, "canonical_zh": value} for key, value in product_rows.items()]
     if isinstance(tech_rows, Mapping):
         tech_rows = [{"token": key, "canonical_token": value, "token_type": "TECH_TOKEN"} for key, value in tech_rows.items()]
+    eraser_title_span = name_eraser_context_span(source)
     def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
+        if (field == "name_es" and source_text.casefold() == "gomas"
+                and kind == "PRODUCT_TYPE" and zh == "橡皮筋"
+                and source.cat1_es.casefold().startswith("oficina")
+                and re.match(r"\s*gomas\b", source.name_es, re.I)
+                and not re.match(r"\s*gomas\s+el[aá]sticas\b", source.name_es, re.I)):
+            # The general crafts seed is not evidence that an ambiguous
+            # office title means rubber bands. A correct reviewed baseline
+            # remains reusable; new unresolved identities require review.
+            return
+        if (field == "name_es" and eraser_title_span and source_text.casefold() == "gomas"
+                and kind in {"MATERIAL", "PRODUCT_TYPE"} and zh not in {"橡皮擦", "橡皮"}):
+            start, end = eraser_title_span
+            remaining = source.name_es[:start] + " " + source.name_es[end:]
+            if not re.search(r"\bgomas\b", remaining, re.I):
+                return
         if source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"} and zh not in {"橡皮擦", "橡皮"}:
             own = dict(text_fields).get(field, "")
             spans = stationery_eraser_spans(own)
@@ -128,6 +162,10 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        if field == "name_es" and eraser_title_span:
+            start, end = eraser_title_span
+            add("PRODUCT_TYPE", text[start:end], "橡皮擦", field,
+                "name_gomas_disambiguated_by_positive_desc_es_head")
         for start, end in stationery_eraser_spans(text):
             add("PRODUCT_TYPE", text[start:end], "橡皮擦", field, "source_bound_stationery_list")
         # A numeric wash allowance states use, not an unqualified count.
@@ -206,6 +244,8 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
             add(kind, token, token, field, token)
         for match in re.finditer(r"\b(?:XXL|XL)\b", text, re.I):
             add("TECH_TOKEN", match.group(0).upper(), match.group(0).upper(), field, match.group(0))
+        for match in re.finditer(r"\b[23]D\b", text, re.I):
+            add("TECH_TOKEN", match.group(0), match.group(0).upper(), field, match.group(0))
         for kind, pattern in _SEMANTIC_PATTERNS:
             for match in re.finditer(pattern, text, re.I):
                 raw = match.group(0)

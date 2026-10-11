@@ -186,3 +186,15 @@ pass 55 tests. These results confirm local code regressions; the pending
 新增真实来源 fixture 与临时字典测试验证父类确认、批准映射、错误父类、错误目标、未批准状态、冲突字典及 daily Planner；46 项针对性回归通过，完整回归 1,399 项通过（102.68 秒）。35 个描述候选按修改后的模块重新 QA 全部通过。改动仅在独立分支本地实现，未 push、未部署 daily 主线。完整在线 daily-run 仍未验证。
 
 运行证据位于原 execution 目录：batch07_descriptions11_apply / integrity_verification.json、batch07_descriptions11_resume / pilot_review_apply.json、existing_descriptions50_independent_reviews.json、category_trust_loader_before_fix.json / after_fix.json、goal3196_full_six_fields_inventory_summary.json。运行产物不进入 Git。
+
+## 描述35验收及品名来源消歧
+
+描述35批实际 Apply 35（14 个已有文本修正、21 个原值绑定恢复），Master Sync 和保护数据完整性检查通过。首次 Resume 因另一个生产任务在锁间隙取得共享锁而终止，没有重复写入。使用原提交 `09524e3` 的 Git archive 固定代码，仅补做 Resume：35 个 NO_OP、重复 Apply 0、ALREADY_SYNCED。原 RESUME_FAILED 证据保留，补做证据另存 `batch08_descriptions35_resume_recovery_execution_status.json`，没有重启整批或干预其他生产任务。
+
+本继续处理阶段累计验收 314 字段 / 288 SKU：3 个缺失补译、31 个已有中文修正、280 个原值绑定恢复。另一个任务后续提交的 browser80 head 已同步，本阶段实际 Apply 统计不包含其工作。当前原3196-SKU目标队列为3186 SKU /8434字段：缺中文4624字段、中文或来源绑定复核3810字段，已审核普通候选等待Apply为0。全六字段语义审查仍未完成；已独立审核的初始pending字段638个，不替代19,176字段全量范围或此前旧审核证据的重新验证。
+
+新审查25个缺失品名，7个明确来源支持的高风险修正方案、18个来源歧义或旧Gate阻断均保留待复核。真实SKU3223681品名Gomas3D Minecraft的描述首行明确3gomas de borrar，旧模块却生成READY橡皮筋，正确3D橡皮擦反被QA要求橡皮筋。现修正为：只有同SKU明确、正向的描述主体及办公类目才消歧标题Gomas；办公类目本身、否定和无关提及不足以推断橡皮擦。通用手作橡皮筋种子不用于不明确的办公标题；单独橡胶材质及明确弹性圈保留。名称主体必须来自本名称事实或绑定本名称的明确消歧，不能拿描述里的配件或否定对象做标题主体。现有已审核名称继续复用。
+
+2D/3D使用既有受保护TECH token流程，不能遗漏、改写或把其中数字用作额外包装数量；名称保留3D前缀。只有A4、USB-C或3D标记而没有商品主体的候选为REVIEW_REQUIRED。新增真实fixture、反例与provider请求断言加入CI_SAFE；63项针对性检查和完整1,412项回归通过。没有发布正式字典、部署daily或宣称线上全日流程通过。
+
+一次真实Qwen调用生成`3D橡皮擦《我的世界》`，主体及技术标记正确，但IP展示违反品名策略，Codex独立修正方案为`3D橡皮擦`。保留旧HIGH商品身份修改及来源lineage，等待Owner审批；本候选Apply0。实际同批生成Resume新网络调用0、复用1响应。总真实新服务调用6，原始候选机械QA5PASS/1FAIL，批准0/入库0；机械PASS不代替语义与Owner审批。原候选IP政策问题未通过本修正自动批准，也不删除描述/详情中的IP。

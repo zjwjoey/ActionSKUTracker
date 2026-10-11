@@ -129,3 +129,4 @@ tests/test_historical_pending3196_context_numbers.py
 tests/test_historical_pending3196_led_counts.py
 tests/test_historical_pending3196_detail_scanner.py
 tests/test_historical_pending3196_category_trust.py
+tests/test_historical_pending3196_name_context.py

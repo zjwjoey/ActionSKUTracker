@@ -659,6 +659,9 @@ def _normalize_numeric_syntax(value: str) -> str:
 
 def _numbers(value: str) -> Counter[str]:
     text = _normalize_numeric_syntax(value)
+    # A literal protected 3D/2D token cannot authorize an unrelated 3/2-piece
+    # package. Its preservation is checked by the protected-token gate.
+    text = re.sub(r"(?<![A-Za-z0-9])[23]D(?![A-Za-z0-9])", " ", text, flags=re.I)
     numbers = Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
     # The historical outlet-strip title explicitly names four sockets. Count
     # only the complete own-field noun phrase, not a generic multiplier,
@@ -715,6 +718,7 @@ def _numbers(value: str) -> Counter[str]:
 def _arabic_numbers(value: str) -> Counter[str]:
     """Return only explicit Arabic-digit numbers from a value."""
     text = _normalize_numeric_syntax(value)
+    text = re.sub(r"(?<![A-Za-z0-9])[23]D(?![A-Za-z0-9])", " ", text, flags=re.I)
     return Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
 
 
