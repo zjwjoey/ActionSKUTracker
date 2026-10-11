@@ -18,14 +18,16 @@ NAME_IDENTITY_FACT_PRESERVATION_VERSION = "NAME_IDENTITY_FACT_PRESERVATION_V1"
 
 # Latin-1's broad range includes × and ÷. They separate dimensions/counts,
 # rather than form identifiers: 38×38cm and 8×70ml still carry their units.
-_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])\d+(?:[.,]\d+)?\s*(km²|cm²|mm²|m²|mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])", re.I)
-_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|平方千米|平方米|平方厘米|平方毫米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
+_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])\d+(?:[.,]\d+)?\s*(km³|cm³|mm³|m³|km²|cm²|mm²|m²|mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])", re.I)
+_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|立方千米|立方厘米|立方毫米|立方米|平方千米|平方米|平方厘米|平方毫米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
+_HOURLY_CUBIC_RATE_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])\d+(?:[.,]\d+)?\s*(?:m³|立方米)\s*/\s*(?:horas?|h|小时)(?![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])", re.I)
 _UNIT_ALIASES = {
     "毫安时": "mah", "安时": "ah", "瓦时": "wh", "千瓦时": "kwh", "毫瓦": "mw", "千瓦": "kw",
     "赫兹": "hz", "伏特": "v", "瓦": "w", "分贝": "db", "千卡": "kcal", "千卡路里": "kcal", "摄氏度": "°c", "厘米": "cm", "毫米": "mm",
     "千米": "km", "米": "m", "千克": "kg", "公斤": "kg", "克": "g", "毫克": "mg", "微克": "μg",
     "毫升": "ml", "厘升": "cl", "分升": "dl", "升": "l", "百分比": "%",
     "平方米": "m²", "平方厘米": "cm²", "平方千米": "km²", "平方毫米": "mm²",
+    "立方米": "m³", "立方厘米": "cm³", "立方千米": "km³", "立方毫米": "mm³",
 }
 
 
@@ -33,6 +35,9 @@ def _units(value: str) -> set[str]:
     value = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)([23])(?![A-Za-z0-9])", lambda m: m[1] + m[2] + {"2": "²", "3": "³"}[m[3]], value, flags=re.I)
     units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(value)}
     units.update(_UNIT_ALIASES.get(unit, unit) for unit in _CHINESE_UNIT_RE.findall(value))
+    # A pump flow is not just a volume: preserve its hourly denominator.
+    if _HOURLY_CUBIC_RATE_RE.search(value):
+        units.add("m³/h")
     return units
 _STRICT_TOKEN_TYPES = {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "CAPACITY", "BATTERY_CAPACITY"}
 
@@ -566,6 +571,9 @@ def _normalize_numeric_syntax(value: str) -> str:
     # ASCII area exponents are unit syntax, never a second count. Keep
     # unrelated model digits and dimensions intact.
     text = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)2(?![A-Za-z0-9])", r"\1\2²", text, flags=re.I)
+    # Cubic exponents likewise belong to the unit. Unlike model suffixes,
+    # this must begin at a standalone numeric measurement.
+    text = re.sub(r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])(\d+(?:[.,]\d+)?\s*)(km|cm|mm|m)3(?![A-Za-z0-9])", r"\1\2³", text, flags=re.I)
     # Two comma-separated integer ranges unambiguously form a list. A single
     # decimal range such as 28-29,5 must retain its decimal separator.
     text = re.sub(r"(?<![\d.,])(\d{1,2}-\d{1,2})(?:,\s*)(\d{1,2}-\d{1,2})(?![\d.,])", r"\1 \2", text)
@@ -1083,6 +1091,9 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     unit_source = re.sub(rf"(?<!\w){re.escape(brand)}(?!\w)", " ", unit_source)
         source_units = _units(unit_source)
         target_units = _units(target)
+        for unit in target_units - source_units:
+            if "³" in unit:
+                findings.append(QAFinding("UNIT_ADDED", "BLOCKER", field_name, {"unit": unit}, source=source_text, target=target, message="cubic measurement requires own-field source", blocking=True))
         for unit in source_units:
             if unit == "%" and _zero_percent_is_semantically_rendered(source_text, target):
                 continue

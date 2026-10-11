@@ -38,3 +38,32 @@ never supplies semantic approval.
 The 30-field specification pilot retains four quantity/sheet-page source
 conflicts. Decibel token-spacing/localization and PPP/DPI equivalence remain
 separate QA review issues; this fix does not waive them.
+
+## Cubic flow regression
+
+The source-bound specification for pool pump 3004507 is
+`2,3 m3/hora | 12 voltios`. Its retained candidate
+`2.3 立方米/小时 | 12 伏特` is independently faithful, but the old Guard
+counted the ASCII exponent as another quantity and classified cubic metres
+as ordinary metres. This is a reproducible QA false rejection, not a reason
+to waive source or approval requirements.
+
+The Guard now recognizes cubic units and equivalent Chinese unit names,
+removes standalone measurement exponents from numeric quantity comparison,
+and preserves the hourly cubic-flow denominator. Model suffix digits remain
+literal. New cubic measurements require their own source field; a quantity
+in the description cannot authorize adding flow to the specification.
+The fixture binds the real source, retained candidate and source artifact
+hash. Regression negatives cover area/length substitutions, dropped/changed
+rate denominators, numeric changes and cross-field fact imports.
+
+This change does not generate translations, publish dictionaries, change
+the source hash contract, deploy the daily runner or approve high-risk name
+corrections. Only the existing native Registry / QA / Approval / immutable
+Apply flow can publish reviewed targets.
+
+Validation: the real pool-pump case and two numeric/own-field assertions fail
+before the change. After the change, the 18 cubic/compact-unit regressions
+pass and the full local suite passes 1,325 tests. The source-bound pool-pump
+candidate passes preflight QA after the repair; preflight is not an approval
+or an actual PRIMARY Apply.
