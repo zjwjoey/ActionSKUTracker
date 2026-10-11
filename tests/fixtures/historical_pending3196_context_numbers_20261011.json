@@ -1,0 +1,50 @@
+[
+  {
+    "sku": "3217243",
+    "source": "Contiene lápices, rotuladores, bolígrafo, lápiz, goma, regla y sacapuntas\nPara elegir entre el Rey León, Frozen y Spidey, entre otros\nCon este completo y práctico estuche tendrás siempre a mano todo tu material escolar.",
+    "context": {
+      "name_es": "Estuche con accesorios",
+      "cat1_es": "Oficina y papelería",
+      "cat2_es": "Accesorios de oficina",
+      "spec_es": "12x19,5 cm | diferentes variantes",
+      "desc_es": "Contiene lápices, rotuladores, bolígrafo, lápiz, goma, regla y sacapuntas\nPara elegir entre el Rey León, Frozen y Spidey, entre otros\nCon este completo y práctico estuche tendrás siempre a mano todo tu material escolar.",
+      "details_es": "Color: Multicolor; Número del artículo: 3217243"
+    },
+    "evidence": {
+      "rank": 1,
+      "text": "Contiene lápices, rotuladores, bolígrafo, lápiz, goma, regla y sacapuntas\nPara elegir entre el Rey León, Frozen y Spidey, entre otros\nCon este completo y práctico estuche tendrás siempre a mano todo tu material escolar.",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+      "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+      "field_hash": "52c90d46142d4d51209e54120c5fc683c1318cb0f56b8003602113280ae61926"
+    },
+    "candidate": "包含铅笔、记号笔、圆珠笔、铅笔、橡皮、尺子和卷笔刀\n可选择狮子王、冰雪奇缘和蜘蛛侠等款式\n有了这个齐全又实用的文具盒，你的学习用品将随时触手可及。",
+    "request_hash": "71fe204240ac7f5254f046c952ce8a1f5ab7432b97c7d91fbcd76539754495f5",
+    "response_hash": "15706154bfe64df8b7a2351fd5a578de751638c2340b4ee2e197dddf872b92aa",
+    "expected_behavior": "Scoped QA regression only, not a gold translation or approval."
+  },
+  {
+    "sku": "3009538",
+    "source": "3 metros, extralargo\nCable resistente: puede doblarse hasta 50 000 veces\nCon una potencia máxima de hasta 60 vatios\nCarga tus dispositivos en un abrir y cerrar de ojos con este cable extralargo. El cable dispone de un conector USB-C a ambos lados.",
+    "context": {
+      "name_es": "Cable de carga y de datos Sologic De USB-C a USB-C",
+      "cat1_es": "Multimedia",
+      "cat2_es": null,
+      "spec_es": "3 metros | varios colores",
+      "desc_es": "3 metros, extralargo\nCable resistente: puede doblarse hasta 50 000 veces\nCon una potencia máxima de hasta 60 vatios\nCarga tus dispositivos en un abrir y cerrar de ojos con este cable extralargo. El cable dispone de un conector USB-C a ambos lados.",
+      "details_es": "{'Número del artículo': '3009538', 'Color': 'Gris, Blanco, Negro', 'Longitud del cable:': '3', 'Tipo de acoplamiento': 'USB-c', 'Tipo de conexión': 'USB-c'}"
+    },
+    "evidence": {
+      "rank": 2,
+      "text": "3 metros, extralargo\nCable resistente: puede doblarse hasta 50 000 veces\nCon una potencia máxima de hasta 60 vatios\nCarga tus dispositivos en un abrir y cerrar de ojos con este cable extralargo. El cable dispone de un conector USB-C a ambos lados.",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3009538",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "38e512ea3a510e17ec7d5f8c7a8098ba6e6194746b65f2e8e174ce1a7f7570aa"
+    },
+    "candidate": "3米，超长\n耐用电缆：可弯曲多达5万次\n最大功率高达60瓦\n使用这条超长数据线，瞬间为您的设备充电。该数据线两端均为USB-C接口。",
+    "request_hash": "9e99319d3a3fd695b656eab7c96adc119540d9a3b022eee3d0aae9633a17045a",
+    "response_hash": "7a0572656b4b960827781e990b22f1c209c1becdf980a7ca66cab6e878a814db",
+    "expected_behavior": "Scoped QA regression only, not a gold translation or approval."
+  }
+]

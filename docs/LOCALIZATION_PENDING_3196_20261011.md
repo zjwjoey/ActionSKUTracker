@@ -94,3 +94,34 @@ findings); one retains HIGH risk and requires Owner approval. Actual Apply
 from these four is zero. They do not reduce the missing-field statistics.
 This branch remains local; the change does not deploy the daily runner,
 publish terminology or expand the finite approval contract.
+
+## Contextual erasers, scaled counts and bounded technical tokens
+
+Real pencil-case SKU 3217243 lists an isolated `goma` alongside pencils and
+a ruler/sharpener. The semantic parser now identifies that own-field list
+item as an eraser, without inferring rubber composition. It preserves a
+separate `Material: Goma` assertion and does not borrow a title's stationery
+context for an ambiguous description. Both QA and provider terminology use
+this scoped grammar rule; the formal dictionary remains unchanged. QA
+rejects rubber bands, omitted erasers and negated eraser mentions.
+
+Real cable SKU 3009538 uses `50 000 veces`; the generated candidate uses
+`5万次`. Numeric QA now compares exact 万-scaled values before explicit count
+classifiers using decimal arithmetic. Changed values, model suffixes, bare
+fragments and counts borrowed from another field remain protected. This
+comparison never rewrites source/target strings or approves durability claims.
+
+Real remote-control car SKU 3212557 exposed an extra substring count of LED
+inside Spanish `teledirigido`. Technical multiplicity now counts bounded
+Latin identifiers, permits adjoining Chinese labels and retains accent
+boundaries. Tests reject omitted/extra actual LED occurrences and distinguish
+OLED from LED. A mechanically passing candidate still requires independent
+meaning review; a new candidate's 双向操控 does not establish the meaning of
+the source's `acción bilateral`.
+
+All fixtures include real own-field sources and rehashed historical evidence;
+isolated negatives are explicitly test scenarios, not invented official facts.
+The 48 contextual/numeric regressions and 124 combined protected-token tests
+pass. The intermediate full suite passes 1,350 tests; final full-suite results
+after the bounded-token change are recorded with its Git commit.
+The final full local suite passes 1,359 tests after all three repairs.

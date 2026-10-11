@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Mapping
 
 from .contracts import SourceFacts
@@ -445,8 +446,16 @@ def _is_ordinary_spanish_uppercase_token(source_text: str, source_token: str) ->
     return _source_term_present(source, token)
 
 
+def _casefold_token_count(text: str, token: str) -> int:
+    # Latin words can contain a short technical spelling: teLED irigido
+    # without a space is teledirigido, not another LED fact. Chinese labels
+    # may legitimately adjoin a token (LED灯 / USB-C接口).
+    boundary = r"A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f"
+    return len(re.findall(rf"(?<![{boundary}]){re.escape(str(token or ''))}(?![{boundary}])", str(text or ""), flags=re.IGNORECASE))
+
+
 def _has_casefold_token(text: str, token: str) -> bool:
-    return bool(re.search(rf"(?<![A-Za-z0-9]){re.escape(str(token or ''))}(?![A-Za-z0-9])", str(text or ""), flags=re.IGNORECASE))
+    return bool(_casefold_token_count(text, token))
 
 
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
@@ -461,6 +470,9 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         remaining = re.sub(r"\bfibras?\s+de\s+bambú\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bbambú\b", remaining, re.I):
             return ("竹纤维",)
+    if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
+        # A contextual eraser fact must not inherit the rubber/band alias.
+        return ("橡皮擦", "橡皮")
     aliases = list(_SEMANTIC_TARGET_ALIASES.get(source_term.casefold(), (canonical,)))
     if re.fullmatch(r"\d+\s+lavados", source_term, re.I):
         aliases.extend(("洗衣", "清洗", "水洗"))
@@ -592,6 +604,14 @@ def _normalize_numeric_syntax(value: str) -> str:
     text = re.sub(
         r"(?<!\d)(\d{1,2}(?:,\d{1,2}){2,})(?!\d)",
         lambda match: match.group(1).replace(",", " "),
+        text,
+    )
+    # A numeric Chinese 万 prefix before an explicit count classifier is
+    # exact arithmetic, not a new quantity (5万次 == 50000次). Do not interpret
+    # model suffixes, bare marketing fragments or compound 万/千 notation.
+    text = re.sub(
+        r"(?<![A-Za-z0-9\u00c0-\u024f.,万千])([0-9]+(?:[.,][0-9]+)?)\s*万(?=\s*(?:次|个|件|张|页|支|条|像素)(?![A-Za-z0-9]))",
+        lambda match: format((Decimal(_canonical_numeric_token(match.group(1))) * 10000).normalize(), 'f'),
         text,
     )
     return text
@@ -930,6 +950,10 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
             represented = any(alias.casefold() in target.casefold() for alias in aliases)
+            if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
+                affirmative_target = re.sub(
+                    r"(?:不含|没有|无|非|不是)\s*橡皮(?:擦)?|橡皮(?:筋|圈|带)", "", target)
+                represented = any(alias in affirmative_target for alias in aliases)
             if source_term.casefold() == "over-ear" and fact_type == "VARIANT":
                 # A negated fit cannot satisfy a positive source assertion.
                 # Generic headband style and conflicting fits alone must fail.
@@ -1061,8 +1085,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                     continue
                 if kind == "TECH":
-                    expected_count = source_text.casefold().count(value.casefold())
-                    actual_count = target.casefold().count(value.casefold())
+                    expected_count = _casefold_token_count(source_text, value)
+                    actual_count = _casefold_token_count(target, value)
                 else:
                     expected_count, actual_count = source_text.count(value), target.count(value)
                 if kind in {"CAPACITY", "BATTERY_CAPACITY", "POWER", "VOLTAGE"}:

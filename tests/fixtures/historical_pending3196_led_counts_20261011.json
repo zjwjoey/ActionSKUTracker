@@ -1,0 +1,22 @@
+{
+  "sku": "3212557",
+  "source": "Realiza acrobacias y giros impresionantes\nFunción de giro de 360°\nCon luz LED\n¡Corre, gira y haz acrobacias con este fantástico coche de acrobacias teledirigido! Con giros de 360°, acción bilateral e iluminación led destelleante, cada aventura es un espectáculo. ¡Perfecto para los pequeños temerarios listos para la acción!",
+  "context": {
+    "name_es": "Coche acrobático",
+    "cat1_es": "Juguetes",
+    "cat2_es": "Coches de juguete",
+    "spec_es": "Varios colores",
+    "desc_es": "Realiza acrobacias y giros impresionantes\nFunción de giro de 360°\nCon luz LED\n¡Corre, gira y haz acrobacias con este fantástico coche de acrobacias teledirigido! Con giros de 360°, acción bilateral e iluminación led destelleante, cada aventura es un espectáculo. ¡Perfecto para los pequeños temerarios listos para la acción!",
+    "details_es": "Color: Azul, Verde, Rojo; Material: Plástico; Edad adecuada: A partir de 3 años; Bluetooth: No; Con cámara integrada: NO; Código de batería: AA; Incluye conexión USB: No; Incluye mando a distancia: Sí; Número de pilas necesarias: 5; Pilas incluidas: No; Radiocontrolado: Sí; Recargable: No; Tipo de alimentación: Batería; Número del artículo: 3212557"
+  },
+  "evidence": {
+    "rank": 1,
+    "text": "Realiza acrobacias y giros impresionantes\nFunción de giro de 360°\nCon luz LED\n¡Corre, gira y haz acrobacias con este fantástico coche de acrobacias teledirigido! Con giros de 360°, acción bilateral e iluminación led destelleante, cada aventura es un espectáculo. ¡Perfecto para los pequeños temerarios listos para la acción!",
+    "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+    "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+    "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+    "field_hash": "5472127b5eb636c33badefa082139e506d06fdbfecaec9af5b7662f2e0c046b4"
+  },
+  "candidate": "可做精彩特技和转弯，支持 360° 旋转，带 LED 灯。这款遥控特技车可以竞速、旋转和表演特技；360° 转向、双面动作和闪烁 LED 灯光让游戏更有趣，适合喜欢挑战的小朋友。",
+  "expected_behavior": "Guard token count regression, not a gold translation or approval."
+}

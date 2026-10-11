@@ -56,6 +56,19 @@ _HISTORICAL_QUALITY_TERMS = frozenset({
 })
 
 
+def stationery_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
+    """Disambiguate only a standalone item in an own-field school list."""
+    spans = []
+    for line in re.finditer(r"[^\r\n]+", text):
+        own = line.group()
+        if not (re.search(r"\b(?:lápices|lápiz|rotuladores|bolígrafo)\b", own, re.I)
+                and re.search(r"\b(?:regla|sacapuntas)\b", own, re.I)):
+            continue
+        for item in re.finditer(r"(?:^|[,;]|\by\s+)\s*(gomas?)\s*(?=[,;]|\by\b|$)", own, re.I):
+            spans.append((line.start() + item.start(1), line.start() + item.end(1)))
+    return tuple(spans)
+
+
 def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None, historical_quality: bool = True) -> tuple[SemanticFact, ...]:
     dictionaries = dictionaries or {}
     text_fields = (("name_es", source.name_es), ("spec_es", source.spec_es), ("desc_es", source.desc_es), ("details_es", source.details_es))
@@ -80,7 +93,14 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     if isinstance(tech_rows, Mapping):
         tech_rows = [{"token": key, "canonical_token": value, "token_type": "TECH_TOKEN"} for key, value in tech_rows.items()]
     def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
-        if historical_quality and source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"}:
+        if source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"} and zh not in {"橡皮擦", "橡皮"}:
+            own = dict(text_fields).get(field, "")
+            spans = stationery_eraser_spans(own)
+            for start, end in reversed(spans):
+                own = own[:start] + " " + own[end:]
+            if spans and not re.search(rf"\b{re.escape(source_text)}\b", own, re.I):
+                return
+        if historical_quality and source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"} and zh not in {"橡皮擦", "橡皮"}:
             # The complete noun means eraser, not an assertion of rubber
             # composition or rubber bands. Preserve separate material facts.
             remaining = re.sub(r"\bgomas?\s+de\s+borrar\b", " ", dict(text_fields).get(field, ""), flags=re.I)
@@ -88,6 +108,10 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
             # consume this complete own-field phrase; separately stated goma
             # material or other rubber bands remain protected facts.
             remaining = re.sub(_HAIR_TIE_PATTERN, " ", remaining, flags=re.I)
+            # Consume only the isolated eraser item. A separate de goma or
+            # Material: Goma assertion must remain a rubber fact.
+            for start, end in reversed(stationery_eraser_spans(remaining)):
+                remaining = remaining[:start] + " " + remaining[end:]
             # The complete peelable-candy phrase is disambiguated only by
             # an explicit gummy noun in this same source field. A separate
             # rubber-band occurrence remains a separate product fact.
@@ -104,6 +128,8 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        for start, end in stationery_eraser_spans(text):
+            add("PRODUCT_TYPE", text[start:end], "橡皮擦", field, "source_bound_stationery_list")
         # A numeric wash allowance states use, not an unqualified count.
         # Keep the complete phrase and its own field; do not treat washed
         # fabric adjectives or a wash count in another field as evidence.
