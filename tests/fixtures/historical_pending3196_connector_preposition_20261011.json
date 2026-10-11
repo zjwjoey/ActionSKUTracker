@@ -1,0 +1,50 @@
+{
+  "sku": "3218230",
+  "context": {
+    "name_es": "Ratón de gaming Battletron",
+    "cat1_es": "Multimedia",
+    "cat2_es": "Videojuegos",
+    "spec_es": "8000 PPP | varios colores",
+    "desc_es": "Precisión de 8000 PPP\nIluminación RGB con estilo\n7 botones ajustables\n¡Sube de nivel con el ratón Battletron Gaming! Con 7 botones programables, 8000 ppp e iluminación RGB Razer Chroma, estarás listo para cualquier juego. Ligero y ultrarrápido para un control y una comodidad máximos. ¡Conéctate, configura y domina a tus oponentes!",
+    "details_es": "Color: Blanco, Negro; Con rueda: SÍ; Tipo de conector: POR CABLE; Número del artículo: 3218230"
+  },
+  "source": "Color: Blanco, Negro; Con rueda: SÍ; Tipo de conector: POR CABLE; Número del artículo: 3218230",
+  "target_for_hard_qa": "颜色：白色、黑色；带滚轮：是；连接器类型：有线；商品编号：3218230",
+  "source_evidence": {
+    "rank": 1,
+    "text": "Color: Blanco, Negro; Con rueda: SÍ; Tipo de conector: POR CABLE; Número del artículo: 3218230",
+    "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-03\\2026-09-03_072729\\products_normalized.csv",
+    "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-03/2026-09-03_072729",
+    "file_hash": "4cb785cdf6115e10194a22ee58b15d9367dac1a9abe5998e8ca1b8dd24922162",
+    "field_hash": "a18d98d4dde0dcd93dacaf41819145cd0297b76b1fc9af965843e80756ade03c"
+  },
+  "qa_before": {
+    "status": "FAIL",
+    "fact_status": "FAIL",
+    "findings": [
+      {
+        "rule_id": "PROTECTED_TOKEN_MISSING",
+        "severity": "BLOCKER",
+        "field_name": "details",
+        "evidence": {
+          "token_type": "TECH",
+          "value": "POR",
+          "expected": 1,
+          "actual": 0
+        },
+        "sku": "",
+        "source_hash": "",
+        "source": "Color: Blanco, Negro; Con rueda: SÍ; Tipo de conector: POR CABLE; Número del artículo: 3218230",
+        "target": "颜色：白色、黑色；带滚轮：是；连接器类型：有线；商品编号：3218230",
+        "message": "",
+        "repairable": false,
+        "blocking": true
+      }
+    ],
+    "canonical_status": "NOT_RUN",
+    "canonical_qa_status": "NOT_RUN",
+    "overall_ready": false
+  },
+  "semantic_approval": "NATIVE_APPROVAL_PENDING",
+  "production_apply": false
+}

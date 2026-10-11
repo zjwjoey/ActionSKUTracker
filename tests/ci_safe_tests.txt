@@ -132,3 +132,4 @@ tests/test_historical_pending3196_category_trust.py
 tests/test_historical_pending3196_name_context.py
 tests/test_historical_pending3196_capacity_units.py
 tests/test_historical_pending3196_description_qa.py
+tests/test_historical_pending3196_connector_preposition.py

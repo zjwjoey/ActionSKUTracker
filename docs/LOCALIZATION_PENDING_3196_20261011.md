@@ -221,3 +221,15 @@ SKU3218650实际详情包含3 kWh/1000h，正确等价渲染3千瓦时/1000小�
 反例测试还复现5 metros误译5厘米未被阻断：原单位检查未识别西语长度全称。新增量化metro/centímetro/milímetro/kilómetro单复数识别，映射到既有m/cm/mm/km单位检查，不进行数值换算，不匹配型号子串或误将面积/体积当长度。真实来源fixture、错误数值/单位、无来源IP、片段/西语残留、跨字段上下文、灯具主体事实、HIGH原生审批共31项新增CI_SAFE测试通过；完整回归1461项通过（101.07秒）。测试只读仓库fixture及正式种子字典，不读生产库、不访问官网、不调用模型、不写正式数据。
 
 相同PRIMARY快照、目标和知识抽取下，对比c290eaa与修正后QA：449待复核字段中425个上下文一致可比较，仅3000357和3007114描述由FAIL变PASS；所有449仍待审批/来源复核，新增Approval和Apply均为0。比较报告初版完整提交号因辅助脚本替换字符串而错误，原文件保留；verified报告用git解析提交号并验证QA源码SHA后修正元数据，比较行不变。运行证据：owner449_same_snapshot_description_qa_comparison_verified.json、description_qa_full_pytest_20261011.txt、missing_names_next20b_review_acceptance.json。本修改仅本地独立分支实现，未push、未部署daily；完整线上daily兼容性仍待验证。
+
+## 详情增量审查与连接器介词 QA
+
+详情批次11/12/13均完成正式Apply、Master SUCCESS、独立保护表完整性检查和同批Resume。分别18/35/37个字段入库，实际中文文本改变分别0/2/3个；其余正确文本仅恢复审批与来源绑定。三个批次Resume重复Apply均0，Presence、价格历史、事件、生命周期、观测、西语、事实版本及CURRENT本地化均保持一致。累计本阶段完整验收443字段/371SKU：3缺失补译、36已有文本修正、404原值重绑定。候选、运行中或外部任务的提交不计入该累计。
+
+新审查的60个详情字段中51KEEP、6CORRECTED、3HIGH待来源复核；再审查40字段，34KEEP、4CORRECTED、2REVIEW_REQUIRED。其中100 hojas误译100页的修正虽有明确来源支持，但改变计数单位，保持HIGH并等待Owner；防蝇罩的婴儿睡袋属性、3件/6件数量角色同样保留复核。机械QA不为这些问题创建审批。
+
+SKU3218230官方详情的完整连接器值`Tipo de conector: POR CABLE`被保守技术词扫描识别出POR，正确有线译文因此触发PROTECTED_TOKEN_MISSING。现仅在既有QA扫描视图中移除该完整结构值的介词POR，保留CABLE检查及同字段其他POR型号/键标记。要求明确属性键、冒号、完整值及字段分隔边界，不为裸POR、型号POR、POR CABLE PLUS、其他字段短语或其他连接器类型增加通用豁免。原文、证据、Hash、provider请求和缓存不变。
+
+真实fixture及新增19项CI_SAFE回归覆盖原误报、源证据、真实POR身份、同字段混合角色、跨字段隔离、接口/型号保护和SKU数值损坏。新测试只读仓库fixture并调用纯QA，不读生产库、不访问官网、不调用模型或写正式数据。针对性测试含既有详情扫描共42项通过；完整1480项回归通过（102.62秒）。相同PRIMARY快照、相同候选和语义事实下，1049字段全部可比，仅3218230由FAIL变PASS，其他1048结果不变，没有因此生成新的Approval或Apply。运行证据为`connector_preposition_full_pytest_20261011.txt`和`connector_preposition_same_snapshot_qa_comparison.json`。
+
+目标仍为原3196SKU的19176字段。1049个初始pending字段已独立审查；此前2617个语义审核字段和4674个受控类目映射字段已重新核验，可复用但不计新增审核/Apply。全量语义审核尚未完成。当前目标队列3185SKU/8303字段，其中中文缺失4624；待复核和QA就绪候选必须按运行报告的互斥字段队列分别统计。本修正仅在本地独立分支实现，未push、未部署daily。

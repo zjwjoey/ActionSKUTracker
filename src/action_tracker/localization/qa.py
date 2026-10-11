@@ -495,6 +495,10 @@ def _technical_scan_source(source_text: str) -> str:
         r"\bsoporte\s+(?P<article>del)\s+tel[eé]fono\b",
         r"\bn[uú]mero\s+(?P<article>del)\s+art[ií]culo\b",
         r"\bmaterial\s+(?P<article>del)\s+asa\b",
+        # Official structured connector values can be all-caps POR CABLE.
+        # Remove only the preposition in that complete value, preserving
+        # standalone POR identifiers elsewhere in the same source field.
+        r"(?<!\w)tipo\s+de\s+conector\s*:\s*(?P<article>por)\s+cable(?=\s*(?:[;；\n]|$))",
     ):
         def remove_article(match: re.Match) -> str:
             start, end = match.span("article")
