@@ -67,3 +67,30 @@ before the change. After the change, the 18 cubic/compact-unit regressions
 pass and the full local suite passes 1,325 tests. The source-bound pool-pump
 candidate passes preflight QA after the repair; preflight is not an approval
 or an actual PRIMARY Apply.
+
+## Source-faithful brand/IP preservation
+
+The native resolver marked typed brand/IP terms as display-omittable in
+every field and deleted them after provider translation. Deterministic
+planning also deleted them from specifications and prose. Both paths now
+apply the no-brand policy to names only, as required by the shared V2
+review contract. Other fields retain their own source-supported tokens;
+title tokens cannot authorize adding them to a description.
+
+The real pencil-case SKU 3217243 fixture records its full own-field source,
+source hashes and rehashed historical CSV evidence. Its regression output
+tests token preservation only; it is not a gold translation or approval.
+Isolated tests cover the deterministic specification path, provider details,
+continued no-brand names and cross-field import prevention. All 84 focused
+resolver tests and the 1,330-test local suite pass. The fixture-bound test
+module also passes all five tests after evidence binding.
+
+Four additional descriptions were generated through the existing native
+Qwen-MT adapter and finite candidate pipeline. Full request/response hashes,
+request IDs, usage, prior candidates and source evidence are retained in
+runtime reports. Resume reused all four with zero provider calls. Three
+remain QA-blocked (including numeric representation and contextual goma
+findings); one retains HIGH risk and requires Owner approval. Actual Apply
+from these four is zero. They do not reduce the missing-field statistics.
+This branch remains local; the change does not deploy the daily runner,
+publish terminology or expand the finite approval contract.

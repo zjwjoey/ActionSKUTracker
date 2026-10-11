@@ -6,7 +6,7 @@ from typing import Any
 
 from .contracts import CANONICAL_TO_ZH, ZH_TO_CANONICAL, LocalizationField, LocalizationPlan, SemanticFact, SourceFacts
 from .formatter import format_details, format_spec, format_text, format_unit_price
-from .policy import FIXED_CAT1, OMIT_BRAND_FROM_CHINESE_DISPLAY, has_ordinary_spanish, map_cat1, strip_forbidden_display_tokens
+from .policy import FIXED_CAT1, OMIT_BRAND_FROM_CHINESE_DISPLAY, has_ordinary_spanish, map_cat1
 from ..dictionary import normalize_category_key
 from .product_family import classify_product_family
 
@@ -122,15 +122,9 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     desc, ds = value("desc_zh", format_text(replace_known(source.desc_es, "desc_es")))
     details, dts = value("details_zh", format_details(replace_known(source.details_es, "details_es")))
     details = format_details(details)
-    if OMIT_BRAND_FROM_CHINESE_DISPLAY:
-        forbidden_display_tokens = [brand, *(f.value for f in facts if f.semantic_type == "IP_CHARACTER")]
-        for target, rendered in (("cat1", cat1), ("cat2", cat2), ("spec", spec), ("description", desc), ("details", details)):
-            cleaned = strip_forbidden_display_tokens(rendered, forbidden_display_tokens)
-            if target == "cat1": cat1 = cleaned
-            elif target == "cat2": cat2 = cleaned
-            elif target == "spec": spec = cleaned
-            elif target == "description": desc = cleaned
-            else: details = cleaned
+    # The title policy is applied above to name only. Other fields retain
+    # their own source-supported brand/IP facts, including deterministic
+    # specification formatting; deleting them here can also break prose.
     placements = {"PRODUCT_TYPE": "name", "BRAND": "name", "SERIES": "name", "IP_CHARACTER": "name", "MODEL": "spec", "TECH_TOKEN": "spec", "STANDARD_UNIT": "spec", "SIZE_DIMENSION": "spec", "CAPACITY": "spec", "WEIGHT": "spec", "QUANTITY": "spec", "COLOR": "spec", "VARIANT": "spec", "MATERIAL": "name", "FUNCTION": "description", "COMPATIBILITY": "spec", "VOLTAGE": "spec", "POWER": "spec", "CURRENT": "spec", "FREQUENCY": "spec", "BATTERY_CAPACITY": "spec", "SOCKET": "spec", "INTERFACE": "spec", "PROTECTION_RATING": "spec", "CARE": "details", "NUTRITION": "name", "DETAIL_KEY": "details", "DESCRIPTION_FACT": "description"}
     planned_facts = tuple(
         SemanticFact(
