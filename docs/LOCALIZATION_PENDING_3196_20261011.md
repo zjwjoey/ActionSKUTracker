@@ -233,3 +233,15 @@ SKU3218230官方详情的完整连接器值`Tipo de conector: POR CABLE`被保�
 真实fixture及新增19项CI_SAFE回归覆盖原误报、源证据、真实POR身份、同字段混合角色、跨字段隔离、接口/型号保护和SKU数值损坏。新测试只读仓库fixture并调用纯QA，不读生产库、不访问官网、不调用模型或写正式数据。针对性测试含既有详情扫描共42项通过；完整1480项回归通过（102.62秒）。相同PRIMARY快照、相同候选和语义事实下，1049字段全部可比，仅3218230由FAIL变PASS，其他1048结果不变，没有因此生成新的Approval或Apply。运行证据为`connector_preposition_full_pytest_20261011.txt`和`connector_preposition_same_snapshot_qa_comparison.json`。
 
 目标仍为原3196SKU的19176字段。1049个初始pending字段已独立审查；此前2617个语义审核字段和4674个受控类目映射字段已重新核验，可复用但不计新增审核/Apply。全量语义审核尚未完成。当前目标队列3185SKU/8303字段，其中中文缺失4624；待复核和QA就绪候选必须按运行报告的互斥字段队列分别统计。本修正仅在本地独立分支实现，未push、未部署daily。
+
+## 纠错用品类型与橡胶材质的字段角色
+
+第14批57详情字段完成正式Apply、Master SUCCESS、完整性检查PASS和57条Resume NO_OP，重复Apply0。中文文本实际改变6字段，其余51保留正确原值并更新绑定；保护的商品、价格、事件、观测、生命周期、事实版本、CURRENT本地化和西语均一致。累计本阶段完整验收500字段/404SKU：缺失补译3、已有中文纠错42、原值绑定恢复455。新的80详情字段已独立审查：63KEEP、10CORRECTED、7REVIEW_REQUIRED；其中8个HIGH保持来源/Owner复核，不因机械QA放行。72个普通QA合格字段待后续正式审批/Apply，全量19176字段语义范围仍未完成。
+
+真实SKU3223678详情`Tipo de dispositivo de corrección: Goma`被程序当作橡胶材质，正确的纠错用品类型橡皮擦反而触发SEMANTIC_FACT_DROPPED。现仅在同字段唯一完整类型键、完整值Goma时生成PRODUCT_TYPE橡皮擦事实，移除该具体出现所导致的错误橡胶材质事实。单独Material Goma、其他键、另一个字段的提示、限定值、重复类型键不会获得此规则；同字段另有橡胶材质时仍要求保留。原文、数值、来源Hash和字段版本不变，未发布字典或新增服务调用。
+
+原错误中文矫正器械类型橡胶的修正涉及商品类型，保留HIGH与Owner审批，不自主Apply。修复不是给橡皮擦译文豁免材料QA，而是纠正源事实角色，错误橡胶、橡皮筋或胶棒目标继续失败。普通与历史语义模式都覆盖本明确结构字段，未来daily复用同模块。
+
+新增24项CI_SAFE回归只读仓库fixture并调用纯语义、QA和原生审批分类；覆盖原错例、字段角色混合、重复/未知键、跨字段隔离、数值损坏、HIGH审批和来源Hash不变。首轮测试使用错误对象属性target_text导致2个测试失败，修正为实际canonical_value后24项通过；连同既有名称/详情60项针对性检查通过。完整1504项回归通过（100.37秒）。同PRIMARY快照和同候选比对55dc67f与新语义：1129个审查字段中1105有候选且可比，24无候选未计入，仅3223678详情由FAIL变PASS，新增Approval/Apply均0。
+
+证据：`correction_device_goma_full_pytest_20261011.txt`、`correction_device_goma_same_snapshot_semantic_comparison.json`、`correction_device_goma_real_qa_reproduction_and_experiment.json`及第14批Apply/Integrity/Resume报告。代码仅本地独立分支实现，未push、未部署daily；本地回归不代表线上全量daily已验证。

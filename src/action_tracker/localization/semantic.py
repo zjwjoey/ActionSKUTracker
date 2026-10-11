@@ -69,6 +69,20 @@ def stationery_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
     return tuple(spans)
 
 
+def correction_device_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
+    """Resolve only a unique own-field correction-device value Goma.
+
+    The structured key identifies an eraser type, rather than rubber
+    composition. Unknown/duplicate keys, qualified values and material
+    assertions do not authorize this disambiguation.
+    """
+    key = r"(?:^|[;；\r\n])\s*tipo\s+de\s+dispositivo\s+de\s+correcci[oó]n\s*[:：]{1,2}"
+    if len(re.findall(key, text, re.I)) != 1:
+        return ()
+    return tuple(m.span(1) for m in re.finditer(
+        key + r"\s*(goma)\s*(?=[;；\r\n]|$)", text, re.I))
+
+
 def name_eraser_context_span(source: SourceFacts) -> tuple[int, int] | None:
     """Resolve a title's bare Gomas from an explicit same-product definition.
 
@@ -111,7 +125,16 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     if isinstance(tech_rows, Mapping):
         tech_rows = [{"token": key, "canonical_token": value, "token_type": "TECH_TOKEN"} for key, value in tech_rows.items()]
     eraser_title_span = name_eraser_context_span(source)
+    eraser_detail_spans = correction_device_eraser_spans(source.details_es)
     def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
+        if (field == "details_es" and eraser_detail_spans and source_text.casefold() == "goma"
+                and kind in {"MATERIAL", "PRODUCT_TYPE"} and zh not in {"橡皮擦", "橡皮"}):
+            remaining = source.details_es
+            for start, end in reversed(eraser_detail_spans):
+                remaining = remaining[:start] + " " + remaining[end:]
+            # A separately stated rubber material remains a required fact.
+            if not re.search(r"\bgoma\b", remaining, re.I):
+                return
         if (field == "name_es" and source_text.casefold() == "gomas"
                 and kind == "PRODUCT_TYPE" and zh == "橡皮筋"
                 and source.cat1_es.casefold().startswith("oficina")
@@ -162,6 +185,10 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        if field == "details_es":
+            for start, end in eraser_detail_spans:
+                add("PRODUCT_TYPE", text[start:end], "橡皮擦", field,
+                    "source_bound_correction_device_type")
         if field == "name_es" and eraser_title_span:
             start, end = eraser_title_span
             add("PRODUCT_TYPE", text[start:end], "橡皮擦", field,
