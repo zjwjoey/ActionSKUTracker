@@ -458,6 +458,46 @@ def _has_casefold_token(text: str, token: str) -> bool:
     return bool(_casefold_token_count(text, token))
 
 
+def _technical_scan_source(source_text: str) -> str:
+    """Exclude articles in explicit Spanish labels, preserving actual DEL keys.
+
+    This is a QA-only scanner view. The source, hashes, provider request and
+    stored evidence stay unchanged. Other occurrences, including a keyboard
+    key in the same field, retain their normal protected-token counts.
+    """
+    result = source_text
+    for pattern in (
+        r"\bsoporte\s+(?P<article>del)\s+tel[eé]fono\b",
+        r"\bn[uú]mero\s+(?P<article>del)\s+art[ií]culo\b",
+        r"\bmaterial\s+(?P<article>del)\s+asa\b",
+    ):
+        def remove_article(match: re.Match) -> str:
+            start, end = match.span("article")
+            offset = match.start()
+            return match.group(0)[:start - offset] + match.group(0)[end - offset:]
+        result = re.sub(pattern, remove_article, result, flags=re.I)
+    return result
+
+
+def _structured_material_atom(source_term: str, source_text: str, target: str, field_name: str) -> bool:
+    """Accept short Chinese atoms only in an unambiguous material pair.
+
+    Bamboo fibre, wood appearance, qualified woods and duplicate material
+    keys cannot authorize a bare 竹/木 equivalence. A pattern or another
+    source field likewise cannot satisfy an omitted material assertion.
+    """
+    short = {"bambú": "竹", "madera": "木"}.get(source_term.casefold())
+    if field_name != "details" or not short:
+        return False
+    source_pairs = [p for p in parse_structured_details(source_text) if p.context_key == "material"]
+    target_pairs = [p for p in parse_structured_details(target) if p.context_key == "material"]
+    if len(source_pairs) != 1 or len(target_pairs) != 1:
+        return False
+    source_atoms = [v.strip().casefold() for v in re.split(r"[,，、]", source_pairs[0].value)]
+    target_atoms = [v.strip() for v in re.split(r"[,，、]", target_pairs[0].value)]
+    return source_term.casefold() in source_atoms and short in target_atoms
+
+
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
     # An appearance simile is not a claim of actual wood composition. Only
     # consume it when no separate wood occurrence remains in this field.
@@ -950,6 +990,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
             represented = any(alias.casefold() in target.casefold() for alias in aliases)
+            if fact_type == "MATERIAL":
+                represented = represented or _structured_material_atom(source_term, source_text, target, field_name)
             if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
                 affirmative_target = re.sub(
                     r"(?:不含|没有|无|非|不是)\s*橡皮(?:擦)?|橡皮(?:筋|圈|带)", "", target)
@@ -1044,7 +1086,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             findings.append(QAFinding("NUMERIC_DROPPED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "missing": dict(dropped)}, source=source_text, target=target, message="numeric fact dropped", blocking=True))
         if duplicated:
             findings.append(QAFinding("NUMERIC_ADDED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "extra": dict(duplicated)}, source=source_text, target=target, message="numeric fact added", blocking=True))
-        protected = protect_text(source_text)
+        technical_source = _technical_scan_source(source_text)
+        protected = protect_text(technical_source)
         target_protected = protect_text(target)
         def strict_key(kind, value):
             # Quantified technical tokens already use whitespace equivalence
@@ -1085,7 +1128,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                     continue
                 if kind == "TECH":
-                    expected_count = _casefold_token_count(source_text, value)
+                    expected_count = _casefold_token_count(technical_source, value)
                     actual_count = _casefold_token_count(target, value)
                 else:
                     expected_count, actual_count = source_text.count(value), target.count(value)

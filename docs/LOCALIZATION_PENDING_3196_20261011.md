@@ -125,3 +125,53 @@ The 48 contextual/numeric regressions and 124 combined protected-token tests
 pass. The intermediate full suite passes 1,350 tests; final full-suite results
 after the bounded-token change are recorded with its Git commit.
 The final full local suite passes 1,359 tests after all three repairs.
+
+## Structured materials and Spanish articles in technical QA
+
+Real detail SKU 3003940 uses `Material: Hierro, Bambú`; its retained Chinese
+material value is `铁, 竹`. Short `竹`/`木` equivalents are now recognized only
+as complete list atoms inside a single explicit material pair in details.
+Source and target duplicate material keys cannot use this exception. Bamboo
+fibre, qualified wood, wood appearance, negation, a pattern key and another
+source field cannot authorize a bare material atom. SKU 3217432 retains its
+untranslated/invalid-key blockers after the wood false positive is removed.
+
+SKU 3200285 exposed the uppercase Spanish article `DEL` inside a phone-holder
+type label. QA excludes the article only in explicit own-field labels for
+phone holders, article numbers and handle material. The exclusion affects
+the technical scanner view, never source text, hashes or provider input.
+Keyboard/model DEL identifiers, including an actual key beside an article
+in the same field, remain protected. The original protection tokenizer is
+unchanged.
+
+The evidence comparison executes the former 53e2590 QA and the revised QA
+against the same three real sources with the repository knowledge loaded.
+3003940 and 3200285 change from fact-QA FAIL to PASS; 3217432 remains FAIL.
+These candidates retain their earlier source-conflict/HIGH review holds;
+fact-QA PASS does not supply semantic approval or authorize Apply. The new
+scanner regressions are CI_SAFE, read repository fixtures/dictionary only,
+and never call a provider or write a production database. The intermediate
+full local suite passes 1,382 tests.
+
+## Revalidation inside the native Apply lock
+
+The finite runner now compares the review's complete six-field source
+context after acquiring the shared production lock. A competing writer
+could otherwise change another source field between outer preflight and
+lock acquisition, invalidating the semantic review while leaving its own
+field text identical. Such rows stay `SOURCE_CONTEXT_CHANGED_REVIEW_REQUIRED`
+before Registry revision/approval/patch creation. Missing context stays
+`SOURCE_CONTEXT_REVIEW_REQUIRED`. Legacy canonical context keys remain
+accepted, and unavailable None evidence is distinct from empty text.
+This check supplements the existing own-source and Chinese target baseline
+guards; it does not alter daily-run field-level caching or the approval scope.
+
+The former batch05 worker ended at its configured wait deadline with zero
+Apply. Its reports are retained. A subsequent combined batch can use the
+same reviewed 36 specs and 38 newly reviewed names only after new-code QA,
+full regression and live context revalidation. Candidates and prepared
+manifests remain separate from accepted PRIMARY Apply counts.
+The final local regression suite passes 1,385 tests after the locked context
+check. Focused delegated-approval, scanner and daily compatibility checks
+pass 55 tests. These results confirm local code regressions; the pending
+74-field batch still requires its own native Apply and integrity evidence.
