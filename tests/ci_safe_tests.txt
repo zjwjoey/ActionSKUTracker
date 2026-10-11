@@ -134,3 +134,4 @@ tests/test_historical_pending3196_capacity_units.py
 tests/test_historical_pending3196_description_qa.py
 tests/test_historical_pending3196_connector_preposition.py
 tests/test_historical_pending3196_correction_device_goma.py
+tests/test_historical_pending3196_body_cloth.py

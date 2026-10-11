@@ -245,3 +245,13 @@ SKU3218230官方详情的完整连接器值`Tipo de conector: POR CABLE`被保�
 新增24项CI_SAFE回归只读仓库fixture并调用纯语义、QA和原生审批分类；覆盖原错例、字段角色混合、重复/未知键、跨字段隔离、数值损坏、HIGH审批和来源Hash不变。首轮测试使用错误对象属性target_text导致2个测试失败，修正为实际canonical_value后24项通过；连同既有名称/详情60项针对性检查通过。完整1504项回归通过（100.37秒）。同PRIMARY快照和同候选比对55dc67f与新语义：1129个审查字段中1105有候选且可比，24无候选未计入，仅3223678详情由FAIL变PASS，新增Approval/Apply均0。
 
 证据：`correction_device_goma_full_pytest_20261011.txt`、`correction_device_goma_same_snapshot_semantic_comparison.json`、`correction_device_goma_real_qa_reproduction_and_experiment.json`及第14批Apply/Integrity/Resume报告。代码仅本地独立分支实现，未push、未部署daily；本地回归不代表线上全量daily已验证。
+
+## 身体用品巾片的详情字段角色
+
+第15批72字段与第16批65字段均完成正式Apply、Master SUCCESS、独立保护表完整性检查及同批Resume，重复Apply0。两批实际中文修正分别9/11字段，其余63/54字段保留正确原文并完善审批与来源绑定。累计完整验收637字段/504SKU：3个空白补译、62个已有文本修正、572个原值绑定恢复。已有文本修正中包含两条正式中文字段原来完全残留西语的真实翻译，仍按已有非空值纠错统计，不冒充原空白补译。目标队列在第16批验收后为3183SKU/8109字段：空白待补4624、中文或来源绑定待复核3485。全六字段19176范围仍未完成。
+
+真实SKU3205296自身详情有身体用途和`Sustancia: Paño`，程序却要求清洁布类型，拒绝源支持的巾片形态。现只在同一详情内唯一完整身体部位键（全身/面部/双手）、唯一完整物态键和准确单数Paño值时，生成受保护VARIANT巾片，而非清洁布商品类型。巾片/布片/布巾必须保留，不能省略、否定或用液体、喷雾、抹布替代。这个规则不声明湿度或清洁功效；单独清洁布事实仍受保护，未知身体部位、重复键、限定值和其他字段不能提供例外。原来源、数值、单位、Hash及版本不变，没有修改或发布字典。
+
+此商品的类型纠错保持原HIGH与Owner Gate，即使硬QA由FAIL变PASS也不自动批准或Apply。新增37项CI_SAFE真实fixture及反例测试，连同此前橡皮擦测试61项通过；完整1541项回归通过（94.99秒）。同来源/候选快照下1289个已审查字段中1265个有候选可比，24个没有候选明确排除；仅3205296由FAIL变PASS，比较本身新增审批/Apply均0。此前连接器比较报告的1049为审查记录数，包含无候选记录，不能将它们全部宣称为有效译文比较。
+
+运行证据为`body_cloth_full_pytest_20261011.txt`、`body_cloth_same_snapshot_qa_comparison.json`、`body_cloth_real_qa_reproduction_and_experiment.json`和第15/16批验收报告。代码仅在本地独立分支实现，未push、未部署daily，不将本地测试当作线上全量daily已验证。

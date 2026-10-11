@@ -83,6 +83,19 @@ def correction_device_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
         key + r"\s*(goma)\s*(?=[;；\r\n]|$)", text, re.I))
 
 
+def body_cloth_form_spans(text: str) -> tuple[tuple[int, int], ...]:
+    """Resolve a unique cloth-form value only with own-field body evidence."""
+    delimiter = r"(?:^|[;；\r\n])\s*"
+    body_key = delimiter + r"apto\s+para\s+tipo\s+de\s+parte\s+del\s+cuerpo\s*[:：]{1,2}"
+    form_key = delimiter + r"sustancia\s*[:：]{1,2}"
+    if len(re.findall(body_key, text, re.I)) != 1 or len(re.findall(form_key, text, re.I)) != 1:
+        return ()
+    if not re.search(body_key + r"\s*(?:todo\s+el\s+cuerpo|rostro|manos)\s*(?=[;；\r\n]|$)", text, re.I):
+        return ()
+    return tuple(m.span(1) for m in re.finditer(
+        form_key + r"\s*(paño)\s*(?=[;；\r\n]|$)", text, re.I))
+
+
 def name_eraser_context_span(source: SourceFacts) -> tuple[int, int] | None:
     """Resolve a title's bare Gomas from an explicit same-product definition.
 
@@ -126,7 +139,16 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         tech_rows = [{"token": key, "canonical_token": value, "token_type": "TECH_TOKEN"} for key, value in tech_rows.items()]
     eraser_title_span = name_eraser_context_span(source)
     eraser_detail_spans = correction_device_eraser_spans(source.details_es)
+    body_cloth_spans = body_cloth_form_spans(source.details_es)
     def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
+        if (field == "details_es" and body_cloth_spans and source_text.casefold() == "paño"
+                and kind == "PRODUCT_TYPE"):
+            remaining = source.details_es
+            for start, end in reversed(body_cloth_spans):
+                remaining = remaining[:start] + " " + remaining[end:]
+            # An independently stated cleaning-cloth product remains required.
+            if not re.search(r"\bpaño\b", remaining, re.I):
+                return
         if (field == "details_es" and eraser_detail_spans and source_text.casefold() == "goma"
                 and kind in {"MATERIAL", "PRODUCT_TYPE"} and zh not in {"橡皮擦", "橡皮"}):
             remaining = source.details_es
@@ -186,6 +208,8 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     for field, text in text_fields:
         lower = text.lower()
         if field == "details_es":
+            for start, end in body_cloth_spans:
+                add("VARIANT", text[start:end], "巾片", field, "source_bound_body_cloth_form")
             for start, end in eraser_detail_spans:
                 add("PRODUCT_TYPE", text[start:end], "橡皮擦", field,
                     "source_bound_correction_device_type")

@@ -542,6 +542,9 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
         # A contextual eraser fact must not inherit the rubber/band alias.
         return ("橡皮擦", "橡皮")
+    if source_term.casefold() == "paño" and canonical == "巾片":
+        # The typed body-cloth form does not assert cleaning or wetness.
+        return ("巾片", "布片", "布巾")
     aliases = list(_SEMANTIC_TARGET_ALIASES.get(source_term.casefold(), (canonical,)))
     if re.fullmatch(r"\d+\s+lavados", source_term, re.I):
         aliases.extend(("洗衣", "清洗", "水洗"))
@@ -1034,6 +1037,10 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
                 affirmative_target = re.sub(
                     r"(?:不含|没有|无|非|不是)\s*橡皮(?:擦)?|橡皮(?:筋|圈|带)", "", target)
+                represented = any(alias in affirmative_target for alias in aliases)
+            if source_term.casefold() == "paño" and canonical == "巾片" and fact_type == "VARIANT":
+                affirmative_target = re.sub(
+                    r"(?:不是|不属于|不采用|没有|不含|无|非|不)\s*(?:巾片|布片|布巾)", "", target)
                 represented = any(alias in affirmative_target for alias in aliases)
             if source_term.casefold() == "over-ear" and fact_type == "VARIANT":
                 # A negated fit cannot satisfy a positive source assertion.
