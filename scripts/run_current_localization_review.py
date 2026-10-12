@@ -171,9 +171,12 @@ def main():
         applied = apply_approved_localization_patches(runtime.db_path, patch_ids=staged["patch_ids"],
             expected_base_commit_id=head, actor="service:current-localization-apply", run_id=args.batch_id, delegated_approval=grant)
         sync = regenerate_compatibility_exports(cfg, repo.current_head())
-        report = {"reviewed_fields": len(prepared), "blocked": outcomes, "apply": applied, "sync": sync, "qwen_calls": 0}
+        blocked = [row for row in outcomes if row["status"] != "ALREADY_READY"]
+        report = {"reviewed_fields": len(prepared), "blocked": blocked,
+                  "already_ready": sum(row["status"] == "ALREADY_READY" for row in outcomes),
+                  "apply": applied, "sync": sync, "qwen_calls": 0}
         (args.output / "apply_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-        print(json.dumps({"reviewed": len(prepared), "blocked": len(outcomes), "apply": applied}, ensure_ascii=False, default=str))
+        print(json.dumps({"reviewed": len(prepared), "blocked": len(blocked), "apply": applied}, ensure_ascii=False, default=str))
     finally:
         lock.release()
 
