@@ -8,6 +8,7 @@ from typing import Any, Mapping
 
 from .contracts import SourceFacts
 from .policy import FIXED_CAT1, has_ordinary_spanish
+from .body_names import mask_source_bound_body_names
 from .protection.tokens import ProtectedTokenError, protect_text, restore_text
 from .normalization.structured_details import parse_structured_details
 
@@ -658,6 +659,14 @@ def _canonical_numeric_token(token: str) -> str:
 def _normalize_numeric_syntax(value: str) -> str:
     """Use identical numeric syntax in preservation and addition checks."""
     text = str(value or "")
+    # Spanish decimal commas remain decimals before spelled-out measurement
+    # units, even with three fractional digits (1,500 litros == 1.5 litres).
+    # Retain thousands parsing for dots, counts and Chinese comma grouping.
+    text = re.sub(
+        r"(?<![\d.,])(\d+),(\d{3})(?=\s*(?:litros?|mililitros?|gramos?|kilogramos?|centímetros?|milímetros?|metros?)\b)",
+        lambda m: format(Decimal(m.group(1) + "." + m.group(2)).normalize(), "f"),
+        text, flags=re.I,
+    )
     # ASCII area exponents are unit syntax, never a second count. Keep
     # unrelated model digits and dimensions intact.
     text = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)2(?![A-Za-z0-9])", r"\1\2²", text, flags=re.I)
@@ -874,7 +883,8 @@ def _detail_source_value_findings(source_text, target):
         message="physical-state source value requires source review", blocking=True)
         for p in parse_structured_details(source_text)
         if p.key.strip().casefold() == "sustancia"
-        and p.value.strip().casefold() in {"válido", "valido"}]
+        and any(part.strip().casefold() in {"válido", "valido"}
+                for part in p.value.split(","))]
 
 
 def _detail_charging_speed_findings(source_text, target):
@@ -1005,13 +1015,22 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if "null" in target.casefold() or "undefined" in target.casefold():
             findings.append(QAFinding("NULL_UNDEFINED_RESIDUAL", "BLOCKER", field_name, {"value": target}, source=source_text, target=target, blocking=True))
         allowed_display_tokens = _allowed_display_latin_tokens(source_text, target)
+        for fact in semantic_facts:
+            model_name = str(getattr(fact, "source_text", "") or "").strip()
+            if (str(getattr(fact, "semantic_type", "")) == "MODEL"
+                    and _fact_applies_to_field(fact, field_name)
+                    and _source_term_present(source_text, model_name)
+                    and _has_casefold_token(target, model_name)):
+                allowed_display_tokens.update(re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+", model_name))
         # Brands and interfaces may be repeated in a description/detail even
         # when their official source is the product name.  Keep this explicit
         # and shape-bound; ordinary Spanish from the name is never allowed.
         allowed_display_tokens.update(
             _source_bound_cross_field_tokens(getattr(source, "name_es", ""), target)
         )
-        if has_ordinary_spanish(target, allowed_tokens=allowed_display_tokens):
+        residual_target = (mask_source_bound_body_names(source_text, target)
+                           if field_name in {"description", "details"} else target)
+        if has_ordinary_spanish(residual_target, allowed_tokens=allowed_display_tokens):
             findings.append(QAFinding("SPANISH_RESIDUAL", "ERROR", field_name, {"value": target}, source=source_text, target=target, blocking=True))
         # Technical/numeric guards cannot detect an omitted ordinary product
         # noun.  Reuse deterministic semantic facts when the source term is

@@ -135,3 +135,9 @@ tests/test_historical_pending3196_description_qa.py
 tests/test_historical_pending3196_connector_preposition.py
 tests/test_historical_pending3196_correction_device_goma.py
 tests/test_historical_pending3196_body_cloth.py
+
+# CI_SAFE: current delegated approval uses temporary SQLite fixtures only.
+tests/test_current_delegated_approval.py
+
+# CI_SAFE: source-faithful text QA uses in-memory fixtures only.
+tests/test_current_source_faithful_qa.py
