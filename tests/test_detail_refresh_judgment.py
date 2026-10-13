@@ -19,7 +19,7 @@ def plan(base, light=None):
 
 def record(**kwargs):
     return dict(desc_es="Description", details_es="Color: Rojo", cat2_es="B", current_price=1,
-                spec_es="100 ml", product_url="https://example.test/p/1001/", last_seen=datetime.now().date().isoformat(), **kwargs)
+                spec_es="100 ml", product_url="https://www.action.com/es-es/p/1001/test-product/", last_seen=datetime.now().date().isoformat(), **kwargs)
 
 
 def test_recent_presence_does_not_hide_expired_detail_or_price_change():
@@ -31,7 +31,8 @@ def test_recent_presence_does_not_hide_expired_detail_or_price_change():
 def test_sitemap_only_missing_detail_has_baseline_url():
     base = record(); base["details_es"] = "Número del artículo: 1001"
     result = plan(base)
-    assert result[0]["need_detail"] and result[0]["light"]["product_url"] == base["product_url"]
+    assert result[0]["need_detail"] and result[0]["detail_url"] == base["product_url"]
+    assert result[0]["light"] is None
 
 
 def test_confirmed_official_empty_source_waits_until_refresh():

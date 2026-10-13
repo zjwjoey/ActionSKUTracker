@@ -158,7 +158,7 @@ def plan_updates(
                 "canonical_id": st.canonical_id,
                 "reason": reason,
                 "need_detail": need_detail,
-                "light": light or {},
+                "light": light,
                 "detail_url": verified_detail_url(sku,
                     (light or {}).get("product_url"),
                     (sitemap_urls or {}).get(sku), (base or {}).get("product_url")),
@@ -176,11 +176,16 @@ def plan_updates(
     for sku in sorted(eligible)[:max(0, int(unknown_detail_budget))]:
         if sku in by_sku:
             by_sku[sku].update(reason="DETAIL_FRESHNESS_UNKNOWN", need_detail=True)
-            by_sku[sku]["light"] = {"product_url": baseline[sku].get("product_url"), **(by_sku[sku].get("light") or {})}
+            by_sku[sku]["detail_url"] = verified_detail_url(
+                sku, (today_light.get(sku) or {}).get("product_url"),
+                (sitemap_urls or {}).get(sku), baseline[sku].get("product_url"))
         else:
             plans.append({"sku": sku, "canonical_id": sku_statuses[sku].canonical_id,
                           "reason": "DETAIL_FRESHNESS_UNKNOWN", "need_detail": True,
-                          "light": today_light.get(sku) or {"product_url": baseline[sku].get("product_url")}})
+                          "light": today_light.get(sku),
+                          "detail_url": verified_detail_url(
+                              sku, (today_light.get(sku) or {}).get("product_url"),
+                              (sitemap_urls or {}).get(sku), baseline[sku].get("product_url"))})
     return plans
 
 
