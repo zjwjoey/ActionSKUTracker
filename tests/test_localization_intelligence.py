@@ -6,16 +6,26 @@ from action_tracker.localization.learning import aggregate_candidates
 from action_tracker.localization.promotion import can_promote
 from action_tracker.localization.promotion import KnowledgePromotionRouter, validate_candidate_freshness, KnowledgePromotionError
 from action_tracker.localization.knowledge import KnowledgeLoader, ensure_schemas
-from action_tracker.localization.ai import FakeProvider, LocalOpenAICompatibleProvider, provider_from_config, resolve_unknown, validate_ai_response
+from action_tracker.localization.ai import FakeProvider, LocalOpenAICompatibleProvider, provider_from_config, resolve_unknown, validate_ai_response, normalize_ai_fields
 from action_tracker.database.schema import migrate_v2
 from action_tracker.database.connection import connect
 from action_tracker.database.production import apply_localization_correction
 from action_tracker.database.production import CommitBundle, ProductionWriter
 from action_tracker.localization.service import audit_current
+from action_tracker.knowledge.resolver import resolve
 from action_tracker.localization.knowledge import validate_knowledge_file, NEW_SCHEMAS, NEW_KEYS
 from action_tracker.dictionary import PRODUCT_DICTIONARY_HEADERS, MODEL_TRANSLATION_HEADERS, OVERRIDE_HEADERS, SOURCE_DAMAGE_HEADERS, product_source_hash, current_product_dictionary_hash
 import csv
 import json
+
+
+def _record(**overrides):
+    record = {
+        "sku": "1001", "name_es": "Caja", "cat1_es": "Hogar", "cat2_es": "Cajas",
+        "spec_es": "2 unidades", "desc_es": "Caja de plástico", "details_es": "Con tapa",
+    }
+    record.update(overrides)
+    return record
 
 
 def test_formatter_uses_retail_spec_contract():
@@ -71,6 +81,41 @@ def test_ai_response_contract_rejects_malformed_identity_numbers_and_unknown_fie
             payload["fields"] = {"name": "灯", "extra": "x"}
         ok, reasons = validate_ai_response(payload, source, ("name", "spec"))
         assert not ok and reason in reasons
+
+
+def test_ai_fields_are_exact_flat_strings_and_nested_spec_is_rejected():
+    source = SourceFacts.from_record({"sku": "STRUCT-1", "name_es": "Lámpara", "spec_es": "220 V | 10 W"})
+    good = {"fields": {"name": "灯", "spec": "220V｜10W"}}
+    normalized, reasons = normalize_ai_fields(good, ("name", "spec"))
+    assert normalized == {"name": "灯", "spec": "220V｜10W"} and reasons == ()
+    nested = {"fields": {"name": "灯", "spec": {"voltage": "220V", "power": "10W"}}}
+    normalized, reasons = normalize_ai_fields(nested, ("name", "spec"))
+    assert normalized == {"name": "灯"} and "AI_SPEC_NOT_STRING" in reasons
+    ok, reasons = validate_ai_response(nested, source, ("name", "spec"))
+    assert not ok and "AI_SPEC_NOT_STRING" in reasons
+    partial = {"fields": {"name": "灯"}}
+    ok, reasons = validate_ai_response(partial, source, ("name", "spec"))
+    assert not ok and "AI_FIELD_MISSING" in reasons
+
+
+def test_invalid_ai_candidate_is_not_allowed_to_override_dictionary():
+    record = _record()
+    result = resolve(
+        record,
+        product={"name": "字典名称"},
+        model_cache={"name": "模型缓存", "source_hash": source_hash(record), "validation_status": "PASS"},
+        ai_candidate={"name": "AI猜测", "source_hash": source_hash(record), "validation_status": "FAIL"},
+    )
+    assert result.fields["name"].value == "字典名称"
+    assert result.fields["name"].source == "product_dictionary"
+
+
+def test_ai_candidate_requires_matching_hash_and_pass_status_when_no_dictionary():
+    record = _record()
+    valid = resolve(record, ai_candidate={"name": "AI名称", "source_hash": source_hash(record), "validation_status": "PASS"})
+    assert valid.fields["name"].source == "ai_candidate"
+    stale = resolve(record, ai_candidate={"name": "旧AI名称", "source_hash": "old", "validation_status": "PASS"})
+    assert stale.fields["name"].source == "spanish_fallback"
 
 
 def test_technical_tokens_are_preserved_and_numeric_facts_checked():

@@ -167,8 +167,46 @@ class LocalOpenAICompatibleProvider(OpenAICompatibleProvider):
         return result
 
 
+def normalize_ai_fields(payload: Mapping[str, Any], requested_fields: tuple[str, ...]) -> tuple[dict[str, str], tuple[str, ...]]:
+    """Extract the exact, flat field object allowed by the AI contract.
+
+    This is deliberately strict at the boundary.  In particular, ``spec``
+    must be one string, not a model-invented object such as
+    ``{"power": "220V"}``.  Normalized scalar values are returned alongside
+    reasons so the validator can report all violations in one pass.  Callers
+    must use the values only when the reasons tuple is empty; the raw provider
+    response remains available to diagnostics separately.
+    """
+    requested = tuple(dict.fromkeys(str(field) for field in requested_fields))
+    fields = payload.get("fields") if isinstance(payload, Mapping) else None
+    reasons: list[str] = []
+    if not isinstance(fields, Mapping):
+        return {}, ("AI_FIELDS_NOT_OBJECT",)
+    unknown = set(fields) - set(requested)
+    if unknown:
+        reasons.append("AI_FIELD_NOT_REQUESTED")
+    missing = set(requested) - set(fields)
+    if missing:
+        reasons.append("AI_FIELD_MISSING")
+    normalized: dict[str, str] = {}
+    for key, value in fields.items():
+        if key not in requested:
+            continue
+        if not isinstance(value, str):
+            reasons.append(f"AI_{str(key).upper()}_NOT_STRING")
+            continue
+        normalized[str(key)] = value.strip()
+    if not normalized:
+        reasons.append("AI_FIELDS_EMPTY")
+    return normalized, tuple(dict.fromkeys(reasons))
+
+
 def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, requested_fields: tuple[str, ...]) -> tuple[bool, tuple[str, ...]]:
-    """Validate the provider envelope before it becomes a candidate."""
+    """Validate the provider envelope before it becomes a candidate.
+
+    The field object is an exact flat object: no missing requested fields,
+    extra fields, nested values, arrays, or non-string values are accepted.
+    """
     reasons: list[str] = []
     requested_fields = tuple(requested_fields)
     if not set(requested_fields) <= set(CANONICAL_AI_FIELDS):
@@ -196,15 +234,12 @@ def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, reques
         if key in payload and payload[key] is not None and not isinstance(payload[key], Mapping):
             reasons.append(f"AI_{key.upper()}_NOT_OBJECT")
     fields = payload.get("fields")
-    if not isinstance(fields, Mapping):
-        reasons.append("AI_FIELDS_NOT_OBJECT")
-        fields = {}
-    else:
-        unknown = set(fields) - set(requested_fields)
-        if unknown:
-            reasons.append("AI_FIELD_NOT_REQUESTED")
-    if not fields:
-        reasons.append("AI_FIELDS_EMPTY")
+    normalized_fields, field_reasons = normalize_ai_fields(payload, requested_fields)
+    reasons.extend(field_reasons)
+    # Use only validated scalar values for semantic checks below.  A malformed
+    # nested/object field must never be coerced to a string and accidentally
+    # pass through the Spanish/numeric checks.
+    fields = normalized_fields
     source_tokens = set()
     for source_text in (source.name_es, source.spec_es, source.desc_es, source.details_es):
         source_tokens.update(re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ-]*", source_text or ""))
@@ -221,8 +256,7 @@ def validate_ai_response(payload: Mapping[str, Any], source: SourceFacts, reques
         or (token.isupper() and len(token) >= 2)
     }
     for key, value in fields.items():
-        if not isinstance(value, str): reasons.append(f"AI_{str(key).upper()}_NOT_STRING")
-        elif key == "unit_price":
+        if key == "unit_price":
             reasons.append("AI_UNIT_PRICE_FORBIDDEN")
         elif has_ordinary_spanish(value, allowed_tokens=technical_tokens):
             reasons.append(f"AI_{str(key).upper()}_SPANISH_RESIDUAL")
@@ -302,12 +336,16 @@ def resolve_unknown(engine, record: Mapping[str, Any], plan, provider: Localizat
     request_body = _user_prompt(source, requested)
     result = dict(provider.complete(source, requested))
     schema_ok, schema_reasons = validate_ai_response(result, source, requested)
-    fields = result.get("fields") if isinstance(result.get("fields"), Mapping) else result
+    raw_fields = result.get("fields") if isinstance(result.get("fields"), Mapping) else result
+    # Keep malformed provider output out of any later merge path.  Diagnostics
+    # still receive the exact response via ``raw_fields`` and schema_reasons.
+    normalized_fields, _ = normalize_ai_fields(result, requested)
+    fields = normalized_fields if schema_ok else {}
     candidate = {"sku": source.sku, "canonical_id": source.canonical_id, "source_hash": source.source_hash,
                  "policy_version": POLICY_VERSION, "prompt_version": prompt_version,
                  "provider": getattr(provider, "provider", type(provider).__name__),
                  "model": getattr(provider, "model", ""), "requested_fields": requested,
-                 "fields": dict(fields), "semantic_items": result.get("semantic_items") or [],
+                 "fields": dict(fields), "raw_fields": dict(raw_fields) if isinstance(raw_fields, Mapping) else {}, "semantic_items": result.get("semantic_items") or [],
                  "product_type_candidate": result.get("product_type_candidate"),
                  "detail_key_candidates": result.get("detail_key_candidates") or [],
                  "tech_token_candidates": result.get("tech_token_candidates") or [],

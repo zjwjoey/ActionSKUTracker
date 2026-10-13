@@ -60,6 +60,16 @@ def resolve(
     fields: dict[str, ResolutionField] = {}
     cache_hash = str((model_cache or {}).get("source_hash") or "")
     cache_valid = bool(model_cache and cache_hash == h and str((model_cache or {}).get("validation_status") or "").upper() == "PASS")
+    # AI output is always lower priority than every dictionary source and is
+    # eligible only when it passed the candidate validator for this exact
+    # source snapshot.  A missing hash/status therefore cannot accidentally
+    # become a production localization through a permissive caller.
+    ai_hash = str((ai_candidate or {}).get("source_hash") or "")
+    ai_valid = bool(
+        ai_candidate
+        and ai_hash == h
+        and str((ai_candidate or {}).get("validation_status") or "").upper() == "PASS"
+    )
 
     for field in KNOWLEDGE_FIELDS:
         scoped_value = ""
@@ -77,7 +87,7 @@ def resolve(
             ("scoped_dictionary", scoped_value),
             ("term_dictionary", dictionary_value),
             ("model_cache", _value(model_cache, field) if cache_valid else ""),
-            ("ai_candidate", _value(ai_candidate, field) if ai_candidate else ""),
+            ("ai_candidate", _value(ai_candidate, field) if ai_valid else ""),
         )
         selected_source, selected = next(((src, val) for src, val in candidates if val), ("missing", ""))
         if selected:

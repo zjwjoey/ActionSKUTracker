@@ -21,6 +21,7 @@ from action_tracker.localization.validator import _NUMBER
 
 
 TRUSTED_STATUSES = frozenset({"HUMAN_REVIEWED", "LOCKED", "SEED_REVIEWED", "CAT1_CONFIRMED"})
+DETAIL_TRAINING_APPROVED_STATUS = "TRAINING_APPROVED"
 PRODUCT_FIELDS = (
     ("name", "name_es_raw", "name_zh_standard"),
     ("spec", "spec_es_raw", "spec_zh_standard"),
@@ -29,10 +30,36 @@ PRODUCT_FIELDS = (
 )
 TERM_FILES = (
     ("term_dictionary.csv", "term_es", "term_zh", "TERM"),
-    ("phrase_dictionary.csv", "phrase_es", "phrase_zh", "PHRASE"),
-    ("tech_token_dictionary.csv", "token_es", "canonical_token", "TECH_TOKEN"),
+    # These two files use the v1 schema names below.  The former aliases
+    # (phrase_es/token_es) silently skipped the entire phrase/tech-token
+    # dictionaries, so keep the mapping next to the schema contract.
+    ("phrase_dictionary.csv", "source_phrase", "zh_value", "PHRASE"),
+    ("tech_token_dictionary.csv", "token", "canonical_token", "TECH_TOKEN"),
     ("product_type_dictionary.csv", "source_term", "canonical_zh", "PRODUCT_TYPE"),
     ("detail_key_dictionary.csv", "key_es", "key_zh", "DETAIL_KEY"),
+)
+# Detail translations are intentionally kept in a separate, optional file.
+# The legacy product dictionary schema is frozen and must not be widened just
+# to carry long description/detail text.  This file is a review-only training
+# source; it is never read by production Dictionary Apply.
+DETAIL_DICTIONARY_FILENAME = "detail_translation_dictionary.csv"
+DETAIL_DICTIONARY_HEADERS = (
+    "sku", "source_hash", "name_es_raw", "cat1_es", "cat2_es", "spec_es_raw",
+    "description_es_raw", "description_zh_standard",
+    "details_es_raw", "details_zh_standard", "review_status", "locked",
+    "source_run_id", "source_commit_id", "updated_at", "notes",
+)
+DETAIL_FIELDS = (
+    ("description", "description_es_raw", "description_zh_standard"),
+    ("details", "details_es_raw", "details_zh_standard"),
+)
+
+# Audited unit mappings that are ambiguous as bare tokens.  Context examples
+# are kept in the training split so the model learns their specification use,
+# rather than transliterating ``m`` or ``vatios``.
+TERM_CALIBRATION = (
+    ("m", "米", (("15 m", "15米"), ("2 m", "2米"))),
+    ("vatios", "瓦", (("10 vatios", "10瓦"), ("25 vatios", "25瓦"))),
 )
 
 # This is a compact, machine-readable projection of the two governing
@@ -90,6 +117,27 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
         return [dict(row) for row in csv.DictReader(fh)]
 
 
+def _read_detail_dictionary(path: Path) -> tuple[list[dict[str, str]], str | None]:
+    """Read the optional, explicitly versioned detail-pair source.
+
+    Missing files are normal (the first detail-training run has no approved
+    pairs yet).  A present file with a wrong header is a hard error: silently
+    accepting a misspelled column would turn an apparently successful run
+    into a zero-detail dataset.
+    """
+    if not path.exists():
+        return [], None
+    with path.open("r", encoding="utf-8-sig", newline="") as fh:
+        reader = csv.DictReader(fh)
+        actual = tuple(reader.fieldnames or ())
+        if actual != DETAIL_DICTIONARY_HEADERS:
+            raise ValueError(
+                f"DETAIL_DICTIONARY_SCHEMA_MISMATCH:{path.name}:"
+                f"expected={DETAIL_DICTIONARY_HEADERS}:actual={actual}"
+            )
+        return list(reader), _sha256(path)
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as fh:
@@ -103,6 +151,16 @@ def _trusted(row: dict[str, str]) -> bool:
     translation = _text(row.get("translation_status")).upper()
     locked = _text(row.get("locked")).lower() in {"1", "true", "yes", "locked"}
     return review in TRUSTED_STATUSES or translation in TRUSTED_STATUSES or locked and review not in {"NEEDS_REVIEW", "NEEDS_HUMAN_REVIEW"}
+
+
+def _trusted_detail(row: dict[str, str]) -> bool:
+    """Return whether a detail pair is allowed into offline supervised training.
+
+    ``TRAINING_APPROVED`` is intentionally narrower than a production
+    approval: it may train the local adapter, but is not recognised by
+    Dictionary Apply, promotion, SQLite PRIMARY, or exports.
+    """
+    return _text(row.get("review_status")).upper() == DETAIL_TRAINING_APPROVED_STATUS or _trusted(row)
 
 
 def _known_tokens(dictionary_dir: Path) -> set[str]:
@@ -177,6 +235,77 @@ def _record(*, sku: str, source_hash: str, field: str, source: str, target: str,
     }
 
 
+def _record_multi(
+    *,
+    sku: str,
+    source_hash: str,
+    fields: dict[str, str],
+    source_text: str,
+    source_facts: dict[str, str],
+    source_kind: str,
+) -> dict[str, Any]:
+    """Create one example for a coupled, multi-field output contract.
+
+    Product exports commonly need name and spec together.  Training only
+    single-field responses leaves that contract out-of-distribution and can
+    make the model emit a structured object for ``spec``.  This helper keeps
+    the same audit metadata and guardrails as :func:`_record`, while teaching
+    the assistant to return both requested fields as strings in one JSON
+    object.
+    """
+    requested_fields = list(fields)
+    response = {
+        "sku": sku,
+        "source_hash": source_hash,
+        "fields": fields,
+        "semantic_items": [],
+        "product_type_candidate": None,
+        "detail_key_candidates": [],
+        "tech_token_candidates": [],
+        "confidence": 1.0,
+    }
+    combined_policy: list[str] = []
+    for field in requested_fields:
+        for rule in FIELD_POLICIES.get(field, FIELD_POLICIES["name"]):
+            if rule not in combined_policy:
+                combined_policy.append(rule)
+    user = {
+        "sku": sku,
+        "source_hash": source_hash,
+        "source_facts": source_facts,
+        # Mirror the production/contract request shape as well as the audited
+        # source_facts map.  The fixed evaluator and runtime callers expose
+        # these flat keys; keeping both shapes prevents the model from
+        # learning a different multi-field contract than it is evaluated on.
+        "name_es": source_facts.get("name_es_raw", ""),
+        "cat1_es": source_facts.get("cat1_es", ""),
+        "cat2_es": source_facts.get("cat2_es", ""),
+        "spec_es": source_facts.get("spec_es_raw", ""),
+        "desc_es": source_facts.get("desc_es", ""),
+        "details_es": source_facts.get("details_es", ""),
+        "requested_fields": requested_fields,
+        "source_field": "+".join(requested_fields),
+        "source_text": source_text,
+        "naming_policy_version": NAMING_POLICY_VERSION,
+        "localization_policy_version": LOCALIZATION_POLICY_VERSION,
+        "field_policy": combined_policy,
+        "global_guardrails": [
+            "普通西班牙语零容忍；只有已确认品牌、系列/IP、技术 Token、型号和标准单位可保留拉丁 Token。",
+            "字典和人工覆盖优先；AI 只生成候选，不直接写入正式字段。",
+            "不得增加或删除官网事实；数字仅可做单位和格式规范化。",
+            "联合字段输出时，fields.spec 必须是单个规范化字符串，禁止输出对象、数组或嵌套字段。",
+        ],
+    }
+    return {
+        "messages": [
+            {"role": "system", "content": "你是商品结构化中文标准化引擎。只返回 JSON 对象，禁止 Markdown 和解释。只处理 requested_fields，保留数字和技术 Token，未知内容不得猜测。"},
+            {"role": "user", "content": json.dumps(user, ensure_ascii=False, sort_keys=True)},
+            {"role": "assistant", "content": json.dumps(response, ensure_ascii=False, sort_keys=True)},
+        ],
+        "metadata": {"sku": sku, "source_hash": source_hash, "field": "+".join(requested_fields), "source_kind": source_kind},
+    }
+
+
 def _resolve_policy_documents(policy_docs: Iterable[Path] | None = None) -> dict[str, str]:
     if policy_docs is None:
         repository_root = Path(__file__).resolve().parents[1]
@@ -193,15 +322,23 @@ def build_dataset(
     *,
     valid_ratio: float = 0.1,
     policy_docs: Iterable[Path] | None = None,
+    detail_dictionary: Path | None = None,
 ) -> dict[str, Any]:
     dictionary_dir = Path(dictionary_dir)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     policy_document_hashes = _resolve_policy_documents(policy_docs)
     known_tokens = _known_tokens(dictionary_dir)
+    verified_term_pairs = {
+        (_text(row.get("term_es")), _text(row.get("term_zh")))
+        for row in _read_csv(dictionary_dir / "term_dictionary.csv")
+        if _trusted(row) and _text(row.get("term_es")) and _text(row.get("term_zh"))
+    }
     examples: list[dict[str, Any]] = []
     skipped: Counter[str] = Counter()
     seen: set[tuple[str, str, str, str]] = set()
+    detail_path = Path(detail_dictionary) if detail_dictionary is not None else dictionary_dir / DETAIL_DICTIONARY_FILENAME
+    detail_rows, detail_source_hash = _read_detail_dictionary(detail_path)
 
     for row in _read_csv(dictionary_dir / "product_dictionary.csv"):
         if not _trusted(row):
@@ -230,6 +367,115 @@ def build_dataset(
             seen.add(key)
             examples.append(_record(sku=sku, source_hash=_text(row.get("source_hash")), field=field, source=source, target=target, source_facts=source_facts, source_kind="product_dictionary"))
 
+        # Add a paired name+spec example only when both independently pass the
+        # same numeric and language-safety gates as their single-field rows.
+        # Keeping the pair in the product SKU group prevents train/validation
+        # leakage while making the production multi-field contract explicit.
+        name_source = _text(row.get("name_es_raw"))
+        name_target = _text(row.get("name_zh_standard"))
+        spec_source = _text(row.get("spec_es_raw"))
+        spec_target = _normalize_target("spec", _text(row.get("spec_zh_standard")))
+        if (
+            name_source and name_target and spec_source and spec_target
+            and _numeric_ok(name_source, name_target)
+            and _numeric_ok(spec_source, spec_target)
+            and _target_ok(name_target, known_tokens)
+            and _target_ok(spec_target, known_tokens)
+        ):
+            pair_key = (sku, "name+spec", name_source + "\x1f" + spec_source, name_target + "\x1f" + spec_target)
+            if pair_key in seen:
+                skipped["DUPLICATE"] += 1
+            else:
+                seen.add(pair_key)
+                examples.append(_record_multi(
+                    sku=sku,
+                    source_hash=_text(row.get("source_hash")),
+                    fields={"name": name_target, "spec": spec_target},
+                    source_text=json.dumps({"name": name_source, "spec": spec_source}, ensure_ascii=False, sort_keys=True),
+                    source_facts=source_facts,
+                    source_kind="product_dictionary_pair",
+                ))
+
+    # Detail pairs are deliberately loaded after the frozen product schema.
+    # They must carry freshness evidence and a trusted review state.  Raw
+    # Spanish detail fetches, fallback translations, and rows without a
+    # source hash are reported but never become supervised examples.
+    detail_example_count = 0
+    detail_multi_field_count = 0
+    for row in detail_rows:
+        if not _trusted_detail(row):
+            skipped["DETAIL_UNTRUSTED_STATUS"] += 1
+            continue
+        sku = _text(row.get("sku"))
+        source_hash = _text(row.get("source_hash"))
+        if not sku:
+            skipped["DETAIL_MISSING_SKU"] += 1
+            continue
+        if not source_hash:
+            skipped["DETAIL_MISSING_SOURCE_HASH"] += 1
+            continue
+        source_facts = {
+            "name_es_raw": _text(row.get("name_es_raw")),
+            "cat1_es": _text(row.get("cat1_es")),
+            "cat2_es": _text(row.get("cat2_es")),
+            "spec_es_raw": _text(row.get("spec_es_raw")),
+            "desc_es": _text(row.get("description_es_raw")),
+            "details_es": _text(row.get("details_es_raw")),
+        }
+        accepted: dict[str, str] = {}
+        for field, source_key, target_key in DETAIL_FIELDS:
+            source, target = _text(row.get(source_key)), _text(row.get(target_key))
+            if not source or not target:
+                if source or target:
+                    skipped[f"DETAIL_INCOMPLETE_{field.upper()}"] += 1
+                continue
+            if not _numeric_ok(source, target):
+                skipped["DETAIL_NUMERIC_MISMATCH"] += 1
+                continue
+            if not _target_ok(target, known_tokens):
+                skipped["DETAIL_TARGET_NOT_TRUSTWORTHY"] += 1
+                continue
+            accepted[field] = target
+            key = (sku, field, source, target)
+            if key in seen:
+                skipped["DUPLICATE"] += 1
+            else:
+                seen.add(key)
+                examples.append(_record(
+                    sku=sku,
+                    source_hash=source_hash,
+                    field=field,
+                    source=source,
+                    target=target,
+                    source_facts=source_facts,
+                    source_kind="detail_translation_dictionary",
+                ))
+                detail_example_count += 1
+        # Description and details are often reviewed together.  Add a paired
+        # contract only when both fields independently passed all guards.
+        if len(accepted) == 2:
+            description_source = _text(row.get("description_es_raw"))
+            details_source = _text(row.get("details_es_raw"))
+            pair_key = (
+                sku,
+                "description+details",
+                description_source + "\x1f" + details_source,
+                accepted["description"] + "\x1f" + accepted["details"],
+            )
+            if pair_key in seen:
+                skipped["DUPLICATE"] += 1
+            else:
+                seen.add(pair_key)
+                examples.append(_record_multi(
+                    sku=sku,
+                    source_hash=source_hash,
+                    fields={"description": accepted["description"], "details": accepted["details"]},
+                    source_text=json.dumps({"description": description_source, "details": details_source}, ensure_ascii=False, sort_keys=True),
+                    source_facts=source_facts,
+                    source_kind="detail_translation_dictionary_pair",
+                ))
+                detail_multi_field_count += 1
+
     for filename, source_key, target_key, source_kind in TERM_FILES:
         for row in _read_csv(dictionary_dir / filename):
             if not _trusted(row):
@@ -250,13 +496,43 @@ def build_dataset(
             seen.add(key)
             examples.append(_record(sku=sku, source_hash="", field="name", source=source, target=target, source_facts={"name_es_raw": source}, source_kind=source_kind))
 
+    # Reinforce high-risk unit mappings in their real specification context.
+    # The bare TERM rows remain available for dictionary lookup; these rows
+    # teach the model not to transliterate an isolated token in a spec.
+    for source, target, contexts in TERM_CALIBRATION:
+        if (source, target) not in verified_term_pairs:
+            continue
+        for index, (context_source, context_target) in enumerate(contexts, 1):
+            sku = f"TERM-CAL-{hashlib.sha256(f'{source}|{index}'.encode('utf-8')).hexdigest()[:12]}"
+            key = (sku, "spec", context_source, context_target)
+            if key in seen:
+                skipped["DUPLICATE"] += 1
+                continue
+            seen.add(key)
+            examples.append(_record(
+                sku=sku,
+                source_hash="",
+                field="spec",
+                source=context_source,
+                target=context_target,
+                source_facts={"spec_es_raw": context_source},
+                source_kind="TERM_CALIBRATION",
+            ))
+
     # Split by SKU/group key so the same product cannot leak from train into
     # validation through another field.
     train: list[dict[str, Any]] = []
     valid: list[dict[str, Any]] = []
+    forced_train_kinds = {"TERM", "PHRASE", "TECH_TOKEN", "PRODUCT_TYPE", "DETAIL_KEY", "TERM_CALIBRATION"}
     for example in sorted(examples, key=lambda item: (item["metadata"]["sku"], item["metadata"]["field"])):
         group = example["metadata"]["sku"]
-        bucket = int(hashlib.sha256(group.encode("utf-8")).hexdigest()[:8], 16) / 0xFFFFFFFF
+        # Semantic dictionary rows are tiny, high-value mappings.  Keeping a
+        # one-off mapping in validation while no equivalent signal reaches
+        # training makes the result look like a model failure even though the
+        # split is the cause.  Put these deterministic knowledge examples in
+        # train and validate them separately with the term shadow check.
+        source_kind = str(example["metadata"].get("source_kind") or "").upper()
+        bucket = 1.0 if source_kind in forced_train_kinds else int(hashlib.sha256(group.encode("utf-8")).hexdigest()[:8], 16) / 0xFFFFFFFF
         (valid if bucket < valid_ratio else train).append(example)
     if examples and not valid:
         valid.append(train.pop())
@@ -285,6 +561,15 @@ def build_dataset(
         "total_count": len(examples),
         "train_skus": len({row["metadata"]["sku"] for row in train}),
         "valid_skus": len({row["metadata"]["sku"] for row in valid}),
+        "multi_field_count": sum(1 for row in examples if "+" in row["metadata"]["field"]),
+        "multi_field_contracts": ["name+spec", "description+details"],
+        "detail_source_file": str(detail_path) if detail_source_hash else None,
+        "detail_source_hash": detail_source_hash,
+        "detail_field_example_count": detail_example_count,
+        "detail_pair_count": detail_example_count,
+        "detail_multi_field_count": detail_multi_field_count,
+        "term_calibration_count": sum(1 for row in examples if row["metadata"]["source_kind"] == "TERM_CALIBRATION"),
+        "forced_train_source_kinds": sorted(forced_train_kinds),
         "skipped": dict(skipped),
         "production_apply": False,
         "model_calls": 0,
@@ -298,10 +583,21 @@ def main() -> int:
     parser.add_argument("--dictionary-dir", type=Path, default=Path("data/dictionary"))
     parser.add_argument("--output-dir", type=Path, default=Path("runtime/local_ai/training_data"))
     parser.add_argument("--valid-ratio", type=float, default=0.1)
+    parser.add_argument(
+        "--detail-dictionary",
+        type=Path,
+        default=None,
+        help=f"optional trusted detail-pair CSV (default: <dictionary-dir>/{DETAIL_DICTIONARY_FILENAME})",
+    )
     args = parser.parse_args()
     if not 0 < args.valid_ratio < 1:
         parser.error("--valid-ratio must be between 0 and 1")
-    print(json.dumps(build_dataset(args.dictionary_dir, args.output_dir, valid_ratio=args.valid_ratio), ensure_ascii=False, indent=2))
+    print(json.dumps(build_dataset(
+        args.dictionary_dir,
+        args.output_dir,
+        valid_ratio=args.valid_ratio,
+        detail_dictionary=args.detail_dictionary,
+    ), ensure_ascii=False, indent=2))
     return 0
 
 

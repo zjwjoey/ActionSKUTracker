@@ -51,7 +51,11 @@ def _policy_format_pass(payload: dict[str, Any], requested_fields: tuple[str, ..
     reasons: list[str] = []
     fields = payload.get("fields") if isinstance(payload.get("fields"), dict) else {}
     if "spec" in requested_fields:
-        spec = str(fields.get("spec", ""))
+        spec_value = fields.get("spec", "")
+        if not isinstance(spec_value, str):
+            reasons.append("SPEC_NOT_STRING")
+            return False, reasons
+        spec = spec_value
         if "|" in spec:
             reasons.append("SPEC_ASCII_PIPE")
         if re.search(r"(?<=\d)[xX](?=\d)", spec):
@@ -96,7 +100,10 @@ def evaluate_adapter(*, base_model: str, adapter_dir: Path, max_new_tokens: int 
         raw_format_valid, raw_format_reasons = _policy_format_pass(payload or {}, fields)
         normalized_payload = dict(payload or {})
         normalized_fields = dict(normalized_payload.get("fields") or {})
-        if "spec" in normalized_fields:
+        # Formatting is only a post-processing step for a scalar string.
+        # Never coerce a model object/list to text: the shared validator must
+        # reject that shape as a contract violation.
+        if isinstance(normalized_fields.get("spec"), str):
             normalized_fields["spec"] = format_spec(normalized_fields["spec"])
         normalized_payload["fields"] = normalized_fields
         valid, reasons = validate_ai_response(normalized_payload, source, fields)

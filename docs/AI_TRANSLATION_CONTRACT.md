@@ -8,6 +8,13 @@ The local Qwen3:8B integration uses the interchangeable `LocalOpenAICompatiblePr
 
 `scripts/build_local_qwen_dataset.py` builds a Qwen-compatible `train.jsonl`, `valid.jsonl` and `manifest.json` under `runtime/local_ai/training_data/`. It reads only trusted product/term dictionary rows, applies the field-level naming/spec placement policy, preserves source numbers and technical tokens, excludes unreviewed or inconsistent examples, and performs no model/network call. The generated dataset is an offline training input; it does not modify the dictionary, Learning Pool or PRIMARY. The local QLoRA runner requires schema-v2 policy evidence and trains assistant JSON only; it remains in the separate F-drive environment and must pass shadow evaluation before any adapter is configured for inference.
 
+Description and detail supervision uses the optional, separate
+`detail_translation_dictionary.csv` contract documented in
+`docs/DETAIL_TRAINING_DATA_CONTRACT.md`.  The frozen product dictionary is
+not widened for long text.  Spanish detail fetches without an approved Chinese
+pair, source hash, and trusted review state are intentionally excluded rather
+than being mislabeled as training data.
+
 Final closure (2026-09-01): the local `qwen3:8b` endpoint passed product and numeric/technical-token JSON smoke tests. The provider remains opt-in; smoke output is not written to the dictionary or PRIMARY. Source-damaged fields are never sent to the provider, requested fields are field-scoped, and promotion always rechecks every structured evidence row against current PRIMARY source hashes.
 
 The offline Qwen3:8B adapter pilot also completed on 2026-09-01 using 364 trusted examples (333 train / 31 valid) and the full naming/spec policy projection. Its fixed-fixture evaluation passed after the deterministic `format_spec` step; the adapter is stored under `F:\LocalAI\Adapters\action-localization-qwen3-8b` and is not production-enabled.
