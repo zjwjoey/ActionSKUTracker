@@ -1,0 +1,54 @@
+{
+  "sku": "3205296",
+  "source": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Cantidad: 5 unidades; Sustancia: Paño; Tipo de dispensador: Saquito; Número del artículo: 3205296",
+  "context": {
+    "name_es": "Toallitas autobronceadoras The Beauty Dept.",
+    "cat1_es": "Cuidado personal",
+    "cat2_es": "Quemaduras solares y aftersun",
+    "spec_es": "5 unidades",
+    "desc_es": "Fácil y seguro de usar\nPara un dorado y bronceado brillantes y uniformes\n¿Quieres lucir también una piel bronceada en los días nublados? Estas toallitas autobronceadoras son fáciles de usar y te proporcionan ese brillo bronceado en un abrir y cerrar de ojos.",
+    "details_es": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Cantidad: 5 unidades; Sustancia: Paño; Tipo de dispensador: Saquito; Número del artículo: 3205296"
+  },
+  "candidate": "适用身体部位: 全身\n数量: 5 件\n形态: 巾片\n包装类型: 小袋\n商品编号: 3205296",
+  "source_evidence": {
+    "rank": 1,
+    "text": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Cantidad: 5 unidades; Sustancia: Paño; Tipo de dispensador: Saquito; Número del artículo: 3205296",
+    "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-04\\2026-09-04_031405\\products_normalized.csv",
+    "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-04/2026-09-04_031405",
+    "file_hash": "d6797c65265143429bb2f97139f79fb16d527faf180340a4a6d5a9deff1bc0ac",
+    "field_hash": "bebf9aee6de4f800cc627bb3c0bac9e33ca736983453e50be3168dfbeb705b32"
+  },
+  "risk_level": "HIGH",
+  "owner_gate": "PRESERVED",
+  "qa_before": {
+    "status": "FAIL",
+    "fact_status": "FAIL",
+    "findings": [
+      {
+        "rule_id": "SEMANTIC_FACT_DROPPED",
+        "severity": "ERROR",
+        "field_name": "details",
+        "evidence": {
+          "semantic_type": "PRODUCT_TYPE",
+          "source_term": "paño",
+          "expected_target": "清洁布",
+          "source_field": "details_es",
+          "target_scope": "details",
+          "placement": "name"
+        },
+        "sku": "",
+        "source_hash": "",
+        "source": "Apto para tipo de parte del cuerpo: Todo el cuerpo; Cantidad: 5 unidades; Sustancia: Paño; Tipo de dispensador: Saquito; Número del artículo: 3205296",
+        "target": "适用身体部位: 全身\n数量: 5 件\n形态: 巾片\n包装类型: 小袋\n商品编号: 3205296",
+        "message": "semantic product fact is not represented in target",
+        "repairable": false,
+        "blocking": true
+      }
+    ],
+    "canonical_status": "NOT_RUN",
+    "canonical_qa_status": "NOT_RUN",
+    "overall_ready": false
+  },
+  "production_apply": false,
+  "fixture_contract": "Candidate fidelity checked independently; HIGH proposal is not an approved golden production translation."
+}

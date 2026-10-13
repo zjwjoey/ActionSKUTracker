@@ -50,6 +50,8 @@ def committed_registry_records(cfg: Mapping[str, Any], *, source_run_id: str,
                          (fact_commit_id, source_run_id)).fetchone()
         if not row or row[0] != business_date or row[1] not in {'PASS', 'PASS_PRESENCE_ONLY'} or row[2] or row[3] != 'COMMITTED':
             raise ValueError('REGISTRY_RECOVERY_COMMIT_NOT_VERIFIED')
+        evidence_row = db.execute('SELECT evidence_json FROM run_evidence WHERE run_id=?', (source_run_id,)).fetchone()
+        field_evidence = (json.loads(evidence_row[0] or '{}').get('fact_field_provenance') or {}) if evidence_row else {}
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         fields = {'name': 'name_es', 'cat1': 'cat1_es', 'cat2': 'cat2_es', 'spec': 'spec_es', 'description': 'desc_es', 'details': 'details_es'}
         frozen: dict[str, dict[str, Any]] = {}
@@ -70,7 +72,8 @@ def committed_registry_records(cfg: Mapping[str, Any], *, source_run_id: str,
         raise ValueError('REGISTRY_RECOVERY_CURRENT_SKU_SET_CHANGED')
     for sku, source in frozen.items():
         for field in ('spec', 'desc', 'details'):
-            source[f'{field}_es'] = normalize_official_text(source.get(f'{field}_es'), field=field)
+            if (field_evidence.get(sku) or {}).get(f'{field}_es', {}).get('state') != 'HISTORY_RETAINED':
+                source[f'{field}_es'] = normalize_official_text(source.get(f'{field}_es'), field=field)
         if localization_source_hash(source) != localization_source_hash(current_by_sku[sku]):
             raise ValueError(f'REGISTRY_RECOVERY_SOURCE_CHANGED:{sku}')
     return list(current_by_sku.values())

@@ -21,10 +21,13 @@
 
 The current Action Master profile is `ACTION_MASTER_NO_BRAND_V1`:
 
-* Chinese display text omits brand and IP names.
-* The suffix `牌` is never added.
+* Chinese product names omit brand and IP names and never add the suffix `牌`.
+* Specifications, descriptions and details preserve only brand/IP facts
+  supported by their own Spanish source field. A title or another field cannot
+  authorize importing those facts.
 * Models, interfaces, technical tokens, numbers, units and SKU facts remain.
-* Brand/IP knowledge remains in internal provenance and QA, but is not emitted.
+* Brand/IP knowledge remains in internal provenance and QA, including when
+  its tokens are omitted from the Chinese product name.
 
 ## Translation order
 

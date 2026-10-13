@@ -50,6 +50,14 @@
 
 由上一期带入的字段不得伪装成当天新抓取字段。
 
+回归与部分详情合并的 `fact_field_provenance` 使用既有行/JSON证据容器，记录各字段的 `CURRENT_VERIFIED`、`HISTORY_RETAINED` 或 `SOURCE_MISSING` 与来源。该映射进入 `run_evidence.evidence_json`，六个西语字段同时使用既有 localization source 列；不新增 schema。历史保留值不重新清洗，不证明本轮售价。详见 `POST_RELEASE_DATA_INTEGRITY.md`。
+
+Listing 入口类目/卡片文字与 Detail 标准字段属于不同来源层；入口类目集合不能改写详情类目。
+增量比较使用既有 `run_evidence.evidence_json` 中的 `LISTING_FIELD_EVIDENCE_V1`，绑定同层卡片、
+run/date、字段 hash 和未完成的 canonical confirmation；无可信前态时只做有预算的未知来源探测。
+当前 Detail 非空字段保留其真实来源；Detail 失败时保留非空历史事实并标明待确认，不把 Listing 冲突
+伪装为已确认 Detail。该证据容器扩展不新增 SQLite schema。
+
 ## 4. 生命周期实体
 
 `known_skus.csv` 以 SKU 为主键，保存跨日状态所需的最小事实：
@@ -97,7 +105,7 @@ SKU 主键，保存标准中文字段、对应西语来源、source hash、状�
 
 ### brand_dictionary.csv
 
-品牌标准名、别名、确认状态和证据只属于内部事实、证据、QA 和术语上下文。正式中文展示采用 `ACTION_MASTER_NO_BRAND_V1`：不显示品牌/IP，不添加“牌”字；型号、系列、标准、接口、技术 token、数字和单位仍必须按西语事实保留。品牌未确认不得臆测，西语事实不可改写。
+品牌标准名、别名、确认状态和证据保留在内部事实、证据、QA 和术语上下文中。`ACTION_MASTER_NO_BRAND_V1` 的 NO_BRAND 展示约束适用于中文品名：不显示品牌/IP，不添加“牌”字。规格、描述和详情保留本字段西语原文支持的品牌/IP 事实，不得从品名或其他字段注入；型号、系列、标准、接口、技术 token、数字和单位仍必须按西语事实保留。品牌未确认不得臆测，西语事实不可改写。
 
 Resolver 对品牌另存运行时分类：`CONFIRMED`（人工确认或证据明确）、`PROVISIONAL`
 （字典存在但尚未完成人工确认）和 `UNKNOWN`（没有可信字典项）。`UNKNOWN` 必须进入审核，

@@ -10,6 +10,9 @@
 
 QA FAIL 和 dry-run 都可以保存 Snapshot、Staging 和报告，但不得更新 Master、known_skus 或 offline_skus。
 
+`CONTENT_CHANGE` 统计只计同名事件类型，不包含 `FIRST_SEEN`。daily 报告、
+`05_RUN_LOG` 与 SQLite event_history 的兼容投影使用同一口径；首次建档仍由 NEW/FIRST_SEEN 单独统计。
+
 ## 2. Collection 规则
 
 ### QA-COL-001：Sitemap 有效性
@@ -136,7 +139,7 @@ TERM_CANDIDATE 必须经人工 APPROVED 才能进入正式术语字典。
 
 ### QA-DICT-008：西语残留
 
-中文品名和中文规格中的普通西语残留不得标记为 AUTO_READY；品牌/IP 仅在内部证据和 QA 中保留，正式展示按 NO_BRAND；型号、技术 token、数字和单位不能删除。描述和详情缺失或过期保持 `PENDING`/`REVIEW_REQUIRED`；`display_fallback=ES` 只用于展示提示，不能改变发布门禁。
+中文品名和中文规格中的普通西语残留不得标记为 AUTO_READY。NO_BRAND 适用于中文品名；品牌/IP 在内部证据和 QA 中保留，规格、描述和详情只保留本字段西语原文支持的品牌/IP 事实，不得从品名或其他字段注入，也不能借品牌白名单放行普通西语正文。型号、技术 token、数字和单位不能删除。描述和详情缺失或过期保持 `PENDING`/`REVIEW_REQUIRED`；`display_fallback=ES` 只用于展示提示，不能改变发布门禁。
 
 ### QA-DICT-009：Apply Gate
 

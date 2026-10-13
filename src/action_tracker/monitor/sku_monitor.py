@@ -27,6 +27,7 @@ class SkuStatus:
     observation_valid: bool = True
     nuevo_present: bool = False
     promotion_present: bool = False
+    identity_source: str = "LIFECYCLE"
 
 
 def run_sku_monitor(
@@ -40,6 +41,8 @@ def run_sku_monitor(
     category_coverage: dict[str, bool] | None = None,
     nuevo_skus: set[str] | None = None,
     promo_skus: set[str] | None = None,
+    business_date: str | None = None,
+    historical_identities: dict[str, dict] | None = None,
 ) -> tuple[dict[str, SkuStatus], set[str]]:
     """执行 SKU 集合核对，返回 {sku: SkuStatus} 与今天的存在集合。"""
     sitemap_set = set(sitemap_skus)
@@ -56,8 +59,13 @@ def run_sku_monitor(
         today_present = sku in today_set
         was_yesterday = sku in yesterday_set
         k = known.get(sku)
-        ever_seen = k is not None
-        first_seen = k.get("first_seen_date") if k else None
+        # Historical identity proves existence, never a new Presence vote or
+        # an invented OFFLINE/MISSING state. Only today's observed SKU uses it.
+        historical = (historical_identities or {}).get(sku) if today_present else None
+        ever_seen = k is not None or bool(historical)
+        first_seen = ((k or {}).get("first_seen_date") or
+                      (historical or {}).get("first_seen") or
+                      (yesterday_records.get(sku) or {}).get("first_seen"))
         # 上一有效生命周期状态：known_skus.last_status（ACTIVE/MISSING/OFFLINE）。
         # 不在 known 或记录缺状态 → 空串，视为"无缺省证据"（present 时按 ACTIVE 处理）。
         previous_status = (k.get("last_status") or "") if k is not None else ""
@@ -72,6 +80,13 @@ def run_sku_monitor(
             # “没看见”不是“已下架”：不推进 missing_count，也不产生生命周期事件。
             from ..services.lifecycle import Classification
             cls = Classification("UNKNOWN", missing_count, None)
+        elif (not today_present and business_date and k
+              and str(k.get("last_state_observation_date") or "") == business_date):
+            # An absence is a daily observation, not another vote per run.
+            # In particular count=threshold-1 must not become OFFLINE when
+            # the same day's successful observation is executed again.
+            from ..services.lifecycle import Classification
+            cls = Classification("ABSENT", missing_count, None)
         else:
             cls = classify(
                 today_present=today_present,
@@ -110,6 +125,9 @@ def run_sku_monitor(
             observation_valid=coverage_valid or today_present,
             nuevo_present=sku in nuevo_skus,
             promotion_present=sku in promo_skus,
+            identity_source=("LIFECYCLE" if k is not None else
+                "PRODUCT_HISTORY_WITHOUT_LIFECYCLE" if historical else
+                "CURRENT_BASELINE" if was_yesterday else "NEW_IDENTITY"),
         )
     return result, today_set
 

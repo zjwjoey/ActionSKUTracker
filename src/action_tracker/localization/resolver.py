@@ -210,12 +210,8 @@ class TranslationResolver:
             # system prompt.  Put reviewed semantic facts on its terms list
             # instead, so facts such as ``gomas -> 橡皮筋`` cannot be silently
             # dropped by the provider.  Brand/IP spans are deliberately sent
-            # source-to-source and removed from Chinese names afterwards.
-            # The Action Chinese display contract omits identified brand/IP
-            # spans from every rendered Chinese field, not only the product
-            # name.  Qwen may repeat a source brand in descriptions/details;
-            # keep it in provenance, but remove it from the display value so
-            # the same policy is applied consistently across fields.
+            # source-to-source. Only names apply the no-brand display policy;
+            # other fields preserve their own source brands/IP as facts.
             display_tokens: list[str] = []
             semantic_types = {"PRODUCT_TYPE", "FUNCTION", "MATERIAL", "COMPATIBILITY", "CARE", "NUTRITION", "VARIANT", "DETAIL_KEY"}
             term_by_source = {
@@ -231,7 +227,8 @@ class TranslationResolver:
                 if not token:
                     continue
                 if fact.semantic_type in {"BRAND", "IP_CHARACTER"}:
-                    display_tokens.append(token)
+                    if field_name == "name":
+                        display_tokens.append(token)
                     target = token
                 elif fact.semantic_type in semantic_types:
                     target = str(fact.canonical_value or fact.value or "").strip()
@@ -241,10 +238,10 @@ class TranslationResolver:
                     continue
                 existing_term = term_by_source.setdefault(token.casefold(), {"source": token, "target": target})
                 if fact.semantic_type in {"BRAND", "IP_CHARACTER"}:
-                    # Keep the source-to-source term for Qwen provenance, but
-                    # carry the display policy to field QA.  Chinese output
-                    # deliberately removes identified brands/IP afterwards.
-                    existing_term["display_omittable"] = True
+                    if field_name == "name":
+                        existing_term["display_omittable"] = True
+                    else:
+                        existing_term.pop("display_omittable", None)
             family_policy = family_policy_for(context)
             if family_policy:
                 for rule in family_policy.terms_for(field_name, context.context_key):

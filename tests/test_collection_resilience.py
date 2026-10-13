@@ -129,7 +129,7 @@ def test_detail_cooldown_waits_and_probes_same_sku_once(tmp_path: Path, monkeypa
     completed, evidence = [], []
     updater.fetch_and_merge(
         _SleepOnlyBrowser(), [{"sku": "1001", "canonical_id": "ACT0001001", "reason": "NEW",
-                               "need_detail": True, "light": {"product_url": "https://x/p/1001/"}}],
+                               "need_detail": True, "light": {"product_url": "https://www.action.com/es-es/p/1001/"}}],
         {}, tmp_path, access_controller=ctl, detail_evidence=evidence, detail_completed_skus=completed)
     assert calls == ["NORMAL", "COOLDOWN"]
     assert completed == ["1001"] and evidence == []
@@ -176,9 +176,9 @@ def test_detail_second_challenge_after_cooldown_blocks_remaining_queue(tmp_path:
     updater.fetch_and_merge(
         _SleepOnlyBrowser(), [
             {"sku": "1001", "canonical_id": "ACT0001001", "reason": "NEW", "need_detail": True,
-             "light": {"product_url": "https://x/p/1001/"}},
+             "light": {"product_url": "https://www.action.com/es-es/p/1001/"}},
             {"sku": "1002", "canonical_id": "ACT0001002", "reason": "NEW", "need_detail": True,
-             "light": {"product_url": "https://x/p/1002/"}},
+             "light": {"product_url": "https://www.action.com/es-es/p/1002/"}},
         ], {}, tmp_path, access_controller=ctl, detail_evidence=evidence)
     assert calls == ["NORMAL", "COOLDOWN"]
     assert ctl.state == AccessState.BLOCKED

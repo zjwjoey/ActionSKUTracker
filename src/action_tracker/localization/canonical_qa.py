@@ -51,7 +51,9 @@ def audit_canonical(context: TranslationContext, fields: Mapping[str, Any], *, r
         for item in parse_structured_details(target):
             if item.context_key == "material" and "橡皮筋" in item.value:
                 findings.append(CanonicalFinding("DETAIL_CONTEXT_TERMINOLOGY_VIOLATION", "BLOCKER", field, "material Goma must be 橡胶, not 橡皮筋", {"context_key": "material", "expected": "橡胶", "found": item.value}))
-    if field == "description" and any(str(f.source_text).casefold() == "gomas" for f in context.semantic_facts) and "橡皮筋" not in target:
+    if field == "description" and any(str(f.source_text).casefold() == "gomas"
+            and f.semantic_type == "PRODUCT_TYPE" and (f.canonical_value or f.value) == "橡皮筋"
+            for f in context.semantic_facts) and "橡皮筋" not in target:
         findings.append(CanonicalFinding("FIELD_TERMINOLOGY_NONCANONICAL", "ERROR", field, "gomas in description must use 橡皮筋", {"expected": "橡皮筋"}, blocking=production))
     field_policy = policy.field_policies.get(field)
     if field_policy:

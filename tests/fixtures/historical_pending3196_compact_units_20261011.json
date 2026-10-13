@@ -1,0 +1,62 @@
+[
+  {
+    "sku": "3215347",
+    "source": "8x 70 ml",
+    "target": "8×70ml",
+    "evidence": {
+      "rank": 1,
+      "text": "8x 70 ml",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-10-01\\2026-10-01_073814\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-10-01/2026-10-01_073814",
+      "file_hash": "34c047c86c6f9510b983dc39e368b3d68ee4dbf0f8749ee8c2b98eb1b21116a1",
+      "field_hash": "12e1136a6d1bac8c09d4a9325d2cb5361f4b0f599fec2349730b4715eced80f9"
+    },
+    "independent_decision": "KEEP",
+    "review_note": "8×70ml保留8份及每份70毫升；详情8单位一致，不新增整体容量。"
+  },
+  {
+    "sku": "3224104",
+    "source": "12x 50 ml",
+    "target": "12×50ml",
+    "evidence": {
+      "rank": 1,
+      "text": "12x 50 ml",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-15\\2026-09-15_032052\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-15/2026-09-15_032052",
+      "file_hash": "7884099a02785fa380cf37bbda9ee9b81ba64da124df274f7e1f42089353a267",
+      "field_hash": "0e1ed0c34c28f772c3757bf51000feb525161c5df18d778adc826d334de371de"
+    },
+    "independent_decision": "KEEP",
+    "review_note": "12×50ml保留12份每份50毫升，详情12单位一致，不导入风味或11卡路里。"
+  },
+  {
+    "sku": "2561124",
+    "source": "30 x 17cm",
+    "target": "30×17cm",
+    "evidence": {
+      "rank": 1,
+      "text": "30 x 17cm",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-09\\2026-09-09_032720\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-09/2026-09-09_032720",
+      "file_hash": "339695cbd6fc9f04ee405a2ac8bfda30c1b2a3f01a02c018d24cd82e4ce9a094",
+      "field_hash": "fde8254e75cf473613c86e7bd61f60bf2950032c1364d989cc46fb9526bee749"
+    },
+    "independent_decision": "KEEP",
+    "review_note": "30×17cm与源30 x 17cm仅数字间乘号和空格规范化；保留烧烤清洁刷自身尺寸，不导入材质。"
+  },
+  {
+    "sku": "2581866",
+    "source": "38 x 38 cm",
+    "target": "38×38cm",
+    "evidence": {
+      "rank": 1,
+      "text": "38 x 38 cm",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-09\\2026-09-09_032720\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-09/2026-09-09_032720",
+      "file_hash": "339695cbd6fc9f04ee405a2ac8bfda30c1b2a3f01a02c018d24cd82e4ce9a094",
+      "field_hash": "f197bd50f826408087f1e8ae78589c48b561265a316813ff05f3f48263f4431a"
+    },
+    "independent_decision": "KEEP",
+    "review_note": "38×38cm逐项保留38 x 38 cm，坐垫语境一致，无新增材质、颜色或防水事实。"
+  }
+]

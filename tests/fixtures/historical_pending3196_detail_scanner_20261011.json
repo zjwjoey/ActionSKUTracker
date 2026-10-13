@@ -1,0 +1,74 @@
+[
+  {
+    "sku": "3200285",
+    "field": "details",
+    "source": "{'Número del artículo': '3200285', 'Apto para tipo de transporte': 'Coche', 'Inclinable': 'Sí', 'Tipo de soporte telefónico': 'SOPORTE DEL TELÉFONO PARA COCHES'}",
+    "context": {
+      "name_es": "Soporte magnético para el teléfono Lab31",
+      "cat1_es": null,
+      "cat2_es": null,
+      "spec_es": "Universal",
+      "desc_es": "Coloca el soporte en la rejilla de ventilación de tu coche\nFija fácilmente la placa magnética a la funda de tu teléfono\nProducto hecho con un 23 % de material reciclado\nLlama de forma segura desde el coche con la ayuda de este soporte magnético para el teléfono. Fíjalo a la ventana de forma sencilla con la ventosa. Para hacer que tu teléfono sea magnético, pega el adhesivo magnético en la parte trasera. El soporte no solo resulta de lo más práctico para llamar por teléfono en manos libres, sino también para saber cómo llegar a un destino desconocido sin problemas.",
+      "details_es": "{'Número del artículo': '3200285', 'Apto para tipo de transporte': 'Coche', 'Inclinable': 'Sí', 'Tipo de soporte telefónico': 'SOPORTE DEL TELÉFONO PARA COCHES'}"
+    },
+    "candidate": "商品编号：3200285\n适用出行方式：汽车\n是否可倾斜：是\n手机支架类型：车载手机支架",
+    "evidence": {
+      "rank": 2,
+      "text": "{'Número del artículo': '3200285', 'Apto para tipo de transporte': 'Coche', 'Inclinable': 'Sí', 'Tipo de soporte telefónico': 'SOPORTE DEL TELÉFONO PARA COCHES'}",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3200285",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "a8ffc23c79ccc8a776d2c789d8a7441095a30e8750b038a8c3b9ca1af5042c43"
+    },
+    "semantic_approval": "NOT_APPROVED",
+    "fixture_scope": "QA behavior only; source conflicts remain held"
+  },
+  {
+    "sku": "3217432",
+    "field": "details",
+    "source": "{'Número del artículo': '3217432', 'Color': 'Multicolor', 'Material': 'Madera', 'Forma': 'Rectangular', 'Posición de la impresión': 'De pie', 'Tipo de marco': 'Sí'}",
+    "context": {
+      "name_es": "Decoración de pared",
+      "cat1_es": "Vivienda",
+      "cat2_es": "Decoración mural",
+      "spec_es": "40x50 cm | diferentes variantes",
+      "desc_es": "Con diseño con purpurina\nMadera con certificación FSC®: madera sostenible",
+      "details_es": "{'Número del artículo': '3217432', 'Color': 'Multicolor', 'Material': 'Madera', 'Forma': 'Rectangular', 'Posición de la impresión': 'De pie', 'Tipo de marco': 'Sí'}"
+    },
+    "candidate": "商品编号：3217432\n颜色：多色\n材质：木\n形状：长方形\nPosición de la impresión：立式\n相框类型：是",
+    "evidence": {
+      "rank": 2,
+      "text": "{'Número del artículo': '3217432', 'Color': 'Multicolor', 'Material': 'Madera', 'Forma': 'Rectangular', 'Posición de la impresión': 'De pie', 'Tipo de marco': 'Sí'}",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3217432",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "333052b89eeed91044ef265fbc5c497bb3199c0e940f1bda82a8fa1ef8c01156"
+    },
+    "semantic_approval": "NOT_APPROVED",
+    "fixture_scope": "QA behavior only; source conflicts remain held"
+  },
+  {
+    "sku": "3003940",
+    "field": "details",
+    "source": "Medidas (incl. envase) (largo x ancho x alto): 11.3 x 32.8 x 10 cm; Color: Negro, Blanco; Material: Hierro, Bambú; Instalación: Colgado; Número del artículo: 3003940",
+    "context": {
+      "name_es": "Perchero de puerta",
+      "cat1_es": "Vivienda",
+      "cat2_es": "Muebles",
+      "spec_es": "34,5x12,5x20,5 cm | varios colores",
+      "desc_es": "Con 10 percheros\nSe puede fijar con facilidad a la pared sin hacer agujeros\nBambú con certificación FSC®: bambú sostenible\nEste perchero de puerta es muy práctico para colgar tus chaquetas, bolsos y gorras. Ideal si necesitas un poco más de espacio de almacenamiento.",
+      "details_es": "Medidas (incl. envase) (largo x ancho x alto): 11.3 x 32.8 x 10 cm; Color: Negro, Blanco; Material: Hierro, Bambú; Instalación: Colgado; Número del artículo: 3003940"
+    },
+    "candidate": "尺寸(含包装,长×宽×高): 11.3×32.8×10 厘米\n颜色: 黑色, 白色\n材质: 铁, 竹\n安装方式: 挂式\n商品编号: 3003940",
+    "evidence": {
+      "rank": 1,
+      "text": "Medidas (incl. envase) (largo x ancho x alto): 11.3 x 32.8 x 10 cm; Color: Negro, Blanco; Material: Hierro, Bambú; Instalación: Colgado; Número del artículo: 3003940",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-13\\2026-08-13_041859\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-13/2026-08-13_041859",
+      "file_hash": "3413e0dd2501465369ce5dcf9152d2a55a5cd7a7b5ac49b8c0211fb932aa04c0",
+      "field_hash": "e7c7a63078cfdd95605ebb590d0de6f4cf4d613c956db1821b4210570661f257"
+    },
+    "semantic_approval": "NOT_APPROVED",
+    "fixture_scope": "QA behavior only; source conflicts remain held"
+  }
+]

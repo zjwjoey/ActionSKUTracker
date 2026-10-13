@@ -210,8 +210,24 @@ class LocalizationRegistry:
         self._revision_event(revision_id, "AUTO_APPROVED" if auto else "APPROVED", actor)
         return True
 
+    def restore_unit_freshness_delegated(self, revision_id: str, *, actor: str, grant: Mapping[str, Any]) -> dict[str, Any]:
+        """Rebind a reviewed current-source unit without bypassing source QA."""
+        from ..delegated_approval import CURRENT_VERSION, validate_delegated_revision
+        if grant.get("contract") != CURRENT_VERSION:
+            raise PermissionError("DELEGATION_CURRENT_SCOPE_REQUIRED")
+        with connect(self.path) as db:
+            evidence = validate_delegated_revision(db, grant, actor=actor, revision_id=revision_id,
+                require_approved=False, allow_stale_unit=True)
+            fresh = db.execute("SELECT freshness_status FROM translation_units WHERE current_revision_id=?", (revision_id,)).fetchone()
+            if fresh[0] == "FRESH":
+                return {"status": "ALREADY_FRESH"}
+            db.execute("UPDATE translation_units SET freshness_status='FRESH',updated_at=? WHERE current_revision_id=?",
+                       (_now(), revision_id))
+        self._revision_event(revision_id, "OWNER_DELEGATED_FRESHNESS_REBOUND", actor, evidence)
+        return {"status": "FRESH"}
+
     def approve_revision_delegated(self, revision_id: str, *, actor: str, grant: Mapping[str, Any]) -> dict[str, Any]:
-        """Approve one reviewed historical revision under explicit Owner delegation."""
+        """Approve one reviewed revision under its explicit Owner scope."""
         from ..delegated_approval import validate_delegated_revision
         with connect(self.path) as db:
             db.execute("BEGIN IMMEDIATE")

@@ -1,8 +1,19 @@
 # 当前仓库与生产状态
 
+## 2026-10-13 同步任务边界
+
+本轮从实测远端 main `08fcce5e8e4070b3d0340720308b26a7441920d4` 建立隔离候选；
+这是任务开始时的审计快照，不是最终合并 SHA。实际生产身份取
+`runtime/deployment/active.json`，生产工作树是否 dirty 必须另行核对。
+本轮不切换生产、不修改正式 PRIMARY、不执行翻译训练或发布新字典。
+同步及部署规范见 `docs/GIT_SYNC_AND_RELEASE.md`，实际验收证据在
+`runtime/reports/repository_sync_closure_20261013/`。下文旧生产和候选数量保留为历史证据。
+
 历史治理快照截止：2026-10-08；2026-10-10 授权历史中文修复进度见末节。以下旧候选和运行目录描述保留其当时身份，不表示历史修复分支已部署到 daily 主线。
 
 ## 已冻结生产
+
+本节以下旧发布记录截止于上一轮收尾审查，保留为历史。最新已部署代码为 PR #6 合并后的 `main@b09bcea89e35e6a69367a6542ff871bab5ba1921`，`production/post-closure-20261008` 指向该版本；main Branch Protection 已启用。本轮 `fix/post-release-data-integrity-20261008` 仅开发和生产副本验证，尚未合并/部署。见 [上线后数据完整性修复](POST_RELEASE_DATA_INTEGRITY.md)。
 
 - origin/main：231550eb74d24c927e100bc585aa728bf7ab7f19。
 - 标签 production/phase1-3-20261007 指向该 SHA。

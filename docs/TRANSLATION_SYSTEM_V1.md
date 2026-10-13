@@ -129,10 +129,12 @@ approved fields remain empty in the formal projection; an explicitly marked
 `display_fallback=ES` is a presentation-only exception and cannot make the
 row `READY` or approved.  A Qwen candidate cannot write Master directly.
 
-The Action display profile is `ACTION_MASTER_NO_BRAND_V1`: brand/IP evidence
-is retained internally for provenance and QA, but Chinese display omits those
-tokens and never adds `牌`.  Removal is span/token based, not a global string
-replacement, so ordinary words such as `扑克牌` remain valid.
+The Action display profile is `ACTION_MASTER_NO_BRAND_V1`: Chinese product
+names omit brand/IP tokens and never add `牌`. Brand/IP evidence remains in
+internal provenance and QA. Specifications, descriptions and details preserve
+only the brand/IP facts supported by their own Spanish source field; a title
+or another field cannot authorize importing those facts. Name removal is
+span/token based, so ordinary words such as `扑克牌` remain valid.
 
 ## Migration, reports and operations
 

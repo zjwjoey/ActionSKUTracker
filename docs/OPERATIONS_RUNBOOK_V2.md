@@ -25,6 +25,7 @@ SUCCESS 表示 Operations 完成或合法跳过，不表示中文全库批准。
     python -m action_tracker status
 
 Resume 恢复 COLLECTION allowlist 中日期、来源身份、QA、commit 和 Registry，已成功 COLLECTION/DB_COMMIT 不重复。单独 Registry 恢复后再 Resume 升级总状态。
+未完成运行 Resume 成功取得共享锁后，先将 state.json 的 pid/hostname 更新为本次工作进程，再执行重试步骤；run_id、business_date 和 started_at 保持原身份。取得锁失败不修改旧进程记录；SUCCESS 运行 Resume 为只读 NO_OP，不改历史终态记录。
 
 Registry audit：runtime/reports/registry/<collection_run_id>.json，包含失败原因、retryable、尝试次数/恢复结果。retry 只接受 FAILED/PENDING，核验 commit/date/QA、冻结来源和当前 CURRENT。成功重复请求 ALREADY_READY；来源变化拒绝旧 run，不能恢复旧版本制造 STALE。失败记录缺失时 fail-closed。
 

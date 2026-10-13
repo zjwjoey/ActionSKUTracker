@@ -12,7 +12,7 @@ import json
 import logging
 import hashlib
 from dataclasses import asdict
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -130,10 +130,23 @@ def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
     raw_tags 特殊处理：徽章状态 = 徽章页成员集合 + 基线徽章（build_badge_state），
     不再依赖不可靠的卡片标签。可持续/折扣等仅详情页显示的徽章保留基线，避免误报
     "徽章消失"。skip_raw_tags=True 时跳过 raw_tags（该 SKU 已抓详情，详情页标签
-    或 fetch_and_merge 已按成员集合设定）。其余字段仅在非空时覆盖，避免 listing
-    缺字段误清数据。
+    或 fetch_and_merge 已按成员集合设定）。价格区完整观测允许清空明确缺失的
+    原价/折扣；未知观测和其他空字段不会清除历史值。更新的完整详情价格优先。
     """
+    from ..services.price_evidence import merge_observed_prices, PRICE_FIELDS
+    from ..services.listing_evidence import merge_listing_fields
+    verified = {field: evidence["source"] for field, evidence in
+                (rec.get("fact_field_provenance") or {}).items()
+                if evidence.get("state") == "CURRENT_VERIFIED"}
+    detail_price_authoritative = skip_raw_tags and rec.get("_price_observation_complete") is True
+    if not detail_price_authoritative:
+        merge_observed_prices(rec, light)
+    merge_listing_fields(rec, light, verified)
     for k in _LIGHT_FIELDS:
+        if k not in PRICE_FIELDS and k != "raw_tags":
+            continue
+        if k in PRICE_FIELDS and detail_price_authoritative:
+            continue
         v = light.get(k)
         if v is None:
             continue
@@ -145,9 +158,31 @@ def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
             rec[k] = v
 
 
+def _verified_fields_after_light_merge(rec: dict, light: dict | None) -> dict[str, str]:
+    """Describe the observation that actually supplied each merged value."""
+    from ..services.price_evidence import PRICE_FIELDS
+    from ..services.listing_evidence import CANONICAL_FIELDS, matching_listing_fields
+    light = light or {}
+    verified = matching_listing_fields(rec, light)
+    for field, evidence in (rec.get("fact_field_provenance") or {}).items():
+        if evidence.get("state") != "CURRENT_VERIFIED":
+            continue
+        source = evidence["source"]
+        if (source == "DETAIL_CURRENT_RUN" and
+                (field in CANONICAL_FIELDS or
+                 (field in PRICE_FIELDS and rec.get("_price_observation_complete") is True))):
+            # Complete newer detail prices are protected by _merge_light.
+            # Earlier Listing values must not take ownership of those facts.
+            verified[field] = source
+        else:
+            verified.setdefault(field, source)
+    return verified
+
+
 def _light_dict(lp) -> dict:
     d = asdict(lp) if hasattr(lp, "__dataclass_fields__") else dict(lp)
-    return {k: d.get(k) for k in _LIGHT_FIELDS}
+    return {**{k: d.get(k) for k in _LIGHT_FIELDS},
+            "_price_observation_complete": d.get("price_observation_complete") is True}
 
 
 def _persist_fatal_run_evidence(cfg: dict[str, Any], context: dict, error: BaseException) -> None:
@@ -252,12 +287,24 @@ def run_daily(
         from ..database.repository import ProductionRepository
         repository = ProductionRepository(database_path(cfg))
         baseline = repository.load_current_products()
+        fact_baseline = repository.load_product_baseline()
+        for sku, detail_state in repository.load_detail_states().items():
+            if sku in baseline:
+                baseline[sku].update(detail_state)
+            if sku in fact_baseline:
+                fact_baseline[sku].update(detail_state)
         known = repository.load_known_skus()
         offline = repository.load_offline_skus()
+        from ..services.listing_evidence import committed_listing_baseline
+        prior_listing = committed_listing_baseline(database_path(cfg),
+            expected_base_commit_id=expected_base_commit_id,
+            snapshots_root=paths["snapshots"])
     else:
         baseline = excel_reader.load_current(master)
+        fact_baseline = baseline
         known = st.load_known_skus(paths["state"])
         offline = st.load_offline_skus(paths["state"])
+        prior_listing = {}
     trans = st.load_translation_state(paths["state"])
     log.info("baseline=%d known=%d offline=%d run_id=%s dry_run=%s", len(baseline), len(known), len(offline), run_id, dry_run)
 
@@ -312,7 +359,9 @@ def run_daily(
             # 徽章页不进 today_light：它们不是真实类目（cat1_es 不应写成 "Nuevo"），
             # 且卡片标签不可靠，徽章状态由上面的成员集合决定
             for lp in cat_items:
+                previous_categories = set((today_light.get(str(lp.sku)) or {}).get("_listing_categories") or [])
                 today_light[str(lp.sku)] = _light_dict(lp)
+                today_light[str(lp.sku)]["_listing_categories"] = sorted(previous_categories | {lp.cat1_es})
         # 4. 详情抓取（只处理变化 SKU）
         # 需要等 SKU Monitor 出计划，但 browser 会话在此；先扫描完，稍后在同一会话内补详情。
 
@@ -352,14 +401,19 @@ def run_daily(
         category_coverage=primary_coverage,
         nuevo_skus=nuevo_skus,
         promo_skus=promo_skus,
+        business_date=run_date,
+        historical_identities=fact_baseline,
     )
     log.info("SKU 状态统计: %s", {s: sum(1 for x in statuses.values() if x.status == s) for s in
                                    {"NEW", "ACTIVE", "REAPPEARED", "MISSING_FIRST", "MISSING_CONTINUED", "OFFLINE", "UNKNOWN", "ABSENT"}})
 
     # ---- 计划更新 ----
     plans = updater_mod.plan_updates(
-        statuses, baseline, today_light, cfg["run"]["detail_refresh_days"],
-        nuevo_skus=nuevo_skus, promo_skus=promo_skus)
+        statuses, fact_baseline, today_light, cfg["run"]["detail_refresh_days"],
+        nuevo_skus=nuevo_skus, promo_skus=promo_skus,
+        unknown_detail_budget=cfg["run"].get("detail_freshness_probe_limit", 25),
+        sitemap_urls=updater_mod.sitemap_detail_urls(sitemap.locs if sitemap else []),
+        listing_baseline=prior_listing)
     log.info("需要更新的 SKU: %d (原因: %s)",
              len(plans), {r: sum(1 for p in plans if p["reason"] == r) for r in {p["reason"] for p in plans}})
 
@@ -369,7 +423,7 @@ def run_daily(
     if do_detail:
         try:
             _, updated = updater_mod.fetch_and_merge(
-                browser, [p for p in plans if p["need_detail"]], baseline, snap_dir,
+                browser, [p for p in plans if p["need_detail"]], fact_baseline, snap_dir,
                 cfg["lifecycle"]["max_detail_retries"], nuevo_skus=nuevo_skus, promo_skus=promo_skus,
                 access_controller=access, detail_evidence=detail_evidence,
                 detail_completed_skus=detail_completed_skus,
@@ -386,7 +440,7 @@ def run_daily(
         sku = plan["sku"]
         rec = updated.get(sku)
         if rec is None:
-            base = baseline.get(sku) or {}
+            base = fact_baseline.get(sku) or {}
             rec = dict(base)
             rec.update({"sku": sku, "canonical_id": plan["canonical_id"], "last_seen": run_date, "status": "CURRENT"})
         if plan.get("light"):
@@ -394,13 +448,16 @@ def run_daily(
                          in_nuevo=(sku in nuevo_skus), in_promo=(sku in promo_skus))
         rec["status"] = "CURRENT"
         rec["last_seen"] = run_date
+        verified = _verified_fields_after_light_merge(rec, plan.get("light"))
+        rec = updater_mod.retain_historical_facts(fact_baseline.get(sku) or {}, rec,
+            reappeared=plan["reason"] == "REAPPEARED", verified_fields=verified)
         updated[sku] = rec
 
     # ---- 变化事件 ----
     price_events, badge_events, content_events, anomalies, review_rows = [], [], [], [], []
     for sku, rec in updated.items():
         outcome = change_mod.compute_changes(
-            sku, rec.get("canonical_id"), baseline.get(sku), rec, run_date,
+            sku, rec.get("canonical_id"), fact_baseline.get(sku), rec, run_date,
             cfg["qa"]["price_min"], cfg["qa"]["price_max"], run_id,
         )
         price_events += outcome.price_events
@@ -453,20 +510,25 @@ def run_daily(
     # this run belong here. Missing candidates remain in known_skus.csv until
     # the offline threshold is reached, but are not mixed into CURRENT.
     today_records = _build_current_records(
-        baseline, updated, statuses, today_set, run_date)
+        fact_baseline, updated, statuses, today_set, run_date)
     # Snapshot-level field provenance. Partial Detail is explicit and never
     # presented as freshly collected data.
     detail_plan_skus = {p["sku"] for p in plans if p["need_detail"]}
     completed_detail_set = set(detail_completed_skus)
     for sku, rec in today_records.items():
         stat = statuses.get(sku)
+        if not rec.get("fact_field_provenance"):
+            verified = _verified_fields_after_light_merge(rec, today_light.get(sku))
+            rec.update(updater_mod.retain_historical_facts(fact_baseline.get(sku) or {}, rec,
+                reappeared=getattr(stat, "status", "") == "REAPPEARED", verified_fields=verified))
         rec["presence_source"] = getattr(stat, "source_flag", "BASELINE") if stat else "BASELINE"
         rec["listing_fields_source"] = "LISTING_CURRENT_RUN" if sku in today_light else "BASELINE"
         if sku in completed_detail_set:
             rec["detail_status"] = "COMPLETE"
             rec["detail_fields_source"] = "DETAIL_CURRENT_RUN"
+            rec["detail_last_success_at"] = rec.get("_detail_collected_at") or datetime.now(timezone.utc).isoformat()
         elif sku in detail_plan_skus:
-            old = baseline.get(sku) or {}
+            old = fact_baseline.get(sku) or {}
             has_old_detail = bool(old.get("desc_es") or old.get("details_es") or old.get("spec_es"))
             rec["detail_status"] = "ACCESS_INTERRUPTED" if access.state.value != "NORMAL" else "PENDING"
             rec["detail_fields_source"] = "BASELINE" if has_old_detail else "PENDING"
@@ -502,6 +564,7 @@ def run_daily(
     sku_delta_rows = [{
         "sku": s.sku, "canonical_id": s.canonical_id, "status": s.status,
         "source_flag": s.source_flag, "event": s.event or "", "missing_count": s.missing_count,
+        "identity_source": s.identity_source,
     } for s in statuses.values()]
     run_report = _run_report(cfg, run_id, run_date, dry_run, len(baseline), len(today_set), statuses,
                              price_events, badge_events, content_events, anomalies, qa, snap_dir,
@@ -521,11 +584,29 @@ def run_daily(
     # but does not recalculate it.
     _evaluate_workflow_v2_shadow(cfg, run_id, products_for_qa, run_report)
     _evaluate_daily_collection_quality(cfg, run_id, run_report, dry_run=dry_run)
+    from ..services.listing_evidence import listing_evidence
+    run_report["listing_field_evidence"] = listing_evidence(today_light,
+        run_id=run_id, business_date=run_date, canonical_records=today_records,
+        completed_detail_skus=completed_detail_set, previous=prior_listing)
+    run_report["listing_comparison"] = {
+        "known_skus": sum((prior_listing.get(sku) or {}).get("_listing_evidence_confidence")
+                          == "COMMITTED_HASH_BOUND" for sku in today_light),
+        "unknown_skus": sum((prior_listing.get(sku) or {}).get("_listing_evidence_confidence")
+                            != "COMMITTED_HASH_BOUND" for sku in today_light),
+        "legacy_matched_skus": sum((prior_listing.get(sku) or {}).get("_listing_evidence_confidence")
+                                   == "LEGACY_MATCHED" for sku in today_light),
+        "unknown_probe_count": sum(p["reason"] == "LISTING_BASELINE_UNKNOWN" for p in plans),
+        "changed_skus": sum(bool(p.get("listing_changed_fields")) for p in plans)}
+    run_report["listing_comparison"]["pending_confirmation_skus"] = sum(
+        bool(row["_canonical_confirmation_pending"])
+        for row in run_report["listing_field_evidence"]["rows"])
+    run_report["historical_identity_reused"] = sum(
+        s.identity_source == "PRODUCT_HISTORY_WITHOUT_LIFECYCLE" for s in statuses.values())
     data = {
         "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",
         "sitemap_skus": sitemap_skus,
         "listing_raw": {cat: [asdict(lp) for lp in items] for cat, items in listing_map.items()},
-        "listing_products": [{"sku": k, **{f: v for f, v in v.items() if f in _LIGHT_FIELDS}} for k, v in today_light.items()],
+        "listing_products": [{"sku": k, **{f: v for f, v in v.items() if f in _LIGHT_FIELDS or f == "_price_observation_complete"}} for k, v in today_light.items()],
         "products_normalized": [{"sku": k, **{f: v for f, v in v.items()}} for k, v in today_records.items()],
         "sku_delta": sku_delta_rows,
         "presence_evidence": [{"sku": s.sku, "source_flag": s.source_flag,
@@ -585,7 +666,7 @@ def run_daily(
                 offline_runs=cfg["lifecycle"]["offline_confirmation_runs"],
                 today_records=today_records, price_events=price_events, event_events=event_events,
                 run_log_row=run_log_row, review_rows=review_rows,
-                baseline=baseline, today_set=today_set, observation_complete=observation_complete,
+                baseline=fact_baseline, today_set=today_set, observation_complete=observation_complete,
                 snapshot_path=snap_dir, sqlite_diagnostics=sqlite_diagnostics, run_report=run_report,
                 expected_base_commit_id=expected_base_commit_id, enforce_expected_base=(configured_storage_mode == "SQLITE_PRIMARY"))
         else:
@@ -640,7 +721,14 @@ def _build_current_records(
         rec["status"] = "CURRENT"
         rec["last_seen"] = run_date
         rec["missing_count"] = 0
+        if not rec.get("first_seen"):
+            rec["first_seen"] = getattr(stat, "first_seen", None) or run_date
     return current
+
+
+def _content_change_count(content_events) -> int:
+    """FIRST_SEEN belongs to lifecycle counts, never CONTENT_CHANGE."""
+    return sum(1 for event in content_events if event.get("事件类型") == "CONTENT_CHANGE")
 
 
 def _counts(statuses, today_set, sitemap, listing_map, price_events, badge_events, content_events, anomalies) -> dict:
@@ -660,7 +748,7 @@ def _counts(statuses, today_set, sitemap, listing_map, price_events, badge_event
         "promo_end": sum(1 for e in badge_events if e.get("事件类型") == "PROMO_END"),
         "new_badge_on": sum(1 for e in badge_events if e.get("事件类型") == "ACTION_NEW_BADGE_ON"),
         "new_badge_off": sum(1 for e in badge_events if e.get("事件类型") == "ACTION_NEW_BADGE_OFF"),
-        "content_change": len(content_events),
+        "content_change": _content_change_count(content_events),
         "anomalies": len(anomalies),
     }
 
@@ -758,7 +846,7 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "promo_end": sum(1 for e in badge_events if e.get("事件类型") == "PROMO_END"),
         "new_badge_on": sum(1 for e in badge_events if e.get("事件类型") == "ACTION_NEW_BADGE_ON"),
         "new_badge_off": sum(1 for e in badge_events if e.get("事件类型") == "ACTION_NEW_BADGE_OFF"),
-        "content_change": len(content_events),
+        "content_change": _content_change_count(content_events),
         "anomalies": len(anomalies),
         "qa_state": qa.state,
         "master": str(cfg["paths"]["master"]),

@@ -1,0 +1,15 @@
+{
+  "sku": "3004507",
+  "source": "2,3 m3/hora | 12 voltios",
+  "target": "2.3 立方米/小时 | 12 伏特",
+  "evidence": {
+    "rank": 1,
+    "text": "2,3 m3/hora | 12 voltios",
+    "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-25\\2026-08-25_025953\\products_normalized.csv",
+    "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-25/2026-08-25_025953",
+    "file_hash": "f2def6a447de1410123ab54a437d082f8f3dd6e7191493f5f2e9052d57e1fdca",
+    "field_hash": "61c117e36b46ae113c8edb112838d4bb4d998dd9bdf24e78244d2360bee9e108"
+  },
+  "independent_semantic_status": "PASS",
+  "review_note": "流量2,3 m3/hora与2.3立方米/小时、12 voltios与12伏特逐项等义，候选未增加事实。当前QA把立方指数3计成独立数量，阻断需真实回归后修模块，不能豁免。"
+}

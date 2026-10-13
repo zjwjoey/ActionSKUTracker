@@ -16,6 +16,7 @@ import re
 from dataclasses import dataclass, field
 
 from ..services.normalization import parse_discount_percent, parse_price
+from ..services.price_evidence import complete_price_observation
 
 log = logging.getLogger(__name__)
 
@@ -78,6 +79,8 @@ _EXTRACT_JS = r"""
             unit_price: txt('product-card-price-description'),
             whole: txt('product-card-price-whole'),
             fractional: txt('product-card-price-fractional'),
+            price_observation_complete: !!c.querySelector('[data-testid="product-card-price"]') &&
+                !!(txt('product-card-price-whole') || txt('product-card-price-fractional')),
             original: txt('product-card-price-original-amount'),
             discount: txt('product-card-price-discount-percentage'),
             tags: tags,
@@ -104,13 +107,15 @@ class LightProduct:
     cat1_es: str = ""
     cat2_es: str = ""
     extra: dict = field(default_factory=dict)
+    price_observation_complete: bool = False
 
 
 def _to_light(raw: dict) -> LightProduct:
     whole = raw.get("whole") or ""
     frac = raw.get("fractional") or ""
     price_txt = f"{whole},{frac}" if frac else (whole or "")
-    cur = parse_price(price_txt) or parse_price(raw.get("unit_price") or "")
+    # Unit price is a different fact and cannot replace a missing selling price.
+    cur = parse_price(price_txt)
     orig = parse_price(raw.get("original") or "")
     disc = parse_discount_percent(raw.get("discount") or "")
     tags = raw.get("tags") or []
@@ -125,6 +130,7 @@ def _to_light(raw: dict) -> LightProduct:
         discount=disc,
         raw_tags=" | ".join(tags),
         image_url=raw.get("image_url") or "",
+        price_observation_complete=complete_price_observation(raw),
     )
 
 

@@ -47,7 +47,8 @@ def write_catalog_xlsx(
     text_wrap = set((workbook_format.get("body") or {}).get("wrap_text_columns") or [])
     max_row_height = float((workbook_format.get("body") or {}).get("max_row_height") or 405)
     widths = {
-        "图片": 12, "编号": 14, "标题": 28, "分类1": 16, "分类2": 18, "规格": 26,
+        "图片": 36 if embed_images else 12,
+        "编号": 14, "标题": 28, "分类1": 16, "分类2": 18, "规格": 26,
         "折后价": 13, "原价": 13, "单价": 16, "描述": 48, "产品详情": 56,
         "图片链接": 42, "商品链接": 58, "备注": 34,
     }

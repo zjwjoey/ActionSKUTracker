@@ -39,6 +39,10 @@ class ProductionRunner:
         self.lock.acquire(self.run_id, command="production-run")
         errors = list(state.get("errors", [])); started = state.get("started_at") or datetime.now().isoformat()
         try:
+            # A resumed attempt owns a new process. Persist its identity only
+            # after acquiring the shared lock; completed runs stay immutable.
+            state.update(pid=os.getpid(), hostname=socket.gethostname())
+            self._save(state)
             start_index = STEP_ORDER.index(from_step) if from_step else 0
             self._check_dependencies(state, start_index, resume)
             for index, step in enumerate(STEP_ORDER):

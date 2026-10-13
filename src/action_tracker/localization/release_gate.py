@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from ..services.hashing import localization_field_source_hash, localization_source_hash
+from .body_names import mask_source_bound_body_names
 import re
 import json
 
@@ -211,7 +212,11 @@ def audit_research_release(
                 counts["SOURCE_HASH_MISMATCH"] += 1
                 issues.append(f"SOURCE_HASH_MISMATCH:{sku}:{canonical}")
         for field in REQUIRED_ZH_FIELDS:
-            if _has_release_spanish_residual(str(row.get(field) or ""), allowed_tokens=allowed_tokens):
+            inspected = str(row.get(field) or "")
+            if field in {"desc_zh", "details_zh"}:
+                source_key = "desc_es" if field == "desc_zh" else "details_es"
+                inspected = mask_source_bound_body_names(str(row.get(source_key) or ""), inspected)
+            if _has_release_spanish_residual(inspected, allowed_tokens=allowed_tokens):
                 counts["SPANISH_RESIDUAL"] += 1
                 issues.append(f"SPANISH_RESIDUAL:{sku}:{field}")
 

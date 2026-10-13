@@ -27,6 +27,15 @@ class ProductionDatabaseError(RuntimeError):
     """Production DB identity, baseline or transaction validation failure."""
 
 
+def _official_localization_value(row: Mapping[str, Any], field: str, kind: str) -> Any:
+    # A stored baseline value is already the committed official projection.
+    # Reprocessing legacy formatting during a failed detail fetch would create
+    # an unobserved source change and falsely invalidate its Chinese binding.
+    if str(row.get(f"{field}_source") or "").startswith("HISTORY_RETAINED:"):
+        return row.get(field)
+    return normalize_official_text(row.get(field), field=kind)
+
+
 def supersede_older_export_sync(db: sqlite3.Connection, new_commit_id: str) -> None:
     """Move older retryable projections behind the new SQLite head.
 
@@ -169,6 +178,8 @@ class ProductionWriter:
                 self._insert_run(db, bundle, now)
                 self._upsert_products(db, bundle.current_products, commit_id, now)
                 self._upsert_localizations(db, bundle.localization_updates, commit_id, now)
+                if not bundle.run_record.get("dry_run"):
+                    self._record_detail_success(db, bundle.current_products, bundle.run_id)
                 self._enqueue_missing_categories(db, bundle.localization_updates, bundle.current_products, now)
                 self._insert_source_fact_versions(db, bundle.source_fact_versions, now)
                 self._insert_observations(db, bundle.observations)
@@ -339,6 +350,27 @@ class ProductionWriter:
         )
 
     @staticmethod
+    def _record_detail_success(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], run_id: str) -> None:
+        """Persist only actual successful detail evidence in the fact transaction."""
+        for row in rows:
+            sku = str(row.get("official_sku") or row.get("sku") or "")
+            if row.get("detail_status") in {"PENDING", "ACCESS_INTERRUPTED"}:
+                db.execute("""INSERT INTO product_detail_state(official_sku,detail_status,updated_at) VALUES(?,?,CURRENT_TIMESTAMP)
+                    ON CONFLICT(official_sku) DO UPDATE SET detail_status=excluded.detail_status,updated_at=excluded.updated_at""",
+                           (sku, row["detail_status"]))
+                continue
+            if row.get("detail_fields_source") != "DETAIL_CURRENT_RUN" or row.get("detail_status") != "COMPLETE":
+                continue
+            stamp = str(row.get("detail_last_success_at") or "")
+            if not stamp:
+                raise ProductionDatabaseError("DETAIL_SUCCESS_TIMESTAMP_MISSING")
+            datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+            db.execute("""INSERT INTO product_detail_state(official_sku,detail_last_success_at,detail_last_success_run_id,detail_source_hash,detail_status,updated_at)
+                VALUES(?,?,?,?, 'COMPLETE',?) ON CONFLICT(official_sku) DO UPDATE SET detail_last_success_at=excluded.detail_last_success_at,
+                detail_last_success_run_id=excluded.detail_last_success_run_id,detail_source_hash=excluded.detail_source_hash,
+                detail_status='COMPLETE',updated_at=excluded.updated_at""", (sku, stamp, run_id, localization_source_hash(row), stamp))
+
+    @staticmethod
     def _upsert_products(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], commit_id: str, now: str) -> None:
         for r in rows:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
@@ -399,9 +431,9 @@ class ProductionWriter:
                 source = {
                     "name_es": item.get("name"), "cat1_es": item.get("cat1"),
                     "cat2_es": item.get("cat2"),
-                    "spec_es": normalize_official_text(item.get("spec"), field="spec"),
-                    "desc_es": normalize_official_text(item.get("description"), field="description"),
-                    "details_es": normalize_official_text(item.get("details"), field="details"),
+                    "spec_es": _official_localization_value(item, "spec", "spec"),
+                    "desc_es": _official_localization_value(item, "description", "description"),
+                    "details_es": _official_localization_value(item, "details", "details"),
                 }
                 same_batch_es[item_sku] = {
                     **source,
@@ -413,8 +445,17 @@ class ProductionWriter:
             language = str(r.get("language") or "zh")
             incoming = dict(r)
             if language == "es":
+                previous = db.execute(
+                    "SELECT name,cat1,cat2,spec,description,details FROM product_localizations "
+                    "WHERE official_sku=? AND language='es'", (sku,),
+                ).fetchone()
+                if previous is not None:
+                    for index, field in enumerate(("name", "cat1", "cat2", "spec", "description", "details")):
+                        if (str(incoming.get(f"{field}_source") or "").startswith("HISTORY_RETAINED:")
+                                and incoming.get(field) != previous[index]):
+                            raise ProductionDatabaseError(f"DB_HISTORY_RETAINED_VALUE_CHANGED:{sku}:{field}")
                 for field, kind in (("spec", "spec"), ("description", "description"), ("details", "details")):
-                    incoming[field] = normalize_official_text(incoming.get(field), field=kind)
+                    incoming[field] = _official_localization_value(incoming, field, kind)
                 incoming["source_hash"] = localization_source_hash({
                     "name_es": incoming.get("name"),
                     "cat1_es": incoming.get("cat1"),
@@ -423,6 +464,9 @@ class ProductionWriter:
                     "desc_es": incoming.get("description"),
                     "details_es": incoming.get("details"),
                 })
+                source = same_batch_es[sku]
+                for field in ("name", "cat1", "cat2", "spec", "description", "details"):
+                    incoming[f"{field}_source_hash"] = source[f"{field}_source_hash"]
             if language == "zh":
                 source = same_batch_es.get(sku)
                 if source is None:
@@ -498,11 +542,13 @@ class ProductionWriter:
                         prior = field_state.get(field) or {}
                         incoming[f"{field}_freshness_status"] = (
                             "STALE" if field in changed_fields else
+                            "STALE" if str(prior.get("freshness_status") or "").upper() == "STALE" else
                             "CURRENT" if aggregate_hash_unchanged else
                             prior.get("freshness_status") or ("STALE" if str(existing.get("freshness_status") or "").upper() == "STALE" else "CURRENT")
                         )
                     incoming["freshness_status"] = (
-                        "STALE" if changed_fields else
+                        "STALE" if changed_fields or any(
+                            incoming.get(f"{field}_freshness_status") == "STALE" for field in fields) else
                         "CURRENT" if aggregate_hash_unchanged else
                         ("STALE" if str(existing.get("freshness_status") or "").upper() == "STALE" else "CURRENT")
                     )
@@ -1089,6 +1135,7 @@ def apply_detail_corrections(
     details_by_sku: Mapping[str, Mapping[str, Any]],
     mode: str,
     source_run_date: str | None = None,
+    detail_verified_at: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Apply validated Detail facts directly to a SQLite PRIMARY database.
 
@@ -1098,6 +1145,13 @@ def apply_detail_corrections(
     """
     if mode not in {"APPLY", "BACKFILL"}:
         raise ProductionDatabaseError("DETAIL_CORRECTION_MODE_INVALID")
+    verified = dict(detail_verified_at or {})
+    if verified and mode != "APPLY":
+        raise ProductionDatabaseError("DETAIL_SUCCESS_REQUIRES_FORMAL_APPLY")
+    for sku, stamp in verified.items():
+        if sku not in details_by_sku or not {"desc_es", "details_es"}.issubset(details_by_sku[sku]):
+            raise ProductionDatabaseError("DETAIL_SUCCESS_FIELDS_NOT_VERIFIED")
+        datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
     path = Path(path)
     migrate_v2(path, role="PRIMARY")
     from ..services.hashing import content_hash, localization_source_hash
@@ -1139,6 +1193,7 @@ def apply_detail_corrections(
                     raise ProductionDatabaseError("DETAIL_CORRECTION_PARENT_NOT_CURRENT_HEAD")
 
             pending: list[dict[str, Any]] = []
+            unchanged_verified_sources: dict[str, dict[str, Any]] = {}
             for sku in sorted(details_by_sku):
                 sku = str(sku).strip()
                 detail = details_by_sku[sku]
@@ -1171,6 +1226,8 @@ def apply_detail_corrections(
                         continue
                     changes.append((field, table, old, value))
                 if not changes:
+                    if sku in verified:
+                        unchanged_verified_sources[sku] = before
                     continue
                 after = dict(before)
                 after.update({field: value for field, _table, _old, value in changes})
@@ -1179,7 +1236,16 @@ def apply_detail_corrections(
             # A correction that changes facts is itself an immutable formal
             # version.  The parent remains untouched; all derived records and
             # CONTENT_CHANGE events are owned by this correction run.
-            if not pending:
+            # Replaying the same capture evidence must not create another
+            # metadata commit. New facts or a genuinely new capture still do.
+            for sku, source in unchanged_verified_sources.items():
+                state = db.execute(
+                    "SELECT detail_last_success_at,detail_source_hash,detail_status "
+                    "FROM product_detail_state WHERE official_sku=?", (sku,),
+                ).fetchone()
+                if state and tuple(state) == (verified[sku], localization_source_hash(source), "COMPLETE"):
+                    verified.pop(sku)
+            if not pending and not verified:
                 db.rollback()
                 return {"status": "NOOP", "mode": mode, "parent_run_id": parent_run_id,
                         "base_commit_id": baseline_head_id, "commit_id": baseline_head_id,
@@ -1196,6 +1262,7 @@ def apply_detail_corrections(
                 "base_commit_id": baseline_head_id,
                 "affected_skus": len(pending),
                 "affected_fields": sum(len(item["changes"]) for item in pending),
+                "detail_verified_at": verified,
             }
             bundle_hash = hashlib.sha256(
                 json.dumps({**payload, "details": details_by_sku}, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
@@ -1260,6 +1327,12 @@ def apply_detail_corrections(
                     content_events += 1
                 changed_skus.add(sku)
                 changed_fields += len(changes)
+            verified_rows = []
+            for sku, stamp in verified.items():
+                row = db.execute("SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='es'", (sku,)).fetchone()
+                verified_rows.append({"sku": sku, **dict(zip(("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es"), row)),
+                                      "detail_fields_source": "DETAIL_CURRENT_RUN", "detail_status": "COMPLETE", "detail_last_success_at": stamp})
+            ProductionWriter._record_detail_success(db, verified_rows, correction_run_id)
             db.execute("UPDATE commit_batches SET event_count=? WHERE commit_id=?", (content_events, correction_commit_id))
             db.commit()
         except Exception:
