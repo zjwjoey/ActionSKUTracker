@@ -1,0 +1,9 @@
+source_term,target_term,term_type,context,status,note
+algodón,棉,MATERIAL,,APPROVED,Confirmed material term
+poliéster,聚酯纤维,MATERIAL,,APPROVED,Confirmed material term
+acero inoxidable,不锈钢,MATERIAL,,APPROVED,Confirmed material term
+Cuidados para el bebé,婴儿护理,CATEGORY,,APPROVED,Category term
+Complementos de pintura,涂料配件,CATEGORY,BRICOLAJE,APPROVED,Context-scoped category term
+Pintura,颜料,CATEGORY,HOBBY,APPROVED,Use only when Hobby context indicates art paint
+gomas,橡皮擦,PRODUCT_TYPE,STATIONERY,APPROVED,Use stationery context; do not apply globally
+barritas,条,PRODUCT_TYPE,PET_FOOD,APPROVED,Pet snack bar context
