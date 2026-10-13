@@ -139,7 +139,7 @@ def test_clean_display_text_removes_html_projection_pollution():
 
 def test_es_export_remarks_expose_source_gaps():
     remarks = _es_remarks({"sku": "1", "desc_es": "", "details_es": None, "cat2_es": ""})
-    assert "Descripción pendiente" in remarks
+    assert "Descripción no disponible en el registro fuente" in remarks
     assert "Detalles pendientes" in remarks
     assert "Categoría 2 pendiente" in remarks
 

@@ -56,6 +56,12 @@ tests/test_localization_correction_apply.py
 tests/test_export_publish_atomicity.py
 tests/test_final_approval_provenance_gate.py
 tests/test_official_text_normalization.py
+tests/test_spanish_extraction_export_quality.py
+tests/test_original_price_absence_contract.py
+tests/test_current_chinese_export_repair.py
+tests/test_current_fidelity_contract.py
+tests/test_postrepair_semantic_contract.py
+tests/test_owner_source_literal.py
 tests/test_data_quality_integrity.py
 tests/test_localization_skill_contract.py
 tests/test_field_scoped_localization.py
