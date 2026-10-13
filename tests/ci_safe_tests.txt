@@ -96,7 +96,6 @@ tests/workflow_v2/test_production_phase1_state_machine.py
 tests/workflow_v2/test_runtime_closure.py
 tests/workflow_v2/test_review_approval.py
 tests/test_repository_closure.py
-<<<<<<< HEAD
 tests/test_historical_real_spec_regression.py
 tests/test_translation_candidate_resume.py
 tests/test_historical_real_quality_regression.py
@@ -142,8 +141,6 @@ tests/test_current_delegated_approval.py
 
 # CI_SAFE: source-faithful text QA uses in-memory fixtures only.
 tests/test_current_source_faithful_qa.py
-=======
 # CI_SAFE: isolated SQLite fixtures and planner mocks; no production/network access.
 tests/test_detail_refresh_judgment.py
 tests/test_current_price_projection.py
->>>>>>> f2ddf05 (chore: preserve local production price and detail fixes)
