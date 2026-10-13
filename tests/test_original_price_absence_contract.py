@@ -57,17 +57,43 @@ def test_detail_original_price_cannot_replace_a_missing_selling_price():
 
 
 def test_optional_price_change_is_planned_without_detail_fetch():
-    base=dict(current_price=2.5,original_price=3.0,discount=-0.17,image_url='x',desc_es='ok')
+    base=dict(current_price=2.5,original_price=3.0,discount=-0.17,image_url='x',desc_es='ok',
+              spec_es='100 ml',details_es='Color: Rojo',cat2_es='B')
     light=dict(current_price=2.5,original_price=None,discount=None,image_url='x',_price_observation_complete=True)
     plans=plan_updates({'1001':SimpleNamespace(status='ACTIVE',canonical_id='ACT0001001')},{'1001':base},{'1001':light})
     assert plans[0]['reason']=='PRICE_METADATA_CHANGE' and plans[0]['need_detail'] is False
 
 
 def test_missing_legacy_discount_is_unknown_not_a_repeated_metadata_change():
-    base=dict(current_price=2.5,original_price=3.0,image_url='x',desc_es='ok',raw_tags='',last_seen='2026-10-12')
+    base=dict(current_price=2.5,original_price=3.0,image_url='x',desc_es='ok',raw_tags='',last_seen='2026-10-12',
+              spec_es='100 ml',details_es='Color: Rojo',cat2_es='B')
     light=dict(current_price=2.5,original_price=3.0,discount=-0.17,image_url='x',_price_observation_complete=True)
     plans=plan_updates({'1001':SimpleNamespace(status='ACTIVE',canonical_id='ACT0001001')},{'1001':base},{'1001':light},detail_refresh_days=100000)
     assert plans==[]
+
+
+def test_optional_price_update_does_not_hide_missing_detail_work():
+    base = dict(current_price=2.5, original_price=3.0, discount=-0.17,
+                image_url='x', desc_es='', details_es='Color: Rojo',
+                spec_es='100 ml', cat2_es='B')
+    light = dict(current_price=2.5, original_price=None, discount=None,
+                 image_url='x', _price_observation_complete=True)
+    plans = plan_updates({'1001': SimpleNamespace(status='ACTIVE', canonical_id='ACT0001001')},
+                         {'1001': base}, {'1001': light})
+    assert plans[0]['need_detail'] is True
+    assert plans[0]['reason'] == 'MISSING_FIELD'
+
+
+def test_optional_price_update_does_not_hide_pending_detail_retry():
+    base = dict(current_price=2.5, original_price=3.0, discount=-0.17,
+                image_url='x', desc_es='ok', details_es='Color: Rojo',
+                spec_es='100 ml', cat2_es='B', detail_status='PENDING')
+    light = dict(current_price=2.5, original_price=None, discount=None,
+                 image_url='x', _price_observation_complete=True)
+    plans = plan_updates({'1001': SimpleNamespace(status='ACTIVE', canonical_id='ACT0001001')},
+                         {'1001': base}, {'1001': light})
+    assert plans[0]['need_detail'] is True
+    assert plans[0]['reason'] == 'DETAIL_PENDING'
 
 
 def seed(tmp_path):

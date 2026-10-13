@@ -62,7 +62,7 @@ def plan_updates(
             new_price = (light or {}).get("current_price")
             if light and ((old_price is None) or (new_price is not None and abs(new_price - (old_price or 0)) > 1e-9)):
                 reason = "PRICE_CHANGE_CANDIDATE"
-            elif light.get("_price_observation_complete") is True and any(
+            elif light and light.get("_price_observation_complete") is True and any(
                 (base.get(k) or None) != (light.get(k) or None)
                 for k in ("original_price", "discount") if k == "original_price" or k in base
             ):
