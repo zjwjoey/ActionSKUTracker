@@ -22,6 +22,7 @@ from PIL import Image, UnidentifiedImageError
 
 from ..excel.reader import load_current
 from ..services.normalization import parse_bool_zh, parse_price
+from ..services.spanish_details import project_spanish_details, spanish_source_findings
 from .dictionary_join import (
     DictionaryJoinError,
     build_zh_rows,
@@ -287,6 +288,7 @@ def export_catalog(
     if language == "es":
         validate_spanish_source_fields(source.records)
         rows = build_es_rows(source.records)
+        es_projection_report = build_es_projection_report(source.records, rows)
     elif language == "zh":
         projection = build_final_zh_projection(cfg, source, release_mode=release_mode)
         rows = [dict(row) for row in projection.rows]
@@ -361,6 +363,9 @@ def export_catalog(
         }
         if release_mode == PRODUCTION_RELEASE:
             manifest["strict_release_audit"] = release_audit
+        if language == "es":
+            # Persist before/after evidence atomically with the workbook.
+            manifest["spanish_projection"] = es_projection_report
         if language == "zh":
             manifest["dictionary_hash"] = dictionary_hash
             manifest["dictionary_fallback_counts"] = fallback_counts
@@ -755,13 +760,35 @@ def build_es_rows(records: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
             "原价": _display_original_price(record),
             "单价": _text(record.get("unit_price")),
             "描述": _text_or_none(record.get("desc_es")),
-            "产品详情": _text_or_none(record.get("details_es")),
+            "产品详情": project_spanish_details(record.get("details_es")),
             "图片链接": _text_or_none(record.get("image_url")),
             "商品链接": _text(record.get("product_url")),
             "备注": _es_remarks(record),
         }
         for record in ordered
     ]
+
+
+def build_es_projection_report(records: Iterable[dict[str, Any]], rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    """Audit display-only repairs without approving malformed source facts."""
+    source = {str(record.get("sku") or "").strip(): record for record in records}
+    events: list[dict[str, Any]] = []
+    findings: list[dict[str, str]] = []
+    for row in rows:
+        sku = str(row["编号"])
+        record = source[sku]
+        before = _text_or_none(record.get("details_es"))
+        after = row["产品详情"]
+        if before != after:
+            events.append({"sku": sku, "field": "details_es", "before": before, "after": after,
+                           "rule": "COMPOUND_LABEL_AND_EXACT_DUPLICATE_DISPLAY", "rule_version": "1",
+                           "source_hash": hashlib.sha256(str(before or "").encode("utf-8")).hexdigest()})
+        findings.extend({"sku": sku, **finding} for finding in spanish_source_findings(record.get("desc_es"), record.get("details_es")))
+    return {"version": "ES_DISPLAY_V1", "source_modified": False,
+            "repaired_fields": len(events), "repaired_skus": len({e["sku"] for e in events}),
+            "source_issue_fields": len({(f["sku"], f["field"]) for f in findings}),
+            "source_issue_skus": len({f["sku"] for f in findings}),
+            "events": events, "source_findings": findings}
 
 
 def validate_output_rows(rows: Iterable[dict[str, Any]]) -> None:
@@ -1035,9 +1062,13 @@ def _es_remarks(record: dict[str, Any]) -> str:
         values.append("Promoción")
     if parse_bool_zh(record.get("sustainable")):
         values.append("Sostenible")
-    discount = _optional_price(record.get("discount"), sku=str(record.get("sku")), field="discount")
-    if discount is not None:
-        values.append(f"Descuento: {discount:g}")
+    # The legacy Master and PRIMARY do not project a discount field equally.
+    # Use the same validated price pair for both, explicitly labelling derived
+    # arithmetic rather than presenting it as an official badge.
+    current = _optional_price(record.get("current_price"), sku=str(record.get("sku")), field="current_price")
+    original = _optional_price(record.get("original_price"), sku=str(record.get("sku")), field="original_price")
+    if current is not None and original is not None and original > current and original > 0:
+        values.append(f"Descuento calculado: {(original-current)/original*100:.2f}%")
     raw_tags = _text_or_none(record.get("raw_tags"))
     if raw_tags:
         values.append(f"Etiquetas oficiales: {raw_tags}")
@@ -1045,11 +1076,14 @@ def _es_remarks(record: dict[str, Any]) -> str:
     # detail/category facts or silently turn an incomplete observation into a
     # complete row; the labels make the gap auditable for later detail retry.
     if not _text_or_none(record.get("desc_es")):
-        values.append("Descripción pendiente")
+        values.append("Descripción no disponible en el registro fuente")
     if not _text_or_none(record.get("details_es")):
         values.append("Detalles pendientes")
     if not _text_or_none(record.get("cat2_es")):
         values.append("Categoría 2 pendiente")
+    findings = spanish_source_findings(record.get("desc_es"), record.get("details_es"))
+    for finding in findings:
+        values.append(f"Revisar texto de origen: {finding['field']} ({finding['token']})")
     return "；".join(values)
 
 

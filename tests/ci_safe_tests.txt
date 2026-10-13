@@ -144,3 +144,7 @@ tests/test_current_source_faithful_qa.py
 # CI_SAFE: isolated SQLite fixtures and planner mocks; no production/network access.
 tests/test_detail_refresh_judgment.py
 tests/test_current_price_projection.py
+
+tests/test_original_price_absence_contract.py
+
+tests/test_spanish_extraction_export_quality.py
