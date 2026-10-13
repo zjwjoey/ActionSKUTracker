@@ -16,6 +16,7 @@ from typing import Any
 
 from ..products.badges import build_badge_state
 from ..services.hashing import content_hash, price_hash
+from ..services.price_evidence import merge_observed_prices, PRICE_FIELDS
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +60,11 @@ def plan_updates(
             new_price = light.get("current_price")
             if (old_price is None) or (new_price is not None and abs(new_price - (old_price or 0)) > 1e-9):
                 reason = "PRICE_CHANGE_CANDIDATE"
+            elif light.get("_price_observation_complete") is True and any(
+                (base.get(k) or None) != (light.get(k) or None)
+                for k in ("original_price", "discount") if k == "original_price" or k in base
+            ):
+                reason = "PRICE_METADATA_CHANGE"
             elif _badge_changed(base, sku in nuevo_skus, sku in promo_skus):
                 # 成员集合权威，无需详情确认
                 reason = "BADGE_CHANGE"
@@ -165,6 +171,7 @@ def fetch_and_merge(
             if detail:
                 has_detail = True
                 detail_completed_skus.append(sku)
+                merge_observed_prices(rec, detail)
                 for k, v in detail.items():
                     if v is not None and v != "":
                         rec[k] = v
@@ -174,7 +181,12 @@ def fetch_and_merge(
                 log.warning("  #%s 详情抓取失败，保留既有字段", sku)
         if plan.get("light"):
             light = plan["light"]
+            detail_price_authoritative = has_detail and rec.get("_price_observation_complete") is True
+            if not detail_price_authoritative:
+                merge_observed_prices(rec, light)
             for k in ("current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "product_url"):
+                if k in PRICE_FIELDS and detail_price_authoritative:
+                    continue
                 v = light.get(k)
                 if v is None:
                     continue

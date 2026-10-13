@@ -130,10 +130,16 @@ def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
     raw_tags 特殊处理：徽章状态 = 徽章页成员集合 + 基线徽章（build_badge_state），
     不再依赖不可靠的卡片标签。可持续/折扣等仅详情页显示的徽章保留基线，避免误报
     "徽章消失"。skip_raw_tags=True 时跳过 raw_tags（该 SKU 已抓详情，详情页标签
-    或 fetch_and_merge 已按成员集合设定）。其余字段仅在非空时覆盖，避免 listing
-    缺字段误清数据。
+    或 fetch_and_merge 已按成员集合设定）。价格区完整观测允许清空明确缺失的
+    原价/折扣；未知观测和其他空字段不会清除历史值。更新的完整详情价格优先。
     """
+    from ..services.price_evidence import merge_observed_prices, PRICE_FIELDS
+    detail_price_authoritative = skip_raw_tags and rec.get("_price_observation_complete") is True
+    if not detail_price_authoritative:
+        merge_observed_prices(rec, light)
     for k in _LIGHT_FIELDS:
+        if k in PRICE_FIELDS and detail_price_authoritative:
+            continue
         v = light.get(k)
         if v is None:
             continue
@@ -147,7 +153,8 @@ def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
 
 def _light_dict(lp) -> dict:
     d = asdict(lp) if hasattr(lp, "__dataclass_fields__") else dict(lp)
-    return {k: d.get(k) for k in _LIGHT_FIELDS}
+    return {**{k: d.get(k) for k in _LIGHT_FIELDS},
+            "_price_observation_complete": d.get("price_observation_complete") is True}
 
 
 def _persist_fatal_run_evidence(cfg: dict[str, Any], context: dict, error: BaseException) -> None:
@@ -525,7 +532,7 @@ def run_daily(
         "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",
         "sitemap_skus": sitemap_skus,
         "listing_raw": {cat: [asdict(lp) for lp in items] for cat, items in listing_map.items()},
-        "listing_products": [{"sku": k, **{f: v for f, v in v.items() if f in _LIGHT_FIELDS}} for k, v in today_light.items()],
+        "listing_products": [{"sku": k, **{f: v for f, v in v.items() if f in _LIGHT_FIELDS or f == "_price_observation_complete"}} for k, v in today_light.items()],
         "products_normalized": [{"sku": k, **{f: v for f, v in v.items()}} for k, v in today_records.items()],
         "sku_delta": sku_delta_rows,
         "presence_evidence": [{"sku": s.sku, "source_flag": s.source_flag,

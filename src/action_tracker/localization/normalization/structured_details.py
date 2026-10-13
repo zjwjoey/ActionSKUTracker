@@ -69,12 +69,18 @@ def parse_structured_details(text: str) -> tuple[StructuredDetail, ...]:
     # Chinese compatibility exports use the full-width semicolon. Treat it
     # as the same pair delimiter; otherwise all following boolean fields
     # become one value and are incorrectly reported as missing.
-    parts = [item.strip() for item in re.split(r"[;；\n]+", raw) if item.strip()]
+    parts = [item.strip() for item in re.split(r"[;；\n]+|[|｜](?=\s*[^|｜:：]+[:：])", raw) if item.strip()]
     result: list[StructuredDetail] = []
     for part in parts:
         match = re.match(r"^\s*([^:：]+?)\s*[:：]{1,2}\s*(.*?)\s*$", part)
         if not match:
-            continue
+            # Finite official flattened labels: preserve original fragment,
+            # recover only a syntax boundary, never guess a damaged key's meaning.
+            match = re.fullmatch(r"(Apto para el lavavajillas|Apto para el microondas|Incluye oído|Resistente al horno)\s+(Sí|Si|No)", part, re.I)
+            if not match:
+                match = re.fullmatch(r"(Tipo de taza / vaso)\s+(.+)", part, re.I)
+            if not match:
+                continue
         key, value = match.group(1).strip(), match.group(2).strip()
         context_key, value_type = _type_for(key, value)
         result.append(StructuredDetail(key, value, part, context_key, value_type))

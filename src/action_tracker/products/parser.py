@@ -10,6 +10,8 @@ import re
 import time
 
 from ..services.normalization import normalize_official_text, parse_discount_percent, parse_price
+from ..services.spanish_details import spanish_source_findings
+from ..services.price_evidence import complete_price_observation
 
 log = logging.getLogger(__name__)
 
@@ -71,14 +73,21 @@ _EXTRACT_JS = r"""
     }
 
     let details = '';
+    let detailRows = [];
     const table = document.querySelector('[data-testid="productions-specifications-table"]');
     if (table) {
-        details = [...table.querySelectorAll('tr')]
+        detailRows = [...table.querySelectorAll('tr')]
             .map(tr => {
-                const cells = [...tr.querySelectorAll('td')].map(c => c.textContent.replace(/\s+/g, ' ').trim());
-                return cells.join(': ');
+                // Direct cells keep each complete official label separate
+                // from its value, even if nested tables are ever introduced.
+                const cells = [...tr.children].filter(c => /^(TD|TH)$/.test(c.tagName))
+                    .map(c => c.textContent.replace(/\s+/g, ' ').trim());
+                if (!cells.length) return null;
+                return cells.length === 2 ? {key: cells[0], value: cells[1]} : {raw: cells.join(': ')};
             })
-            .filter(Boolean)
+            .filter(Boolean);
+        details = detailRows
+            .map(row => row.raw || `${row.key.replace(/:\s*$/, '')}: ${row.value}`)
             .join('; ');
     }
 
@@ -113,11 +122,13 @@ _EXTRACT_JS = r"""
         cat2_es: cat2,
         spec_es: subtitle,
         current_price: salePrice,
+        price_observation_complete: !!pd?.querySelector('[data-testid="product-card-price"]') && !!(whole || frac),
         original_price: origPrice,
         unit_price: priceDesc,
         discount: discount,
         desc_es: desc,
         details_es: details,
+        detail_rows: detailRows,
         product_url: url,
         image_url: img,
         raw_tags: notes,
@@ -129,6 +140,22 @@ _EXTRACT_JS = r"""
 def is_bad_title(title: str) -> bool:
     t = (title or "").strip()
     return not t or t == "www.action.com" or bool(_BAD_TITLE_RE.search(t))
+
+
+def normalize_verified_specification_rows(rows: list, *, expected_sku: str) -> str:
+    """Validate captured official cells without guessing or dropping facts."""
+    pairs = []
+    for cells in rows:
+        if not isinstance(cells, (list, tuple)) or len(cells) != 2:
+            raise ValueError("OFFICIAL_DETAIL_ROW_SHAPE_INVALID")
+        if any(not isinstance(cell, str) or not cell.strip() for cell in cells):
+            raise ValueError("OFFICIAL_DETAIL_EMPTY_CELL")
+        key, value = cells
+        pairs.append((key.strip().rstrip(":"), value.strip()))
+    articles = [value for key, value in pairs if key.casefold() in {"número del artículo", "número de artículo"}]
+    if articles != [str(expected_sku)] or len(pairs) < 2:
+        raise ValueError("OFFICIAL_DETAIL_ARTICLE_ID_MISMATCH")
+    return normalize_official_text("; ".join(f"{key}: {value}" for key, value in pairs), field="details") or ""
 
 
 def fetch_product_detail(browser, url: str, sku_hint: str | None = None, max_retries: int = 5) -> dict:
@@ -166,8 +193,6 @@ def fetch_product_detail(browser, url: str, sku_hint: str | None = None, max_ret
 def _normalize_detail(raw: dict, url: str) -> dict:
     cur = parse_price(raw.get("current_price") or "")
     orig = parse_price(raw.get("original_price") or "")
-    if cur is None and orig is not None:
-        cur = orig
     raw_spec = raw.get("spec_es") or ""
     raw_desc = raw.get("desc_es") or ""
     raw_details = raw.get("details_es") or ""
@@ -179,6 +204,12 @@ def _normalize_detail(raw: dict, url: str) -> dict:
         "spec_es": normalize_official_text(raw_spec, field="spec") or "",
         "current_price": cur,
         "original_price": orig,
+        "_price_observation_complete": complete_price_observation({
+            "price_observation_complete": raw.get("price_observation_complete") is True
+                and "original_price" in raw and "discount" in raw,
+            "whole": str(cur) if cur is not None else "", "fractional": "",
+            "original": raw.get("original_price"), "discount": raw.get("discount"),
+        }),
         "unit_price": raw.get("unit_price") or "",
         "discount": parse_discount_percent(raw.get("discount") or ""),
         "desc_es": normalize_official_text(raw_desc, field="description") or "",
@@ -189,6 +220,8 @@ def _normalize_detail(raw: dict, url: str) -> dict:
         "_raw_spec_es": raw_spec,
         "_raw_desc_es": raw_desc,
         "_raw_details_es": raw_details,
+        "_raw_detail_rows": raw.get("detail_rows") or [],
+        "_source_quality_findings": spanish_source_findings(raw_desc, raw_details),
         "product_url": url,
         "image_url": raw.get("image_url") or "",
         "raw_tags": raw.get("raw_tags") or "",
