@@ -96,10 +96,6 @@ _SEMANTIC_TARGET_ALIASES = {
     "microfibras": ("超细纤维", "微纤维"),
     "madera": ("木质", "木材", "木制", "木头", "木盖", "木屑", "芒果木"),
     "bambú": ("竹制", "竹材", "竹子", "竹签", "竹筷"),
-    # In product descriptions, Spanish ``iluminación`` can faithfully be
-    # rendered as lighting, a light fixture, or an LED candle.  Requiring
-    # only the literal noun ``照明灯`` rejects correct source-faithful copy.
-    "iluminación": ("照明灯", "照明", "灯光", "灯具", "LED蜡烛"),
 }
 
 # A small, explicit allowlist for semantic translations that are rendered as
