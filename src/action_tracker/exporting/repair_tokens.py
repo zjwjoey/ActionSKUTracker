@@ -12,7 +12,7 @@ from typing import Iterable
 
 
 _MODEL_WITH_DIGITS_RE = re.compile(
-    r"(?<![A-Za-z0-9])([A-Z]{1,8})\s*[- ]?\s*(\d{1,8})(?![A-Za-z0-9])",
+    r"(?<![A-Za-z0-9])([A-Z]{1,8})[ \t]*[- ]?[ \t]*(\d{1,8})(?![A-Za-z0-9])",
 )
 
 
@@ -32,6 +32,8 @@ def source_model_tokens(source: str | None) -> tuple[str, ...]:
     text = str(source or "")
     found: list[str] = []
     for match in _MODEL_WITH_DIGITS_RE.finditer(text):
+        if match.group(1) == "GSM" and re.match(r"[ \t]*%", text[match.end():]):
+            continue
         # A spaced one-letter prefix is usually a measurement or a nutrient
         # name (``Vitamina D 10 mcg``), not a model.  Keep compact forms such
         # as ``A4``/``K2`` and multi-letter forms such as ``PZ 2``.
@@ -46,8 +48,16 @@ def source_model_tokens(source: str | None) -> tuple[str, ...]:
 def token_is_preserved(source_token: str, target: str | None) -> bool:
     """Check whether a target keeps a source token with formatting changes."""
     compact_source = canonical_fact_token(source_token)
-    compact_target = canonical_fact_token(target)
-    return bool(compact_source and compact_source in compact_target)
+    if not compact_source:
+        return False
+    # Keep boundaries in the target. Compacting the entire sentence makes AA
+    # appear inside AAA, A4 inside A40, and joins distinct AA/AAA alternatives.
+    text = str(target or "").casefold().strip()
+    text = text.replace("–", "-").replace("—", "-").replace("×", "x")
+    text = re.sub(r"(?<=\d),(?=\d)", ".", text)
+    text = re.sub(r"(?<=\d)\.(?=\d{3}(?:\D|$))", "", text)
+    flexible = r"[ \t\-_/]*".join(re.escape(char) for char in compact_source)
+    return re.search(r"(?<![A-Za-z0-9])" + flexible + r"(?![A-Za-z0-9])", text) is not None
 
 
 def repair_source_model_fragments(value: str | None, source: str | None) -> str | None:
