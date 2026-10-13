@@ -122,3 +122,22 @@ tests/test_historical_spec24_usage_units.py
 tests/test_historical_archive_material_qualifiers.py
 tests/test_historical_trusted_source_qa.py
 tests/test_historical_strategy_isolation.py
+tests/test_historical_pending3196_compact_units.py
+tests/test_historical_pending3196_cubic_units.py
+tests/test_historical_pending3196_source_faithful_brands.py
+tests/test_historical_pending3196_context_numbers.py
+tests/test_historical_pending3196_led_counts.py
+tests/test_historical_pending3196_detail_scanner.py
+tests/test_historical_pending3196_category_trust.py
+tests/test_historical_pending3196_name_context.py
+tests/test_historical_pending3196_capacity_units.py
+tests/test_historical_pending3196_description_qa.py
+tests/test_historical_pending3196_connector_preposition.py
+tests/test_historical_pending3196_correction_device_goma.py
+tests/test_historical_pending3196_body_cloth.py
+
+# CI_SAFE: current delegated approval uses temporary SQLite fixtures only.
+tests/test_current_delegated_approval.py
+
+# CI_SAFE: source-faithful text QA uses in-memory fixtures only.
+tests/test_current_source_faithful_qa.py

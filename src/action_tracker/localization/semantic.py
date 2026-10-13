@@ -56,6 +56,64 @@ _HISTORICAL_QUALITY_TERMS = frozenset({
 })
 
 
+def stationery_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
+    """Disambiguate only a standalone item in an own-field school list."""
+    spans = []
+    for line in re.finditer(r"[^\r\n]+", text):
+        own = line.group()
+        if not (re.search(r"\b(?:lápices|lápiz|rotuladores|bolígrafo)\b", own, re.I)
+                and re.search(r"\b(?:regla|sacapuntas)\b", own, re.I)):
+            continue
+        for item in re.finditer(r"(?:^|[,;]|\by\s+)\s*(gomas?)\s*(?=[,;]|\by\b|$)", own, re.I):
+            spans.append((line.start() + item.start(1), line.start() + item.end(1)))
+    return tuple(spans)
+
+
+def correction_device_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
+    """Resolve only a unique own-field correction-device value Goma.
+
+    The structured key identifies an eraser type, rather than rubber
+    composition. Unknown/duplicate keys, qualified values and material
+    assertions do not authorize this disambiguation.
+    """
+    key = r"(?:^|[;；\r\n])\s*tipo\s+de\s+dispositivo\s+de\s+correcci[oó]n\s*[:：]{1,2}"
+    if len(re.findall(key, text, re.I)) != 1:
+        return ()
+    return tuple(m.span(1) for m in re.finditer(
+        key + r"\s*(goma)\s*(?=[;；\r\n]|$)", text, re.I))
+
+
+def body_cloth_form_spans(text: str) -> tuple[tuple[int, int], ...]:
+    """Resolve a unique cloth-form value only with own-field body evidence."""
+    delimiter = r"(?:^|[;；\r\n])\s*"
+    body_key = delimiter + r"apto\s+para\s+tipo\s+de\s+parte\s+del\s+cuerpo\s*[:：]{1,2}"
+    form_key = delimiter + r"sustancia\s*[:：]{1,2}"
+    if len(re.findall(body_key, text, re.I)) != 1 or len(re.findall(form_key, text, re.I)) != 1:
+        return ()
+    if not re.search(body_key + r"\s*(?:todo\s+el\s+cuerpo|rostro|manos)\s*(?=[;；\r\n]|$)", text, re.I):
+        return ()
+    return tuple(m.span(1) for m in re.finditer(
+        form_key + r"\s*(paño)\s*(?=[;；\r\n]|$)", text, re.I))
+
+
+def name_eraser_context_span(source: SourceFacts) -> tuple[int, int] | None:
+    """Resolve a title's bare Gomas from an explicit same-product definition.
+
+    Office category alone is insufficient. Only a positive description head
+    naming erasers may disambiguate the title; explicit elastic/hair wording
+    in that title is not overridden. No quantities or IP are imported.
+    """
+    match = re.match(r"\s*(gomas)\b", source.name_es, re.I)
+    if not match or not source.cat1_es.casefold().startswith("oficina"):
+        return None
+    if re.search(r"\bgomas\s+(?:elásticas|elasticas|del\s+pelo|para\b)", source.name_es, re.I):
+        return None
+    description_head = source.desc_es.strip().splitlines()[0] if source.desc_es.strip() else ""
+    if not re.match(r"(?:\d+\s+)?gomas?\s+de\s+borrar\b", description_head, re.I):
+        return None
+    return match.span(1)
+
+
 def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None = None, dictionaries: Mapping[str, Any] | None = None, historical_quality: bool = True) -> tuple[SemanticFact, ...]:
     dictionaries = dictionaries or {}
     text_fields = (("name_es", source.name_es), ("spec_es", source.spec_es), ("desc_es", source.desc_es), ("details_es", source.details_es))
@@ -79,8 +137,49 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         product_rows = [{"source_term": key, "canonical_zh": value} for key, value in product_rows.items()]
     if isinstance(tech_rows, Mapping):
         tech_rows = [{"token": key, "canonical_token": value, "token_type": "TECH_TOKEN"} for key, value in tech_rows.items()]
+    eraser_title_span = name_eraser_context_span(source)
+    eraser_detail_spans = correction_device_eraser_spans(source.details_es)
+    body_cloth_spans = body_cloth_form_spans(source.details_es)
     def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
-        if historical_quality and source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"}:
+        if (field == "details_es" and body_cloth_spans and source_text.casefold() == "paño"
+                and kind == "PRODUCT_TYPE"):
+            remaining = source.details_es
+            for start, end in reversed(body_cloth_spans):
+                remaining = remaining[:start] + " " + remaining[end:]
+            # An independently stated cleaning-cloth product remains required.
+            if not re.search(r"\bpaño\b", remaining, re.I):
+                return
+        if (field == "details_es" and eraser_detail_spans and source_text.casefold() == "goma"
+                and kind in {"MATERIAL", "PRODUCT_TYPE"} and zh not in {"橡皮擦", "橡皮"}):
+            remaining = source.details_es
+            for start, end in reversed(eraser_detail_spans):
+                remaining = remaining[:start] + " " + remaining[end:]
+            # A separately stated rubber material remains a required fact.
+            if not re.search(r"\bgoma\b", remaining, re.I):
+                return
+        if (field == "name_es" and source_text.casefold() == "gomas"
+                and kind == "PRODUCT_TYPE" and zh == "橡皮筋"
+                and source.cat1_es.casefold().startswith("oficina")
+                and re.match(r"\s*gomas\b", source.name_es, re.I)
+                and not re.match(r"\s*gomas\s+el[aá]sticas\b", source.name_es, re.I)):
+            # The general crafts seed is not evidence that an ambiguous
+            # office title means rubber bands. A correct reviewed baseline
+            # remains reusable; new unresolved identities require review.
+            return
+        if (field == "name_es" and eraser_title_span and source_text.casefold() == "gomas"
+                and kind in {"MATERIAL", "PRODUCT_TYPE"} and zh not in {"橡皮擦", "橡皮"}):
+            start, end = eraser_title_span
+            remaining = source.name_es[:start] + " " + source.name_es[end:]
+            if not re.search(r"\bgomas\b", remaining, re.I):
+                return
+        if source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"} and zh not in {"橡皮擦", "橡皮"}:
+            own = dict(text_fields).get(field, "")
+            spans = stationery_eraser_spans(own)
+            for start, end in reversed(spans):
+                own = own[:start] + " " + own[end:]
+            if spans and not re.search(rf"\b{re.escape(source_text)}\b", own, re.I):
+                return
+        if historical_quality and source_text.casefold() in {"goma", "gomas"} and kind in {"MATERIAL", "PRODUCT_TYPE"} and zh not in {"橡皮擦", "橡皮"}:
             # The complete noun means eraser, not an assertion of rubber
             # composition or rubber bands. Preserve separate material facts.
             remaining = re.sub(r"\bgomas?\s+de\s+borrar\b", " ", dict(text_fields).get(field, ""), flags=re.I)
@@ -88,6 +187,10 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
             # consume this complete own-field phrase; separately stated goma
             # material or other rubber bands remain protected facts.
             remaining = re.sub(_HAIR_TIE_PATTERN, " ", remaining, flags=re.I)
+            # Consume only the isolated eraser item. A separate de goma or
+            # Material: Goma assertion must remain a rubber fact.
+            for start, end in reversed(stationery_eraser_spans(remaining)):
+                remaining = remaining[:start] + " " + remaining[end:]
             # The complete peelable-candy phrase is disambiguated only by
             # an explicit gummy noun in this same source field. A separate
             # rubber-band occurrence remains a separate product fact.
@@ -104,6 +207,18 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        if field == "details_es":
+            for start, end in body_cloth_spans:
+                add("VARIANT", text[start:end], "巾片", field, "source_bound_body_cloth_form")
+            for start, end in eraser_detail_spans:
+                add("PRODUCT_TYPE", text[start:end], "橡皮擦", field,
+                    "source_bound_correction_device_type")
+        if field == "name_es" and eraser_title_span:
+            start, end = eraser_title_span
+            add("PRODUCT_TYPE", text[start:end], "橡皮擦", field,
+                "name_gomas_disambiguated_by_positive_desc_es_head")
+        for start, end in stationery_eraser_spans(text):
+            add("PRODUCT_TYPE", text[start:end], "橡皮擦", field, "source_bound_stationery_list")
         # A numeric wash allowance states use, not an unqualified count.
         # Keep the complete phrase and its own field; do not treat washed
         # fabric adjectives or a wash count in another field as evidence.
@@ -180,6 +295,8 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
             add(kind, token, token, field, token)
         for match in re.finditer(r"\b(?:XXL|XL)\b", text, re.I):
             add("TECH_TOKEN", match.group(0).upper(), match.group(0).upper(), field, match.group(0))
+        for match in re.finditer(r"\b[23]D\b", text, re.I):
+            add("TECH_TOKEN", match.group(0), match.group(0).upper(), field, match.group(0))
         for kind, pattern in _SEMANTIC_PATTERNS:
             for match in re.finditer(pattern, text, re.I):
                 raw = match.group(0)

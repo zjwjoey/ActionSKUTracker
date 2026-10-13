@@ -1,0 +1,435 @@
+{
+  "sku": "3223678",
+  "context": {
+    "name_es": "Goma de borrar eléctrica con recambios",
+    "cat1_es": "Oficina y papelería",
+    "cat2_es": "Accesorios de oficina",
+    "spec_es": "12 piezas | varios colores",
+    "desc_es": "Goma rápida y superprecisa\nIncluye 11 recambios\nFunciona con 2 pilas AAA (se venden por separado)\nBorra con precisión con esta goma de borrar eléctrica. Con solo pulsar un botón, eliminarás líneas de forma rápida y precisa, sin estropear tu dibujo o texto. Ideal para el colegio, el trabajo o proyectos creativos. La goma de borrar se adapta bien a la mano y es perfecta para pequeñas correcciones. Es muy práctica porque incluye 11 recambios, así puedes trabajar sin interrupciones. Inteligente, rápida y de lo más útil.",
+    "details_es": "Color: Azul, Rosa, Negro; Cantidad: 12 piezas; Tipo de dispositivo de corrección: Goma; Número del artículo: 3223678"
+  },
+  "source": "Color: Azul, Rosa, Negro; Cantidad: 12 piezas; Tipo de dispositivo de corrección: Goma; Número del artículo: 3223678",
+  "target_for_hard_qa": "颜色：蓝色、粉色、黑色；数量：12 件；纠错用品类型：橡皮擦；商品编号：3223678",
+  "source_evidence": {
+    "rank": 1,
+    "text": "Color: Azul, Rosa, Negro; Cantidad: 12 piezas; Tipo de dispositivo de corrección: Goma; Número del artículo: 3223678",
+    "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-09-09\\2026-09-09_032720\\products_normalized.csv",
+    "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-09-09/2026-09-09_032720",
+    "file_hash": "339695cbd6fc9f04ee405a2ac8bfda30c1b2a3f01a02c018d24cd82e4ce9a094",
+    "field_hash": "d900ed2ca2c9de5a526c8c48b93b8555ff9761d975a86e03d8100d4b122074b7"
+  },
+  "qa_before": {
+    "qa": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "details",
+          "evidence": {
+            "semantic_type": "MATERIAL",
+            "source_term": "goma",
+            "expected_target": "橡胶",
+            "source_field": "details_es",
+            "target_scope": "details",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Color: Azul, Rosa, Negro; Cantidad: 12 piezas; Tipo de dispositivo de corrección: Goma; Número del artículo: 3223678",
+          "target": "颜色：蓝色、粉色、黑色；数量：12 件；纠错用品类型：橡皮擦；商品编号：3223678",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "facts": [
+      {
+        "semantic_type": "PRODUCT_TYPE",
+        "source_text": "goma de borrar",
+        "normalized_source": "goma de borrar",
+        "zh_value": "橡皮擦",
+        "value": "橡皮擦",
+        "canonical_value": "橡皮擦",
+        "source_field": "name_es",
+        "evidence": "goma de borrar",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "name"
+        ],
+        "preferred_target": "name",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "name",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "VARIANT",
+        "source_text": "varios colores",
+        "normalized_source": "varios colores",
+        "zh_value": "多种颜色",
+        "value": "多种颜色",
+        "canonical_value": "多种颜色",
+        "source_field": "spec_es",
+        "evidence": "phrase_dictionary",
+        "confidence": 1.0,
+        "knowledge_source": "phrase_dictionary",
+        "allowed_targets": [
+          "spec"
+        ],
+        "preferred_target": "spec",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "spec",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "DESCRIPTION_FACT",
+        "source_text": "colores",
+        "normalized_source": "colores",
+        "zh_value": "颜色",
+        "value": "颜色",
+        "canonical_value": "颜色",
+        "source_field": "spec_es",
+        "evidence": "term_dictionary",
+        "confidence": 1.0,
+        "knowledge_source": "term_dictionary",
+        "allowed_targets": [
+          "description"
+        ],
+        "preferred_target": "description",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "description",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "DESCRIPTION_FACT",
+        "source_text": "piezas",
+        "normalized_source": "piezas",
+        "zh_value": "件",
+        "value": "件",
+        "canonical_value": "件",
+        "source_field": "spec_es",
+        "evidence": "term_dictionary",
+        "confidence": 1.0,
+        "knowledge_source": "term_dictionary",
+        "allowed_targets": [
+          "description"
+        ],
+        "preferred_target": "description",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "description",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "DESCRIPTION_FACT",
+        "source_text": "varios",
+        "normalized_source": "varios",
+        "zh_value": "多种",
+        "value": "多种",
+        "canonical_value": "多种",
+        "source_field": "spec_es",
+        "evidence": "term_dictionary",
+        "confidence": 1.0,
+        "knowledge_source": "term_dictionary",
+        "allowed_targets": [
+          "description"
+        ],
+        "preferred_target": "description",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "description",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "STANDARD_UNIT",
+        "source_text": "12piezas",
+        "normalized_source": "12piezas",
+        "zh_value": "12piezas",
+        "value": "12piezas",
+        "canonical_value": "12piezas",
+        "source_field": "spec_es",
+        "evidence": "12 piezas",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "spec"
+        ],
+        "preferred_target": "spec",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "spec",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "QUANTITY",
+        "source_text": "12 piezas",
+        "normalized_source": "12 piezas",
+        "zh_value": "12 piezas",
+        "value": "12 piezas",
+        "canonical_value": "12 piezas",
+        "source_field": "spec_es",
+        "evidence": "12 piezas",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "spec"
+        ],
+        "preferred_target": "spec",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "spec",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "DESCRIPTION_FACT",
+        "source_text": "incluye",
+        "normalized_source": "incluye",
+        "zh_value": "包含",
+        "value": "包含",
+        "canonical_value": "包含",
+        "source_field": "desc_es",
+        "evidence": "term_dictionary",
+        "confidence": 1.0,
+        "knowledge_source": "term_dictionary",
+        "allowed_targets": [
+          "description"
+        ],
+        "preferred_target": "description",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "description",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "PRODUCT_TYPE",
+        "source_text": "goma de borrar",
+        "normalized_source": "goma de borrar",
+        "zh_value": "橡皮擦",
+        "value": "橡皮擦",
+        "canonical_value": "橡皮擦",
+        "source_field": "desc_es",
+        "evidence": "goma de borrar",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "name"
+        ],
+        "preferred_target": "name",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "name",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "MATERIAL",
+        "source_text": "goma",
+        "normalized_source": "goma",
+        "zh_value": "橡胶",
+        "value": "橡胶",
+        "canonical_value": "橡胶",
+        "source_field": "desc_es",
+        "evidence": "goma",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "name"
+        ],
+        "preferred_target": "name",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "name",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "DETAIL_KEY",
+        "source_text": "color",
+        "normalized_source": "color",
+        "zh_value": "颜色",
+        "value": "颜色",
+        "canonical_value": "颜色",
+        "source_field": "details_es",
+        "evidence": "color",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "details"
+        ],
+        "preferred_target": "details",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "details",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "DETAIL_KEY",
+        "source_text": "cantidad",
+        "normalized_source": "cantidad",
+        "zh_value": "数量",
+        "value": "数量",
+        "canonical_value": "数量",
+        "source_field": "details_es",
+        "evidence": "cantidad",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "details"
+        ],
+        "preferred_target": "details",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "details",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "DESCRIPTION_FACT",
+        "source_text": "piezas",
+        "normalized_source": "piezas",
+        "zh_value": "件",
+        "value": "件",
+        "canonical_value": "件",
+        "source_field": "details_es",
+        "evidence": "term_dictionary",
+        "confidence": 1.0,
+        "knowledge_source": "term_dictionary",
+        "allowed_targets": [
+          "description"
+        ],
+        "preferred_target": "description",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "description",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "MATERIAL",
+        "source_text": "goma",
+        "normalized_source": "goma",
+        "zh_value": "橡胶",
+        "value": "橡胶",
+        "canonical_value": "橡胶",
+        "source_field": "details_es",
+        "evidence": "goma",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "name"
+        ],
+        "preferred_target": "name",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "name",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "COLOR",
+        "source_text": "negro",
+        "normalized_source": "negro",
+        "zh_value": "黑色",
+        "value": "黑色",
+        "canonical_value": "黑色",
+        "source_field": "details_es",
+        "evidence": "negro",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "spec"
+        ],
+        "preferred_target": "spec",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "spec",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "COLOR",
+        "source_text": "azul",
+        "normalized_source": "azul",
+        "zh_value": "蓝色",
+        "value": "蓝色",
+        "canonical_value": "蓝色",
+        "source_field": "details_es",
+        "evidence": "azul",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "spec"
+        ],
+        "preferred_target": "spec",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "spec",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "STANDARD_UNIT",
+        "source_text": "12piezas",
+        "normalized_source": "12piezas",
+        "zh_value": "12piezas",
+        "value": "12piezas",
+        "canonical_value": "12piezas",
+        "source_field": "details_es",
+        "evidence": "12 piezas",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "spec"
+        ],
+        "preferred_target": "spec",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "spec",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      },
+      {
+        "semantic_type": "QUANTITY",
+        "source_text": "12 piezas",
+        "normalized_source": "12 piezas",
+        "zh_value": "12 piezas",
+        "value": "12 piezas",
+        "canonical_value": "12 piezas",
+        "source_field": "details_es",
+        "evidence": "12 piezas",
+        "confidence": 1.0,
+        "knowledge_source": "deterministic_rule",
+        "allowed_targets": [
+          "spec"
+        ],
+        "preferred_target": "spec",
+        "keep_original": false,
+        "source_hash": "56db1f0777ca08c9590f45314a9275fe1f7bfd0e23eb7cc2514bde02da0bc05f",
+        "placement": "spec",
+        "coverage_status": "PLACED",
+        "coverage_reason": "planned output field"
+      }
+    ]
+  },
+  "risk_level": "HIGH",
+  "semantic_approval": "HIGH_OWNER_PENDING",
+  "production_apply": false
+}

@@ -1,0 +1,153 @@
+[
+  {
+    "sku": "3000357",
+    "context": {
+      "name_es": "Gafas de sol infantiles",
+      "cat1_es": "Cuidado personal",
+      "cat2_es": "Gafas y lentes",
+      "spec_es": "Diferentes variantes",
+      "desc_es": "Ofrecen una protección 100 % contra los rayos UV\nPuedes elegir, por ejemplo, entre Spider-Man, Mickey Mouse de Disney, Kuromi y Sonic\nProtege los ojos de tus hijos del sol con estas gafas de sol con personajes populares. Las lentes con protección UV ayudan a reducir la intensidad de la luz solar, mientras que su alegre diseño hace que sean aún más divertidas de llevar.",
+      "details_es": "Color: Diseño; Material: Plástico; Color de la lente: Negro; Con lente de protección UV: Sí; Género: Unisex; Material estructura: Plástico; Número del artículo: 3000357"
+    },
+    "source": "Ofrecen una protección 100 % contra los rayos UV\nPuedes elegir, por ejemplo, entre Spider-Man, Mickey Mouse de Disney, Kuromi y Sonic\nProtege los ojos de tus hijos del sol con estas gafas de sol con personajes populares. Las lentes con protección UV ayudan a reducir la intensidad de la luz solar, mientras que su alegre diseño hace que sean aún más divertidas de llevar.",
+    "target_for_hard_qa": "提供100%紫外线防护。\n可选角色例如Spider-Man、Disney的Mickey Mouse、Kuromi和Sonic。\n这些带有热门角色图案的太阳镜可保护孩子的眼睛免受阳光影响。具备UV防护的镜片有助减弱阳光强度，活泼的设计也让佩戴更有趣。",
+    "source_evidence": {
+      "rank": 1,
+      "text": "Ofrecen una protección 100 % contra los rayos UV\nPuedes elegir, por ejemplo, entre Spider-Man, Mickey Mouse de Disney, Kuromi y Sonic\nProtege los ojos de tus hijos del sol con estas gafas de sol con personajes populares. Las lentes con protección UV ayudan a reducir la intensidad de la luz solar, mientras que su alegre diseño hace que sean aún más divertidas de llevar.",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-22\\2026-08-22_035904\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-22/2026-08-22_035904",
+      "file_hash": "9d7a5dce5a27039622b242ffd284e2d39ede10e3fb1f0d50a1217744f837f955",
+      "field_hash": "a593438e6e89632e0c42f552a42317a90e68daa978ccac963c28cbf2032fb630"
+    },
+    "qa_before": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SPANISH_RESIDUAL",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "value": "提供100%紫外线防护。\n可选角色例如Spider-Man、Disney的Mickey Mouse、Kuromi和Sonic。\n这些带有热门角色图案的太阳镜可保护孩子的眼睛免受阳光影响。具备UV防护的镜片有助减弱阳光强度，活泼的设计也让佩戴更有趣。"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Ofrecen una protección 100 % contra los rayos UV\nPuedes elegir, por ejemplo, entre Spider-Man, Mickey Mouse de Disney, Kuromi y Sonic\nProtege los ojos de tus hijos del sol con estas gafas de sol con personajes populares. Las lentes con protección UV ayudan a reducir la intensidad de la luz solar, mientras que su alegre diseño hace que sean aún más divertidas de llevar.",
+          "target": "提供100%紫外线防护。\n可选角色例如Spider-Man、Disney的Mickey Mouse、Kuromi和Sonic。\n这些带有热门角色图案的太阳镜可保护孩子的眼睛免受阳光影响。具备UV防护的镜片有助减弱阳光强度，活泼的设计也让佩戴更有趣。",
+          "message": "",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "semantic_approval": "HIGH_OWNER_PENDING",
+    "production_apply": false
+  },
+  {
+    "sku": "3007114",
+    "context": {
+      "name_es": "Lámpara solar de pared Solar",
+      "cat1_es": "Jardín",
+      "cat2_es": "Iluminación exterior",
+      "spec_es": "15,5x10x7,5 cm | 800 lúmenes",
+      "desc_es": "Resistente al agua e inalámbrico\nFunciona con energía solar\nSe enciende automáticamente en la oscuridad al detectar movimiento\nUna iluminación alrededor de la casa es fácil con esta lámpara de pared alimentada por energía solar. Se enciende automáticamente en cuanto oscurece y el sensor reacciona al movimiento. Cuando alguien se acerca a menos de 5 metros de la lámpara, el sensor lo detecta. Es muy práctico cuando quieres recoger algo del trastero en la oscuridad. Pero también para espantar a posibles delincuentes. Un foco los estará iluminando inmediatamente.",
+      "details_es": "{'Número del artículo': '3007114', 'Color': 'Cobre, Negro', 'Color suave': 'Blanco cálido', 'Con sensor': 'Sí', 'Impermeable': 'Sí', 'Incluye fuente de luz': 'Sí', 'Instalación': 'Colgado', 'Lumen': '800', 'Método de fijación': 'Fijación en pared', 'Regulable': 'Sí', 'Tipo de alimentación': 'Energía solar', 'Tipo de fuente de luz': 'Lámpara LED'}"
+    },
+    "source": "Resistente al agua e inalámbrico\nFunciona con energía solar\nSe enciende automáticamente en la oscuridad al detectar movimiento\nUna iluminación alrededor de la casa es fácil con esta lámpara de pared alimentada por energía solar. Se enciende automáticamente en cuanto oscurece y el sensor reacciona al movimiento. Cuando alguien se acerca a menos de 5 metros de la lámpara, el sensor lo detecta. Es muy práctico cuando quieres recoger algo del trastero en la oscuridad. Pero también para espantar a posibles delincuentes. Un foco los estará iluminando inmediatamente.",
+    "target_for_hard_qa": "耐水且无线。\n使用太阳能。\n在天黑并检测到运动时自动亮起。\n这款太阳能壁灯可方便地为房屋周围提供照明。天黑时自动启动，传感器会对运动作出反应。有人接近至距离灯不到5米时，传感器即可检测到。夜间从储物间取东西时很实用，也可用来吓阻潜在的不法分子，聚光灯会立即照亮他们。",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Resistente al agua e inalámbrico\nFunciona con energía solar\nSe enciende automáticamente en la oscuridad al detectar movimiento\nUna iluminación alrededor de la casa es fácil con esta lámpara de pared alimentada por energía solar. Se enciende automáticamente en cuanto oscurece y el sensor reacciona al movimiento. Cuando alguien se acerca a menos de 5 metros de la lámpara, el sensor lo detecta. Es muy práctico cuando quieres recoger algo del trastero en la oscuridad. Pero también para espantar a posibles delincuentes. Un foco los estará iluminando inmediatamente.",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3007114",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "eba9a2b5dfabd907a504db1a36fb7466672f75c2221a5a2636e4a5787d310bc3"
+    },
+    "qa_before": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "iluminación",
+            "expected_target": "照明灯",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Resistente al agua e inalámbrico\nFunciona con energía solar\nSe enciende automáticamente en la oscuridad al detectar movimiento\nUna iluminación alrededor de la casa es fácil con esta lámpara de pared alimentada por energía solar. Se enciende automáticamente en cuanto oscurece y el sensor reacciona al movimiento. Cuando alguien se acerca a menos de 5 metros de la lámpara, el sensor lo detecta. Es muy práctico cuando quieres recoger algo del trastero en la oscuridad. Pero también para espantar a posibles delincuentes. Un foco los estará iluminando inmediatamente.",
+          "target": "耐水且无线。\n使用太阳能。\n在天黑并检测到运动时自动亮起。\n这款太阳能壁灯可方便地为房屋周围提供照明。天黑时自动启动，传感器会对运动作出反应。有人接近至距离灯不到5米时，传感器即可检测到。夜间从储物间取东西时很实用，也可用来吓阻潜在的不法分子，聚光灯会立即照亮他们。",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "semantic_approval": "HIGH_OWNER_PENDING",
+    "production_apply": false
+  },
+  {
+    "sku": "2537232",
+    "context": {
+      "name_es": "Funda nórdica Hotel Royal",
+      "cat1_es": "Vivienda",
+      "cat2_es": "Accesorios de cama",
+      "spec_es": "200x220 cm | diferentes variantes",
+      "desc_es": "Hecha de algodón satinado: supersuave, absorbe la humedad y controla la temperatura\nAction se enorgullece de formar parte del programa Better Cotton Initiative (BCI)\nDale a tu habitación una iluminación cálida de una sola vez con una suave funda nórdica de satén. Siempre habrá un color que mejor se adapte a ti. Y algunos modelos tienen incluso un color distinto en ambos laterales. Dale la vuelta, así parecerá que tienes una nueva funda nórdica cada día. La funda nórdica y las 2 fundas de almohada van enbaladas en una bolsa del mismo tejido. De esta forma, podrás saber enseguida en la misma tienda cuál es su tacto sin necesidad de desembalarlas. No solo resulta de lo más práctico, sino que también ahorra mucho envase de plástico.",
+      "details_es": "{'Número del artículo': '2537232', 'Color': 'Gris, Diseño, Blanco', 'Material': 'Algodón', 'Cantidad': '3 piezas', 'Incluye banda de inserción': 'Sí', 'Incluye fundas de almohada': 'Sí', 'Instrucciones de lavado': 'lavado a máquina hasta 60 °C', 'Instrucciones de planchado': 'Planchado a temperatura máxima de 150 º C', 'Instrucciones de secado': 'Apto para secar a baja temperatura', 'Tipo de textil': 'Tejido de algodón, Satén'}"
+    },
+    "source": "Hecha de algodón satinado: supersuave, absorbe la humedad y controla la temperatura\nAction se enorgullece de formar parte del programa Better Cotton Initiative (BCI)\nDale a tu habitación una iluminación cálida de una sola vez con una suave funda nórdica de satén. Siempre habrá un color que mejor se adapte a ti. Y algunos modelos tienen incluso un color distinto en ambos laterales. Dale la vuelta, así parecerá que tienes una nueva funda nórdica cada día. La funda nórdica y las 2 fundas de almohada van enbaladas en una bolsa del mismo tejido. De esta forma, podrás saber enseguida en la misma tienda cuál es su tacto sin necesidad de desembalarlas. No solo resulta de lo más práctico, sino que también ahorra mucho envase de plástico.",
+    "target_for_hard_qa": "采用棉缎面料，十分柔软，可吸湿并调节温度。Action 很自豪地参与 Better Cotton Initiative（BCI，更好棉花倡议）项目。柔软的缎面被套为卧室增添温暖氛围，有多种颜色可选，部分款式两面颜色不同，翻面即可变换外观。被套和 2 个枕套装在同材质布袋中，方便在店内不拆包装即可感受面料触感，同时减少塑料包装。",
+    "source_evidence": {
+      "rank": 2,
+      "text": "Hecha de algodón satinado: supersuave, absorbe la humedad y controla la temperatura\nAction se enorgullece de formar parte del programa Better Cotton Initiative (BCI)\nDale a tu habitación una iluminación cálida de una sola vez con una suave funda nórdica de satén. Siempre habrá un color que mejor se adapte a ti. Y algunos modelos tienen incluso un color distinto en ambos laterales. Dale la vuelta, así parecerá que tienes una nueva funda nórdica cada día. La funda nórdica y las 2 fundas de almohada van enbaladas en una bolsa del mismo tejido. De esta forma, podrás saber enseguida en la misma tienda cuál es su tacto sin necesidad de desembalarlas. No solo resulta de lo más práctico, sino que también ahorra mucho envase de plástico.",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::2537232",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "aef8a50b8029bce1e31cfa2101267a66ca2b049fb384b016986f9e8802c9404c"
+    },
+    "qa_before": {
+      "status": "FAIL",
+      "fact_status": "FAIL",
+      "findings": [
+        {
+          "rule_id": "SEMANTIC_FACT_DROPPED",
+          "severity": "ERROR",
+          "field_name": "description",
+          "evidence": {
+            "semantic_type": "PRODUCT_TYPE",
+            "source_term": "iluminación",
+            "expected_target": "照明灯",
+            "source_field": "desc_es",
+            "target_scope": "description",
+            "placement": "name"
+          },
+          "sku": "",
+          "source_hash": "",
+          "source": "Hecha de algodón satinado: supersuave, absorbe la humedad y controla la temperatura\nAction se enorgullece de formar parte del programa Better Cotton Initiative (BCI)\nDale a tu habitación una iluminación cálida de una sola vez con una suave funda nórdica de satén. Siempre habrá un color que mejor se adapte a ti. Y algunos modelos tienen incluso un color distinto en ambos laterales. Dale la vuelta, así parecerá que tienes una nueva funda nórdica cada día. La funda nórdica y las 2 fundas de almohada van enbaladas en una bolsa del mismo tejido. De esta forma, podrás saber enseguida en la misma tienda cuál es su tacto sin necesidad de desembalarlas. No solo resulta de lo más práctico, sino que también ahorra mucho envase de plástico.",
+          "target": "采用棉缎面料，十分柔软，可吸湿并调节温度。Action 很自豪地参与 Better Cotton Initiative（BCI，更好棉花倡议）项目。柔软的缎面被套为卧室增添温暖氛围，有多种颜色可选，部分款式两面颜色不同，翻面即可变换外观。被套和 2 个枕套装在同材质布袋中，方便在店内不拆包装即可感受面料触感，同时减少塑料包装。",
+          "message": "semantic product fact is not represented in target",
+          "repairable": false,
+          "blocking": true
+        }
+      ],
+      "canonical_status": "NOT_RUN",
+      "canonical_qa_status": "NOT_RUN",
+      "overall_ready": false
+    },
+    "semantic_approval": "HIGH_OWNER_PENDING",
+    "production_apply": false
+  }
+]

@@ -1,7 +1,8 @@
-"""Explicit Owner delegation for reviewed historical localization revisions.
+"""Explicit Owner delegation for reviewed localization revisions.
 
 No default service is authorized. Grants bind an exact actor, expiry and finite
-revision manifest; current products, missing evidence and failed QA are denied.
+revision manifest. Historical and current grants use distinct identities;
+current grants additionally bind a committed, complete Listing observation.
 """
 from __future__ import annotations
 
@@ -17,6 +18,8 @@ from ..services.hashing import localization_source_hash
 
 ACTOR = "service:historical-localization-review"
 VERSION = "HISTORICAL_OWNER_DELEGATION_V1"
+CURRENT_ACTOR = "service:current-localization-review"
+CURRENT_VERSION = "CURRENT_OWNER_DELEGATION_V1"
 
 
 def delegation_hash(grant: Mapping[str, Any]) -> str:
@@ -25,12 +28,19 @@ def delegation_hash(grant: Mapping[str, Any]) -> str:
 
 
 def validate_delegation(grant, actor):
-    if (not isinstance(grant, Mapping) or grant.get("contract") != VERSION
-            or actor != ACTOR or grant.get("actor") != actor
+    if (not isinstance(grant, Mapping)
+            or (grant.get("contract"), actor) not in {(VERSION, ACTOR), (CURRENT_VERSION, CURRENT_ACTOR)}
+            or grant.get("actor") != actor
             or not str(grant.get("authorization_ref") or "").strip()
             or not str(grant.get("authorization_text") or "").strip()
             or not isinstance(grant.get("reviews"), Mapping) or not grant["reviews"]):
         raise PermissionError("DELEGATION_INVALID")
+    if grant["contract"] == CURRENT_VERSION:
+        if (not str(grant.get("collection_run_id") or "").strip()
+                or not str(grant.get("business_date") or "").strip()
+                or not isinstance(grant.get("current_skus"), list)
+                or not grant["current_skus"]):
+            raise PermissionError("DELEGATION_CURRENT_SCOPE_REQUIRED")
     try:
         expires = datetime.fromisoformat(str(grant["expires_at"]))
         if expires.tzinfo is None or expires <= datetime.now(timezone.utc):
@@ -40,7 +50,7 @@ def validate_delegation(grant, actor):
     return delegation_hash(grant)
 
 
-def validate_delegated_revision(db, grant, *, actor, revision_id, require_approved=True):
+def validate_delegated_revision(db, grant, *, actor, revision_id, require_approved=True, allow_stale_unit=False):
     grant_hash = validate_delegation(grant, actor)
     review = grant["reviews"].get(revision_id)
     if not isinstance(review, Mapping) or review.get("semantic_status") != "PASS":
@@ -63,7 +73,17 @@ def validate_delegated_revision(db, grant, *, actor, revision_id, require_approv
     sku, source_hash, raw_field, source_text, current, fresh, target, target_hash, qa, canonical, status, approver, revision_source = row
     field = SOURCE_TO_CANONICAL.get(str(raw_field), str(raw_field))
     product = db.execute("SELECT status FROM products WHERE official_sku=?", (sku,)).fetchone()
-    if not product or str(product[0]) not in {"HISTORICAL", "ABSENT", "MISSING", "OFFLINE"}:
+    if grant["contract"] == CURRENT_VERSION:
+        if not product or str(product[0]) != "CURRENT" or str(sku) not in grant["current_skus"]:
+            raise PermissionError("DELEGATION_CURRENT_SCOPE_REQUIRED")
+        run = db.execute("SELECT run_date,status,qa_state,dry_run FROM runs WHERE run_id=?",
+                         (grant["collection_run_id"],)).fetchone()
+        present = db.execute("SELECT observation_date,presence_state,listing_present,observation_complete FROM observations WHERE run_id=? AND official_sku=?",
+                             (grant["collection_run_id"], sku)).fetchone()
+        if (not run or tuple(run) != (grant["business_date"], "COMMITTED", "PASS", 0)
+                or not present or tuple(present) != (grant["business_date"], "PRESENT", 1, 1)):
+            raise PermissionError("DELEGATION_CURRENT_OBSERVATION_REQUIRED")
+    elif not product or str(product[0]) not in {"HISTORICAL", "ABSENT", "MISSING", "OFFLINE"}:
         raise PermissionError("DELEGATION_HISTORICAL_SCOPE_REQUIRED")
     if (str(sku) != review.get("sku") or field != review.get("field")
             or source_hash != review.get("source_hash") or target_hash != review.get("target_hash")
@@ -71,7 +91,8 @@ def validate_delegated_revision(db, grant, *, actor, revision_id, require_approv
         raise PermissionError("DELEGATION_REVIEW_BINDING_MISMATCH")
     if field not in {"name", "cat1", "cat2", "spec", "description", "details"}:
         raise PermissionError("DELEGATION_FIELD_NOT_ALLOWED")
-    if (current != revision_id or fresh != "FRESH" or qa != "PASS"
+    permitted_freshness = fresh == "FRESH" or (allow_stale_unit and grant["contract"] == CURRENT_VERSION and fresh == "STALE")
+    if (current != revision_id or not permitted_freshness or qa != "PASS"
             or canonical not in {"PASS", "NOT_REQUIRED"} or not str(source_text or "").strip()
             or status in {"REJECTED", "SUPERSEDED", "STALE"}):
         raise PermissionError("DELEGATION_QA_OR_FRESHNESS_FAILED")

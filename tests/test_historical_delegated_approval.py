@@ -209,3 +209,40 @@ def test_reviewed_manifest_cannot_overwrite_a_later_chinese_correction():
     assert gate({"before": "旧西语残留"}, "人工纠正值") == "TARGET_CHANGED_REVIEW_REQUIRED"
     assert gate({"before": None}, "人工纠正值") == "TARGET_CHANGED_REVIEW_REQUIRED"
     assert gate({}, None) == "TARGET_BASELINE_REVIEW_REQUIRED"
+
+
+def test_reviewed_source_context_is_rechecked_after_lock_acquisition():
+    import runpy
+    from pathlib import Path
+    import json
+    root = Path(__file__).resolve().parents[1]
+    gate = runpy.run_path(str(root/'scripts/run_historical_localization_pilot.py'))['reviewed_source_context_status']
+    row = json.loads((root/'tests/fixtures/historical_pending3196_detail_scanner_20261011.json').read_text(encoding='utf-8'))[0]
+    context = row['context']
+    assert gate({'context': context},context)=='READY'
+    # Own details remain identical; a later description can introduce an
+    # installation conflict which the old semantic review never evaluated.
+    changed = {**context,'desc_es':'Instalación diferente'}
+    assert changed['details_es']==context['details_es']
+    assert gate({'context':context},changed)=='SOURCE_CONTEXT_CHANGED_REVIEW_REQUIRED'
+
+
+def test_reviewed_source_context_preserves_unavailable_evidence():
+    import runpy
+    from pathlib import Path
+    gate=runpy.run_path(str(Path(__file__).resolve().parents[1]/'scripts/run_historical_localization_pilot.py'))['reviewed_source_context_status']
+    context=dict.fromkeys(('name_es','cat1_es','cat2_es','spec_es','desc_es','details_es'),None)
+    assert gate({'context':context},context)=='READY'
+    assert gate({'context':context},{**context,'desc_es':''})=='SOURCE_CONTEXT_CHANGED_REVIEW_REQUIRED'
+    assert gate({},context)=='SOURCE_CONTEXT_REVIEW_REQUIRED'
+    assert gate({'context':{'name_es':None}},context)=='SOURCE_CONTEXT_REVIEW_REQUIRED'
+
+
+def test_reviewed_source_context_accepts_legacy_canonical_field_names():
+    import runpy
+    from pathlib import Path
+    gate=runpy.run_path(str(Path(__file__).resolve().parents[1]/'scripts/run_historical_localization_pilot.py'))['reviewed_source_context_status']
+    pairs={'name':'name_es','cat1':'cat1_es','cat2':'cat2_es','spec':'spec_es','description':'desc_es','details':'details_es'}
+    legacy={k:k for k in pairs}
+    source={v:k for k,v in pairs.items()}
+    assert gate({'context':legacy},source)=='READY'

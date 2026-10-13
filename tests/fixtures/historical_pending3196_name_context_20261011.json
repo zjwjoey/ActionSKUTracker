@@ -1,0 +1,100 @@
+[
+  {
+    "sku": "3214808",
+    "source": "Juego de colores",
+    "context": {
+      "name_es": "Juego de colores",
+      "cat1_es": "Hobby",
+      "cat2_es": "Embalaje",
+      "spec_es": "6 piezas | diferentes variantes",
+      "desc_es": null,
+      "details_es": null
+    },
+    "source_evidence": {
+      "rank": 2,
+      "text": "Juego de colores",
+      "reference": "F:\\按日期整理\\action表格\\20260109\\20260109Action商品全量_西语版_不带图.xlsx::数据",
+      "observed_at": "2026-01-09",
+      "file_hash": "aec71fd94392f959a6c22e70f3825c527210514b1f4b775ab3cd59d3ca8e7042",
+      "field_hash": "b47cb87e32851e378a276728bbaafa74e81f9d0a405f7ae666e6f12e02fc35df"
+    },
+    "current_engine_name": "Juego de colores",
+    "current_engine_name_status": "REVIEW_REQUIRED",
+    "current_engine_review_reasons": [
+      "NAME_REVIEW",
+      "SPANISH_RESIDUAL",
+      "CATEGORY_REVIEW",
+      "SPEC_FORMAT_REVIEW",
+      "PRODUCT_TYPE_REVIEW"
+    ],
+    "source_supported_proposal": null,
+    "expected_behavior": "Ambiguous product identity without disambiguating source must stay REVIEW_REQUIRED; no guessed golden translation.",
+    "proposal_approved": false,
+    "production_apply": false
+  },
+  {
+    "sku": "3223681",
+    "source": "Gomas 3D Minecraft",
+    "context": {
+      "name_es": "Gomas 3D Minecraft",
+      "cat1_es": "Oficina y papelería",
+      "cat2_es": "Accesorios de oficina",
+      "spec_es": "3 uds. | varios colores",
+      "desc_es": "3 gomas de borrar en formas únicas de Minecraft\nDivertidas de usar y coleccionar\nRegalo perfecto para los fans de Minecraft\n¡Haz que los trabajos escolares sean más divertidos con este juego de gomas de borrar en 3D de Minecraft! El juego incluye 3 gomas de borrar en forma de icónicos personajes de Minecraft, como Steve, un zombi y otros personajes conocidos. Perfecto para corregir errores y para coleccionar. Ideal para los fans del popular juego y e imprescindibles en tu estuche.",
+      "details_es": "Edad adecuada: A partir de 8 años; Cantidad: 3 unidades; Número del artículo: 3223681"
+    },
+    "source_evidence": {
+      "rank": 1,
+      "text": "Gomas 3D Minecraft",
+      "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-16\\2026-08-16_053919\\products_normalized.csv",
+      "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-16/2026-08-16_053919",
+      "file_hash": "9a00eb6a67de0abfbefb49b4f70d7428fa1595d3610fe92a409763359651a796",
+      "field_hash": "04bf0f84654be8acbf569f73012314db3e6b4f072ecc8144c86bafd145a449d2"
+    },
+    "current_engine_name": "橡皮筋",
+    "current_engine_name_status": "READY",
+    "current_engine_review_reasons": [
+      "SPEC_FORMAT_REVIEW",
+      "DESCRIPTION_REVIEW",
+      "DETAIL_VALUE_REVIEW"
+    ],
+    "source_supported_proposal": "3D橡皮擦",
+    "expected_behavior": "Use explicit same-SKU meaning evidence; preserve own-field 3D token; no identity guess from brand/category alone.",
+    "proposal_approved": false,
+    "production_apply": false
+  },
+  {
+    "sku": "3212027",
+    "source": "Heladera para el baño",
+    "context": {
+      "name_es": "Heladera para el baño",
+      "cat1_es": "Juguetes",
+      "cat2_es": null,
+      "spec_es": "5 piezas | diferentes variantes",
+      "desc_es": "Incluye 4 cucuruchos\nPrepara los helados más deliciosos con espuma de baño\n¡Darse un baño es aún más divertido con esta heladera! Haz los helados más deliciosos vertiendo un poco de espuma de baño en la máquina. Basta con girar y listo: ¡un delicioso helado de espuma!",
+      "details_es": "{'Número del artículo': '3212027', 'Color': 'Azul, Rosa', 'Material': 'Plástico', 'Edad adecuada': 'A partir de 6 meses'}"
+    },
+    "source_evidence": {
+      "rank": 2,
+      "text": "Heladera para el baño",
+      "reference": "F:\\按日期整理\\action表格\\20260706\\20260706Action商品全量_西语版_不带图.xlsx::Action ES 商品",
+      "observed_at": "2026-07-06",
+      "file_hash": "0b4bdbdeda7d8d3705870fbd65f545337c362cdd71662c8355dc9c225f429b96",
+      "field_hash": "dd36fe6e269a30c26071d178142d61b941461c2db57dd72efb0c195cc48f3a1f"
+    },
+    "current_engine_name": "Heladera para el baño",
+    "current_engine_name_status": "REVIEW_REQUIRED",
+    "current_engine_review_reasons": [
+      "NAME_REVIEW",
+      "SPANISH_RESIDUAL",
+      "SPEC_FORMAT_REVIEW",
+      "DESCRIPTION_REVIEW",
+      "DETAIL_VALUE_REVIEW",
+      "PRODUCT_TYPE_REVIEW"
+    ],
+    "source_supported_proposal": "浴室冰淇淋机玩具",
+    "expected_behavior": "Use explicit same-SKU meaning evidence; preserve own-field 3D token; no identity guess from brand/category alone.",
+    "proposal_approved": false,
+    "production_apply": false
+  }
+]

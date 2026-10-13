@@ -115,17 +115,22 @@ class KnowledgeLoader:
                         fields = {part.strip() for part in str(row.get("damaged_fields") or "").split(",") if part.strip()}
                         result["source_damage_by_sku"][str(row.get("sku") or "").strip()] = fields
         category = self.directory / "category_dictionary.csv"
+        # Parent confirmation is not approval of every child text on the row.
+        # Planner consumes this marker to distinguish a governed snapshot
+        # from legacy in-memory mappings used by callers and fixtures.
+        result["category_maps_trust_gated"] = True
         if category.exists():
             for row in csv.DictReader(category.open(encoding="utf-8-sig")):
                 es1 = str(row.get("cat1_es") or "").strip(); es2 = str(row.get("cat2_es") or "").strip()
                 zh1 = str(row.get("cat1_zh") or row.get("cat1_zh_standard") or "").strip(); zh2 = str(row.get("cat2_zh") or row.get("cat2_zh_standard") or "").strip()
-                if es1 and zh1:
+                status = str(row.get("review_status") or "").strip().upper()
+                if es1 and zh1 and status in ACCEPTED_KNOWLEDGE_STATUSES | {"CAT1_CONFIRMED"}:
                     key1 = normalize_category_key(es1)
                     previous = result["cat1_map"].get(key1)
                     if previous and previous != zh1:
                         raise ValueError(f"CATEGORY_DICTIONARY_CONFLICT:{es1}")
                     result["cat1_map"][key1] = zh1
-                if es1 and es2 and zh2:
+                if es1 and es2 and zh2 and status in ACCEPTED_KNOWLEDGE_STATUSES:
                     key2 = (normalize_category_key(es1), normalize_category_key(es2))
                     previous = result["cat2_map"].get(key2)
                     if previous and previous != zh2:

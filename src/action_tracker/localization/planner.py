@@ -6,7 +6,7 @@ from typing import Any
 
 from .contracts import CANONICAL_TO_ZH, ZH_TO_CANONICAL, LocalizationField, LocalizationPlan, SemanticFact, SourceFacts
 from .formatter import format_details, format_spec, format_text, format_unit_price
-from .policy import FIXED_CAT1, OMIT_BRAND_FROM_CHINESE_DISPLAY, has_ordinary_spanish, map_cat1, strip_forbidden_display_tokens
+from .policy import FIXED_CAT1, OMIT_BRAND_FROM_CHINESE_DISPLAY, has_ordinary_spanish, map_cat1
 from ..dictionary import normalize_category_key
 from .product_family import classify_product_family
 
@@ -31,12 +31,17 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         v = _dict_value(knowledge.get(field), "value", field) or _dict_value(existing, field, field + "_zh")
         if v: hits.append(field)
         return v or fallback, "knowledge" if v else "deterministic"
-    product_type = next((f.canonical_value or f.value for f in facts if f.semantic_type == "PRODUCT_TYPE"), "")
+    # Name identity must come from its own source or an explicit contextual
+    # disambiguation fact attached to that source. An accessory/negative noun
+    # in description must not become this product's deterministic name.
+    product_type = next((f.canonical_value or f.value for f in facts
+                         if f.semantic_type == "PRODUCT_TYPE" and f.source_field == "name_es"), "")
     brand = next((f.value for f in facts if f.semantic_type == "BRAND"), "")
     allowed_tokens = {f.value for f in facts if f.semantic_type in {"BRAND", "SERIES", "IP_CHARACTER", "MODEL", "TECH_TOKEN", "STANDARD_UNIT", "SOCKET", "INTERFACE"}}
     def clean(value: str) -> bool:
         return bool(value) and not has_ordinary_spanish(value, allowed_tokens=allowed_tokens)
     name, ns = value("name_zh")
+    identity_only_name = False
     if OMIT_BRAND_FROM_CHINESE_DISPLAY and name:
         forbidden_display_tokens = [brand, *(f.value for f in facts if f.semantic_type == "IP_CHARACTER")]
         for token in sorted({str(item).strip() for item in forbidden_display_tokens if str(item).strip()}, key=len, reverse=True):
@@ -53,10 +58,14 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
         deduped_identity = list(dict.fromkeys(identity))
         functions = [x for x in deduped_identity if x not in {f.canonical_value or f.value for f in facts if f.semantic_type != "FUNCTION"}]
         other_identity = [x for x in deduped_identity if x not in functions]
+        spatial = [x for x in other_identity if x in {"2D", "3D"}]
+        other_identity = [x for x in other_identity if x not in spatial]
+        identity_only_name = bool(deduped_identity and not product_type)
         display_brand = "" if OMIT_BRAND_FROM_CHINESE_DISPLAY else brand
-        name = "".join(x for x in (display_brand + "牌" if display_brand else "", *functions, product_type, *other_identity) if x)
+        name = "".join(x for x in (display_brand + "牌" if display_brand else "", *spatial, *functions, product_type, *other_identity) if x)
         family = classify_product_family(source, semantic_facts=facts)
         if family.family_id == "CLEANING_CLOTH":
+            identity_only_name = False
             material = "微纤维" if re.search(r"(?<!\w)microfibras?(?!\w)", source.name_es, re.I) else ""
             if re.search(r"\bpara\s+(?:el\s+)?suelo\b", source.name_es, re.I):
                 usage = "地板"
@@ -85,7 +94,9 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     # ``Complementos de pintura`` means paint-application accessories, not
     # art/painting accessories.  Keep this source-bound rule deterministic
     # and scoped to the category pair.
-    if (source.cat1_es or "").strip().casefold() == "bricolaje" and (source.cat2_es or "").strip().casefold() == "complementos de pintura":
+    if ((source.cat1_es or "").strip().casefold() == "bricolaje"
+            and (source.cat2_es or "").strip().casefold() == "complementos de pintura"
+            and (not knowledge.get("category_maps_trust_gated") or cat2_lookup == "涂料配件")):
         cat2 = "涂料配件"
         c2s = "deterministic_context_terminology"
     spec, ss = value("spec_zh")
@@ -122,15 +133,9 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     desc, ds = value("desc_zh", format_text(replace_known(source.desc_es, "desc_es")))
     details, dts = value("details_zh", format_details(replace_known(source.details_es, "details_es")))
     details = format_details(details)
-    if OMIT_BRAND_FROM_CHINESE_DISPLAY:
-        forbidden_display_tokens = [brand, *(f.value for f in facts if f.semantic_type == "IP_CHARACTER")]
-        for target, rendered in (("cat1", cat1), ("cat2", cat2), ("spec", spec), ("description", desc), ("details", details)):
-            cleaned = strip_forbidden_display_tokens(rendered, forbidden_display_tokens)
-            if target == "cat1": cat1 = cleaned
-            elif target == "cat2": cat2 = cleaned
-            elif target == "spec": spec = cleaned
-            elif target == "description": desc = cleaned
-            else: details = cleaned
+    # The title policy is applied above to name only. Other fields retain
+    # their own source-supported brand/IP facts, including deterministic
+    # specification formatting; deleting them here can also break prose.
     placements = {"PRODUCT_TYPE": "name", "BRAND": "name", "SERIES": "name", "IP_CHARACTER": "name", "MODEL": "spec", "TECH_TOKEN": "spec", "STANDARD_UNIT": "spec", "SIZE_DIMENSION": "spec", "CAPACITY": "spec", "WEIGHT": "spec", "QUANTITY": "spec", "COLOR": "spec", "VARIANT": "spec", "MATERIAL": "name", "FUNCTION": "description", "COMPATIBILITY": "spec", "VOLTAGE": "spec", "POWER": "spec", "CURRENT": "spec", "FREQUENCY": "spec", "BATTERY_CAPACITY": "spec", "SOCKET": "spec", "INTERFACE": "spec", "PROTECTION_RATING": "spec", "CARE": "details", "NUTRITION": "name", "DETAIL_KEY": "details", "DESCRIPTION_FACT": "description"}
     planned_facts = tuple(
         SemanticFact(
@@ -151,7 +156,7 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
                       "placement": f.placement} for f in planned_facts if f.placement == target)
 
     fields = {
-        "name_zh": LocalizationField(name, ns, "READY" if clean(name) else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("name"), review_reasons=() if clean(name) else ("NAME_REVIEW", "SPANISH_RESIDUAL")),
+        "name_zh": LocalizationField(name, ns, "READY" if clean(name) and not identity_only_name else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("name"), review_reasons=("NAME_PRODUCT_IDENTITY_REVIEW",) if identity_only_name else (() if clean(name) else ("NAME_REVIEW", "SPANISH_RESIDUAL"))),
         "cat1_zh": LocalizationField(cat1, cs, "READY" if cat1 in FIXED_CAT1 else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("cat1"), review_reasons=() if cat1 in FIXED_CAT1 else ("CATEGORY_REVIEW",)),
         "cat2_zh": LocalizationField(cat2, c2s, "READY" if (not source.cat2_es or clean(cat2)) else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("cat2"), review_reasons=() if (not source.cat2_es or clean(cat2)) else ("CATEGORY_REVIEW",)),
         "spec_zh": LocalizationField(spec, ss, "READY" if clean(spec) else "REVIEW_REQUIRED", source.source_hash, "CURRENT", provenance=provenance("spec"), review_reasons=() if clean(spec) else ("SPEC_FORMAT_REVIEW",)),
@@ -166,7 +171,7 @@ def plan_localization(source: SourceFacts, facts: tuple[SemanticFact, ...], *, k
     # Spanish source.  Only rows with no usable name at all require a
     # product-type review; this preserves the dictionary-first contract and
     # avoids re-reviewing thousands of established names.
-    if not product_type and source.name_es and not clean(name):
+    if not product_type and source.name_es and (not clean(name) or identity_only_name):
         reasons = tuple(dict.fromkeys((*reasons, "PRODUCT_TYPE_REVIEW")))
     readiness = "AUTO_READY" if all(f.status == "READY" for f in fields.values()) else "REVIEW_REQUIRED"
     return LocalizationPlan(source.sku, source.source_hash, fields, planned_facts, readiness, reasons, tuple(hits), False)

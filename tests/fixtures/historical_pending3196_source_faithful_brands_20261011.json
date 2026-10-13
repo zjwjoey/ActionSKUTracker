@@ -1,0 +1,17 @@
+{
+  "sku": "3217243",
+  "field": "description",
+  "source": "Contiene lápices, rotuladores, bolígrafo, lápiz, goma, regla y sacapuntas\nPara elegir entre el Rey León, Frozen y Spidey, entre otros\nCon este completo y práctico estuche tendrás siempre a mano todo tu material escolar.",
+  "source_hash": "c72e97a53e5db2079566a1dc62327d86c0cfbda3a60324bb6f46895d1bf1dce4",
+  "field_source_hash": "52c90d46142d4d51209e54120c5fc683c1318cb0f56b8003602113280ae61926",
+  "evidence": {
+    "rank": 1,
+    "text": "Contiene lápices, rotuladores, bolígrafo, lápiz, goma, regla y sacapuntas\nPara elegir entre el Rey León, Frozen y Spidey, entre otros\nCon este completo y práctico estuche tendrás siempre a mano todo tu material escolar.",
+    "reference": "F:\\ActionSKUTracker\\runtime\\snapshots\\2026-08-29\\2026-08-29_061242\\products_normalized.csv",
+    "observed_at": "F:/ActionSKUTracker/runtime/snapshots/2026-08-29/2026-08-29_061242",
+    "file_hash": "9982624059c6174abd6fef8cf82b9f7cc4420081cf5e6ba853659860e7b834f4",
+    "field_hash": "52c90d46142d4d51209e54120c5fc683c1318cb0f56b8003602113280ae61926"
+  },
+  "fragment": "Para elegir entre el Rey León, Frozen y Spidey, entre otros",
+  "expected_behavior": "Preserve own-source IP tokens in resolver candidates. This fixture is not a gold translation or semantic approval."
+}

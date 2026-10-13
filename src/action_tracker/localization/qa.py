@@ -3,10 +3,12 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Mapping
 
 from .contracts import SourceFacts
 from .policy import FIXED_CAT1, has_ordinary_spanish
+from .body_names import mask_source_bound_body_names
 from .protection.tokens import ProtectedTokenError, protect_text, restore_text
 from .normalization.structured_details import parse_structured_details
 
@@ -16,14 +18,24 @@ EMPTY_SOURCE_LOCALIZATION_CONTRACT_VERSION = "EMPTY_SOURCE_LOCALIZATION_CONTRACT
 NAME_IDENTITY_FACT_PRESERVATION_VERSION = "NAME_IDENTITY_FACT_PRESERVATION_V1"
 
 
-_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u024f])\d+(?:[.,]\d+)?\s*(km²|cm²|mm²|m²|mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9\u00c0-\u024f])", re.I)
-_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|平方千米|平方米|平方厘米|平方毫米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
+# Latin-1's broad range includes × and ÷. They separate dimensions/counts,
+# rather than form identifiers: 38×38cm and 8×70ml still carry their units.
+_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])\d+(?:[.,]\d+)?\s*(km³|cm³|mm³|m³|km²|cm²|mm²|m²|mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])", re.I)
+_CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|立方千米|立方厘米|立方毫米|立方米|平方千米|平方米|平方厘米|平方毫米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
+_SPANISH_LENGTH_UNIT_RE = re.compile(
+    r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])"
+    r"\d+(?:[.,]\d+)?\s*(kilómetros?|centímetros?|milímetros?|metros?)\b"
+    r"(?!\s+(?:cuadrad[oa]s?|cúbic[oa]s?))", re.I,
+)
+_SPANISH_LENGTH_UNITS = {"kilómetro": "km", "centímetro": "cm", "milímetro": "mm", "metro": "m"}
+_HOURLY_CUBIC_RATE_RE = re.compile(r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])\d+(?:[.,]\d+)?\s*(?:m³|立方米)\s*/\s*(?:horas?|h|小时)(?![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])", re.I)
 _UNIT_ALIASES = {
     "毫安时": "mah", "安时": "ah", "瓦时": "wh", "千瓦时": "kwh", "毫瓦": "mw", "千瓦": "kw",
     "赫兹": "hz", "伏特": "v", "瓦": "w", "分贝": "db", "千卡": "kcal", "千卡路里": "kcal", "摄氏度": "°c", "厘米": "cm", "毫米": "mm",
     "千米": "km", "米": "m", "千克": "kg", "公斤": "kg", "克": "g", "毫克": "mg", "微克": "μg",
     "毫升": "ml", "厘升": "cl", "分升": "dl", "升": "l", "百分比": "%",
     "平方米": "m²", "平方厘米": "cm²", "平方千米": "km²", "平方毫米": "mm²",
+    "立方米": "m³", "立方厘米": "cm³", "立方千米": "km³", "立方毫米": "mm³",
 }
 
 
@@ -31,8 +43,30 @@ def _units(value: str) -> set[str]:
     value = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)([23])(?![A-Za-z0-9])", lambda m: m[1] + m[2] + {"2": "²", "3": "³"}[m[3]], value, flags=re.I)
     units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(value)}
     units.update(_UNIT_ALIASES.get(unit, unit) for unit in _CHINESE_UNIT_RE.findall(value))
+    # Plain prose uses full Spanish unit names. Recognize only quantified
+    # length expressions; no rescaling, model substrings or area/volume units.
+    units.update(_SPANISH_LENGTH_UNITS[unit.casefold().removesuffix("s")]
+                 for unit in _SPANISH_LENGTH_UNIT_RE.findall(value))
+    # A pump flow is not just a volume: preserve its hourly denominator.
+    if _HOURLY_CUBIC_RATE_RE.search(value):
+        units.add("m³/h")
     return units
 _STRICT_TOKEN_TYPES = {"URL", "SKU", "EAN", "MODEL", "TECH", "CERTIFICATION", "CAPACITY", "BATTERY_CAPACITY"}
+
+# QA comparison only: these names denote exactly the same units, with no
+# rescaling or inferred quantity. Keep provider placeholders and stored text
+# unchanged, and never normalize letters embedded in a model identifier.
+_CHINESE_CAPACITY_QA_UNITS = {"千瓦时": "kWh", "瓦时": "Wh", "毫安时": "mAh", "安时": "Ah"}
+_CHINESE_CAPACITY_QA_RE = re.compile(
+    r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])"
+    r"(\d+(?:[.,]\d+)?)\s*(千瓦时|瓦时|毫安时|安时)(?![A-Za-z0-9])"
+)
+
+
+def _capacity_scan_view(value: str) -> str:
+    return _CHINESE_CAPACITY_QA_RE.sub(
+        lambda match: match[1] + _CHINESE_CAPACITY_QA_UNITS[match[2]], value
+    )
 
 # Deterministic semantic facts use one canonical target, while natural
 # Chinese allows a small set of equivalent renderings.  These aliases are
@@ -132,7 +166,7 @@ _SOURCE_BOUND_EXACT_TECH = {
     "sds-plus", "transflash", "eprel", "torx",
     # Exact same-field commercial/game spans; the residual scanner splits
     # hyphens into words, so their full source-bound spelling is required.
-    "re-load", "skip-bo", "uno-flip", "pro-max", "t-rex", "gsm", "jawbreaker", "i-scrub", "olus",
+    "re-load", "skip-bo", "uno-flip", "pro-max", "t-rex", "gsm", "jawbreaker", "i-scrub", "olus", "spider-man",
 }
 
 
@@ -438,8 +472,60 @@ def _is_ordinary_spanish_uppercase_token(source_text: str, source_token: str) ->
     return _source_term_present(source, token)
 
 
+def _casefold_token_count(text: str, token: str) -> int:
+    # Latin words can contain a short technical spelling: teLED irigido
+    # without a space is teledirigido, not another LED fact. Chinese labels
+    # may legitimately adjoin a token (LED灯 / USB-C接口).
+    boundary = r"A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f"
+    return len(re.findall(rf"(?<![{boundary}]){re.escape(str(token or ''))}(?![{boundary}])", str(text or ""), flags=re.IGNORECASE))
+
+
 def _has_casefold_token(text: str, token: str) -> bool:
-    return bool(re.search(rf"(?<![A-Za-z0-9]){re.escape(str(token or ''))}(?![A-Za-z0-9])", str(text or ""), flags=re.IGNORECASE))
+    return bool(_casefold_token_count(text, token))
+
+
+def _technical_scan_source(source_text: str) -> str:
+    """Exclude articles in explicit Spanish labels, preserving actual DEL keys.
+
+    This is a QA-only scanner view. The source, hashes, provider request and
+    stored evidence stay unchanged. Other occurrences, including a keyboard
+    key in the same field, retain their normal protected-token counts.
+    """
+    result = source_text
+    for pattern in (
+        r"\bsoporte\s+(?P<article>del)\s+tel[eé]fono\b",
+        r"\bn[uú]mero\s+(?P<article>del)\s+art[ií]culo\b",
+        r"\bmaterial\s+(?P<article>del)\s+asa\b",
+        # Official structured connector values can be all-caps POR CABLE.
+        # Remove only the preposition in that complete value, preserving
+        # standalone POR identifiers elsewhere in the same source field.
+        r"(?<!\w)tipo\s+de\s+conector\s*:\s*(?P<article>por)\s+cable(?=\s*(?:[;；\n]|$))",
+    ):
+        def remove_article(match: re.Match) -> str:
+            start, end = match.span("article")
+            offset = match.start()
+            return match.group(0)[:start - offset] + match.group(0)[end - offset:]
+        result = re.sub(pattern, remove_article, result, flags=re.I)
+    return result
+
+
+def _structured_material_atom(source_term: str, source_text: str, target: str, field_name: str) -> bool:
+    """Accept short Chinese atoms only in an unambiguous material pair.
+
+    Bamboo fibre, wood appearance, qualified woods and duplicate material
+    keys cannot authorize a bare 竹/木 equivalence. A pattern or another
+    source field likewise cannot satisfy an omitted material assertion.
+    """
+    short = {"bambú": "竹", "madera": "木"}.get(source_term.casefold())
+    if field_name != "details" or not short:
+        return False
+    source_pairs = [p for p in parse_structured_details(source_text) if p.context_key == "material"]
+    target_pairs = [p for p in parse_structured_details(target) if p.context_key == "material"]
+    if len(source_pairs) != 1 or len(target_pairs) != 1:
+        return False
+    source_atoms = [v.strip().casefold() for v in re.split(r"[,，、]", source_pairs[0].value)]
+    target_atoms = [v.strip() for v in re.split(r"[,，、]", target_pairs[0].value)]
+    return source_term.casefold() in source_atoms and short in target_atoms
 
 
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
@@ -454,6 +540,12 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         remaining = re.sub(r"\bfibras?\s+de\s+bambú\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bbambú\b", remaining, re.I):
             return ("竹纤维",)
+    if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
+        # A contextual eraser fact must not inherit the rubber/band alias.
+        return ("橡皮擦", "橡皮")
+    if source_term.casefold() == "paño" and canonical == "巾片":
+        # The typed body-cloth form does not assert cleaning or wetness.
+        return ("巾片", "布片", "布巾")
     aliases = list(_SEMANTIC_TARGET_ALIASES.get(source_term.casefold(), (canonical,)))
     if re.fullmatch(r"\d+\s+lavados", source_term, re.I):
         aliases.extend(("洗衣", "清洗", "水洗"))
@@ -461,6 +553,12 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # rather than an additional lamp product. Do not waive generic product
     # nouns or borrow the qualifying phrase from another source field.
     if source_term.casefold() == "iluminación":
+        # Here illumination is the function of the explicitly named wall
+        # lamp, not another product. Require both phrases in this field;
+        # a lamp title cannot authorize an unrelated prose omission.
+        if (re.search(r"\biluminación\s+alrededor\s+de\s+la\s+casa\b", source_text, re.I)
+                and re.search(r"\blámpara\s+de\s+pared\b", source_text, re.I)):
+            aliases.append("照明")
         if re.search(r"\biluminación\s+focal\b", source_text, re.I):
             aliases.append("照明")
         if re.search(r"\befectos?\s+de\s+iluminación\b", source_text, re.I):
@@ -561,9 +659,20 @@ def _canonical_numeric_token(token: str) -> str:
 def _normalize_numeric_syntax(value: str) -> str:
     """Use identical numeric syntax in preservation and addition checks."""
     text = str(value or "")
+    # Spanish decimal commas remain decimals before spelled-out measurement
+    # units, even with three fractional digits (1,500 litros == 1.5 litres).
+    # Retain thousands parsing for dots, counts and Chinese comma grouping.
+    text = re.sub(
+        r"(?<![\d.,])(\d+),(\d{3})(?=\s*(?:litros?|mililitros?|gramos?|kilogramos?|centímetros?|milímetros?|metros?)\b)",
+        lambda m: format(Decimal(m.group(1) + "." + m.group(2)).normalize(), "f"),
+        text, flags=re.I,
+    )
     # ASCII area exponents are unit syntax, never a second count. Keep
     # unrelated model digits and dimensions intact.
     text = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)2(?![A-Za-z0-9])", r"\1\2²", text, flags=re.I)
+    # Cubic exponents likewise belong to the unit. Unlike model suffixes,
+    # this must begin at a standalone numeric measurement.
+    text = re.sub(r"(?<![A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f])(\d+(?:[.,]\d+)?\s*)(km|cm|mm|m)3(?![A-Za-z0-9])", r"\1\2³", text, flags=re.I)
     # Two comma-separated integer ranges unambiguously form a list. A single
     # decimal range such as 28-29,5 must retain its decimal separator.
     text = re.sub(r"(?<![\d.,])(\d{1,2}-\d{1,2})(?:,\s*)(\d{1,2}-\d{1,2})(?![\d.,])", r"\1 \2", text)
@@ -584,11 +693,22 @@ def _normalize_numeric_syntax(value: str) -> str:
         lambda match: match.group(1).replace(",", " "),
         text,
     )
+    # A numeric Chinese 万 prefix before an explicit count classifier is
+    # exact arithmetic, not a new quantity (5万次 == 50000次). Do not interpret
+    # model suffixes, bare marketing fragments or compound 万/千 notation.
+    text = re.sub(
+        r"(?<![A-Za-z0-9\u00c0-\u024f.,万千])([0-9]+(?:[.,][0-9]+)?)\s*万(?=\s*(?:次|个|件|张|页|支|条|像素)(?![A-Za-z0-9]))",
+        lambda match: format((Decimal(_canonical_numeric_token(match.group(1))) * 10000).normalize(), 'f'),
+        text,
+    )
     return text
 
 
 def _numbers(value: str) -> Counter[str]:
     text = _normalize_numeric_syntax(value)
+    # A literal protected 3D/2D token cannot authorize an unrelated 3/2-piece
+    # package. Its preservation is checked by the protected-token gate.
+    text = re.sub(r"(?<![A-Za-z0-9])[23]D(?![A-Za-z0-9])", " ", text, flags=re.I)
     numbers = Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
     # The historical outlet-strip title explicitly names four sockets. Count
     # only the complete own-field noun phrase, not a generic multiplier,
@@ -645,6 +765,7 @@ def _numbers(value: str) -> Counter[str]:
 def _arabic_numbers(value: str) -> Counter[str]:
     """Return only explicit Arabic-digit numbers from a value."""
     text = _normalize_numeric_syntax(value)
+    text = re.sub(r"(?<![A-Za-z0-9])[23]D(?![A-Za-z0-9])", " ", text, flags=re.I)
     return Counter(_canonical_numeric_token(item) for item in re.findall(r"\d+(?:[.,]\d+)?", text))
 
 
@@ -762,7 +883,8 @@ def _detail_source_value_findings(source_text, target):
         message="physical-state source value requires source review", blocking=True)
         for p in parse_structured_details(source_text)
         if p.key.strip().casefold() == "sustancia"
-        and p.value.strip().casefold() in {"válido", "valido"}]
+        and any(part.strip().casefold() in {"válido", "valido"}
+                for part in p.value.split(","))]
 
 
 def _detail_charging_speed_findings(source_text, target):
@@ -893,13 +1015,22 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if "null" in target.casefold() or "undefined" in target.casefold():
             findings.append(QAFinding("NULL_UNDEFINED_RESIDUAL", "BLOCKER", field_name, {"value": target}, source=source_text, target=target, blocking=True))
         allowed_display_tokens = _allowed_display_latin_tokens(source_text, target)
+        for fact in semantic_facts:
+            model_name = str(getattr(fact, "source_text", "") or "").strip()
+            if (str(getattr(fact, "semantic_type", "")) == "MODEL"
+                    and _fact_applies_to_field(fact, field_name)
+                    and _source_term_present(source_text, model_name)
+                    and _has_casefold_token(target, model_name)):
+                allowed_display_tokens.update(re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+", model_name))
         # Brands and interfaces may be repeated in a description/detail even
         # when their official source is the product name.  Keep this explicit
         # and shape-bound; ordinary Spanish from the name is never allowed.
         allowed_display_tokens.update(
             _source_bound_cross_field_tokens(getattr(source, "name_es", ""), target)
         )
-        if has_ordinary_spanish(target, allowed_tokens=allowed_display_tokens):
+        residual_target = (mask_source_bound_body_names(source_text, target)
+                           if field_name in {"description", "details"} else target)
+        if has_ordinary_spanish(residual_target, allowed_tokens=allowed_display_tokens):
             findings.append(QAFinding("SPANISH_RESIDUAL", "ERROR", field_name, {"value": target}, source=source_text, target=target, blocking=True))
         # Technical/numeric guards cannot detect an omitted ordinary product
         # noun.  Reuse deterministic semantic facts when the source term is
@@ -920,6 +1051,16 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
             represented = any(alias.casefold() in target.casefold() for alias in aliases)
+            if fact_type == "MATERIAL":
+                represented = represented or _structured_material_atom(source_term, source_text, target, field_name)
+            if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
+                affirmative_target = re.sub(
+                    r"(?:不含|没有|无|非|不是)\s*橡皮(?:擦)?|橡皮(?:筋|圈|带)", "", target)
+                represented = any(alias in affirmative_target for alias in aliases)
+            if source_term.casefold() == "paño" and canonical == "巾片" and fact_type == "VARIANT":
+                affirmative_target = re.sub(
+                    r"(?:不是|不属于|不采用|没有|不含|无|非|不)\s*(?:巾片|布片|布巾)", "", target)
+                represented = any(alias in affirmative_target for alias in aliases)
             if source_term.casefold() == "over-ear" and fact_type == "VARIANT":
                 # A negated fit cannot satisfy a positive source assertion.
                 # Generic headband style and conflicting fits alone must fail.
@@ -1010,8 +1151,9 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             findings.append(QAFinding("NUMERIC_DROPPED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "missing": dict(dropped)}, source=source_text, target=target, message="numeric fact dropped", blocking=True))
         if duplicated:
             findings.append(QAFinding("NUMERIC_ADDED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "extra": dict(duplicated)}, source=source_text, target=target, message="numeric fact added", blocking=True))
-        protected = protect_text(source_text)
-        target_protected = protect_text(target)
+        technical_source = _technical_scan_source(source_text)
+        protected = protect_text(_capacity_scan_view(technical_source))
+        target_protected = protect_text(_capacity_scan_view(target))
         def strict_key(kind, value):
             # Quantified technical tokens already use whitespace equivalence
             # below for preservation; their changed/added comparison must
@@ -1051,14 +1193,14 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                     continue
                 if kind == "TECH":
-                    expected_count = source_text.casefold().count(value.casefold())
-                    actual_count = target.casefold().count(value.casefold())
+                    expected_count = _casefold_token_count(technical_source, value)
+                    actual_count = _casefold_token_count(target, value)
                 else:
                     expected_count, actual_count = source_text.count(value), target.count(value)
                 if kind in {"CAPACITY", "BATTERY_CAPACITY", "POWER", "VOLTAGE"}:
                     compact_value = re.sub(r"\s+", "", value).casefold()
-                    compact_source = re.sub(r"\s+", "", source_text).casefold()
-                    compact_target = re.sub(r"\s+", "", target).casefold()
+                    compact_source = re.sub(r"\s+", "", _capacity_scan_view(source_text)).casefold()
+                    compact_target = re.sub(r"\s+", "", _capacity_scan_view(target)).casefold()
                     expected_count = compact_source.count(compact_value)
                     actual_count = compact_target.count(compact_value)
                 if actual_count < expected_count:
@@ -1081,6 +1223,9 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     unit_source = re.sub(rf"(?<!\w){re.escape(brand)}(?!\w)", " ", unit_source)
         source_units = _units(unit_source)
         target_units = _units(target)
+        for unit in target_units - source_units:
+            if "³" in unit:
+                findings.append(QAFinding("UNIT_ADDED", "BLOCKER", field_name, {"unit": unit}, source=source_text, target=target, message="cubic measurement requires own-field source", blocking=True))
         for unit in source_units:
             if unit == "%" and _zero_percent_is_semantically_rendered(source_text, target):
                 continue

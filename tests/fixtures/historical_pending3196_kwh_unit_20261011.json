@@ -1,0 +1,36 @@
+{
+  "sku": "3218650",
+  "source": "{'Número del artículo': '3218650', 'A color': 'Sí', 'Cantidad': 'Paquete de 3', 'Consumo de energía': '3 kWh/1000h', 'Lumen': '345', 'Tipo de fuente de luz': 'Lámpara LED'}",
+  "context": {
+    "name_es": "Bombillas LED Philips",
+    "cat1_es": "Bricolaje",
+    "cat2_es": "Iluminación",
+    "spec_es": "50 vatios | 345 lúmenes | 3 unidades",
+    "desc_es": "Con luz blanca\nCasquillo GU10\nVida útil de 15 años",
+    "details_es": "{'Número del artículo': '3218650', 'A color': 'Sí', 'Cantidad': 'Paquete de 3', 'Consumo de energía': '3 kWh/1000h', 'Lumen': '345', 'Tipo de fuente de luz': 'Lámpara LED'}"
+  },
+  "source_evidence": {
+    "status": "EVIDENCE_AVAILABLE",
+    "selected": {
+      "rank": 2,
+      "text": "{'Número del artículo': '3218650', 'A color': 'Sí', 'Cantidad': 'Paquete de 3', 'Consumo de energía': '3 kWh/1000h', 'Lumen': '345', 'Tipo de fuente de luz': 'Lámpara LED'}",
+      "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3218650",
+      "observed_at": "",
+      "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+      "field_hash": "b8274fe60e97c5814704e75fb0308787fb45b87fcde9059553424e3a89c8e7f6"
+    },
+    "versions": [
+      {
+        "rank": 2,
+        "text": "{'Número del artículo': '3218650', 'A color': 'Sí', 'Cantidad': 'Paquete de 3', 'Consumo de energía': '3 kWh/1000h', 'Lumen': '345', 'Tipo de fuente de luz': 'Lámpara LED'}",
+        "reference": "F:\\Action_ES_4月复核_对话归档\\表格\\Action_ES_4月商品_官网重新核验_西语完整版.xlsx::3218650",
+        "observed_at": "",
+        "file_hash": "7646ef375a7750c47a65289d541c7432bd8c739bf616998c44f467b5893de5d2",
+        "field_hash": "b8274fe60e97c5814704e75fb0308787fb45b87fcde9059553424e3a89c8e7f6"
+      }
+    ]
+  },
+  "target_for_hard_qa": "商品编号：3218650\n是否彩色：是\n数量：3件装\n能耗：3千瓦时/1000小时\n光通量：345\n光源类型：LED灯",
+  "semantic_approval": "REVIEW_REQUIRED_HIGH",
+  "expected_behavior": "Equivalent energy-unit hard QA passes; source attribute ambiguity remains held. This is not a gold semantic translation."
+}
