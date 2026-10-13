@@ -9,6 +9,7 @@ import datetime as dt
 import html
 import re
 from typing import Any
+from .spanish_details import repair_detail_label
 
 
 _HTML_TAG_RE = re.compile(r"<[^>]*>")
@@ -32,6 +33,12 @@ _DETAIL_KEYS = tuple(sorted({
     "Incluye abalorios", "Incluye cable", "Incluye caja de almacenaje", "Incluye cierre",
     "Incluye tenazas", "Incluye recarga", "Tamaño", "Tensión", "Voltaje", "Volumen",
     "Edad recomendada", "Advertencias de seguridad", "Contenido del paquete", "Incluye",
+    "Carbohidratos", "Consejos sobre conservación", "De los cuales azúcares",
+    "De los cuales saturados", "Energía", "Grasas", "Proteínas", "Sal",
+    "Sin lactosa", "Sin azúcar", "Sin gluten", "Sin granos", "Contiene alcohol",
+    "Vegano", "Vegetariana", "Halal", "Ocasión especial", "Sabor", "Surtidas",
+    "Salado / dulce", "Tipo de galleta", "Información sobre alérgenos",
+    "Combinación de chocolate / azúcar",
 }, key=len, reverse=True))
 _DETAIL_KEY_RE = re.compile(
     r"^(?P<key>" + "|".join(re.escape(key) for key in _DETAIL_KEYS) + r")(?=\s|:|$)\s*:?(?P<value>.*)$",
@@ -55,6 +62,7 @@ def _normalize_detail_pairs(text: str) -> str:
         # known prefix would turn ``Material estructura: Plástico`` into
         # ``Material: estructura: Plástico`` and destroy its field boundary.
         if ":" in token:
+            token = repair_detail_label(token)
             key, value = token.split(":", 1)
             output.append(f"{key.strip()}: {value.strip()}")
             index += 1
