@@ -40,6 +40,8 @@ _UNIT_ALIASES = {
 
 
 def _units(value: str) -> set[str]:
+    # Diameter markers separate a measurement; Ø is not an identifier prefix.
+    value = re.sub(r"[Øø](?=\s*\d)", " ", value)
     value = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)([23])(?![A-Za-z0-9])", lambda m: m[1] + m[2] + {"2": "²", "3": "³"}[m[3]], value, flags=re.I)
     units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(value)}
     units.update(_UNIT_ALIASES.get(unit, unit) for unit in _CHINESE_UNIT_RE.findall(value))
@@ -184,6 +186,9 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
         return set()
     target_fold = rendered.casefold()
     allowed: set[str] = set()
+    for unit in ('Gbps','Mbps'):
+        if re.search(rf"(?<![A-Za-z]){unit}(?![A-Za-z])", source, re.I) and re.search(rf"(?<![A-Za-z]){unit}(?![A-Za-z])", rendered, re.I):
+            allowed.add(unit)
     for raw_token in re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ&+./-]*", source):
         # A terminal full stop belongs to prose, rather than a model or
         # display token (for example ``So Slime.``).  Preserve internal dots
@@ -382,6 +387,9 @@ def _omittable_display_term(term: Mapping[str, Any], semantic_facts: tuple[Any, 
 
 def _is_allowed_translated_strict_token(source_text: str, token: str, target: str = "", actual_count: int = 1) -> bool:
     token_key = str(token or "").casefold()
+    if token_key=='gb':
+        return bool(re.search(r'\bgigabytes?\s+por\s+segundo\b',source_text,re.I)
+                    and re.search(r'\d+(?:[.,]\d+)?\s*GB\s*/\s*(?:秒|s)(?![A-Za-z])',target))
     # The Chinese lexical rendering of karaoke contains the uppercase
     # letters OK. It is not a new model identifier. Require the complete
     # phrase and account for every OK token; standalone/extra OK stays blocked.
@@ -396,6 +404,8 @@ def _is_allowed_translated_strict_token(source_text: str, token: str, target: st
 
 
 def _is_allowed_translated_tech_token(source_text: str, source_token: str, target: str) -> bool:
+    if str(source_token or '').casefold() in {'air','hockey'}:
+        return bool(re.search(r'\bair\s+hockey\b',source_text,re.I) and '气垫曲棍球' in target)
     if str(source_token or "").casefold() == "uv":
         # Generic UV may be localized, but UVA/UVB/UVC/model suffixes may not.
         pattern = r"(?<![A-Za-z0-9_-])UV(?![A-Za-z0-9_-])"
@@ -445,6 +455,10 @@ def _is_ordinary_spanish_uppercase_token(source_text: str, source_token: str) ->
     """
     token = str(source_token or "").strip()
     source = str(source_text or "")
+    # Protection comparison keys are casefolded; recover only a literal
+    # uppercase own-source span before applying the existing lexical rule.
+    if re.search(rf"(?<![A-Za-z0-9]){re.escape(token.upper())}(?![A-Za-z0-9])", source):
+        token = token.upper()
     upper = token.upper()
     # ``_TOKEN_RE`` is ASCII-oriented and splits accented words into a
     # prefix/suffix pair: ``COLCHÓN`` -> ``COLCH`` and ``ÓN``.  Detect the
@@ -491,7 +505,7 @@ def _technical_scan_source(source_text: str) -> str:
     stored evidence stay unchanged. Other occurrences, including a keyboard
     key in the same field, retain their normal protected-token counts.
     """
-    result = source_text
+    result = re.sub(r"\b(XXS|XS|S|M|L|XL|XXL|XXXL)\s*-\s*(XXS|XS|S|M|L|XL|XXL|XXXL)\b", r"\1-\2", source_text)
     for pattern in (
         r"\bsoporte\s+(?P<article>del)\s+tel[eé]fono\b",
         r"\bn[uú]mero\s+(?P<article>del)\s+art[ií]culo\b",
@@ -533,6 +547,8 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # consume it when no separate wood occurrence remains in this field.
     # Bamboo fibre likewise names a textile material, not a solid bamboo item.
     if source_term.casefold() == "madera":
+        if re.search(r"\bmadera\s+mdf\b", source_text, re.I) and not re.search(r"\bmadera\b", re.sub(r"\bmadera\s+mdf\b", " ", source_text, flags=re.I), re.I):
+            return ("MDF", "中密度纤维板")
         remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bmadera\b", remaining, re.I):
             return ("木纹", "木质外观", "木材外观")
@@ -721,7 +737,7 @@ def _numbers(value: str) -> Counter[str]:
     # pronouns. Unsupported compound numbers must not become their last digit.
     spanish_cardinals = {"dos": "2", "tres": "3", "cuatro": "4", "cinco": "5",
                          "seis": "6", "siete": "7", "ocho": "8", "nueve": "9", "diez": "10"}
-    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas|pendientes|cajas|colores|posiciones)"
+    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas|pendientes|cajas|colores|posiciones|longitudes|accesorios|niveles|metros)"
     for match in re.finditer(rf"\b({'|'.join(spanish_cardinals)})\s+(?:pequeñ[oa]s\s+)?{counted_nouns}\b", text, re.I):
         prefix = text[:match.start()]
         # A conjunction after a counted noun starts another quantity, e.g.
@@ -730,6 +746,10 @@ def _numbers(value: str) -> Counter[str]:
         if re.search(r"\b(?:veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos|seiscientos|setecientos|ochocientos|novecientos|mil)\s*(?:(?:y|e)\s*)?$", prefix, re.I):
             continue
         numbers[spanish_cardinals[match.group(1).casefold()]] += 1
+    # An explicitly counted singular attachment is a quantity, not an arbitrary article.
+    numbers["1"] += len(re.findall(r"\bincluye\s+un\s+accesorio\b", text, re.I))
+    if not numbers["1"]:
+        del numbers["1"]
     # Chinese display text commonly renders source numerals as characters,
     # e.g. ``3 en 1`` -> ``三合一``.  Count those simple digit forms as the
     # same facts without weakening the Arabic-number checks.
@@ -740,7 +760,7 @@ def _numbers(value: str) -> Counter[str]:
     # such as ``一种``/``一天`` occur in ordinary descriptions even when the
     # Spanish source contains no number.  ``块`` is included for phrases such
     # as ``三块面板``.
-    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋卷双位端口环块层伏瓦毫升升克公斤厘米毫米米小时款")
+    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋卷双位端口环块层档伏瓦毫升升克公斤厘米毫米米小时款台色")
     digit_chars = set(chinese_digits) | set("0123456789")
     for index, char in enumerate(text):
         if char not in chinese_digits:
@@ -759,6 +779,11 @@ def _numbers(value: str) -> Counter[str]:
             connector_context = connector_context or following != "/" or (index + 2 < len(text) and text[index + 2] in digit_chars)
         if connector_context or following in quantity_units or previous in quantity_units or (following == "种" and chinese_digits[char] != "1"):
             numbers[chinese_digits[char]] += 1
+    # Prefix 双 in counted constructions means two; ordinary lexical 双
+    # (e.g. 双向) remains outside this numeric contract.
+    numbers["2"] += len(re.findall(r"双(?:片式|色|层)", text))
+    if not numbers["2"]:
+        del numbers["2"]
     return numbers
 
 
@@ -791,7 +816,6 @@ def _semantic_numeric_equivalents(source_text: str, target: str) -> Counter[str]
         (r"\b(\d+)\s+capas?\b", {"3": ("三层", "三层纸", "三层餐巾")} ),
         (r"\b(\d+)\s+en\s+1\b", {"3": ("三合一", "三效合一"), "2": "二合一", "4": "四合一"}),
         (r"\b(\d+)\s+personas?\b", {"1": ("单人", "一人"), "2": ("双人", "两人")}),
-        (r"\b(\d+)\s+(?:tonos|colores)\b", {"2": "双色"}),
         (r"\b(1)\s+(?:tamaño|size)\b", {"1": ("均码", "均一尺码", "单一尺码")}),
         (r"\bn\.\s*[ºo]?\s*(\d+)\b", {"1": "一号", "2": "二号", "3": "三号"}),
     )
@@ -875,7 +899,7 @@ def _allowed_display_latin_tokens(source_text: str, target: str) -> set[str]:
     return allowed
 
 
-def _detail_source_value_findings(source_text, target):
+def _detail_source_value_findings(source_text, target, annotations=()):
     # Historical Action text contains this invalid physical-state value.
     # Preserve the official source; do not infer gel/liquid or an efficacy claim.
     return [QAFinding("SOURCE_DETAILS_TYPED_VALUE_INVALID", "BLOCKER", "details",
@@ -883,6 +907,7 @@ def _detail_source_value_findings(source_text, target):
         message="physical-state source value requires source review", blocking=True)
         for p in parse_structured_details(source_text)
         if p.key.strip().casefold() == "sustancia"
+        and p.value not in {a['source_value'] for a in annotations}
         and any(part.strip().casefold() in {"válido", "valido"}
                 for part in p.value.split(","))]
 
@@ -893,7 +918,7 @@ def _detail_charging_speed_findings(source_text, target):
         if re.fullmatch(r"cargador\s+r[aá]pido\s*/\s*lento", p.key.strip(), re.I)
         and p.value.strip().casefold() in {"rápido", "rapido", "lento"}]
     target_items = [p for p in parse_structured_details(target)
-        if "充电" in p.key or "充电器" in p.key or re.search(r"快充|慢充", p.key)]
+        if re.fullmatch(r"(?:充电器)?快[速充]?\s*/\s*慢[速充]?|充电(?:器)?(?:快慢|速度|方式|模式)", p.key.strip())]
     findings = []
     if source_items and len(source_items) != len(target_items):
         return [QAFinding("DETAIL_CHARGING_SPEED_MISSING", "BLOCKER", "details", {},
@@ -914,7 +939,7 @@ def _detail_boolean_findings(source_text, target):
     """Compare presence truth, including explicit negative source labels."""
     attributes = ((r"\balcohol\b", r"酒精"), (r"\bsilicona\b", r"硅(?:酮|胶)?"),
         (r"\bgluten\b", r"麸质"), (r"\blactosa\b", r"乳糖"),
-        (r"\bperfume\b", r"香(?:料|精|型|味)|(?:无|有)香"),
+        (r"\b(?:perfume|perfumado)\b", r"香(?:料|精|型|味|薰|氛)|(?:无|有)香"),
         (r"\bjab[oó]n\b", r"皂"), (r"\baz[uú]car(?:es)?\b", r"(?<!乳)糖"),
         (r"^aclarado$", r"冲洗|免洗"))
     bools = {"si": True, "sí": True, "yes": True, "true": True, "是": True,
@@ -959,6 +984,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         target = fields.get(field_name)
         source_name = {"name": "name_es", "cat1": "cat1_es", "cat2": "cat2_es", "spec": "spec_es", "description": "desc_es", "details": "details_es"}.get(field_name, "")
         source_text = str(getattr(source, source_name, "") or "")
+        from .source_literal import approved_literal_annotations
+        annotations=approved_literal_annotations(source,str(target or ''),field_name,semantic_facts)
         if not isinstance(target, str) or not target.strip():
             if not source_text.strip():
                 # Empty official source is not a missing translation.  The
@@ -970,6 +997,19 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if not source_text.strip():
             findings.append(QAFinding("EMPTY_SOURCE_TARGET_NONEMPTY", "BLOCKER", field_name, {"target": target}, source=source_text, target=target, message="target content exists without official source", blocking=True))
             continue
+        from .fidelity import specification_classifier,identity_present
+        from .fidelity import field_semantic_issues
+        for rule, evidence in field_semantic_issues(source_text, target, field_name):
+            findings.append(QAFinding(rule, 'BLOCKER', field_name, evidence,
+                source=source_text, target=target, blocking=True))
+        if field_name=='spec' and specification_classifier(source_text,source.name_es,target)!=target:
+            findings.append(QAFinding('SPEC_CLASSIFIER_MISMATCH','ERROR',field_name,{},source=source_text,target=target,blocking=True))
+        if field_name=='name':
+            for fact in semantic_facts:
+                if (fact.semantic_type=='BRAND' and _fact_applies_to_field(fact,field_name)
+                        and _source_term_present(source_text,fact.source_text)
+                        and identity_present(target,fact.source_text)):
+                    findings.append(QAFinding('NAME_BRAND_ALIAS_RETAINED','ERROR',field_name,{'brand':fact.source_text},source=source_text,target=target,blocking=True))
         wood_appearance_remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
         if (wood_appearance_remaining != source_text
                 and not re.search(r"\bmadera\b", wood_appearance_remaining, re.I)):
@@ -984,7 +1024,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         # ``800 vatios -> 800 瓦s`` passed numeric/unit preservation despite
         # visibly broken Chinese. This gate diagnoses; it never repairs text.
         malformed_units = re.findall(
-            r"(?<![0-9])\d+(?:[.,]\d+)?\s*(?:毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|伏特|瓦|分贝|千卡|摄氏度|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|件|个)(?:es|s)(?![A-Za-z])",
+            r"(?<![0-9])\d+(?:[.,]\d+)?\s*(?:毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|伏特|瓦|分贝|千卡|摄氏度|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|件|个)(?:es|s)(?![A-Za-z0-9])",
             target, re.I,
         )
         if malformed_units:
@@ -992,10 +1032,13 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 {"spans": malformed_units}, source=source_text, target=target,
                 message="Chinese numeric unit retains a Latin plural suffix", blocking=True))
         if field_name == "details":
-            findings.extend(_detail_source_value_findings(source_text, target))
+            findings.extend(_detail_source_value_findings(source_text, target, annotations))
             findings.extend(_detail_charging_speed_findings(source_text, target))
             findings.extend(_detail_boolean_findings(source_text, target))
             findings.extend(_detail_care_findings(source_text, target))
+            from .fidelity import detail_attribute_issues
+            for rule,evidence in detail_attribute_issues(source_text,target):
+                findings.append(QAFinding(rule,'BLOCKER',field_name,evidence,source=source_text,target=target,blocking=True))
             if (re.search(r"\bpincel(?:es)?\b", str(getattr(source, "name_es", "") or ""), re.I)
                     and re.search(r"material\s+cabello", source_text, re.I) and "发丝" in target):
                 findings.append(QAFinding("DETAIL_SUBJECT_CHANGED", "BLOCKER", field_name,
@@ -1017,7 +1060,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         allowed_display_tokens = _allowed_display_latin_tokens(source_text, target)
         for fact in semantic_facts:
             model_name = str(getattr(fact, "source_text", "") or "").strip()
-            if (str(getattr(fact, "semantic_type", "")) == "MODEL"
+            if (str(getattr(fact, "semantic_type", "")) in ({"MODEL","BRAND"} if field_name in {'description','details'} else {"MODEL"})
                     and _fact_applies_to_field(fact, field_name)
                     and _source_term_present(source_text, model_name)
                     and _has_casefold_token(target, model_name)):
@@ -1030,6 +1073,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         )
         residual_target = (mask_source_bound_body_names(source_text, target)
                            if field_name in {"description", "details"} else target)
+        for annotation in annotations:
+            residual_target=residual_target.replace(annotation['marker'],' ')
         if has_ordinary_spanish(residual_target, allowed_tokens=allowed_display_tokens):
             findings.append(QAFinding("SPANISH_RESIDUAL", "ERROR", field_name, {"value": target}, source=source_text, target=target, blocking=True))
         # Technical/numeric guards cannot detect an omitted ordinary product
@@ -1038,11 +1083,12 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         # Brand/IP facts are intentionally excluded because the display policy
         # requires those spans to be omitted from Chinese names.
         covered_types = {"PRODUCT_TYPE", "FUNCTION", "MATERIAL", "COMPATIBILITY", "CARE", "NUTRITION", "VARIANT"}
+        if field_name in {'description','details'}:covered_types.add('BRAND')
         for fact in semantic_facts:
             fact_type = str(getattr(fact, "semantic_type", "") or "")
             source_term = str(getattr(fact, "source_text", "") or "").strip()
             canonical = str(getattr(fact, "canonical_value", "") or getattr(fact, "value", "") or "").strip()
-            if fact_type not in covered_types or not source_term or not canonical or canonical.casefold() == source_term.casefold():
+            if fact_type not in covered_types or not source_term or not canonical or (canonical.casefold() == source_term.casefold() and fact_type!='BRAND'):
                 continue
             # Do not propagate a SKU-level fact to every requested target
             # field.  Facts are field-scoped; only an explicit planner
@@ -1051,6 +1097,9 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
             represented = any(alias.casefold() in target.casefold() for alias in aliases)
+            if fact_type=='BRAND':
+                from .fidelity import identity_present
+                represented=identity_present(target,source_term)
             if fact_type == "MATERIAL":
                 represented = represented or _structured_material_atom(source_term, source_text, target, field_name)
             if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
@@ -1251,6 +1300,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
 def guard_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = (), context: Any = None, production: bool = False) -> dict[str, Any]:
     findings = audit_translation(source, fields, requested_fields, terminology=terminology, semantic_facts=semantic_facts)
     result = {"status": "PASS" if not findings else "FAIL", "fact_status": "PASS" if not findings else "FAIL", "findings": [finding.as_dict() for finding in findings], "canonical_status": "NOT_RUN", "canonical_qa_status": "NOT_RUN", "overall_ready": not findings}
+    from .source_literal import approved_literal_annotations
+    result['declared_source_anomalies']=[a for f in requested_fields for a in approved_literal_annotations(source,str(fields.get(f) or ''),f,semantic_facts)]
     if context is not None:
         from .canonical_qa import canonical_guard
         canonical = canonical_guard(context, fields, production=production)

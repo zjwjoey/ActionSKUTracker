@@ -48,17 +48,15 @@ def _strip_legacy_description_tail(value: str | None) -> str | None:
     return text[:match.start()].rstrip("；;|｜ ")
 
 
-def _strip_detail_after_article_number(value: str | None) -> str | None:
+def _strip_detail_after_article_number(value: str | None, source: str | None = None) -> str | None:
     text = "" if value is None else str(value).strip()
     if not text:
         return value
     marker = re.search(r"商品编号\s*[:：]\s*\d+", text)
     if not marker:
         return text
-    suffix = text[marker.end():].lstrip("；;|｜ ").strip()
-    if suffix.startswith("来源异常：官网字段"):
-        return text[:marker.end()] + "；" + suffix
-    return text[:marker.end()].rstrip("；;|｜ ")
+    from .dictionary_join import _strip_post_article_uppercase_fragments
+    return _strip_post_article_uppercase_fragments(text, source)
 
 
 def repair_unit_price(value: str | None, source: str | None = None) -> str | None:
@@ -91,6 +89,11 @@ def _remove_brand_numeric_fragments(value: str | None, source: str | None) -> st
         return value
     for token in dict.fromkeys(re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9&+./-]*\d[A-Za-z0-9&+./-]*(?![A-Za-z0-9])", source_text)):
         lower = token.casefold()
+        # "3-in-1" is a function count. The token scanner can see only its
+        # "in-1" suffix; it must never be treated as a brand digit and strip
+        # the final 1 from either 3-in-1 or its Chinese 3合1 rendering.
+        if re.fullmatch(r'(?:all-)?in-\d+', lower):
+            continue
         if not any(ch.islower() for ch in token):
             continue
         prefix = re.match(r"[A-Za-z]+", token)
@@ -115,9 +118,12 @@ def repair_title_with_context(value: str | None, source: str | None, *, excluded
     text = repair_title(value, source)
     source_text = str(source or "")
     if not text or not source_text:
-        return text
+        return _strip_source_bound_display_brands(text,source_text,excluded_tokens)
     excluded = {str(token).casefold() for token in excluded_tokens}
     for token in dict.fromkeys(re.findall(r"(?<![A-Za-z0-9])[A-Z][A-Z0-9-]{2,}(?![A-Za-z0-9])", source_text)):
+        from ..localization.qa import _is_ordinary_spanish_uppercase_token
+        if _is_ordinary_spanish_uppercase_token(source_text, token):
+            continue
         if token.upper() in _ORDINARY_SOURCE_TOKENS or token.casefold() in excluded:
             continue
         if token.casefold() in str(text).casefold():
@@ -126,13 +132,14 @@ def repair_title_with_context(value: str | None, source: str | None, *, excluded
         if any(alias.casefold() in str(text).casefold() for alias in aliases):
             continue
         text = f"{text}｜{token}"
-    return text
+    return _strip_source_bound_display_brands(text,source_text,excluded_tokens)
 
 
-def repair_spec(value: str | None, source: str | None, *, force_source_facts: bool = False) -> str | None:
+def repair_spec(value: str | None, source: str | None, *, force_source_facts: bool = False, name_context: str = '') -> str | None:
     from .dictionary_join import _repair_export_spec
     repaired = _repair_export_spec(value, source, force_source_facts=force_source_facts)
-    return repair_source_model_fragments(repaired, source)
+    from ..localization.fidelity import specification_classifier
+    return specification_classifier(source,name_context,repair_source_model_fragments(repaired, source)) if repaired is not None else None
 
 
 def repair_description(value: str | None, source: str | None = None) -> str | None:
@@ -151,7 +158,8 @@ def _strip_source_bound_display_brands(value: str | None, source: str | None, ex
         token for token in excluded_tokens
         if token and token.casefold() in source_text.casefold() and token.casefold() in text.casefold()
     }
-    return strip_forbidden_display_tokens(text, active)
+    from ..localization.fidelity import strip_name_identity_aliases
+    return strip_name_identity_aliases(source_text,strip_forbidden_display_tokens(text, active),excluded_tokens)
 
 
 def repair_content_with_context(
@@ -172,7 +180,15 @@ def repair_content_with_context(
             text = f"{text}；{model}"
     excluded = {str(token).casefold() for token in excluded_tokens}
     target = str(text).casefold()
+    from ..localization.fidelity import source_identities,identity_present
+    represented_names=[n for n in source_identities(source_text,excluded_tokens) if identity_present(text,n)]
     for token in dict.fromkeys(re.findall(r"(?<![A-Za-z0-9])[A-Z][A-Z0-9-]{2,}(?![A-Za-z0-9])", source_text)):
+        if any(re.search(r'(?<!\w)'+re.escape(token)+r'(?!\w)',n,re.I) for n in represented_names):
+            text=re.sub(r'[；;]\s*'+re.escape(token)+r'\s*$','',text,flags=re.I)
+            continue
+        from ..localization.qa import _is_ordinary_spanish_uppercase_token
+        if _is_ordinary_spanish_uppercase_token(source_text, token):
+            continue
         if token.upper() in _ORDINARY_SOURCE_TOKENS or token.casefold() in excluded:
             continue
         if token.casefold() in target:
@@ -192,13 +208,16 @@ def repair_content_with_context(
         if re.search(pattern, source_text, flags=re.I) and not any(alias.casefold() in target for alias in aliases):
             text = f"{text}；{token}"
             target = text.casefold()
-    return _strip_source_bound_display_brands(_strip_legacy_description_tail(text), source_text, excluded_tokens)
+    # NO_BRAND applies to names. Source brands/IP remain facts in prose.
+    from ..localization.fidelity import restore_body_identities
+    return restore_body_identities(source_text,_strip_legacy_description_tail(text),excluded_tokens)
 
 
 def repair_details(value: str | None, source: str | None) -> str | None:
     from .dictionary_join import _repair_export_details
+    from ..localization.fidelity import repair_detail_attributes
     return _strip_detail_after_article_number(
-        repair_source_model_fragments(_repair_export_details(value, source), source)
+        repair_detail_attributes(source,repair_source_model_fragments(_repair_export_details(value, source), source)), source
     )
 
 
@@ -214,6 +233,12 @@ def repair_details_with_context(
     excluded = {str(token).casefold() for token in excluded_tokens}
     target = str(text).casefold()
     for token in dict.fromkeys(re.findall(r"(?<![A-Za-z0-9])[A-Z][A-Z0-9-]{2,}(?![A-Za-z0-9])", source_text)):
+        from ..localization.qa import _is_ordinary_spanish_uppercase_token
+        if _is_ordinary_spanish_uppercase_token(source_text, token):
+            continue
+        from ..localization.qa import _is_allowed_translated_tech_token
+        if _is_allowed_translated_tech_token(source_text, token, str(text)):
+            continue
         if token.upper() in _ORDINARY_SOURCE_TOKENS or token.casefold() in excluded:
             continue
         if token.casefold() in target:
@@ -223,7 +248,7 @@ def repair_details_with_context(
             continue
         text = f"{text}；{token}"
         target = text.casefold()
-    return _strip_source_bound_display_brands(_strip_detail_after_article_number(text), source_text, excluded_tokens)
+    return _strip_detail_after_article_number(text, source)
 
 
 def repair_categories(value: Any, source: str | None) -> Any:

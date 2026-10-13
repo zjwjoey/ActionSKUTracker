@@ -72,6 +72,22 @@ def apply_override(
     if not row:
         return value, None, "MISSING"
     if row["source_hash"] == field_source_hash(record, field):
+        # A newer formally approved PRIMARY value supersedes an older export
+        # override for the same source. Source hash alone cannot pin an obsolete
+        # target forever after an approved semantic correction.
+        from datetime import datetime
+        logical = {'desc_zh':'description','details_zh':'details','name_zh':'name','spec_zh':'spec','cat1_zh':'cat1','cat2_zh':'cat2'}.get(field)
+        provenance = (record.get('zh_field_provenance') or {}).get(logical,{})
+        try:
+            newer = datetime.fromisoformat(str(provenance.get('approved_at') or '').replace('Z','+00:00')) > datetime.fromisoformat(str(row.get('approved_at') or '').replace('Z','+00:00'))
+        except (ValueError,TypeError):
+            newer = False
+        if (newer and provenance.get('review_status')=='APPROVED'
+                and provenance.get('freshness_status')=='CURRENT'
+                and provenance.get('source_hash')==row['source_hash']
+                and provenance.get('approved_by')
+                and provenance.get('value')==record.get(field)):
+            return value,row,'SUPERSEDED_BY_PRIMARY'
         return row["replacement"], row, "APPLIED"
     # Aggregate-hash rows were approved under the old contract.  They cannot
     # be safely converted because no historical field-level evidence exists.

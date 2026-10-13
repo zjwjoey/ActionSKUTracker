@@ -57,6 +57,12 @@ class ExportRepairEngine:
                 approved_at=row.get("approved_at") or None,
                 reason=row.get("reason") or None,
             ))
+        elif outcome == "SUPERSEDED_BY_PRIMARY" and row is not None:
+            from .repair_report import RepairEvent
+            self.report.events.append(RepairEvent(sku=sku,field=field,source_field=source_field,
+                source=record.get(source_field),source_hash=row['source_hash'],before=value,after=value,
+                rule='OVERRIDE_SUPERSEDED_BY_APPROVED_PRIMARY',rule_version=self.VERSION,
+                status='KEEP',reason='newer approved source-bound PRIMARY target takes precedence'))
         elif outcome == "REAPPROVAL_REQUIRED" and row is not None:
             self.report.add_unresolved(
                 sku=sku, field=field, source_field=source_field,

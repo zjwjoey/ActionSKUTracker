@@ -58,6 +58,11 @@ P0_RULES = frozenset({
     "PROTECTED_TOKEN_CHANGED", "PROTECTED_TOKEN_DUPLICATED", "UNIT_DROPPED",
     "CATEGORY_INVALID", "HTML_RESIDUAL", "SEMANTIC_FACT_DROPPED",
     "TERMINOLOGY_VIOLATION", "FORBIDDEN_TERM",
+    "OWN_FIELD_BATTERY_MODEL_CONTRADICTION", "POLYESTER_CHANGED_TO_POLYAMIDE",
+    "PRODUCT_WORD_SENSE_CHANGED", "DENTITION_CHANGED_TO_DENTURE",
+    "NEGATIVE_ATTRIBUTE_ROLE_CHANGED", "SEATING_POSITION_CHANGED_TO_CAPACITY",
+    "STATIONERY_CHANGED_TO_MEDICAL_DEVICE", "CUP_TYPE_CHANGED_TO_MATERIAL",
+    "MASS_ATTRIBUTE_CHANGED_TO_CAPACITY", "ELECTRIC_HEAT_CHANGED_TO_MOTOR",
 })
 
 
@@ -422,8 +427,9 @@ def _token_equivalence_allows(rule_id: str, evidence: Mapping[str, Any], source:
 
 
 def _numeric_drop_equivalent(source: str, target: str, missing: Mapping[str, Any]) -> bool:
+    from ..localization.qa import _numbers
     source_numbers = {_number_as_key(value) for value in re.findall(r"\d+(?:[.,]\d+)?", source)}
-    target_numbers = {_number_as_key(value) for value in re.findall(r"\d+(?:[.,]\d+)?", target)}
+    target_numbers = set(_numbers(target))
     if all(_number_as_key(value) in target_numbers for value in missing):
         return True
     if _source_range_values(source) and all(_number_as_key(value) in target_numbers for value in missing):
@@ -549,6 +555,7 @@ def audit_repaired_rows(
     *,
     min_field_pass_rate: float = 0.99,
     allowed_tokens: set[str] | None = None,
+    known_brands: set[str] | None = None,
 ) -> dict[str, Any]:
     """Run the field-level localization QA against the actual export rows."""
     from ..localization.contracts import SourceFacts
@@ -570,6 +577,7 @@ def audit_repaired_rows(
         "规格": "spec_zh", "描述": "desc_zh", "产品详情": "details_zh",
     }
     findings: list[dict[str, Any]] = []
+    declared_source_anomalies=[]
     approved_tokens = {str(token).strip() for token in (allowed_tokens or set()) if str(token).strip()}
     translated_aliases = {
         "mdf": ("中密度纤维板", "纤维板"), "usb": ("USB", "通用串行总线"),
@@ -612,7 +620,14 @@ def audit_repaired_rows(
                 eligible += 1
                 eligible_by_field[target] += 1
         source_facts = SourceFacts.from_record(record)
-        qa_findings = audit_translation(source_facts, targets, AUDIT_LOGICAL_FIELDS)
+        from ..localization.review_evidence import reviewed_facts_for_field
+        reviewed_facts = tuple(fact for field in AUDIT_LOGICAL_FIELDS for fact in reviewed_facts_for_field(record,field))
+        from ..localization.source_literal import approved_literal_annotations
+        declared_source_anomalies.extend({'sku':sku,**annotation} for field in AUDIT_LOGICAL_FIELDS
+            for annotation in approved_literal_annotations(source_facts,str(targets.get(field) or ''),field,reviewed_facts))
+        from ..localization.fidelity import body_identity_facts
+        identities=body_identity_facts(source_facts,known_brands or set())
+        qa_findings = audit_translation(source_facts, targets, AUDIT_LOGICAL_FIELDS, semantic_facts=tuple(reviewed_facts)+identities)
         for finding in qa_findings:
             source_field = TARGET_TO_SOURCE[LOGICAL_TO_TARGET[finding.field_name]]
             source_text = str(source.get(source_field) or "")
@@ -700,10 +715,13 @@ def audit_repaired_rows(
                 # allowed only when it is present in both source and target.
                 source_allowed.update(_units(source_text) & _units(target_text))
                 residual_text = target_text
+                if finding.field_name in {"description", "details"}:
+                    from ..localization.body_names import mask_source_bound_body_names
+                    residual_text = mask_source_bound_body_names(source_text, residual_text)
                 # These two markers are deliberately retained as provenance
                 # for malformed official source keys.  Their Spanish spelling
                 # is not a product-language residual.
-                residual_text = residual_text.replace("来源异常：官网字段Sustancia=Válido", "")
+                residual_text = re.sub(r"来源异常：官网字段Sustancia=[^；;\n]+", "", residual_text)
                 residual_text = residual_text.replace("来源异常：官网字段Incluye oído", "")
                 if not has_ordinary_spanish(residual_text, allowed_tokens=source_allowed):
                     continue
@@ -744,4 +762,6 @@ def audit_repaired_rows(
         "target_field_pass_rate": min_field_pass_rate,
         "release_ready": not p0_findings and not affected_fields and field_pass_rate >= min_field_pass_rate,
         "findings": findings,
+        "declared_source_anomaly_fields": len({(a['sku'],a['field']) for a in declared_source_anomalies}),
+        "declared_source_anomalies": declared_source_anomalies,
     }

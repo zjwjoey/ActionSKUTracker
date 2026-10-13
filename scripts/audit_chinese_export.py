@@ -231,7 +231,7 @@ def _numbers_with_chinese(value: str) -> Counter[str]:
     # (e.g. 3 en 1 -> 三合一, Juego de 3 -> 三包装). Count only digits used in
     # quantity/measurement contexts to avoid treating ordinary prose as facts.
     chinese_digits = {"零": "0", "一": "1", "二": "2", "两": "2", "三": "3", "四": "4", "五": "5", "六": "6", "七": "7", "八": "8", "九": "9", "十": "10"}
-    quantity_markers = set("合件条片粒双张岁年节包装枚个只次层芯寸英寸厘米毫米公斤克升瓦小时分钟向项档款步种位脚台口头把")
+    quantity_markers = set("合件条片粒双张岁年节包装枚个只次层芯寸英寸厘米毫米公斤克升瓦小时分钟向项档款步种位脚台口头把根套")
     for index, char in enumerate(value or ""):
         if char not in chinese_digits:
             continue

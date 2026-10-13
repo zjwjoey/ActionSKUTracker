@@ -40,6 +40,21 @@ def field_already_ready(record, field, target):
             and provenance.get("source_hash") == localization_field_source_hash(record, field))
 
 
+def missing_review_source_records(db_path, records, reviews):
+    """Find finite reviewed sources absent after an official detail correction."""
+    missing = {}
+    with connect(db_path) as db:
+        for review in reviews:
+            field = review["field"]
+            row = db.execute("""SELECT u.unit_id FROM translation_units u
+                JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
+                WHERE s.official_sku=? AND s.source_hash=? AND u.field_name IN (?,?)""",
+                (review["sku"], review["source_hash"], field, FIELDS[field])).fetchone()
+            if row is None:
+                missing[review["sku"]] = records[review["sku"]]
+    return list(missing.values())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--review", type=Path, required=True)
@@ -130,6 +145,13 @@ def main():
             else:
                 backup = verified_backup(runtime.db_path, backup_path)
             backup_report.write_text(json.dumps(backup, ensure_ascii=False, indent=2), encoding="utf-8")
+        # QA and verified backup precede any Registry mutation. Register only
+        # missing reviewed current sources; this never changes official facts
+        # and never invokes the worker/provider or grants approval by itself.
+        absent = missing_review_source_records(runtime.db_path, records, [r for r, _ in prepared])
+        registration = runtime.registry.ingest_records(absent,
+            source_run_id=repo.latest_commit_info()["run_id"], observed_at=scope["business_date"]) if absent else {"source_versions": 0}
+        (args.output / "source_registration.json").write_text(json.dumps(registration, ensure_ascii=False, indent=2), encoding="utf-8")
         grant_reviews, ready = {}, []
         for review, qa in prepared:
             sku, field, target = review["sku"], review["field"], review["target"]

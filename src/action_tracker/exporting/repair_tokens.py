@@ -12,7 +12,7 @@ from typing import Iterable
 
 
 _MODEL_WITH_DIGITS_RE = re.compile(
-    r"(?<![A-Za-z0-9])([A-Z]{1,8})\s*[- ]?\s*(\d{1,8})(?![A-Za-z0-9])",
+    r"(?<![A-Za-z0-9])([A-Z]{1,8})[ \t]*[- ]?[ \t]*(\d{1,8})(?![A-Za-z0-9])",
 )
 
 
@@ -32,6 +32,10 @@ def source_model_tokens(source: str | None) -> tuple[str, ...]:
     text = str(source or "")
     found: list[str] = []
     for match in _MODEL_WITH_DIGITS_RE.finditer(text):
+        # A unit heading followed by a composition percentage is not a
+        # model. Never combine facts across a line boundary (GSM\n100 %).
+        if match.group(1) == "GSM" and re.match(r"[ \t]*%", text[match.end():]):
+            continue
         # A spaced one-letter prefix is usually a measurement or a nutrient
         # name (``Vitamina D 10 mcg``), not a model.  Keep compact forms such
         # as ``A4``/``K2`` and multi-letter forms such as ``PZ 2``.

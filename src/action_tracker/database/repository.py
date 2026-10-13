@@ -163,6 +163,8 @@ class ProductionRepository:
                    {status_clause} ORDER BY p.official_sku"""
             ).fetchall()
             provenance_rows = _read_field_provenance(db)
+            from ..localization.review_evidence import read_approved_review_evidence
+            semantic_reviews = read_approved_review_evidence(db)
         source_commit_id = str(head_row[0]) if head_row else ""
         source_run_id = str(run_row[0]) if run_row else ""
         records = []
@@ -202,6 +204,13 @@ class ProductionRepository:
                 "presence_source": f"PRIMARY_CURRENT_COMMIT:{source_commit_id}" if source_commit_id else "",
                 "zh_field_provenance": field_provenance.get(str(row[1]), {}),
             })
+        from ..localization.review_evidence import FIELDS, TARGETS
+        for record in records:
+            record['zh_reviewed_semantic_evidence'] = {
+                field: semantic_reviews[(str(record['sku']),field,record['source_hash'],str(record.get(TARGETS[field]) or ''))]
+                for field in FIELDS
+                if (str(record['sku']),field,record['source_hash'],str(record.get(TARGETS[field]) or '')) in semantic_reviews
+            }
         return records
 
 

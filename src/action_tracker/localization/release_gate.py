@@ -213,6 +213,18 @@ def audit_research_release(
                 issues.append(f"SOURCE_HASH_MISMATCH:{sku}:{canonical}")
         for field in REQUIRED_ZH_FIELDS:
             inspected = str(row.get(field) or "")
+            from .review_evidence import reviewed_facts_for_field
+            import re
+            canonical = PROVENANCE_FIELDS.get(field)
+            if canonical:
+                facts=reviewed_facts_for_field(row, canonical)
+                from .source_literal import approved_literal_annotations
+                from .contracts import SourceFacts
+                for annotation in approved_literal_annotations(SourceFacts.from_record(row),inspected,canonical,facts):
+                    inspected=inspected.replace(annotation['marker'],' ')
+                for fact in facts:
+                    if fact.semantic_type == 'MODEL':
+                        inspected = re.sub(rf"(?<![A-Za-z0-9]){re.escape(fact.source_text)}(?![A-Za-z0-9])", ' ', inspected, flags=re.I)
             if field in {"desc_zh", "details_zh"}:
                 source_key = "desc_es" if field == "desc_zh" else "details_es"
                 inspected = mask_source_bound_body_names(str(row.get(source_key) or ""), inspected)

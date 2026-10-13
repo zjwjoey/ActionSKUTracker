@@ -27,6 +27,7 @@ from ..dictionary import (
 from ..services.normalization import parse_bool_zh, parse_price
 from ..localization.policy import OMIT_BRAND_FROM_CHINESE_DISPLAY
 from ..localization.formatter import format_spec
+from ..localization.review_evidence import reviewed_facts_for_field
 from .repair import ExportRepairEngine
 from .repair_report import ExportRepairReport
 from .repair_rules import (
@@ -244,7 +245,7 @@ def build_zh_rows(
                 sku=sku, field="spec_zh", value=spec, source_field="spec_es",
                 source=record.get("spec_es"), source_hash=source_hash,
                 rule="SPEC_SOURCE_FACTS", repairer=lambda value, source: repair_spec(
-                    value, source, force_source_facts=spec_fallback,
+                    value, source, force_source_facts=spec_fallback, name_context=str(record.get('name_es') or ''),
                 ),
             )
             spec = repair_engine.apply_override(
@@ -383,7 +384,10 @@ def build_zh_rows_from_localized_source(
                 sku=sku, field="name_zh", value=resolved.get("name_zh"), source_field="name_es",
                 source=record.get("name_es"), source_hash=source_hash,
                 rule="TITLE_SOURCE_TOKEN", repairer=lambda value, source: repair_title_with_context(
-                    value, source, excluded_tokens=repair_engine.excluded_display_tokens,
+                    value, source, excluded_tokens=repair_engine.excluded_display_tokens | {
+                        fact.source_text.casefold() for fact in reviewed_facts_for_field(record, 'name')
+                        if fact.semantic_type == 'BRAND'
+                    },
                 ),
             )
             resolved["name_zh"] = repair_engine.apply_override(
@@ -393,7 +397,7 @@ def build_zh_rows_from_localized_source(
                 sku=sku, field="spec_zh", value=resolved.get("spec_zh"), source_field="spec_es",
                 source=record.get("spec_es"), source_hash=source_hash,
                 rule="SPEC_SOURCE_FACTS", repairer=lambda value, source: repair_spec(
-                    value, source, force_source_facts=plan.fields["spec_zh"].status != "READY",
+                    value, source, force_source_facts=plan.fields["spec_zh"].status != "READY", name_context=str(record.get('name_es') or ''),
                 ),
             )
             resolved["spec_zh"] = repair_engine.apply_override(
@@ -1007,13 +1011,23 @@ def _repair_export_details(value: str | None, source: str | None) -> str | None:
     if "dispensador" in source_text:
         text = re.sub(r"dispens(?:er)?", "分配器", text, flags=re.I)
     if "sustancia" in source_text and "válido" in source_text:
-        text = re.sub(r"(?:形态|成分)：[^；]+", "来源异常：官网字段Sustancia=Válido", text, count=1)
+        from ..localization.normalization.structured_details import parse_structured_details
+        invalid_pair = next((p for p in parse_structured_details(str(source or ""))
+                             if p.key.strip().casefold() == "sustancia" and "válido" in p.value.casefold()), None)
+        marker = "来源异常：官网字段Sustancia=" + (invalid_pair.value if invalid_pair else "Válido")
+        text = re.sub(r"(?:^|(?<=[；;\n]))(?:产品)?(?:形态|成分|物态|质地)：[^；;\n]+", lambda _: marker, text, count=1)
         if "来源异常：官网字段Sustancia=Válido" not in text:
-            text += "；来源异常：官网字段Sustancia=Válido"
+            text += "；" + marker
     if "incluye oído" in source_text:
-        text = re.sub(r"(?:带把手|是否带耳)：(?:是|否)", "来源异常：官网字段Incluye oído", text)
-        if "来源异常：官网字段Incluye oído" not in text:
-            text += "；来源异常：官网字段Incluye oído"
+        from ..localization.normalization.structured_details import parse_structured_details
+        source_pairs=parse_structured_details(str(source or ''))
+        pairs=[p for p in source_pairs if p.key.casefold()=='incluye oído']
+        target_pairs=parse_structured_details(text)
+        if len(pairs)==1 and len(source_pairs)==len(target_pairs):
+            index=source_pairs.index(pairs[0]);current=target_pairs[index]
+            marker='来源异常：官网字段Incluye oído='+pairs[0].value
+            if current.key in {'带把手','是否带把手','是否带耳','来源异常','是否来源异常'}:
+                text=text.replace(current.source_text,marker,1)
     # The legacy detail parser sometimes appended the raw uppercase Spanish
     # enum/value after the article number (for example ``商品编号：2527246；
     # CALCULADORA``).  These are ordinary source words, not model/certification
@@ -1183,7 +1197,7 @@ def _repair_source_bound_content_facts(
     token_repairs = (
         (r"\bmdf\b", "MDF（中密度纤维板）", ("mdf", "中密度纤维板", "纤维板")),
         (r"\blego\b", "LEGO", ("lego", "乐高")),
-        (r"\bgsm\b", "GSM（克重）", ("gsm", "克重")),
+        (r"\bgsm\b", "GSM（克重）", ("gsm", "克重", "克/平方米", "克/平方", "填充密度（克/平方米）")),
         (r"\bled\b", "LED", ("led", "发光二极管")),
         (r"\bpc\b", "PC", ("pc", "电脑")),
         (r"\bswitch\b", "Nintendo Switch", ("switch", "任天堂")),
@@ -1205,7 +1219,9 @@ def _repair_source_bound_content_facts(
     for match in re.finditer(r"(?<!\d)(\d+)\s+en\s+(\d+)(?!\d)", source_text, flags=re.I):
         left, right = match.groups()
         rendered = f"{left}合{right}"
-        if rendered not in text and f"{left} 合 {right}" not in text:
+        digits = dict(zip("0123456789", "零一二三四五六七八九"))
+        chinese_rendered = f"{digits.get(left, left)}合{digits.get(right, right)}"
+        if rendered not in text and f"{left} 合 {right}" not in text and chinese_rendered not in text:
             text = f"{text}；{rendered}"
             target_lower = text.casefold()
 
@@ -1213,7 +1229,10 @@ def _repair_source_bound_content_facts(
     # lists the split inputs/outputs, retain the total explicitly as well.
     for match in re.finditer(r"(?<!\d)(\d+)\s+puertos?\b", source_text, flags=re.I):
         total = match.group(1)
-        if not re.search(rf"(?<!\d){re.escape(total)}(?:\s*个)?(?:USB[-‑–— ]?[A-Z])?(?:接口|端口)", text, flags=re.I):
+        count = re.escape(total)
+        existing = rf"(?<!\d){count}\s*个?(?:(?:快充|可伸缩)?(?:USB(?:[-‑–— ]?[A-Z])?)?)?(?:接口|端口)"
+        existing_total = rf"接口总数\s*[:：]\s*{count}\s*个|(?<!\d){count}\s*口(?:充电器|适配器)"
+        if not re.search(existing, text, flags=re.I) and not re.search(existing_total, text, flags=re.I):
             text = f"{text}；接口总数：{total}个"
 
     # A source that explicitly offers two variants should retain that count
@@ -1239,7 +1258,9 @@ def _repair_source_bound_content_facts(
         generic_source = re.sub(r"(?<=\d)'(?=\d)", ".", source_text)
         for match in re.finditer(r"(?<![A-Za-z0-9])(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)(?:\s*[x×]\s*(\d+(?:[.,]\d+)?))?\s*cm\b", generic_source, flags=re.I):
             dimensions = "×".join(piece.replace(",", ".") for piece in match.groups() if piece)
-            if not re.search(rf"{re.escape(dimensions)}\s*(?:厘米|cm)", text, flags=re.I):
+            comparison = re.sub(r"(?<=\d)\s*[xX×]\s*(?=\d)", "×", text)
+            comparison = re.sub(r"(?<=\d),(?=\d)", ".", comparison)
+            if not re.search(rf"{re.escape(dimensions)}\s*(?:厘米|cm)", comparison, flags=re.I):
                 text = f"{text}；尺寸：{dimensions}厘米"
     # Preserve high-confidence numeric/unit facts in the field that owns the
     # source description/details.  This covers common omissions such as
@@ -1282,8 +1303,10 @@ def _repair_source_bound_content_facts(
             continue
         text = f"{text}；参数：{number}{aliases[0]}"
     if include_generic and not re.search(r"número\s+del\s+artículo|código\s+del\s+artículo", source_lower):
+        from ..localization.qa import _numbers
+        rendered_numbers = _numbers(text)
         for number in _spec_numbers(source_text):
-            if not re.search(rf"(?<!\d){re.escape(number)}(?!\d)", text):
+            if not re.search(rf"(?<!\d){re.escape(number)}(?!\d)", text) and number not in rendered_numbers:
                 text = f"{text}；参数：{number}"
     # Legacy candidates sometimes glue a translated noun to a percentage
     # (``modo95%``/``fibras100%``/``GSM100%``). Normalize the glue without

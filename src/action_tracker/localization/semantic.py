@@ -28,6 +28,8 @@ _TERM_MAP = {
     "iluminación": ("PRODUCT_TYPE", "照明灯"), "cápsulas": ("PRODUCT_TYPE", "胶囊"),
     "calcetines": ("PRODUCT_TYPE", "袜子"), "manoplas": ("PRODUCT_TYPE", "沐浴手套"),
     "lámpara": ("PRODUCT_TYPE", "灯"), "concentrador": ("PRODUCT_TYPE", "集线器"),
+    "toppoki": ("PRODUCT_TYPE", "年糕"), "topokki": ("PRODUCT_TYPE", "年糕"),
+    "tteokbokki": ("PRODUCT_TYPE", "年糕"), "dolomita": ("MATERIAL", "白云石"),
     "conmutador": ("PRODUCT_TYPE", "交换机"), "speculoos": ("PRODUCT_TYPE", "焦糖饼干"),
 }
 _COLORS = {"blanco": "白色", "blanca": "白色", "negro": "黑色", "negra": "黑色", "rojo": "红色", "roja": "红色", "verde": "绿色", "azul": "蓝色", "multicolor": "彩色", "antracita": "炭灰色"}
@@ -59,6 +61,8 @@ _HISTORICAL_QUALITY_TERMS = frozenset({
 def stationery_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
     """Disambiguate only a standalone item in an own-field school list."""
     spans = []
+    if re.search(r"\blápices\s+HB\b", text, re.I):
+        spans.extend(m.span(1) for m in re.finditer(r"(?:^|[\r\n])\s*Con\s+(goma)\s*(?=[\r\n]|$)", text, re.I))
     for line in re.finditer(r"[^\r\n]+", text):
         own = line.group()
         if not (re.search(r"\b(?:lápices|lápiz|rotuladores|bolígrafo)\b", own, re.I)
@@ -200,6 +204,12 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
                 remaining = re.sub(r"\bgomas\s+pelables\b", " ", remaining, flags=re.I)
             if not re.search(rf"\b{re.escape(source_text)}\b", remaining, re.I):
                 return
+        if kind == 'PRODUCT_TYPE' and source_text.casefold() == 'detergente' and zh == '洗洁精':
+            remaining=re.sub(r'\bdetergente\s+de\s+limpieza\s+de\s+WC\b',' ',dict(text_fields).get(field,''),flags=re.I)
+            if re.search(r'\b(?:colada|ropa|lavadora)\b',dict(text_fields).get(field,''),re.I):
+                remaining=re.sub(r'\bdetergente\s+en\s+polvo\b',' ',remaining,flags=re.I)
+            if not re.search(r'\bdetergente\b',remaining,re.I):
+                return
         key = (kind, source_text.casefold(), zh, field)
         if key in seen or not source_text or not zh:
             return
@@ -207,6 +217,11 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        for match in re.finditer(r'\bdetergente\s+en\s+polvo\b',text,re.I):
+            if re.search(r'\b(?:colada|ropa|lavadora)\b',text,re.I):
+                add('PRODUCT_TYPE',match.group(0),'洗衣粉',field,'source_bound_laundry_powder')
+        for match in re.finditer(r'\bdetergente\s+de\s+limpieza\s+de\s+WC\b',text,re.I):
+            add('PRODUCT_TYPE',match.group(0),'洁厕剂',field,'source_bound_wc_detergent')
         if field == "details_es":
             for start, end in body_cloth_spans:
                 add("VARIANT", text[start:end], "巾片", field, "source_bound_body_cloth_form")
@@ -309,4 +324,9 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     for brand in sorted(known_brands or set(), key=lambda value: str(value).casefold()):
         if brand and brand.lower() in source.name_es.lower():
             add("BRAND", brand, brand, "name_es", brand)
+    from .fidelity import source_identities
+    for field,text in text_fields:
+        if field in {'desc_es','details_es'}:
+            for brand in source_identities(text,known_brands or set()):
+                add('BRAND',brand,brand,field,'approved_dictionary_own_field_identity')
     return tuple(facts)
