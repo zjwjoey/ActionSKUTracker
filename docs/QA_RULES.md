@@ -10,6 +10,9 @@
 
 QA FAIL 和 dry-run 都可以保存 Snapshot、Staging 和报告，但不得更新 Master、known_skus 或 offline_skus。
 
+`CONTENT_CHANGE` 统计只计同名事件类型，不包含 `FIRST_SEEN`。daily 报告、
+`05_RUN_LOG` 与 SQLite event_history 的兼容投影使用同一口径；首次建档仍由 NEW/FIRST_SEEN 单独统计。
+
 ## 2. Collection 规则
 
 ### QA-COL-001：Sitemap 有效性

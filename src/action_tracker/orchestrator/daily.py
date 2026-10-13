@@ -726,6 +726,11 @@ def _build_current_records(
     return current
 
 
+def _content_change_count(content_events) -> int:
+    """FIRST_SEEN belongs to lifecycle counts, never CONTENT_CHANGE."""
+    return sum(1 for event in content_events if event.get("事件类型") == "CONTENT_CHANGE")
+
+
 def _counts(statuses, today_set, sitemap, listing_map, price_events, badge_events, content_events, anomalies) -> dict:
     st_map = {s.status: s for s in statuses.values()}
     return {
@@ -743,7 +748,7 @@ def _counts(statuses, today_set, sitemap, listing_map, price_events, badge_event
         "promo_end": sum(1 for e in badge_events if e.get("事件类型") == "PROMO_END"),
         "new_badge_on": sum(1 for e in badge_events if e.get("事件类型") == "ACTION_NEW_BADGE_ON"),
         "new_badge_off": sum(1 for e in badge_events if e.get("事件类型") == "ACTION_NEW_BADGE_OFF"),
-        "content_change": len(content_events),
+        "content_change": _content_change_count(content_events),
         "anomalies": len(anomalies),
     }
 
@@ -841,7 +846,7 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "promo_end": sum(1 for e in badge_events if e.get("事件类型") == "PROMO_END"),
         "new_badge_on": sum(1 for e in badge_events if e.get("事件类型") == "ACTION_NEW_BADGE_ON"),
         "new_badge_off": sum(1 for e in badge_events if e.get("事件类型") == "ACTION_NEW_BADGE_OFF"),
-        "content_change": len(content_events),
+        "content_change": _content_change_count(content_events),
         "anomalies": len(anomalies),
         "qa_state": qa.state,
         "master": str(cfg["paths"]["master"]),

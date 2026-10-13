@@ -301,3 +301,29 @@ def test_same_day_absence_cannot_reach_offline_threshold_twice():
     defensive=apply_state_transition(known,{sku:stale_status},date,'repeat-stale')
     assert defensive['known'][sku]['last_status']=='MISSING'
     assert not defensive['offline']
+
+
+@pytest.mark.parametrize("event_types,expected", [
+    ([], 0),
+    (["FIRST_SEEN"], 0),
+    (["CONTENT_CHANGE"], 1),
+    (["FIRST_SEEN", "CONTENT_CHANGE", "REAPPEARED"], 1),
+    (["FIRST_SEEN"] * 21 + ["CONTENT_CHANGE"] * 11, 11),
+    (["CONTENT_CHANGE", "CONTENT_CHANGE"], 2),
+    ([None, "content_change", "PROMO_START"], 0),
+])
+def test_daily_report_and_master_log_count_only_content_events(tmp_path, monkeypatch, event_types, expected):
+    from action_tracker.orchestrator import daily
+    monkeypatch.setattr(daily, "git_commit_info", lambda: "fixture")
+    events = [{"事件类型": kind} for kind in event_types]
+    original = [dict(event) for event in events]
+    qa = SimpleNamespace(state="PASS", passed=True)
+    counts = daily._counts({}, set(), None, {}, [], [], events, [])
+    report = daily._run_report(
+        {"paths": {"master": tmp_path / "master.xlsx"}},
+        "fixture", "2026-10-13", False, 0, 0, {}, [], [], events, [],
+        qa, tmp_path, True, {},
+    )
+    log = daily._run_log_row("fixture", "2026-10-13", "00:00:00", counts, qa, False, 0, 0)
+    assert counts["content_change"] == report["content_change"] == log["CONTENT_CHANGE"] == expected
+    assert events == original
