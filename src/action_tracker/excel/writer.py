@@ -13,6 +13,7 @@ import logging
 import os
 import shutil
 import uuid
+from copy import copy
 from pathlib import Path
 from typing import Any
 
@@ -168,6 +169,9 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
         k = colmap.get(h)
         if k:
             idx[k] = i
+    if 'sku' not in idx or 'canonical_id' not in idx:
+        raise RuntimeError('CURRENT_IDENTITY_HEADERS_MISSING:' + sheet)
+    sku_col, cid_col = idx['sku'], idx['canonical_id']
     # CURRENT is not a history table. Rows absent from the authoritative
     # Presence dataset are removed; lifecycle evidence remains in state CSVs.
     wanted_skus = {str(key) for key in key_to_records}
@@ -176,15 +180,15 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
         if rec.get("canonical_id")
     }
     for row_no in range(ws.max_row, 1, -1):
-        sku = str(ws.cell(row=row_no, column=2).value or "")
-        cid = str(ws.cell(row=row_no, column=1).value or "")
+        sku = str(ws.cell(row=row_no, column=sku_col + 1).value or "")
+        cid = str(ws.cell(row=row_no, column=cid_col + 1).value or "")
         if sku not in wanted_skus and cid not in wanted_cids:
             ws.delete_rows(row_no, 1)
     # 更新既有行
     updated = 0
     for row in ws.iter_rows(min_row=2):
-        sku = row[1].value
-        cid = row[0].value
+        sku = row[sku_col].value
+        cid = row[cid_col].value
         rec = key_to_records.get(str(sku)) or key_to_records.get(str(cid))
         if not rec:
             continue
@@ -193,13 +197,34 @@ def _update_or_append_current(wb, sheet: str, colmap: dict, key_to_records: dict
                 row[col].value = _cell(rec.get(k))
         updated += 1
     # 追加新 SKU
-    existing = {str(row[1]) for row in ws.iter_rows(min_row=2, values_only=True) if row[1]}
+    existing = {str(row[sku_col]) for row in ws.iter_rows(min_row=2, values_only=True) if row[sku_col]}
     for sku, rec in key_to_records.items():
         if sku in existing:
             continue
         new_row = [_cell(rec.get(colmap[h])) for h in header]
         ws.append(new_row)
         updated += 1
+    # Both languages follow the authoritative record order. Preserve cell
+    # formatting, comments and links while moving whole rows together.
+    saved_rows = {str(row[sku_col].value): tuple(copy(c) for c in row)
+                  for row in ws.iter_rows(min_row=2) if row[sku_col].value}
+    for row_no, sku in enumerate(key_to_records, 2):
+        for col_no, src in enumerate(saved_rows[str(sku)], 1):
+            dst = ws.cell(row_no, col_no)
+            dst.value = src.value
+            dst._style = copy(src._style)
+            dst.comment = copy(src.comment)
+            dst.hyperlink = copy(src.hyperlink)
+    # Previously rebuilt ZH rows lost formats. Both panels must display the
+    # same monetary values and fractional percentage values consistently.
+    for key in ('current_price', 'original_price', 'last_price', 'change_amount', 'price_min', 'price_max'):
+        if key in idx:
+            for row in ws.iter_rows(min_row=2, min_col=idx[key]+1, max_col=idx[key]+1):
+                row[0].number_format = '€#,##0.00'
+    for key in ('change_percent', 'discount'):
+        if key in idx:
+            for row in ws.iter_rows(min_row=2, min_col=idx[key]+1, max_col=idx[key]+1):
+                row[0].number_format = '0.0%'
     _resize_tables(ws)
     return updated
 

@@ -367,7 +367,7 @@ def build_zh_rows_from_localized_source(
                     resolved["name_zh"] = re.sub(
                         rf"(?i)(?<!\w){re.escape(brand_value)}(?:牌)?",
                         "",
-                        _none_or_text(resolved.get("name_zh")),
+                        _none_or_text(resolved.get("name_zh")) or "",
                         count=1,
                     ).strip()
         # Normalize deterministic adapter regressions even when the stored

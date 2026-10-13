@@ -15,7 +15,10 @@ EMPTY_SOURCE_LOCALIZATION_CONTRACT_VERSION = "EMPTY_SOURCE_LOCALIZATION_CONTRACT
 NAME_IDENTITY_FACT_PRESERVATION_VERSION = "NAME_IDENTITY_FACT_PRESERVATION_V1"
 
 
-_STRICT_UNIT_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?![A-Za-z0-9])", re.I)
+# Use Unicode word boundaries around an extracted unit.  The former ASCII-only
+# boundary let the leading ``l`` in Spanish words such as ``lúmenes`` and
+# ``Lámina`` masquerade as the litre unit after a number.
+_STRICT_UNIT_RE = re.compile(r"(?<!\w)\d+(?:[.,]\d+)?\s*(mAh|Ah|Wh|kWh|mW|kW|Hz|V|W|dB|kcal|°C|℃|cm|mm|km|m|kg|g|mg|mcg|μg|ml|cl|dl|l|L|%)(?!\w)", re.I)
 _CHINESE_UNIT_RE = re.compile(r"(?<![0-9])\d+(?:[.,]\d+)?\s*(毫安时|安时|瓦时|千瓦时|毫瓦|千瓦|赫兹|伏特|瓦|分贝|千卡|千卡路里|摄氏度|平方千米|平方米|平方厘米|厘米|毫米|千米|米|千克|公斤|克|毫克|微克|毫升|厘升|分升|升|百分比)(?![0-9])")
 _UNIT_ALIASES = {
     "毫安时": "mah", "安时": "ah", "瓦时": "wh", "千瓦时": "kwh", "毫瓦": "mw", "千瓦": "kw",
@@ -50,6 +53,10 @@ _SEMANTIC_TARGET_ALIASES = {
     "microfibra": ("超细纤维", "微纤维"),
     "microfibras": ("超细纤维", "微纤维"),
     "madera": ("木质", "木材", "木制", "木头"),
+    # In product descriptions, Spanish ``iluminación`` can faithfully be
+    # rendered as lighting, a light fixture, or an LED candle.  Requiring
+    # only the literal noun ``照明灯`` rejects correct source-faithful copy.
+    "iluminación": ("照明灯", "照明", "灯光", "灯具", "LED蜡烛"),
 }
 
 # A small, explicit allowlist for semantic translations that are rendered as

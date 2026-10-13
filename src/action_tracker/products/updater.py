@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -31,6 +32,7 @@ def plan_updates(
     detail_refresh_days: int = 7,
     nuevo_skus: set[str] | None = None,
     promo_skus: set[str] | None = None,
+    unknown_detail_budget: int = 0,
 ) -> list[dict]:
     """返回需要更新的 SKU 计划列表。
 
@@ -53,18 +55,22 @@ def plan_updates(
         if status in ("NEW", "REAPPEARED"):
             reason = status
             need_detail = True
-        elif status == "ACTIVE" and base and light:
+        elif status == "ACTIVE" and base:
             # 轻量比较
             old_price = base.get("current_price")
-            new_price = light.get("current_price")
-            if (old_price is None) or (new_price is not None and abs(new_price - (old_price or 0)) > 1e-9):
+            new_price = (light or {}).get("current_price")
+            if light and ((old_price is None) or (new_price is not None and abs(new_price - (old_price or 0)) > 1e-9)):
                 reason = "PRICE_CHANGE_CANDIDATE"
             elif _badge_changed(base, sku in nuevo_skus, sku in promo_skus):
                 # 成员集合权威，无需详情确认
                 reason = "BADGE_CHANGE"
-            elif (base.get("image_url") or "") != (light.get("image_url") or ""):
+            elif light and (base.get("image_url") or "") != (light.get("image_url") or ""):
                 reason = "IMAGE_CHANGE"
-            elif _missing_field(base):
+            # Lightweight changes must not suppress a required detail retry.
+            if str(base.get("detail_status") or "").upper() in {"PENDING", "ACCESS_INTERRUPTED", "INCOMPLETE"}:
+                reason = "DETAIL_PENDING"
+                need_detail = True
+            elif _missing_field(base) and (not base.get("detail_last_success_at") or _stale_detail(base, detail_refresh_days)):
                 reason = "MISSING_FIELD"
                 need_detail = True
             elif _stale_detail(base, detail_refresh_days):
@@ -80,8 +86,26 @@ def plan_updates(
                 "canonical_id": st.canonical_id,
                 "reason": reason,
                 "need_detail": need_detail,
-                "light": light,
+                "light": light or {"product_url": (base or {}).get("product_url")},
             })
+    # Bootstrap unregistered legacy freshness gradually. This is an evidence
+    # probe, not a claim that their existing details are expired or missing.
+    detail_planned = {p["sku"] for p in plans if p["need_detail"]}
+    eligible = [sku for sku, st in sku_statuses.items()
+                if st.status == "ACTIVE" and baseline.get(sku)
+                and sku not in detail_planned
+                and not baseline[sku].get("detail_last_success_at")
+                and not _missing_field(baseline[sku])
+                and ((today_light.get(sku) or {}).get("product_url") or baseline[sku].get("product_url"))]
+    by_sku = {p["sku"]: p for p in plans}
+    for sku in sorted(eligible)[:max(0, int(unknown_detail_budget))]:
+        if sku in by_sku:
+            by_sku[sku].update(reason="DETAIL_FRESHNESS_UNKNOWN", need_detail=True)
+            by_sku[sku]["light"] = {"product_url": baseline[sku].get("product_url"), **(by_sku[sku].get("light") or {})}
+        else:
+            plans.append({"sku": sku, "canonical_id": sku_statuses[sku].canonical_id,
+                          "reason": "DETAIL_FRESHNESS_UNKNOWN", "need_detail": True,
+                          "light": today_light.get(sku) or {"product_url": baseline[sku].get("product_url")}})
     return plans
 
 
@@ -95,18 +119,27 @@ def _badge_changed(base: dict, in_nuevo: bool, in_promo: bool) -> bool:
 
 
 def _missing_field(rec: dict) -> bool:
-    return not (rec.get("desc_es") or rec.get("details_es") or rec.get("spec_es"))
+    details = str(rec.get("details_es") or "").strip()
+    return (any(not str(rec.get(f) or "").strip() for f in ("desc_es", "details_es", "spec_es", "cat2_es"))
+            or bool(re.fullmatch(r"Número del artículo\s*:\s*\d+", details)))
 
 
 def _stale_detail(rec: dict, detail_refresh_days: int) -> bool:
     try:
-        from ..services.normalization import parse_date
-        ls = parse_date(rec.get("last_seen"))
-        if not ls:
+        stamp = rec.get("detail_last_success_at")
+        if not stamp:
+            # Legacy freshness is unknown, not an expiry signal for a full crawl.
             return False
-        return (date.today() - ls).days >= detail_refresh_days
+        if str(rec.get("detail_status") or "COMPLETE").upper() != "COMPLETE":
+            return True
+        last = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        if rec.get("detail_source_hash") and rec.get("source_hash") and rec["detail_source_hash"] != rec["source_hash"]:
+            return True
+        return (datetime.now(timezone.utc) - last).total_seconds() >= max(0, detail_refresh_days) * 86400
     except Exception:
-        return False
+        return True
 
 
 def fetch_and_merge(
@@ -205,7 +238,7 @@ def fetch_and_merge(
 def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_controller=None,
                 detail_evidence=None, evidence_context=None):
     cached = done.get(sku)
-    if cached:
+    if cached and (cached.get("detail") or {}).get("_detail_collected_at"):
         return cached.get("detail")
     from .parser import fetch_product_detail
     url = (plan.get("light") or {}).get("product_url") or ""
@@ -214,7 +247,9 @@ def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_
     state_before = access_controller.state.value if access_controller else "UNKNOWN"
     cooldown_probe_attempted = False
     try:
-        return fetch_product_detail(browser, url, sku, max_retries=max_detail_retries)
+        detail = fetch_product_detail(browser, url, sku, max_retries=max_detail_retries)
+        detail["_detail_collected_at"] = datetime.now(timezone.utc).isoformat()
+        return detail
     except Exception as e:
         # A first 401/403/429/challenge moves the controller to COOLDOWN.
         # Let BrowserSession.before_navigation perform the configured wait and
@@ -225,7 +260,9 @@ def _get_detail(browser, plan, sku, done, ckpt_file, max_detail_retries, access_
             log.warning("  #%s 详情访问受限；冷却 %.0f 秒后单次探测", sku,
                         access_controller.cooldown_seconds)
             try:
-                return fetch_product_detail(browser, url, sku, max_retries=max_detail_retries)
+                detail = fetch_product_detail(browser, url, sku, max_retries=max_detail_retries)
+                detail["_detail_collected_at"] = datetime.now(timezone.utc).isoformat()
+                return detail
             except Exception as probe_error:
                 e = probe_error
         if detail_evidence is not None:

@@ -94,3 +94,6 @@ tests/workflow_v2/test_production_phase1_state_machine.py
 tests/workflow_v2/test_runtime_closure.py
 tests/workflow_v2/test_review_approval.py
 tests/test_repository_closure.py
+# CI_SAFE: isolated SQLite fixtures and planner mocks; no production/network access.
+tests/test_detail_refresh_judgment.py
+tests/test_current_price_projection.py

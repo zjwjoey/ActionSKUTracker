@@ -12,7 +12,7 @@ import json
 import logging
 import hashlib
 from dataclasses import asdict
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -252,6 +252,9 @@ def run_daily(
         from ..database.repository import ProductionRepository
         repository = ProductionRepository(database_path(cfg))
         baseline = repository.load_current_products()
+        for sku, detail_state in repository.load_detail_states().items():
+            if sku in baseline:
+                baseline[sku].update(detail_state)
         known = repository.load_known_skus()
         offline = repository.load_offline_skus()
     else:
@@ -359,7 +362,8 @@ def run_daily(
     # ---- 计划更新 ----
     plans = updater_mod.plan_updates(
         statuses, baseline, today_light, cfg["run"]["detail_refresh_days"],
-        nuevo_skus=nuevo_skus, promo_skus=promo_skus)
+        nuevo_skus=nuevo_skus, promo_skus=promo_skus,
+        unknown_detail_budget=cfg["run"].get("detail_freshness_probe_limit", 25))
     log.info("需要更新的 SKU: %d (原因: %s)",
              len(plans), {r: sum(1 for p in plans if p["reason"] == r) for r in {p["reason"] for p in plans}})
 
@@ -465,6 +469,7 @@ def run_daily(
         if sku in completed_detail_set:
             rec["detail_status"] = "COMPLETE"
             rec["detail_fields_source"] = "DETAIL_CURRENT_RUN"
+            rec["detail_last_success_at"] = rec.get("_detail_collected_at") or datetime.now(timezone.utc).isoformat()
         elif sku in detail_plan_skus:
             old = baseline.get(sku) or {}
             has_old_detail = bool(old.get("desc_es") or old.get("details_es") or old.get("spec_es"))

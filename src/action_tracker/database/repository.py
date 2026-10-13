@@ -14,6 +14,9 @@ from typing import Any
 from .connection import connect
 from .schema import migrate
 from ..services.hashing import localization_source_hash
+from ..services.normalization import parse_price
+from ..services.price import compare_price
+from ..products.badges import parse_badges
 
 
 class ProductionRepositoryError(RuntimeError):
@@ -58,6 +61,12 @@ def import_baseline(path: Path, records: dict[str, dict[str, Any]], observed_at:
 
 
 class ProductionRepository:
+    def load_detail_states(self) -> dict[str, dict[str, Any]]:
+        """Read actual collection timestamps without changing export columns."""
+        with connect(self.path) as db:
+            return {str(r[0]): dict(zip(("detail_last_success_at", "detail_last_success_run_id", "detail_source_hash", "detail_status"), r[1:]))
+                    for r in db.execute("SELECT official_sku,detail_last_success_at,detail_last_success_run_id,detail_source_hash,detail_status FROM product_detail_state")}
+
     def __init__(self, path: Path):
         self.path = Path(path)
         if not self.path.exists():
@@ -163,6 +172,18 @@ class ProductionRepository:
                    {status_clause} ORDER BY p.official_sku"""
             ).fetchall()
             provenance_rows = _read_field_provenance(db)
+            price_rows = db.execute(
+                "SELECT official_sku,observed_at,old_price,new_price,change_type "
+                "FROM price_history ORDER BY observed_at,id"
+            ).fetchall()
+            period_row = db.execute(
+                "SELECT r.run_date FROM commit_batches c JOIN runs r USING(run_id) "
+                "WHERE c.status='COMMITTED' ORDER BY c.committed_at DESC,c.commit_id DESC LIMIT 1"
+            ).fetchone()
+        price_history: dict[str, list[Any]] = {}
+        for price_row in price_rows:
+            price_history.setdefault(str(price_row[0]), []).append(price_row)
+        period_date = str(period_row[0]) if period_row else ""
         source_commit_id = str(head_row[0]) if head_row else ""
         source_run_id = str(run_row[0]) if run_row else ""
         records = []
@@ -201,8 +222,50 @@ class ProductionRepository:
                 "source_hash": localization_source_hash(es_source),
                 "presence_source": f"PRIMARY_CURRENT_COMMIT:{source_commit_id}" if source_commit_id else "",
                 "zh_field_provenance": field_provenance.get(str(row[1]), {}),
+                **_price_projection(row[4], row[5], row[7], bool(row[9]),
+                                    price_history.get(str(row[1]), []), period_date),
             })
         return records
+
+
+def _price_projection(current, original, raw_badges, promotion, history, period_date):
+    """Recompute compatibility prices from PRIMARY, never old Excel cells.
+
+    Last-change columns describe the most recent real change; price_change
+    describes the committed business date. Ratios use Excel's fractional
+    percent convention. Include old prices and the current price in extrema.
+    """
+    current_price = parse_price(current)
+    valid = [p for item in history for p in (parse_price(item[2]), parse_price(item[3]))
+             if p is not None and p > 0]
+    if current_price is not None and current_price > 0:
+        valid.append(current_price)
+    changes = [item for item in history
+               if parse_price(item[2]) is not None and parse_price(item[2]) > 0
+               and parse_price(item[3]) is not None and parse_price(item[3]) > 0
+               and compare_price(parse_price(item[2]), parse_price(item[3])).change_type in ('UP', 'DOWN')]
+    latest = changes[-1] if changes else None
+    pc = compare_price(parse_price(latest[2]), parse_price(latest[3])) if latest else None
+    period = [item for item in history if str(item[1])[:10] == period_date]
+    period_change = ('NEW' if parse_price(period[-1][2]) is None else
+                     compare_price(parse_price(period[-1][2]), parse_price(period[-1][3])).change_type) if period else 'UNCHANGED'
+    discount = parse_badges(raw_badges).discount if promotion else None
+    if discount is not None and not -1 < discount < 0:
+        discount = None
+    original_price = parse_price(original)
+    if discount is None and original_price is not None and current_price is not None and original_price > current_price > 0:
+        discount = round((current_price - original_price) / original_price, 6)
+    return {
+        'last_price': parse_price(latest[2]) if latest else None,
+        'price_direction': pc.change_type if pc else None,
+        'price_change': period_change,
+        'change_amount': pc.amount if pc else None,
+        'change_percent': pc.percent if pc else None,
+        'last_change_date': str(latest[1])[:10] if latest else None,
+        'price_min': min(valid) if valid else None,
+        'price_max': max(valid) if valid else None,
+        'discount': discount,
+    }
 
 
 def _sku(row: sqlite3.Row | tuple, columns: list[str]) -> str:
