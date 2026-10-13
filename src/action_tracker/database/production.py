@@ -169,6 +169,8 @@ class ProductionWriter:
                 self._insert_run(db, bundle, now)
                 self._upsert_products(db, bundle.current_products, commit_id, now)
                 self._upsert_localizations(db, bundle.localization_updates, commit_id, now)
+                if not bundle.run_record.get("dry_run"):
+                    self._record_detail_success(db, bundle.current_products, bundle.run_id)
                 self._enqueue_missing_categories(db, bundle.localization_updates, bundle.current_products, now)
                 self._insert_source_fact_versions(db, bundle.source_fact_versions, now)
                 self._insert_observations(db, bundle.observations)
@@ -337,6 +339,27 @@ class ProductionWriter:
             (bundle.run_id, bundle.observation_date, "COMMITTED", bundle.qa_state, int(bool(r.get("dry_run", False))),
              r.get("started_at") or now, r.get("finished_at") or now, "2.0.0"),
         )
+
+    @staticmethod
+    def _record_detail_success(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], run_id: str) -> None:
+        """Persist only actual successful detail evidence in the fact transaction."""
+        for row in rows:
+            sku = str(row.get("official_sku") or row.get("sku") or "")
+            if row.get("detail_status") in {"PENDING", "ACCESS_INTERRUPTED"}:
+                db.execute("""INSERT INTO product_detail_state(official_sku,detail_status,updated_at) VALUES(?,?,CURRENT_TIMESTAMP)
+                    ON CONFLICT(official_sku) DO UPDATE SET detail_status=excluded.detail_status,updated_at=excluded.updated_at""",
+                           (sku, row["detail_status"]))
+                continue
+            if row.get("detail_fields_source") != "DETAIL_CURRENT_RUN" or row.get("detail_status") != "COMPLETE":
+                continue
+            stamp = str(row.get("detail_last_success_at") or "")
+            if not stamp:
+                raise ProductionDatabaseError("DETAIL_SUCCESS_TIMESTAMP_MISSING")
+            datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+            db.execute("""INSERT INTO product_detail_state(official_sku,detail_last_success_at,detail_last_success_run_id,detail_source_hash,detail_status,updated_at)
+                VALUES(?,?,?,?, 'COMPLETE',?) ON CONFLICT(official_sku) DO UPDATE SET detail_last_success_at=excluded.detail_last_success_at,
+                detail_last_success_run_id=excluded.detail_last_success_run_id,detail_source_hash=excluded.detail_source_hash,
+                detail_status='COMPLETE',updated_at=excluded.updated_at""", (sku, stamp, run_id, localization_source_hash(row), stamp))
 
     @staticmethod
     def _upsert_products(db: sqlite3.Connection, rows: Iterable[dict[str, Any]], commit_id: str, now: str) -> None:
@@ -1089,6 +1112,7 @@ def apply_detail_corrections(
     details_by_sku: Mapping[str, Mapping[str, Any]],
     mode: str,
     source_run_date: str | None = None,
+    detail_verified_at: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Apply validated Detail facts directly to a SQLite PRIMARY database.
 
@@ -1098,6 +1122,13 @@ def apply_detail_corrections(
     """
     if mode not in {"APPLY", "BACKFILL"}:
         raise ProductionDatabaseError("DETAIL_CORRECTION_MODE_INVALID")
+    verified = dict(detail_verified_at or {})
+    if verified and mode != "APPLY":
+        raise ProductionDatabaseError("DETAIL_SUCCESS_REQUIRES_FORMAL_APPLY")
+    for sku, stamp in verified.items():
+        if sku not in details_by_sku or not {"desc_es", "details_es"}.issubset(details_by_sku[sku]):
+            raise ProductionDatabaseError("DETAIL_SUCCESS_FIELDS_NOT_VERIFIED")
+        datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
     path = Path(path)
     migrate_v2(path, role="PRIMARY")
     from ..services.hashing import content_hash, localization_source_hash
@@ -1179,7 +1210,7 @@ def apply_detail_corrections(
             # A correction that changes facts is itself an immutable formal
             # version.  The parent remains untouched; all derived records and
             # CONTENT_CHANGE events are owned by this correction run.
-            if not pending:
+            if not pending and not verified:
                 db.rollback()
                 return {"status": "NOOP", "mode": mode, "parent_run_id": parent_run_id,
                         "base_commit_id": baseline_head_id, "commit_id": baseline_head_id,
@@ -1196,6 +1227,7 @@ def apply_detail_corrections(
                 "base_commit_id": baseline_head_id,
                 "affected_skus": len(pending),
                 "affected_fields": sum(len(item["changes"]) for item in pending),
+                "detail_verified_at": verified,
             }
             bundle_hash = hashlib.sha256(
                 json.dumps({**payload, "details": details_by_sku}, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
@@ -1260,6 +1292,12 @@ def apply_detail_corrections(
                     content_events += 1
                 changed_skus.add(sku)
                 changed_fields += len(changes)
+            verified_rows = []
+            for sku, stamp in verified.items():
+                row = db.execute("SELECT name,cat1,cat2,spec,description,details FROM product_localizations WHERE official_sku=? AND language='es'", (sku,)).fetchone()
+                verified_rows.append({"sku": sku, **dict(zip(("name_es", "cat1_es", "cat2_es", "spec_es", "desc_es", "details_es"), row)),
+                                      "detail_fields_source": "DETAIL_CURRENT_RUN", "detail_status": "COMPLETE", "detail_last_success_at": stamp})
+            ProductionWriter._record_detail_success(db, verified_rows, correction_run_id)
             db.execute("UPDATE commit_batches SET event_count=? WHERE commit_id=?", (content_events, correction_commit_id))
             db.commit()
         except Exception:
