@@ -1,9 +1,29 @@
 from pathlib import Path
+from datetime import datetime, timezone
+
+import pytest
+
+from action_tracker.extraction import service as extraction_service
 
 from action_tracker.database.connection import connect
 from action_tracker.database.schema import migrate_v2
 from action_tracker.extraction import ExtractionQuery, ExtractionService, SavedViewService, SelectionService
 from action_tracker.delivery import ArtifactService
+
+
+@pytest.fixture
+def event_clock(monkeypatch):
+    """Keep relative event windows independent of the machine's test date."""
+    def set_now(value: datetime):
+        class FixtureDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return value.astimezone(tz) if tz is not None else value.replace(tzinfo=None)
+
+        monkeypatch.setattr(extraction_service, "datetime", FixtureDatetime)
+
+    set_now(datetime(2026, 8, 31, 12, tzinfo=timezone.utc))
+    return set_now
 
 
 def _db(tmp_path: Path) -> Path:
@@ -73,7 +93,7 @@ def test_latest_price_is_one_deterministic_row_per_sku(tmp_path: Path):
     assert result.items[0]["change_direction"] == "DOWN"
 
 
-def test_event_ranges_recent_offline_reappeared_and_historical_filters(tmp_path: Path):
+def test_event_ranges_recent_offline_reappeared_and_historical_filters(tmp_path: Path, event_clock):
     path = _db(tmp_path)
     with connect(path) as db:
         db.execute("INSERT INTO lifecycle_state(official_sku,canonical_id,current_status,offline_date,last_state_observation_date,updated_at) VALUES('1002','B','OFFLINE','2026-08-30','2026-08-30','2026-08-30')")
@@ -88,7 +108,7 @@ def test_event_ranges_recent_offline_reappeared_and_historical_filters(tmp_path:
     assert svc.execute({"historical_high_min": 1.4, "limit": 10}).matched_count == 1
 
 
-def test_extraction_contract_time_dimensions_and_canonical_id(tmp_path: Path):
+def test_extraction_contract_time_dimensions_and_canonical_id(tmp_path: Path, event_clock):
     path = _db(tmp_path)
     with connect(path) as db:
         db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('A','1001','2026-08-30','PRICE_DOWN')")
@@ -98,6 +118,18 @@ def test_extraction_contract_time_dimensions_and_canonical_id(tmp_path: Path):
     assert svc.execute({"last_seen_from": "2026-08-30", "last_seen_to": "2026-08-30"}).matched_count == 1
     recent = svc.execute({"event_types": ["price_down"], "event_last_n_days": 7})
     assert recent.matched_count == 1
+
+
+@pytest.mark.parametrize("event_type,status", [("PRICE_DOWN", "CURRENT"), ("OFFLINE", "OFFLINE")])
+@pytest.mark.parametrize("now,expected", [("2026-09-01", 1), ("2026-09-08", 0), ("2031-10-13", 0)])
+def test_relative_event_window_excludes_old_fixture_events(tmp_path: Path, event_clock, event_type, status, now, expected):
+    event_clock(datetime.fromisoformat(now).replace(tzinfo=timezone.utc))
+    path = _db(tmp_path)
+    with connect(path) as db:
+        db.execute("INSERT INTO event_history(canonical_id,official_sku,occurred_at,event_type) VALUES('A','1001','2026-08-30','PRICE_DOWN')")
+        db.execute("INSERT INTO lifecycle_state(official_sku,canonical_id,current_status,offline_date,last_state_observation_date,updated_at) VALUES('1002','B','OFFLINE','2026-08-30','2026-08-30','2026-08-30')")
+    result = ExtractionService(path).execute({"statuses": [status], "event_types": [event_type], "event_last_n_days": 7})
+    assert result.matched_count == expected
 
 
 def test_extraction_six_field_localization_and_specific_missing_field(tmp_path: Path):
