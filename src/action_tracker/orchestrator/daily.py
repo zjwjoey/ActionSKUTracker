@@ -134,10 +134,17 @@ def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
     原价/折扣；未知观测和其他空字段不会清除历史值。更新的完整详情价格优先。
     """
     from ..services.price_evidence import merge_observed_prices, PRICE_FIELDS
+    from ..services.listing_evidence import merge_listing_fields
+    verified = {field: evidence["source"] for field, evidence in
+                (rec.get("fact_field_provenance") or {}).items()
+                if evidence.get("state") == "CURRENT_VERIFIED"}
     detail_price_authoritative = skip_raw_tags and rec.get("_price_observation_complete") is True
     if not detail_price_authoritative:
         merge_observed_prices(rec, light)
+    merge_listing_fields(rec, light, verified)
     for k in _LIGHT_FIELDS:
+        if k not in PRICE_FIELDS and k != "raw_tags":
+            continue
         if k in PRICE_FIELDS and detail_price_authoritative:
             continue
         v = light.get(k)
@@ -154,17 +161,16 @@ def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
 def _verified_fields_after_light_merge(rec: dict, light: dict | None) -> dict[str, str]:
     """Describe the observation that actually supplied each merged value."""
     from ..services.price_evidence import PRICE_FIELDS
+    from ..services.listing_evidence import CANONICAL_FIELDS, matching_listing_fields
     light = light or {}
-    verified = {field: "LISTING_CURRENT_RUN" for field, value in
-                light.items() if value not in (None, "")}
-    if light.get("_price_observation_complete") is True:
-        verified["original_price"] = "LISTING_CURRENT_RUN"
+    verified = matching_listing_fields(rec, light)
     for field, evidence in (rec.get("fact_field_provenance") or {}).items():
         if evidence.get("state") != "CURRENT_VERIFIED":
             continue
         source = evidence["source"]
-        if (field in PRICE_FIELDS and source == "DETAIL_CURRENT_RUN"
-                and rec.get("_price_observation_complete") is True):
+        if (source == "DETAIL_CURRENT_RUN" and
+                (field in CANONICAL_FIELDS or
+                 (field in PRICE_FIELDS and rec.get("_price_observation_complete") is True))):
             # Complete newer detail prices are protected by _merge_light.
             # Earlier Listing values must not take ownership of those facts.
             verified[field] = source
@@ -289,11 +295,16 @@ def run_daily(
                 fact_baseline[sku].update(detail_state)
         known = repository.load_known_skus()
         offline = repository.load_offline_skus()
+        from ..services.listing_evidence import committed_listing_baseline
+        prior_listing = committed_listing_baseline(database_path(cfg),
+            expected_base_commit_id=expected_base_commit_id,
+            snapshots_root=paths["snapshots"])
     else:
         baseline = excel_reader.load_current(master)
         fact_baseline = baseline
         known = st.load_known_skus(paths["state"])
         offline = st.load_offline_skus(paths["state"])
+        prior_listing = {}
     trans = st.load_translation_state(paths["state"])
     log.info("baseline=%d known=%d offline=%d run_id=%s dry_run=%s", len(baseline), len(known), len(offline), run_id, dry_run)
 
@@ -348,7 +359,9 @@ def run_daily(
             # 徽章页不进 today_light：它们不是真实类目（cat1_es 不应写成 "Nuevo"），
             # 且卡片标签不可靠，徽章状态由上面的成员集合决定
             for lp in cat_items:
+                previous_categories = set((today_light.get(str(lp.sku)) or {}).get("_listing_categories") or [])
                 today_light[str(lp.sku)] = _light_dict(lp)
+                today_light[str(lp.sku)]["_listing_categories"] = sorted(previous_categories | {lp.cat1_es})
         # 4. 详情抓取（只处理变化 SKU）
         # 需要等 SKU Monitor 出计划，但 browser 会话在此；先扫描完，稍后在同一会话内补详情。
 
@@ -389,6 +402,7 @@ def run_daily(
         nuevo_skus=nuevo_skus,
         promo_skus=promo_skus,
         business_date=run_date,
+        historical_identities=fact_baseline,
     )
     log.info("SKU 状态统计: %s", {s: sum(1 for x in statuses.values() if x.status == s) for s in
                                    {"NEW", "ACTIVE", "REAPPEARED", "MISSING_FIRST", "MISSING_CONTINUED", "OFFLINE", "UNKNOWN", "ABSENT"}})
@@ -398,7 +412,8 @@ def run_daily(
         statuses, fact_baseline, today_light, cfg["run"]["detail_refresh_days"],
         nuevo_skus=nuevo_skus, promo_skus=promo_skus,
         unknown_detail_budget=cfg["run"].get("detail_freshness_probe_limit", 25),
-        sitemap_urls=updater_mod.sitemap_detail_urls(sitemap.locs if sitemap else []))
+        sitemap_urls=updater_mod.sitemap_detail_urls(sitemap.locs if sitemap else []),
+        listing_baseline=prior_listing)
     log.info("需要更新的 SKU: %d (原因: %s)",
              len(plans), {r: sum(1 for p in plans if p["reason"] == r) for r in {p["reason"] for p in plans}})
 
@@ -503,10 +518,7 @@ def run_daily(
     for sku, rec in today_records.items():
         stat = statuses.get(sku)
         if not rec.get("fact_field_provenance"):
-            verified = {field: "LISTING_CURRENT_RUN" for field, value in
-                        today_light.get(sku, {}).items() if value not in (None, "")}
-            if today_light.get(sku, {}).get("_price_observation_complete") is True:
-                verified["original_price"] = "LISTING_CURRENT_RUN"
+            verified = _verified_fields_after_light_merge(rec, today_light.get(sku))
             rec.update(updater_mod.retain_historical_facts(fact_baseline.get(sku) or {}, rec,
                 reappeared=getattr(stat, "status", "") == "REAPPEARED", verified_fields=verified))
         rec["presence_source"] = getattr(stat, "source_flag", "BASELINE") if stat else "BASELINE"
@@ -552,6 +564,7 @@ def run_daily(
     sku_delta_rows = [{
         "sku": s.sku, "canonical_id": s.canonical_id, "status": s.status,
         "source_flag": s.source_flag, "event": s.event or "", "missing_count": s.missing_count,
+        "identity_source": s.identity_source,
     } for s in statuses.values()]
     run_report = _run_report(cfg, run_id, run_date, dry_run, len(baseline), len(today_set), statuses,
                              price_events, badge_events, content_events, anomalies, qa, snap_dir,
@@ -571,6 +584,24 @@ def run_daily(
     # but does not recalculate it.
     _evaluate_workflow_v2_shadow(cfg, run_id, products_for_qa, run_report)
     _evaluate_daily_collection_quality(cfg, run_id, run_report, dry_run=dry_run)
+    from ..services.listing_evidence import listing_evidence
+    run_report["listing_field_evidence"] = listing_evidence(today_light,
+        run_id=run_id, business_date=run_date, canonical_records=today_records,
+        completed_detail_skus=completed_detail_set, previous=prior_listing)
+    run_report["listing_comparison"] = {
+        "known_skus": sum((prior_listing.get(sku) or {}).get("_listing_evidence_confidence")
+                          == "COMMITTED_HASH_BOUND" for sku in today_light),
+        "unknown_skus": sum((prior_listing.get(sku) or {}).get("_listing_evidence_confidence")
+                            != "COMMITTED_HASH_BOUND" for sku in today_light),
+        "legacy_matched_skus": sum((prior_listing.get(sku) or {}).get("_listing_evidence_confidence")
+                                   == "LEGACY_MATCHED" for sku in today_light),
+        "unknown_probe_count": sum(p["reason"] == "LISTING_BASELINE_UNKNOWN" for p in plans),
+        "changed_skus": sum(bool(p.get("listing_changed_fields")) for p in plans)}
+    run_report["listing_comparison"]["pending_confirmation_skus"] = sum(
+        bool(row["_canonical_confirmation_pending"])
+        for row in run_report["listing_field_evidence"]["rows"])
+    run_report["historical_identity_reused"] = sum(
+        s.identity_source == "PRODUCT_HISTORY_WITHOUT_LIFECYCLE" for s in statuses.values())
     data = {
         "sitemap_raw_xml": sitemap.raw_xml if sitemap is not None else "",
         "sitemap_skus": sitemap_skus,

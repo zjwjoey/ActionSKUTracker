@@ -52,6 +52,12 @@
 
 回归与部分详情合并的 `fact_field_provenance` 使用既有行/JSON证据容器，记录各字段的 `CURRENT_VERIFIED`、`HISTORY_RETAINED` 或 `SOURCE_MISSING` 与来源。该映射进入 `run_evidence.evidence_json`，六个西语字段同时使用既有 localization source 列；不新增 schema。历史保留值不重新清洗，不证明本轮售价。详见 `POST_RELEASE_DATA_INTEGRITY.md`。
 
+Listing 入口类目/卡片文字与 Detail 标准字段属于不同来源层；入口类目集合不能改写详情类目。
+增量比较使用既有 `run_evidence.evidence_json` 中的 `LISTING_FIELD_EVIDENCE_V1`，绑定同层卡片、
+run/date、字段 hash 和未完成的 canonical confirmation；无可信前态时只做有预算的未知来源探测。
+当前 Detail 非空字段保留其真实来源；Detail 失败时保留非空历史事实并标明待确认，不把 Listing 冲突
+伪装为已确认 Detail。该证据容器扩展不新增 SQLite schema。
+
 ## 4. 生命周期实体
 
 `known_skus.csv` 以 SKU 为主键，保存跨日状态所需的最小事实：

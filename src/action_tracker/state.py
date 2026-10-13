@@ -165,7 +165,7 @@ def apply_state_transition(
             # 历史缺口回填：基线在 known 之外（如状态文件未随 Master 持久化的过渡期）时，
             # 首次纳入即补 first_seen=当天；已存在的 first_seen 一律不覆盖
             if not rec.get("first_seen_date"):
-                rec["first_seen_date"] = run_date
+                rec["first_seen_date"] = getattr(st, "first_seen", None) or run_date
             rec["last_status"] = "ACTIVE"
             rec["last_seen_date"] = run_date
             rec["missing_count"] = "0"

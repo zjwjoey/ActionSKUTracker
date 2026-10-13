@@ -158,3 +158,6 @@ tests/test_post_release_integrity.py
 
 # CI_SAFE: temporary run-state and mocked parser/updater integration; no network or PRIMARY.
 tests/test_candidate_resume_price_contracts.py
+
+# CI_SAFE: same-layer Listing, canonical ownership and historical identity in temporary fixtures.
+tests/test_listing_evidence_ownership.py

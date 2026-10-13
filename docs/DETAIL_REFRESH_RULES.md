@@ -30,3 +30,34 @@ both verified can receive successful detail state; category-only verification
 does not advance description/details freshness. Source-empty fields remain
 empty. This enrichment never creates a presence observation or changes price
 or lifecycle state.
+
+## Listing comparison and canonical field ownership
+
+Incremental card changes compare Listing fields to a previous committed
+Listing observation, including category membership sets, not to the Detail
+projection. Exact name/specification/category/URL/image changes and explicit
+empty card fields still request Detail confirmation. Category entry order
+alone is not a source change.
+
+`LISTING_FIELD_EVIDENCE_V1` binds finite card rows, run/date and their hash in
+existing `run_evidence` JSON. Readers require committed QA-eligible complete
+Listing observations for each exact SKU, schema/hash parity and the frozen
+PRIMARY head. Legacy snapshots additionally require run/date and CSV/raw-card
+parity; their existing full-directory hash is checked without redefining its
+scope. A post-commit report rewrite can make that digest differ. Such evidence
+is explicitly `LEGACY_MATCHED`, not immutable proof, and receives bounded
+`LISTING_BASELINE_UNKNOWN` probes. Newer invalid observations remain unknown;
+an older card cannot silently replace them.
+
+Unknown comparison and legacy freshness probes share the configured 25-item
+budget. Unconfirmed canonical differences are retained in the next bound
+Listing envelope, so copying today's card into the comparison baseline cannot
+erase outstanding confirmation. Successful Detail confirmation clears that
+pending binding; failed planned captures keep `PENDING` and are retried.
+The first legacy bootstrap does not claim all real changes have been detected.
+
+Nonempty freshly captured Detail name/category/specification/URL/image and
+body facts own their canonical values and provenance. Listing can supplement
+empty fields; disagreement cannot overwrite nonempty canonical history when
+Detail is unavailable. Selling-price precedence follows the complete price
+observation contract. Unit price remains its own field fact.

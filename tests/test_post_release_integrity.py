@@ -221,7 +221,8 @@ def test_retained_detail_does_not_create_unobserved_normalization_change(tmp_pat
 def test_listing_content_change_is_incremental_plan(field):
     base=fact();value=base[field]+'changed'
     st=SimpleNamespace(status='ACTIVE',canonical_id=base['canonical_id'])
-    plans=plan_updates({'3207872':st},{'3207872':base},{'3207872':{field:value}})
+    plans=plan_updates({'3207872':st},{'3207872':base},{'3207872':{field:value}},
+                       listing_baseline={'3207872': {**base, '_listing_evidence_confidence': 'COMMITTED_HASH_BOUND'}})
     assert len(plans)==1
     assert plans[0]['reason']=='CONTENT_CHANGE'
 

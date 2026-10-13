@@ -14,6 +14,18 @@
 - Listing 品名、规格、分类和链接变化进入增量更新；缺失图片不制造 IMAGE_CHANGE。
 - V2 正式 Fact Adapter 继续复用经 Collection QA 的 daily commit，无独立部分事实生产写入。
 
+## 2026-10-13 候选补充合同
+
+Listing 变化以同层已提交卡片证据为前态，不能拿入口分类、卡片规格和标题直接对比 Detail 标准字段。
+无可信前态时明确记录未知来源、有预算地确认，并保留未确认差异供后续运行继续处理；不声称首次
+bootstrap 已检测所有真实变化。当前有效 Detail 字段拥有其最终值和来源，Listing 分歧不能覆盖它。
+详见 `DETAIL_REFRESH_RULES.md`。代码仍需真实隔离副本和 exact-head CI 验收，不能据文档声称部署完成。
+
+已存在的可信 Product 历史身份可以避免 lifecycle 缺口把历史商品误判为 NEW，但只用于本轮实际观察到
+的 SKU，不扩大 Presence 集合。缺 lifecycle 前态时记录 `PRODUCT_HISTORY_WITHOUT_LIFECYCLE`，保留已知
+first_seen，按已有历史的有效出现处理，不生成 FIRST_SEEN 或虚构 REAPPEARED；只有有效 MISSING/OFFLINE
+前态才产生回归事件。
+
 ## 本轮副本验证
 
 `scripts/audit_post_release_integrity.py` 只读审计生产数据，通过 SQLite Backup API 创建隔离副本，并核对生产表、Master/State 和导出摘要。输出不能放入生产目录。

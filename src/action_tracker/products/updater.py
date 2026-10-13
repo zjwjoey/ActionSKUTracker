@@ -19,6 +19,8 @@ from urllib.parse import urlparse
 from ..products.badges import build_badge_state
 from ..services.hashing import content_hash, price_hash
 from ..services.price_evidence import merge_observed_prices, PRICE_FIELDS
+from ..services.listing_evidence import (TEXT_FIELDS, listing_differences,
+                                       merge_listing_fields)
 
 log = logging.getLogger(__name__)
 
@@ -96,6 +98,7 @@ def plan_updates(
     promo_skus: set[str] | None = None,
     unknown_detail_budget: int = 0,
     sitemap_urls: dict[str, str] | None = None,
+    listing_baseline: dict[str, dict] | None = None,
 ) -> list[dict]:
     """返回需要更新的 SKU 计划列表。
 
@@ -108,12 +111,15 @@ def plan_updates(
     nuevo_skus = nuevo_skus or set()
     promo_skus = promo_skus or set()
     plans = []
+    unknown_listing = []
+    listing_baseline = listing_baseline or {}
     for sku, st in sku_statuses.items():
         base = baseline.get(sku)
         light = today_light.get(sku)
         status = st.status
         reason = None
         need_detail = False
+        listing_changed = ()
 
         if status in ("NEW", "REAPPEARED"):
             reason = status
@@ -132,13 +138,23 @@ def plan_updates(
             elif _badge_changed(base, sku in nuevo_skus, sku in promo_skus):
                 # 成员集合权威，无需详情确认
                 reason = "BADGE_CHANGE"
-            elif light and light.get("image_url") and (base.get("image_url") or "") != light.get("image_url"):
-                reason = "IMAGE_CHANGE"
+            prior_listing = listing_baseline.get(sku)
+            prior_trusted = (prior_listing and prior_listing.get("_listing_evidence_confidence")
+                             == "COMMITTED_HASH_BOUND")
+            if light and prior_trusted:
+                listing_changed = listing_differences(light, prior_listing)
+                if listing_changed:
+                    reason = "IMAGE_CHANGE" if listing_changed == ("image_url",) else "CONTENT_CHANGE"
+                    need_detail = True
+                if any(light.get(field) not in (None, "") and field not in prior_listing
+                       for field in TEXT_FIELDS):
+                    unknown_listing.append(sku)
+                if prior_listing.get("_canonical_confirmation_pending"):
+                    unknown_listing.append(sku)
             elif light and any(light.get(field) not in (None, "") and
-                     str(light[field]) != str(base.get(field) or "")
-                     for field in ("name_es", "spec_es", "cat1_es", "product_url")):
-                reason = "CONTENT_CHANGE"
-                need_detail = True
+                    str(light[field]).strip() != str(base.get(field) or "").strip()
+                    for field in TEXT_FIELDS):
+                unknown_listing.append(sku)
             if str(base.get("detail_status") or "").upper() in {"PENDING", "ACCESS_INTERRUPTED", "INCOMPLETE"}:
                 reason = "DETAIL_PENDING"
                 need_detail = True
@@ -159,6 +175,7 @@ def plan_updates(
                 "reason": reason,
                 "need_detail": need_detail,
                 "light": light,
+                "listing_changed_fields": listing_changed,
                 "detail_url": verified_detail_url(sku,
                     (light or {}).get("product_url"),
                     (sitemap_urls or {}).get(sku), (base or {}).get("product_url")),
@@ -166,14 +183,29 @@ def plan_updates(
     # Bootstrap unregistered legacy freshness gradually. This is an evidence
     # probe, not a claim that their existing details are expired or missing.
     detail_planned = {p["sku"] for p in plans if p["need_detail"]}
+    by_sku = {p["sku"]: p for p in plans}
+    remaining_budget = max(0, int(unknown_detail_budget))
+    for sku in sorted(set(unknown_listing) - detail_planned)[:remaining_budget]:
+        detail_url = verified_detail_url(sku, (today_light.get(sku) or {}).get("product_url"),
+            (sitemap_urls or {}).get(sku), baseline[sku].get("product_url"))
+        if sku in by_sku:
+            by_sku[sku].update(reason="LISTING_BASELINE_UNKNOWN", need_detail=True, detail_url=detail_url)
+        else:
+            plan = {"sku": sku, "canonical_id": sku_statuses[sku].canonical_id,
+                "reason": "LISTING_BASELINE_UNKNOWN", "need_detail": True,
+                "light": today_light.get(sku), "detail_url": detail_url,
+                "listing_changed_fields": ()}
+            plans.append(plan)
+            by_sku[sku] = plan
+        detail_planned.add(sku)
+        remaining_budget -= 1
     eligible = [sku for sku, st in sku_statuses.items()
                 if st.status == "ACTIVE" and baseline.get(sku)
                 and sku not in detail_planned
                 and not baseline[sku].get("detail_last_success_at")
                 and not _missing_field(baseline[sku])
                 and ((today_light.get(sku) or {}).get("product_url") or baseline[sku].get("product_url"))]
-    by_sku = {p["sku"]: p for p in plans}
-    for sku in sorted(eligible)[:max(0, int(unknown_detail_budget))]:
+    for sku in sorted(eligible)[:remaining_budget]:
         if sku in by_sku:
             by_sku[sku].update(reason="DETAIL_FRESHNESS_UNKNOWN", need_detail=True)
             by_sku[sku]["detail_url"] = verified_detail_url(
@@ -296,7 +328,10 @@ def fetch_and_merge(
             detail_price_authoritative = has_detail and rec.get("_price_observation_complete") is True
             if not detail_price_authoritative:
                 merge_observed_prices(rec, light)
+            merge_listing_fields(rec, light, verified_fields)
             for k in ("current_price", "original_price", "unit_price", "discount", "raw_tags", "image_url", "spec_es", "name_es", "cat1_es", "product_url"):
+                if k not in PRICE_FIELDS and k != "raw_tags":
+                    continue  # Canonical fields follow their evidence owner above.
                 if k in PRICE_FIELDS and detail_price_authoritative:
                     continue
                 v = light.get(k)
