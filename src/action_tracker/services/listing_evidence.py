@@ -91,7 +91,7 @@ def merge_listing_fields(record: dict, light: Mapping[str, Any], verified: dict[
             continue
         if verified.get(field) == "DETAIL_CURRENT_RUN":
             continue
-        if record.get(field) in (None, ""):
+        if field == "unit_price" or record.get(field) in (None, ""):
             record[field] = value
             verified[field] = "LISTING_CURRENT_RUN"
         elif _text(record.get(field)) == _text(value):
@@ -194,6 +194,12 @@ def committed_listing_baseline(path: Path, *, expected_base_commit_id: str | Non
                             "_listing_evidence_ref": evidence_ref, "_listing_evidence_hash": _digest([row]),
                             "_listing_evidence_confidence": confidence,
                             "_listing_snapshot_hash": snapshot_hash, "_listing_file_sha256": file_hashes}
+                # A complete Listing observation with no corresponding card
+                # is a coverage gap, not permission to use an older card.
+                for sku in present - set(identities):
+                    result.setdefault(sku, {"sku": sku, "_listing_source_run_id": run_id,
+                        "_listing_source_date": business_date, "_listing_source_commit_id": commit_id,
+                        "_listing_evidence_confidence": "UNKNOWN"})
             except (OSError, ValueError, KeyError, TypeError):
                 # No fabricated change: the planner schedules bounded unknown
                 # evidence probes and preserves nonempty canonical history.

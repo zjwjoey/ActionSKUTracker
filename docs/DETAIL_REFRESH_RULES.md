@@ -61,3 +61,7 @@ body facts own their canonical values and provenance. Listing can supplement
 empty fields; disagreement cannot overwrite nonempty canonical history when
 Detail is unavailable. Selling-price precedence follows the complete price
 observation contract. Unit price remains its own field fact.
+When no fresh Detail unit-price owner exists, a nonempty current Listing unit
+price refreshes that same official field; blank observations retain history.
+A unit-price-only change is a lightweight metadata plan and does not infer a
+selling price or trigger an identity Detail fetch.

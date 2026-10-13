@@ -135,6 +135,10 @@ def plan_updates(
                 for k in ("original_price", "discount") if k == "original_price" or k in base
             ):
                 reason = "PRICE_METADATA_CHANGE"
+            elif light and light.get("unit_price") not in (None, "") and str(light["unit_price"]).strip() != str(base.get("unit_price") or "").strip():
+                # Official unit-price text is its own observed field. It does
+                # not infer selling price or require an identity Detail fetch.
+                reason = "PRICE_METADATA_CHANGE"
             elif _badge_changed(base, sku in nuevo_skus, sku in promo_skus):
                 # 成员集合权威，无需详情确认
                 reason = "BADGE_CHANGE"

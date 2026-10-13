@@ -182,7 +182,7 @@ def test_committed_evidence_reconstructs_same_layer_listing(tmp_path):
     assert plan(canonical(), light, previous["1001"]) == []
 
 
-@pytest.mark.parametrize("mutation", ["missing_field", "field_type", "categories_type", "duplicate", "date", "hash", "run", "identity"])
+@pytest.mark.parametrize("mutation", ["missing_field", "field_type", "categories_type", "duplicate", "date", "hash", "run", "identity", "omitted_sku"])
 def test_invalid_newest_evidence_remains_unknown_and_never_uses_older_valid_values(tmp_path, mutation):
     path = tmp_path / "primary.db"; old = listing_evidence({"1001": card(canonical())}, run_id="old", business_date="2026-10-13")
     first = _seed(path, run_id="old", evidence=old)
@@ -194,6 +194,7 @@ def test_invalid_newest_evidence_remains_unknown_and_never_uses_older_valid_valu
     if mutation == "date": new["business_date"] = "2026-10-12"
     if mutation == "run": new["run_id"] = "wrong"
     if mutation == "identity": new["rows"][0]["sku"] = "wrong"
+    if mutation == "omitted_sku": new["rows"] = []
     new["rows_hash"] = "tampered" if mutation == "hash" else _digest(new["rows"])
     head = _seed(path, run_id="new", evidence=new, head=first)
     previous = committed_listing_baseline(path, expected_base_commit_id=head)
@@ -314,6 +315,31 @@ def test_unit_price_is_an_independent_own_field_detail_fact(tmp_path, monkeypatc
     assert rec["current_price"] == (2.5 if detail_complete else 2.75)
     assert rec["unit_price"] == "5,00 €/kg"
     assert rec["fact_field_provenance"]["unit_price"]["source"] == "DETAIL_CURRENT_RUN"
+
+
+@pytest.mark.parametrize("listing_unit", ["2,75 €/ud.", ""])
+def test_listing_unit_price_refresh_and_empty_history_retention_in_price_plan(tmp_path, listing_unit):
+    base = canonical(); light = {**card(base), "current_price": 2.75, "unit_price": listing_unit}
+    item = plan(base, light, card(base))[0]
+    assert item["reason"] == "PRICE_CHANGE_CANDIDATE" and not item["need_detail"]
+    _, updated = updater.fetch_and_merge(SimpleNamespace(sleep=lambda: None), [item], {"1001": base}, tmp_path)
+    rec = updated["1001"]; _merge_light(rec, light, skip_raw_tags=False)
+    rec = updater.retain_historical_facts(base, rec, reappeared=False,
+        verified_fields=_verified_fields_after_light_merge(rec, light))
+    assert rec["unit_price"] == (listing_unit or base["unit_price"])
+    assert rec["fact_field_provenance"]["unit_price"] == {
+        "state": "CURRENT_VERIFIED" if listing_unit else "HISTORY_RETAINED",
+        "source": "LISTING_CURRENT_RUN" if listing_unit else "BASELINE"}
+    assert rec["name_es"] == base["name_es"] and rec["spec_es"] == base["spec_es"]
+
+
+def test_unit_price_only_change_is_a_lightweight_metadata_plan():
+    base = canonical(); prior = card(base); light = {**prior, "unit_price": "5,00 €/kg"}
+    item = plan(base, light, prior)[0]
+    assert item["reason"] == "PRICE_METADATA_CHANGE" and not item["need_detail"]
+    result = dict(base); _merge_light(result, light)
+    assert result["current_price"] == base["current_price"]
+    assert result["unit_price"] == "5,00 €/kg"
 
 
 @pytest.mark.parametrize("observed_price,qa_state", [(2.99, "PASS"), (99999, "FAIL")])
