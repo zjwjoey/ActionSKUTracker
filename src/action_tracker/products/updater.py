@@ -281,7 +281,7 @@ def fetch_and_merge(
                 detail_completed_skus.append(sku)
                 merge_observed_prices(rec, detail)
                 for k, v in detail.items():
-                    if k == "original_price" and detail.get("current_price") is not None:
+                    if k == "original_price" and detail.get("_price_observation_complete") is True:
                         rec[k] = v
                         verified_fields[k] = "DETAIL_CURRENT_RUN"
                     if v is not None and v != "":

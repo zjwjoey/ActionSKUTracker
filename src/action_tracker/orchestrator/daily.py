@@ -151,6 +151,28 @@ def _merge_light(rec: dict, light: dict, skip_raw_tags: bool = False,
             rec[k] = v
 
 
+def _verified_fields_after_light_merge(rec: dict, light: dict | None) -> dict[str, str]:
+    """Describe the observation that actually supplied each merged value."""
+    from ..services.price_evidence import PRICE_FIELDS
+    light = light or {}
+    verified = {field: "LISTING_CURRENT_RUN" for field, value in
+                light.items() if value not in (None, "")}
+    if light.get("_price_observation_complete") is True:
+        verified["original_price"] = "LISTING_CURRENT_RUN"
+    for field, evidence in (rec.get("fact_field_provenance") or {}).items():
+        if evidence.get("state") != "CURRENT_VERIFIED":
+            continue
+        source = evidence["source"]
+        if (field in PRICE_FIELDS and source == "DETAIL_CURRENT_RUN"
+                and rec.get("_price_observation_complete") is True):
+            # Complete newer detail prices are protected by _merge_light.
+            # Earlier Listing values must not take ownership of those facts.
+            verified[field] = source
+        else:
+            verified.setdefault(field, source)
+    return verified
+
+
 def _light_dict(lp) -> dict:
     d = asdict(lp) if hasattr(lp, "__dataclass_fields__") else dict(lp)
     return {**{k: d.get(k) for k in _LIGHT_FIELDS},
@@ -411,13 +433,7 @@ def run_daily(
                          in_nuevo=(sku in nuevo_skus), in_promo=(sku in promo_skus))
         rec["status"] = "CURRENT"
         rec["last_seen"] = run_date
-        verified = {field: "LISTING_CURRENT_RUN" for field, value in
-                    (plan.get("light") or {}).items() if value not in (None, "")}
-        if (plan.get("light") or {}).get("_price_observation_complete") is True:
-            verified["original_price"] = "LISTING_CURRENT_RUN"
-        for field, evidence in (rec.get("fact_field_provenance") or {}).items():
-            if evidence.get("state") == "CURRENT_VERIFIED":
-                verified.setdefault(field, evidence["source"])
+        verified = _verified_fields_after_light_merge(rec, plan.get("light"))
         rec = updater_mod.retain_historical_facts(fact_baseline.get(sku) or {}, rec,
             reappeared=plan["reason"] == "REAPPEARED", verified_fields=verified)
         updated[sku] = rec

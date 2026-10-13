@@ -15,6 +15,10 @@ The common price merge clears an explicitly absent original price and discount
 only for a complete observation. Missing keys, unknown observations, legacy
 snapshots and failed page reads retain the previous values. A newer complete
 Detail price observation takes precedence over the earlier Listing scan.
+The updater and final daily projection preserve that same precedence in
+`fact_field_provenance`: values retained from Detail remain attributed to
+`DETAIL_CURRENT_RUN`. A valid selling price by itself cannot authorize deleting
+an absent original price from an incomplete Detail price observation.
 
 An original-price/discount change creates a lightweight PRICE_METADATA_CHANGE
 plan even if the selling price is unchanged. This prevents unchanged products
