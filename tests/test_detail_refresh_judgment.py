@@ -93,6 +93,26 @@ def test_failed_correction_does_not_mark_success(tmp_path):
     assert not ProductionRepository(path).load_detail_states()
 
 
+def test_same_verified_capture_is_a_metadata_noop_on_resume(tmp_path):
+    path = tmp_path / "primary.db"
+    _primary_db(path)
+    stamp = datetime.now(timezone.utc).isoformat()
+    facts = {"1001": {"desc_es": "old desc", "details_es": "old details"}}
+    first = apply_detail_corrections(path, parent_run_id="parent", mode="APPLY",
+                                    details_by_sku=facts, detail_verified_at={"1001": stamp})
+    with connect(path) as db:
+        before = {table: db.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+                  for table in ("commit_batches", "runs", "observations", "price_history", "event_history")}
+    second = apply_detail_corrections(path, parent_run_id=first["correction_run_id"], mode="APPLY",
+                                     details_by_sku=facts, detail_verified_at={"1001": stamp})
+    assert second["status"] == "NOOP"
+    assert second["commit_id"] == first["commit_id"]
+    with connect(path) as db:
+        after = {table: db.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+                 for table in before}
+    assert before == after
+
+
 def test_carried_detail_does_not_advance_success_and_pending_preserves_it(tmp_path):
     path = tmp_path/"primary.db"; _primary_db(path)
     stamp = datetime.now(timezone.utc).isoformat()

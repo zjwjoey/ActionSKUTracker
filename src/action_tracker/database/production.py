@@ -1170,6 +1170,7 @@ def apply_detail_corrections(
                     raise ProductionDatabaseError("DETAIL_CORRECTION_PARENT_NOT_CURRENT_HEAD")
 
             pending: list[dict[str, Any]] = []
+            unchanged_verified_sources: dict[str, dict[str, Any]] = {}
             for sku in sorted(details_by_sku):
                 sku = str(sku).strip()
                 detail = details_by_sku[sku]
@@ -1202,6 +1203,8 @@ def apply_detail_corrections(
                         continue
                     changes.append((field, table, old, value))
                 if not changes:
+                    if sku in verified:
+                        unchanged_verified_sources[sku] = before
                     continue
                 after = dict(before)
                 after.update({field: value for field, _table, _old, value in changes})
@@ -1210,6 +1213,15 @@ def apply_detail_corrections(
             # A correction that changes facts is itself an immutable formal
             # version.  The parent remains untouched; all derived records and
             # CONTENT_CHANGE events are owned by this correction run.
+            # Replaying the same capture evidence must not create another
+            # metadata commit. New facts or a genuinely new capture still do.
+            for sku, source in unchanged_verified_sources.items():
+                state = db.execute(
+                    "SELECT detail_last_success_at,detail_source_hash,detail_status "
+                    "FROM product_detail_state WHERE official_sku=?", (sku,),
+                ).fetchone()
+                if state and tuple(state) == (verified[sku], localization_source_hash(source), "COMPLETE"):
+                    verified.pop(sku)
             if not pending and not verified:
                 db.rollback()
                 return {"status": "NOOP", "mode": mode, "parent_run_id": parent_run_id,
