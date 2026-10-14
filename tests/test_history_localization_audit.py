@@ -119,6 +119,8 @@ def test_pilot_repeat_is_deterministic_and_does_not_approve(tmp_path):
 
 def test_backup_restores_committed_wal_and_refuses_overwrite(tmp_path):
     path = tmp_path / "primary.db"
+    from action_tracker.database.schema import migrate_v2
+    migrate_v2(path, role='PRIMARY')
     with sqlite3.connect(path) as db:
         db.execute("PRAGMA journal_mode=WAL")
         db.execute("CREATE TABLE facts(sku TEXT PRIMARY KEY, source TEXT)")
@@ -128,6 +130,9 @@ def test_backup_restores_committed_wal_and_refuses_overwrite(tmp_path):
     assert result["logical_parity"]
     assert result["integrity"] == "ok"
     assert result["foreign_key_violations"] == []
+    assert result['restore'] is None and result['restore_validation']['status'] == 'PASS'
+    assert not list(tmp_path.glob('*.restore-check.sqlite3'))
+    assert not list(tmp_path.glob('restore-scratch-*'))
     with pytest.raises(ValueError, match="BACKUP_ALREADY_EXISTS"):
         verified_backup(path, tmp_path / "backup.db")
 

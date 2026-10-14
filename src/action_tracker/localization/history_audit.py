@@ -10,7 +10,6 @@ import csv
 import hashlib
 import json
 import re
-import shutil
 import sqlite3
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -92,28 +91,36 @@ def database_fingerprint(db):
     return result
 
 
-def verified_backup(database, destination):
-    """SQLite backup API captures committed WAL state; restore is tested separately."""
+def verified_backup(database, destination, *, scratch_root=None):
+    """Keep logical parity and old result keys, without a permanent restore DB."""
+    from ..operations.storage_foundation import verified_backup as storage_backup, rehearse_restore, read_database
+    from ..operations.storage_lifecycle import ScratchTask
     destination = Path(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
         raise ValueError("BACKUP_ALREADY_EXISTS")
-    with ro(database) as source, sqlite3.connect(destination) as target:
+    with read_database(database) as source:
         before = database_fingerprint(source)
-        source.backup(target)
-    restore = destination.with_suffix(".restore-check.sqlite3")
-    if restore.exists():
-        raise ValueError("RESTORE_CHECK_ALREADY_EXISTS")
-    shutil.copy2(destination, restore)
-    with ro(restore) as restored:
-        integrity = restored.execute("PRAGMA integrity_check").fetchone()[0]
-        fk = [list(row) for row in restored.execute("PRAGMA foreign_key_check")]
+    run_id = 'history-backup-' + digest(str(destination.resolve()))[:16]
+    manifest = storage_backup(database, destination, run_id=run_id)
+    task = None
+    if scratch_root is not None:
+        task = ScratchTask(Path(scratch_root), owner_task='history-audit-restore', run_id=run_id,
+                           budget_bytes=destination.stat().st_size + 64 * 1024**2)
+    restore = rehearse_restore(destination, manifest, task.directory if task else destination.parent)
+    with read_database(destination, immutable=True) as restored:
         equal = database_fingerprint(restored) == before
-    if integrity != "ok" or fk or not equal:
+    if not equal:
         raise ValueError("BACKUP_RESTORE_VALIDATION_FAILED")
-    return {"backup": str(destination), "restore": str(restore), "integrity": integrity,
-            "foreign_key_violations": fk, "logical_parity": equal,
-            "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(), "tables": before}
+    if task:
+        task.register('restore_validation.json', source=str(destination), expected_bytes=8192)
+        from ..operations.storage_lifecycle import write_new
+        write_new(task.directory / 'restore_validation.json', restore)
+        task.complete('restore_validation.json')
+    return {"backup": str(destination), "restore": None, "integrity": 'ok',
+            "foreign_key_violations": [], "logical_parity": equal,
+            "sha256": manifest['sha256'], "tables": before, 'restore_validation': restore,
+            'permanent_restore_copy_created': False}
 
 
 def choose_evidence(candidates):

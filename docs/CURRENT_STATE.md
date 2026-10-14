@@ -103,3 +103,6 @@ main protection 只读查询显示未保护；建议 PR required、Ubuntu/Window
 ## 2026-10-14 Storage Foundation P1 本地一期
 
 独立分支 fix/storage-foundation-p1-20261014，基于已核实 origin/main 7a51fe4。实现当前 head 投影审计、WAL安全不可覆盖备份、隔离恢复、保留预览及根目录/图片资产索引。当前生产仍 b09bcea 加既有改动，未部署本分支。真实备份及 Resume/恢复证据位于独立 StorageAuditOutputs/ActionSKUTracker_P1_20261014；不回填 PRIMARY、不运行采集或训练、不清理既有数据。详见 STORAGE_FOUNDATION_P1.md。
+
+## 2026-10-14 P1 合并与 P2 分支
+P1 经 PR #10 正常合并为 e69dfe1，未激活生产；生产 active.json 仍指向 b09bcea 加既有改动。P2 在 feature/action-storage-lifecycle-p2 实现隔离目录、受控复制、Scratch 生命周期、旧数据库分类与清理预览；真实候选和运行证据在 ActionStorageCandidates/P2_20261014 与 StorageAuditOutputs/ActionSKUTracker_P2_20261014。详见 P2_STORAGE_ARCHITECTURE.md；全生产消费者与 P3 尚未完成。
