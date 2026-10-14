@@ -179,3 +179,21 @@ def test_legacy_role_candidate_and_duplicate_never_become_cleanup_permission():
     assert a['classification']=='DEV_TEST_ARTIFACT' and a['reference_count'] is None
     assert a['unique_business_data'] is None
     assert not cleanup_preview([a])['whitelist']
+
+
+@pytest.mark.parametrize('alias', [False, True])
+def test_recovery_alternative_cannot_be_the_candidate_or_its_hardlink(tmp_path, alias):
+    task,record,_=completed_disposable(tmp_path)
+    candidate=Path(record['path'])
+    alternative=candidate
+    if alias:
+        alternative=tmp_path/'same-object.txt'
+        alternative.hardlink_to(candidate)
+    proof=tmp_path/'self-proof.json'
+    write_new(proof,{'status':'PASS','backup_sha256':record['sha256']})
+    record['alternative_recovery']={'status':'PASS','path':str(alternative),
+        'sha256':record['sha256'],'evidence_path':str(proof)}
+    result=cleanup_preview([record])
+    assert not result['whitelist']
+    assert 'ALTERNATIVE_RECOVERY_IS_CANDIDATE' in result['assets'][0]['blockers']
+    assert candidate.is_file()

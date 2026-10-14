@@ -231,6 +231,8 @@ def cleanup_preview(items: list[dict], *, at: datetime | None = None) -> dict:
                 if (proof.get('status') != 'PASS' or proof.get('backup_sha256') != alternative['sha256'] or
                         not other.is_file() or sha256_file(other) != alternative['sha256']):
                     blockers.append('ALTERNATIVE_RECOVERY_IDENTITY_CHANGED')
+                if other.is_file() and path.is_file() and other.samefile(path):
+                    blockers.append('ALTERNATIVE_RECOVERY_IS_CANDIDATE')
                 if Path(str(path) + '-wal').exists() or Path(str(path) + '-shm').exists():
                     blockers.append('DATABASE_SIDECAR_REVIEW_REQUIRED')
             except (OSError, KeyError, ValueError, TypeError):

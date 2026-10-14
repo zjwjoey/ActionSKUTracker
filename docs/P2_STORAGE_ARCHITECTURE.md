@@ -44,3 +44,5 @@ P3 前必须完成旧消费者兼容、外部来源/审批/Resume 闭包、图�
 
 ## 2026-10-14 真实验证补充
 真实 ActionData（最低运行清单、当前 Snapshot、5654 张 CURRENT 原图）、8 个归档样本及 Scratch 恢复验证通过。现有正式导出按原 commit/version 保存，衍生图只按原图 Hash/Profile 绑定。既有 ZIP 当前不可访问，相关操作停止并记录 ASSET_UNAVAILABLE；39 个当前图片索引缺口不被伪补齐。全量回归 1782 PASS，远端结果与最终容量以独立验收证据为准。
+
+P2 合并前复核补强：替代恢复证据不能指向待清理文件自身或同一文件的 hardlink/path alias；samefile 门禁阻断循环恢复证明，测试覆盖两种形式。旧文件删除仍禁用。
