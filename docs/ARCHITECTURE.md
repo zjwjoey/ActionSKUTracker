@@ -178,3 +178,7 @@ Template 1：
 GitHub Actions 只验证可重复的本地代码行为：schema 校验、生命周期规则、字典优先级、导出格式和审核队列等测试使用临时目录与模拟数据。CI 不访问 Action 官网、不启动真实浏览器、不读取或写入本机 runtime、不发布字典基线，也不下载图片。
 
 真实 daily-run、详情补抓、QA 门禁、正式 Master/State 更新和导出预览仍必须在 Windows 本地按运行规则执行。CI 通过不能被解释为一次真实官网运行成功。
+
+## Storage Foundation P1（仅本地实现）
+
+Operations backup 共用不可覆盖、流式校验的备份原语；Storage CLI 在 runtime 目录初始化之前分派，audit/resolve/retention 不创建业务数据库。baseline 使用既有 daily-run.lock 名称和 Backup API，离线恢复后只保留单份备份。asset locator 是显式根/相对路径/版本/Hash适配层，未自动替换所有生产 consumer，也没有部署。

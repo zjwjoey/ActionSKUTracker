@@ -78,9 +78,11 @@ def validate_phase1_profile(cfg: dict[str, Any]) -> list[str]:
     return [name for name, valid in expected.items() if not valid]
 
 
-def load_settings(path: Path | str | None = None, *, overlay_paths: Iterable[Path | str] = ()) -> dict[str, Any]:
+def load_settings(path: Path | str | None = None, *, overlay_paths: Iterable[Path | str] = (),
+                  project_root_override: Path | str | None = None) -> dict[str, Any]:
     """Load base settings and apply one or more explicit partial overlays."""
-    base_path = (Path(path) if path else _PROJECT_ROOT / "config" / "settings.yaml").resolve()
+    root = Path(project_root_override).resolve() if project_root_override is not None else _PROJECT_ROOT
+    base_path = (Path(path) if path else root / "config" / "settings.yaml").resolve()
     if not base_path.exists():
         raise FileNotFoundError(f"配置文件不存在: {base_path}")
     with base_path.open("r", encoding="utf-8") as f:
@@ -89,7 +91,7 @@ def load_settings(path: Path | str | None = None, *, overlay_paths: Iterable[Pat
     for raw_overlay in overlay_paths:
         overlay_path = Path(raw_overlay)
         if not overlay_path.is_absolute():
-            overlay_path = _PROJECT_ROOT / overlay_path
+            overlay_path = root / overlay_path
         overlay_path = overlay_path.resolve()
         if not overlay_path.exists():
             raise FileNotFoundError(f"配置 overlay 不存在: {overlay_path}")
@@ -105,15 +107,15 @@ def load_settings(path: Path | str | None = None, *, overlay_paths: Iterable[Pat
             raw = cfg["paths"][key]
             pth = Path(raw)
             if not pth.is_absolute():
-                pth = _PROJECT_ROOT / pth
+                pth = root / pth
             cfg["paths"][key] = pth
     if "profile_dir" in cfg.get("browser", {}):
         profile = Path(cfg["browser"]["profile_dir"])
         if not profile.is_absolute():
-            profile = _PROJECT_ROOT / profile
+            profile = root / profile
         cfg["browser"]["profile_dir"] = profile
     _apply_fail_closed_defaults(cfg)
-    cfg["project_root"] = _PROJECT_ROOT
+    cfg["project_root"] = root
     canonical = json.dumps(_json_safe(cfg), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     cfg["_config_evidence"] = {
         "base_config_path": str(base_path),

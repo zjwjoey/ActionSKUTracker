@@ -222,3 +222,7 @@ CI 不得修改 Master、State、Dictionary、历史源文件或 `runtime/` 生�
 ### QA-CI-004：门禁含义
 
 CI 全绿只表示代码回归测试通过；正式运行仍必须经过本地 dry-run、QA、正式提交和导出预览。
+
+## Storage Foundation P1 门禁（本地一期）
+
+当前 PRIMARY 身份、head、export_sync 和三份投影 Hash必须一致；Source head/data_version/signature改变即阻断。备份必须独占、不覆盖、完整 SHA、integrity/FK与恢复验证。未知引用/恢复职责/未完成任务禁止成为清理许可；保留功能仅 preview。离线或找不到档案标 ASSET_UNAVAILABLE，不写官方空源。通过存储恢复验证不代表通过翻译语义QA或真实跨电脑daily验收。
