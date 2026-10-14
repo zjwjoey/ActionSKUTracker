@@ -157,6 +157,7 @@ def main():
             if found['task_status']!='UNKNOWN':task={**found,'evidence_file':source,'evidence_id':evidence_id(source,sha,found['json_pointer'],'TASK_TERMINAL')};break
         cert=legacy_certificate(state,task=task,references=refs)
         cert.update(owner_task=row['task_or_run_id'],owner_binding_quality='PRIOR_FILENAME_HINT_ONLY',
+            risk_level=row.get('risk_level') or 'UNKNOWN',
             review_level='PILOT_DEEP_EVIDENCE_REVIEW',backup_bindings=bindings,
             historical_restore_rehearsed=any(b['historical_restore_rehearsed'] for b in bindings),
             sha256=None,identity_verified=False,current_identity_check='UNKNOWN',unique_business_data=None,
@@ -202,6 +203,7 @@ def main():
                 unique_business_data=None,current_identity_check='UNKNOWN',backup_bindings=keyed[key])
             record=cleanup_preview([record])['assets'][0]
         overview.append({**record,'purpose_class':row['purpose_class'],'prior_size_bytes':int(row['size_bytes']),
+            'risk_level':row.get('risk_level') or 'UNKNOWN',
             'estimated_releasable_bytes':0,'delete_allowed':False})
     restore_overview=[r for r in overview if r['purpose_class']=='RESTORE_VALIDATION_COPY']
     development_overview=[r for r in overview if r['purpose_class']=='DEVELOPMENT_VALIDATION_COPY_CANDIDATE']
@@ -220,7 +222,7 @@ def main():
     write_new(out/'PILOT_RESULT.json',summary)
     export_csv(out/'SAFE_CLEANUP_ELIGIBLE.csv',result['whitelist'],fields=['file_id','path','size_bytes','sha256',
         'database_identity','owner_task','task_evidence','reference_evidence','original_backup_paths_proven_by_manifest',
-        'alternative_recovery','retain_until','cleanup_status','estimated_releasable_bytes','evidence_files','delete_allowed'])
+        'alternative_recovery','retain_until','cleanup_status','estimated_releasable_bytes','risk_level','evidence_files','delete_allowed'])
     print(json.dumps({k:v for k,v in summary.items() if k in ('pilot_files','pilot_logical_bytes','eligible_files','fresh_hash_pairs','full_hash_read_bytes','restore_current_files','development_current_files')},ensure_ascii=False))
 
 
