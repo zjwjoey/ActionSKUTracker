@@ -114,7 +114,14 @@ def run_storage_command(args) -> dict:
             if not asset_path.is_file():
                 raise StorageError("BASELINE_EXISTING_BACKUP_UNVERIFIED")
             manifest = _json(asset_path)
-            if (manifest["commit_id"] != before["identity"]["commit_id"] or
+            if (manifest.get("contract") != "BACKUP_ASSET_V1" or
+                    manifest.get("source") != str(db_path.resolve()) or
+                    manifest.get("backup_path") != str(backup) or
+                    manifest.get("integrity") != "PASS" or manifest.get("foreign_keys") != "PASS" or
+                    any(manifest.get(k) != before["identity"]["metadata"].get(k)
+                        for k in ("schema_family", "schema_version", "database_role")) or
+                    manifest.get("size_bytes") != backup.stat().st_size or
+                    manifest.get("commit_id") != before["identity"]["commit_id"] or
                     manifest.get("code_version") != code["actual_head"] + ":" + code["patch_sha256"] or
                     manifest.get("source_signature") != source_signature(db_path) or
                     sha256_file(backup) != manifest["sha256"]):
@@ -126,7 +133,8 @@ def run_storage_command(args) -> dict:
         final_code, _ = code_evidence(root)
         if (after != before or final_code != code or
                 sha256_file(root / "config/settings.yaml") != config_sha or
-                manifest["commit_id"] != after["identity"]["commit_id"]):
+                manifest["commit_id"] != after["identity"]["commit_id"] or
+                manifest.get("source_signature") != source_signature(db_path)):
             raise StorageError("BASELINE_SOURCE_CHANGED")
         if not (output / "production_code.json").exists():
             _write_new(output / "production_code.json", code)
@@ -135,7 +143,10 @@ def run_storage_command(args) -> dict:
     restore_report = output / "restore_validation.json"
     if restore_report.exists():
         restore = _json(restore_report)
-        if restore.get("backup_sha256") != manifest["sha256"] or restore.get("status") != "PASS":
+        if (restore.get("backup_sha256") != manifest["sha256"] or restore.get("status") != "PASS" or
+                restore.get("commit_id") != manifest["commit_id"] or
+                restore.get("integrity") != "PASS" or restore.get("foreign_keys") != "PASS" or
+                restore.get("permanent_restore_copy_created") is not False):
             raise StorageError("BASELINE_EXISTING_RESTORE_UNVERIFIED")
     else:
         restore = rehearse_restore(backup, manifest, output)

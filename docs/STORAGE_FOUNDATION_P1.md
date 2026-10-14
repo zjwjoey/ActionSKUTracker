@@ -46,3 +46,5 @@ python -m action_tracker storage-foundation resolve --asset C:/StorageEvidence/a
 
 新测试仅临时数据库/文件、无官网/模型；包含 WAL 保全、源只读、同 head 并发写、不可覆盖、阶段重试、恢复 SHA、锁归属、保留分组、离线档案、Windows路径和多数据根。
 真实证据独立放在 C:/Users/Administrator/StorageAuditOutputs/ActionSKUTracker_P1_20261014，不能进入 Git。
+
+推送前复核补强：baseline Resume 完整核对备份契约、来源/路径、schema、完整性/外键、大小和 head；Hash 后再次核对源 signature；缓存恢复报告必须匹配 head、完整性/外键及临时副本约定。新增负例证明错误证据和同 head 并发写均阻断。

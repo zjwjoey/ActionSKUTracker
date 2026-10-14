@@ -302,3 +302,62 @@ def test_code_evidence_preserves_staged_and_unstaged_changes(tmp_path):
     evidence, patch = storage_cli.code_evidence(data)
     assert set(evidence['tracked_dirty_paths']) == {'src/staged.py', 'src/unstaged.py'}
     assert b'+new staged' in patch and b'+new unstaged' in patch
+
+
+@pytest.mark.parametrize('target,key,value,error', [
+    ('primary.sqlite3.asset.json', 'integrity', 'FAIL', 'BASELINE_EXISTING_BACKUP_STALE'),
+    ('primary.sqlite3.asset.json', 'source', 'other.db', 'BASELINE_EXISTING_BACKUP_STALE'),
+    ('restore_validation.json', 'commit_id', 'other-head', 'BASELINE_EXISTING_RESTORE_UNVERIFIED'),
+    ('restore_validation.json', 'foreign_keys', 'FAIL', 'BASELINE_EXISTING_RESTORE_UNVERIFIED'),
+])
+def test_baseline_resume_rejects_invalid_cached_evidence(tmp_path, monkeypatch, target, key, value, error):
+    root = tmp_path / 'data'
+    source = database(root / 'runtime/db/action_tracker.db')
+    ps = projections(source, root / 'projections')
+    (root / 'config').mkdir()
+    (root / 'config/settings.yaml').write_text(
+        'paths:\n  master: projections/master.bin\n  state: projections\n'
+        'storage:\n  db_path: runtime/db/action_tracker.db\n', encoding='utf-8')
+    for name in ('known', 'offline'):
+        (root / 'projections' / (name + '_skus.csv')).write_bytes(ps[name].read_bytes())
+    (root / 'runtime/deployment').mkdir()
+    (root / 'runtime/deployment/active.json').write_text(json.dumps({'source_checkout': str(tmp_path / 'code')}))
+    code = {'actual_head': 'base', 'patch_sha256': hashlib.sha256(b'').hexdigest()}
+    monkeypatch.setattr(storage_cli, 'code_evidence', lambda _root: (code, b''))
+    args = SimpleNamespace(storage_action='baseline', data_root=str(root), output=str(tmp_path / 'out'), profile=None)
+    storage_cli.run_storage_command(args)
+    path = tmp_path / 'out' / target
+    evidence = json.loads(path.read_text())
+    evidence[key] = value
+    path.write_text(json.dumps(evidence))
+    with pytest.raises(sf.StorageError, match=error):
+        storage_cli.run_storage_command(args)
+    assert len(list((tmp_path / 'out').glob('*.sqlite3'))) == 1
+
+
+def test_baseline_resume_blocks_same_head_write_during_backup_hash(tmp_path, monkeypatch):
+    root = tmp_path / 'data'
+    source = database(root / 'runtime/db/action_tracker.db')
+    ps = projections(source, root / 'projections')
+    (root / 'config').mkdir()
+    (root / 'config/settings.yaml').write_text(
+        'paths:\n  master: projections/master.bin\n  state: projections\n'
+        'storage:\n  db_path: runtime/db/action_tracker.db\n', encoding='utf-8')
+    for name in ('known', 'offline'):
+        (root / 'projections' / (name + '_skus.csv')).write_bytes(ps[name].read_bytes())
+    (root / 'runtime/deployment').mkdir()
+    (root / 'runtime/deployment/active.json').write_text(json.dumps({'source_checkout': str(tmp_path / 'code')}))
+    code = {'actual_head': 'base', 'patch_sha256': hashlib.sha256(b'').hexdigest()}
+    monkeypatch.setattr(storage_cli, 'code_evidence', lambda _root: (code, b''))
+    args = SimpleNamespace(storage_action='baseline', data_root=str(root), output=str(tmp_path / 'out'), profile=None)
+    storage_cli.run_storage_command(args)
+    original_hash = storage_cli.sha256_file
+    def mutate_while_hashing(path):
+        result = original_hash(path)
+        if Path(path).name == 'primary.sqlite3':
+            with sqlite3.connect(source) as db:
+                db.execute("UPDATE products SET value='concurrent same-head mutation'")
+        return result
+    monkeypatch.setattr(storage_cli, 'sha256_file', mutate_while_hashing)
+    with pytest.raises(sf.StorageError, match='BASELINE_SOURCE_CHANGED'):
+        storage_cli.run_storage_command(args)
