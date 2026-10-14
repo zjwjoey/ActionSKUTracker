@@ -182,3 +182,6 @@ GitHub Actions 只验证可重复的本地代码行为：schema 校验、生命�
 ## Storage Foundation P1（仅本地实现）
 
 Operations backup 共用不可覆盖、流式校验的备份原语；Storage CLI 在 runtime 目录初始化之前分派，audit/resolve/retention 不创建业务数据库。baseline 使用既有 daily-run.lock 名称和 Backup API，离线恢复后只保留单份备份。asset locator 是显式根/相对路径/版本/Hash适配层，未自动替换所有生产 consumer，也没有部署。
+
+## Storage Lifecycle P2（分支实现，未部署）
+ActionData/Archive/Scratch 隔离候选和精确旧路径绑定复用 P1；旧资产仅清理预览，新专属 Scratch 有证据门禁。详见 P2_STORAGE_ARCHITECTURE.md。

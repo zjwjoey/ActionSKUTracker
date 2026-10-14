@@ -226,3 +226,6 @@ CI 全绿只表示代码回归测试通过；正式运行仍必须经过本地 d
 ## Storage Foundation P1 门禁（本地一期）
 
 当前 PRIMARY 身份、head、export_sync 和三份投影 Hash必须一致；Source head/data_version/signature改变即阻断。备份必须独占、不覆盖、完整 SHA、integrity/FK与恢复验证。未知引用/恢复职责/未完成任务禁止成为清理许可；保留功能仅 preview。离线或找不到档案标 ASSET_UNAVAILABLE，不写官方空源。通过存储恢复验证不代表通过翻译语义QA或真实跨电脑daily验收。
+
+## P2 隔离整理 Gate
+真实复制必须源/目标完整 Hash、独占目标、来源稳定、受控预算；数据库仅验证过的一致备份。未知引用、恢复义务或终态一律保留。旧资产 delete_allowed 永远 false。新 live-task Scratch 清理须实时校验替代恢复证据；Resume 任务禁删。
