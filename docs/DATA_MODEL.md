@@ -206,3 +206,7 @@ CI 测试只使用仓库中的 schema/配置和临时生成的最小 fixture，�
 # Localization fields
 
 七个中文字段由 Localization Engine 统一生成：`name_zh`、`cat1_zh`、`cat2_zh`、`spec_zh`、`unit_price_zh`、`desc_zh`、`details_zh`。SQLite `product_localizations` 保留 source_hash、freshness_status、resolution_status、逐字段 source、审批和 applied commit 元数据。
+
+## Storage Foundation 审计契约（非 SQLite schema 迁移）
+
+BACKUP_ASSET_V1/STORAGE_BASELINE_CONTEXT_V1/ASSET_INDEX_V1 是独立 JSON 元数据，保留 task、source/head、版本、Hash及恢复职责。M4 恢复义务不能当作另一份容量加总；同内容的业务版本、SKU和路径绑定仍保留。SQLite 字段、主键、Presence及审批规则不变。详见 STORAGE_FOUNDATION_P1.md。

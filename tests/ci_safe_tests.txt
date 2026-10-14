@@ -161,3 +161,6 @@ tests/test_candidate_resume_price_contracts.py
 
 # CI_SAFE: same-layer Listing, canonical ownership and historical identity in temporary fixtures.
 tests/test_listing_evidence_ownership.py
+
+# CI_SAFE: storage fixtures, backup/Resume, retention preview and relocatable references.
+tests/test_storage_foundation.py

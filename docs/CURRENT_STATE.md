@@ -99,3 +99,7 @@ main protection 只读查询显示未保护；建议 PR required、Ubuntu/Window
 ## 2026-10-11 翻译模块远端提交准备
 
 重新fetch后核对本分支相对origin/main的全部50个既有提交/76个文件，未落后main且远端尚无同名分支。修复来源审计将None误作官方明确空值、数字保留与新增检查格式不一致导致的面积/区间误报，新增7个回归案例；核心提交`c9946b9`。最终完整回归1295 PASS，本地CI原120文件白名单1295 PASS；远端跨系统CI尚待推送验证。默认安全开关、正式字典、schema、PRIMARY和Master未改动；未push、创建PR或部署。详见[远端提交准备审查](HISTORICAL_LOCALIZATION_REMOTE_PREPARATION_20261011.md)。
+
+## 2026-10-14 Storage Foundation P1 本地一期
+
+独立分支 fix/storage-foundation-p1-20261014，基于已核实 origin/main 7a51fe4。实现当前 head 投影审计、WAL安全不可覆盖备份、隔离恢复、保留预览及根目录/图片资产索引。当前生产仍 b09bcea 加既有改动，未部署本分支。真实备份及 Resume/恢复证据位于独立 StorageAuditOutputs/ActionSKUTracker_P1_20261014；不回填 PRIMARY、不运行采集或训练、不清理既有数据。详见 STORAGE_FOUNDATION_P1.md。

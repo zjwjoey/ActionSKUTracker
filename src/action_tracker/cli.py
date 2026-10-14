@@ -293,6 +293,28 @@ def build_parser() -> argparse.ArgumentParser:
     rr.add_argument("--run-id", required=True)
     rr.add_argument("--commit-id", required=True)
     rr.add_argument("--date", required=True)
+    sf = sub.add_parser("storage-foundation", help="存储一致性、备份基线及只读保留预览")
+    sfsub = sf.add_subparsers(dest="storage_action", required=True)
+    sa = sfsub.add_parser("audit", help="只读核对当前head与Master/State Hash")
+    sa.add_argument("--data-root", required=True)
+    sa.add_argument("--profile")
+    sb = sfsub.add_parser("baseline", help="一致备份与隔离恢复验证；不修改业务数据")
+    sb.add_argument("--data-root", required=True)
+    sb.add_argument("--profile")
+    sb.add_argument("--output", required=True)
+    sp = sfsub.add_parser("retention-plan", help="只给保留/归档候选，不执行删除")
+    sp.add_argument("--manifest", action="append", required=True)
+    sp.add_argument("--keep-latest", type=int)
+    sp.add_argument("--data-root")
+    si = sfsub.add_parser("image-index", help="生成带来源和版本的图片资产索引，不改原清单")
+    si.add_argument("--data-root", required=True)
+    si.add_argument("--manifest", required=True)
+    si.add_argument("--output", required=True)
+    sr = sfsub.add_parser("resolve", help="按根目录/相对路径/Hash定位，不修改来源")
+    sr.add_argument("--asset", required=True)
+    sroots = sr.add_mutually_exclusive_group(required=True)
+    sroots.add_argument("--roots")
+    sroots.add_argument("--data-root")
     return p
 
 
@@ -302,6 +324,16 @@ def main(argv=None) -> int:
         # Must be set before load_settings() so database_path() resolves the
         # explicit production data root rather than an empty worktree DB.
         os.environ["ACTION_TRACKER_PROJECT_ROOT"] = str(args.data_root)
+    if args.command == "storage-foundation":
+        from .operations.storage_cli import run_storage_command
+        from .operations.storage_foundation import StorageError
+        try:
+            result = run_storage_command(args)
+        except (StorageError, OSError, ValueError) as exc:
+            print(json.dumps({"status": "BLOCKED", "reason": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False, default=str))
+        return 0 if result.get("status") in {"PASS", "AVAILABLE", "PREVIEW_ONLY"} else 2
     from .config import ensure_runtime_dirs, load_settings
     from .log import setup_logging
 

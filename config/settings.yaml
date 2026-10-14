@@ -61,6 +61,16 @@ storage:
   mode: SQLITE_PRIMARY
   db_path: runtime/db/action_tracker.db
 
+# Storage Foundation P1 is operator driven. These settings never enable cleanup
+# or relocation in data-update. Archive offline means ASSET_UNAVAILABLE.
+storage_foundation:
+  roots:
+    code: null
+    archive: null
+    temp: runtime/temp
+  backup_policy:
+    keep_latest: 7
+
 operations:
   # Minimum free space required on every production data volume.
   min_free_disk_bytes: 2147483648
