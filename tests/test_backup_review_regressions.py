@@ -116,3 +116,56 @@ def test_quota_counts_capture_and_staging_together(setup):
     with pytest.raises(StorageError,match='BUDGET|QUOTA'):
         op.run_backup(plan,roots,**kwargs)
     assert backend.writes==0
+
+
+def test_usage_counts_all_capture_and_session_bytes(setup):
+    _, roots, backend, _, plan, kwargs = setup
+    op.run_backup(plan, roots, **kwargs)
+    root = kwargs['operations_root']
+    for relative, count in [('captures/old/primary.sqlite3', 31),
+                            ('sessions/first/cache/object', 17),
+                            ('sessions/second/cache/object', 23)]:
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'x' * count)
+    report = op.storage_usage_report(root, backend=backend,
+        policy=replace(kwargs['policy'], max_scratch_bytes=70))
+    assert report['capture_bytes']['value'] == 31
+    assert report['session_bytes']['value'] == 40
+    assert report['staged_bytes']['value'] > 0
+    assert report['total_scratch_bytes']['value'] == report['staged_bytes']['value'] + 71
+    assert report['scratch_budget_alert'] is True
+    assert report['monthly_actual_transfer_bytes']['status'] == 'UNKNOWN'
+
+
+def test_new_capture_requires_prior_disposition_but_same_run_resumes(tmp_path):
+    src = database(tmp_path / 'source' / 'primary.db')
+    projection = projections(src, tmp_path / 'projections')
+    backend = Backend(tmp_path)
+    raw = {'operations_root': str(tmp_path / 'operations'),
+           'writer_lock_directory': str(tmp_path / 'state'), 'policy': {'enabled': True},
+           'capture': {'source': str(src), 'projections': {k: str(v) for k, v in projection.items()},
+                       'code_version': 'fixture', 'recovery_owner': 'fixture-owner',
+                       'retention': {'policy_id': 'keep'}}}
+    first, roots = cli._capture(raw, backend, 'first')
+    original = sha256_file(Path(roots['core']) / 'primary.sqlite3')
+    resumed, _ = cli._capture(raw, backend, 'first')
+    assert resumed['database_identities'] == first['database_identities']
+    with pytest.raises(StorageError, match='PRIOR_CAPTURE_REQUIRES_DISPOSITION'):
+        cli._capture(raw, backend, 'next-day')
+    assert not (tmp_path / 'operations/captures/next-day').exists()
+    assert sha256_file(Path(roots['core']) / 'primary.sqlite3') == original
+
+
+def test_unknown_capture_blocks_before_source_read(tmp_path):
+    prior = tmp_path / 'operations/captures/unknown'
+    prior.mkdir(parents=True)
+    (prior / 'unknown.bin').write_bytes(b'preserve')
+    raw = {'operations_root': str(tmp_path / 'operations'),
+           'writer_lock_directory': str(tmp_path / 'state'),
+           'capture': {'source': str(tmp_path / 'missing.db'), 'projections': {},
+                       'code_version': 'fixture', 'recovery_owner': 'owner',
+                       'retention': {'policy_id': 'keep'}}}
+    with pytest.raises(StorageError, match='PRIOR_CAPTURE_REQUIRES_DISPOSITION'):
+        cli._capture(raw, Backend(tmp_path), 'new-run')
+    assert (prior / 'unknown.bin').read_bytes() == b'preserve'

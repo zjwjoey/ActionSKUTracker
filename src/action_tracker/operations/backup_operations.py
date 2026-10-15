@@ -216,15 +216,31 @@ def storage_usage_report(operations_root: Path, *, backend, policy: OperationPol
             for file in stage.rglob("*"):
                 if file.is_file():
                     scratch += safe_path(file).stat().st_size
+    # A backend reports only its current private session. Include all prior
+    # sessions and captures in the local budget, without double counting it.
+    other = {}
+    for name in ("captures", "sessions"):
+        directory = safe_path(Path(operations_root) / name, file=False)
+        other[name] = 0
+        if directory.is_dir():
+            for entry in directory.rglob("*"):
+                checked = safe_path(entry, file=entry.is_file())
+                if checked.is_file():
+                    other[name] += checked.stat().st_size
+    total_scratch = scratch + sum(other.values())
     return {"status": "OBSERVED_WITH_ESTIMATES", "backup_sets": len(rows),
             "snapshot_versions": sum(r["snapshot_id"] is not None for r in rows),
             "logical_backup_bytes": sum(r["logical_bytes"] for r in rows),
             "staged_bytes": {"status": "OBSERVED", "value": scratch},
+            "capture_bytes": {"status": "OBSERVED", "value": other["captures"]},
+            "session_bytes": {"status": "OBSERVED", "value": other["sessions"]},
+            "total_scratch_bytes": {"status": "OBSERVED", "value": total_scratch},
+            "scratch_scope": "job stages, all captures and all sessions under operations_root; external restores excluded",
             "backend": _usage_snapshot(backend),
             "monthly_upload_bytes": {"status": "ESTIMATED", "value": estimate},
             "monthly_actual_transfer_bytes": {"status": "UNKNOWN", "value": None},
             "monthly_budget_alert": estimate >= policy.monthly_upload_warning_bytes,
-            "scratch_budget_alert": scratch >= policy.max_scratch_bytes,
+            "scratch_budget_alert": total_scratch >= policy.max_scratch_bytes,
             "failed_jobs": sum(r["status"] == "FAILED" for r in rows),
             "billing_amount": {"status": "UNKNOWN", "value": None}}
 

@@ -90,3 +90,27 @@ its path as `cloud_authorization_path`. No approval is bundled with this code.
 Source-selection digests use actual canonical source locations (or the exact
 PRIMARY/projection source paths of an owned P1 capture), not just root labels.
 Moving a restore to another disk never implicitly expands a cloud-upload grant.
+
+## Capture accumulation and local usage gate
+
+The Storage CLI serializes CORE capture admission separately from the existing
+shared production writer lock. A new run is blocked with
+`PRIOR_CAPTURE_REQUIRES_DISPOSITION` while any previous nonempty capture directory
+remains. The same run can resume. Unknown capture contents are retained and block
+new captures too. This prevents recurring tasks from accumulating full database
+copies up to the scratch quota; it does not authorize deleting a capture.
+
+Before another run, the operator must close Resume/consumer responsibilities,
+bind a verified independent recovery point and obtain the existing Cleanup
+Lifecycle's per-file approval/observation/rollback/purge gates for the previous
+capture. Do not manually erase it to bypass this gate. `release-owned-stage`
+releases only stage copies and does not release captures or restore targets.
+Unattended recurring CORE operation remains pending this disposition procedure
+and its separately approved operating policy; this change does not enable it.
+
+`usage` preserves `staged_bytes` and separately reports `capture_bytes`,
+`session_bytes` (all sessions beneath the configured operations root), and their
+sum `total_scratch_bytes`. Scratch alerts use that sum. Backend cache metrics
+describe the current backend session only and must not be added again. External
+restore directories and external tools' caches require their own inventory;
+repository object bytes and billable traffic remain separate measurements.
