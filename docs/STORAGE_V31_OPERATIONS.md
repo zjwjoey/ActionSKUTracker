@@ -49,7 +49,10 @@ Defaults retain data and do not enable disposition. A separately provided
 token/path, source/configuration digest, policy digest, approver/instruction,
 expiry, and a validated activation restore report from that same configuration
 and managed registry. It also declares the eight complete consumer domains and
-zero unresolved dynamic references. Unknown coverage is never converted to zero.
+zero unresolved dynamic references and zero excluded required sources. Unknown
+coverage is never converted to zero. The configuration digest binds existing
+operation limits, optional operations policy and backend settings as well as
+source paths and protection roots; changing them requires a new review.
 The grant's unknown fields are rejected, including accidental credential fields.
 Grants contain no passwords or cloud keys.
 

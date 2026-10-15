@@ -51,6 +51,9 @@ def _scope(raw, backend):
     return digest({'capture': raw['capture'], 'protected_roots': raw['protected_roots'],
                    'writer_lock_directory': raw['writer_lock_directory'],
                    'repository': op.public_backend_identity(backend),
+                   'backend_configuration': raw.get('backend', {}),
+                   'operation_policy': asdict(op.OperationPolicy(**raw.get('policy', {}))),
+                   'operations_policy': raw.get('operations_policy'),
                    'operations_root': str(Path(raw['operations_root']).resolve())})
 
 
@@ -393,6 +396,7 @@ def _grant(raw, backend, value, grant):
     allowed = {'contract', 'scope', 'approved_by', 'approval_id', 'instruction_reference',
         'expires_at', 'root_token', 'operations_root', 'source_configuration_sha256',
         'policy_sha256', 'reference_scope_complete', 'unresolved_dynamic_references',
+        'excluded_required_sources',
         'reference_domains', 'activation_restore_report_path', 'activation_restore_report_sha256',
         'replaces_grant_sha256', 'allowed_actions', 'release_creation_policy_sha256'}
     if set(grant) - allowed or grant.get('allowed_actions') != ['QUARANTINE', 'PURGE']:
@@ -413,6 +417,8 @@ def _grant(raw, backend, value, grant):
             not grant.get('instruction_reference') or grant.get('reference_scope_complete') is not True or
             grant.get('unresolved_dynamic_references') != 0 or
             type(grant.get('unresolved_dynamic_references')) is not int or
+            grant.get('excluded_required_sources') != 0 or
+            type(grant.get('excluded_required_sources')) is not int or
             set(grant.get('reference_domains', {})) != cleanup.REQUIRED_REFERENCE_DOMAINS):
         raise StorageError('CAPTURE_DISPOSITION_APPROVAL_SCOPE_MISMATCH')
     if (asdict(policy) != value['disposition_policy'] and
@@ -432,7 +438,11 @@ def _grant(raw, backend, value, grant):
 def _references(grant, workspace, additional=()):
     refs = cleanup.capture_reference_scope(grant['reference_domains'], reviewer=grant['approved_by'],
         scope_reason='Approved closed consumer scope for newly owned capture workspaces only')
-    refs.update(complete=True, unresolved_dynamic_references=0, excluded_required_sources=0)
+    # Coverage is an explicit external attestation bound by the policy grant;
+    # the scanner itself never declares global coverage or invents zero hits.
+    refs.update(complete=grant['reference_scope_complete'],
+        unresolved_dynamic_references=grant['unresolved_dynamic_references'],
+        excluded_required_sources=grant['excluded_required_sources'])
     cleanup.validate_references(refs, (workspace, *additional), max_age_seconds=3600)
     return refs
 

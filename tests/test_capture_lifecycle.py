@@ -50,6 +50,7 @@ def approve(raw, backend, run_id, tmp_path):
         'source_configuration_sha256': c._scope(raw, backend),
         'policy_sha256': digest(asdict(c.CaptureDispositionPolicy(**raw['capture_lifecycle']))),
         'reference_scope_complete': True, 'unresolved_dynamic_references': 0,
+        'excluded_required_sources': 0,
         'reference_domains': domains, 'activation_restore_report_path': str(report_path),
         'activation_restore_report_sha256': read_json(report_path)['document_sha256']}
 
@@ -103,7 +104,7 @@ def test_uncertain_upload_resumes_without_second_snapshot(environment):
     assert backend.writes == 1
 
 
-@pytest.mark.parametrize('change', ['hash', 'manifest', 'reference', 'expiry', 'unknown-file', 'restore-proof'])
+@pytest.mark.parametrize('change', ['hash', 'manifest', 'reference', 'expiry', 'unknown-file', 'restore-proof', 'unknown-coverage', 'limit-drift'])
 def test_changed_evidence_or_scope_never_deletes(environment, tmp_path, change):
     raw, backend = environment
     c.cycle(raw, backend, 'first')
@@ -118,6 +119,8 @@ def test_changed_evidence_or_scope_never_deletes(environment, tmp_path, change):
     elif change == 'reference': Path(grant['reference_domains']['active_tasks'], 'consumer.txt').write_text(str(workspace))
     elif change == 'expiry': grant['expires_at'] = '2020-01-01T00:00:00+00:00'
     elif change == 'unknown-file': (workspace / 'capture/unknown').write_bytes(b'unknown')
+    elif change == 'unknown-coverage': grant.pop('excluded_required_sources')
+    elif change == 'limit-drift': raw['policy']['max_runtime_seconds'] = 1801
     else: (c._directory(raw['operations_root'], 'first') / 'restore.json').write_text('{}')
     with pytest.raises(StorageError):
         c.cycle(raw, backend, 'first', grant=grant, retire=True)
@@ -290,14 +293,15 @@ def test_resealed_disposition_cannot_target_an_unregistered_external_file(enviro
 
 def test_next_run_rechecks_elapsed_retention_before_admission(environment, tmp_path, monkeypatch):
     raw, backend = environment
-    raw['capture_lifecycle']['minimum_retention_seconds'] = 10
+    raw['capture_lifecycle']['minimum_retention_seconds'] = 3600
     c.cycle(raw, backend, 'first')
     grant = approve(raw, backend, 'first', tmp_path)
+    grant['expires_at'] = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
     assert c.cycle(raw, backend, 'first', grant=grant, retire=True)['status'] == 'RETAIN_REQUIRED'
     original_datetime = c.datetime
     class Later(original_datetime):
         @classmethod
-        def now(cls, tz=None): return original_datetime.now(tz) + timedelta(seconds=11)
+        def now(cls, tz=None): return original_datetime.now(tz) + timedelta(seconds=3601)
     monkeypatch.setattr(c, 'datetime', Later)
     monkeypatch.setattr(c, 'now', lambda: Later.now(timezone.utc).isoformat())
     result = c.cycle(raw, backend, 'second', grant=grant, retire=True)
