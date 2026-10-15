@@ -216,3 +216,11 @@ ISOLATED_STORAGE_CANDIDATE_V1、ACTIVE_DATA_CANDIDATE_V1、SAFE_CLEANUP_PREVIEW_
 
 ## LEGACY_CLEANUP_EVIDENCE_V1
 旧资产证据记录 file ID、current integrity/FK、精确 owner终态、引用覆盖/观察数、保留政策和独立回滚释放。引用未知为 null，不用0代替；证据包含源文件SHA、JSON pointer、核验方法/时间与Evidence ID。
+# Storage V3.1 operational contracts
+
+`CAPTURE_LIFECYCLE_V1`, `CAPTURE_DISPOSITION_POLICY_V1`, immutable per-file
+disposition intents/receipts, `BACKUP_OPERATIONS_POLICY_V1` and `BACKUP_HEALTH_V1`
+are filesystem operational contracts. They add no PRIMARY tables or schema
+migration. New workspace ownership does not certify or authorize old assets.
+Snapshot and independent restore states remain distinct. Field/approval and
+recovery requirements are documented in STORAGE_V31_OPERATIONS.md.

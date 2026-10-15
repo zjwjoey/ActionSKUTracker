@@ -188,3 +188,12 @@ ActionData/Archive/Scratch 隔离候选和精确旧路径绑定复用 P1；旧�
 
 ## P2.1 证据适配
 cleanup_evidence 只读输入实际身份、备份、终态、覆盖范围及恢复证明，复用 P2 cleanup_preview；不新增旧资产删除入口，不连接活跃 PRIMARY。
+# Optional Storage V3.1 operational lifecycle
+
+The standalone Backup CLI can opt into the new-owned Capture lifecycle without
+changing the production daily pipeline. P1 capture, P2 ScratchTask ownership,
+V3 Backup/restore and Cleanup's handle-safe mutation remain the shared building
+blocks. Lifecycle policy/health metadata is outside the business database;
+production defaults and V3 OSS Gate remain disabled/blocked. See
+[STORAGE_V31_OPERATIONS.md](STORAGE_V31_OPERATIONS.md) for the exact ownership,
+approval, retention, Resume and independent-tool boundaries.

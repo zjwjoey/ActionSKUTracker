@@ -27,7 +27,7 @@ def load_config(path):
     raw = read_json(path)
     allowed = {"contract", "backend", "policy", "operations_root", "writer_lock_directory", "roots",
                "protected_roots", "schedule", "request_path", "capture", "config_version", "activation_receipt_path",
-               "cloud_authorization_path"}
+               "cloud_authorization_path", 'capture_lifecycle', 'capture_disposition_grant_path', 'operations_policy'}
     if set(raw) - allowed or raw.get("contract") != "BACKUP_OPERATIONS_CONFIG_V1":
         raise StorageError("BACKUP_CONFIG_INVALID_OR_UNKNOWN_FIELDS")
     # Do not allow passwords, access keys or arbitrary environment values here.
@@ -37,6 +37,10 @@ def load_config(path):
     config = BackendConfig(**raw.get("backend", {}))
     policy = OperationPolicy(**raw.get("policy", {}))
     schedule = SchedulePolicy(**raw.get("schedule", {}))
+    from .capture_lifecycle import CaptureDispositionPolicy
+    CaptureDispositionPolicy(**raw.get('capture_lifecycle', {}))
+    from .backup_health import validate_policy
+    validate_policy(raw.get('operations_policy'), raw)
     for key in ("operations_root", "writer_lock_directory"):
         if not raw.get(key) or not Path(raw[key]).is_absolute():
             raise StorageError("BACKUP_ABSOLUTE_ROOT_REQUIRED")
@@ -55,6 +59,8 @@ def load_config(path):
             if repository.is_relative_to(protected) or protected.is_relative_to(repository):
                 raise StorageError("REPOSITORY_PROTECTED_ROOT_OVERLAP")
     if schedule.enabled:
+        if raw.get('capture_lifecycle', {}).get('enabled') and not (raw.get('operations_policy') or {}).get('approved', False):
+            raise StorageError('CAPTURE_SCHEDULE_OPERATIONS_POLICY_NOT_APPROVED')
         from .backup_sets import digest
         acceptance = read_json(Path(raw.get("activation_receipt_path", "")))
         validation = validate_seal(read_json(Path(acceptance.get("restore_report_path", ""))), "BACKUP_RESTORE_V1")
@@ -74,6 +80,20 @@ def parser():
     actions = p.add_subparsers(dest="action", required=True)
     for name in ("status", "history", "usage", "scheduled"):
         actions.add_parser(name)
+    lifecycle = actions.add_parser('capture-cycle')
+    lifecycle.add_argument('--run-id', required=True)
+    lifecycle.add_argument('--grant', type=Path)
+    lifecycle.add_argument('--retire', action='store_true')
+    health = actions.add_parser('health')
+    health.add_argument('--output', type=Path)
+    reconcile_capture = actions.add_parser('capture-reconcile-lock')
+    reconcile_capture.add_argument('--run-id', required=True)
+    reconcile_capture.add_argument('--kind', choices=['admission', 'lifecycle', 'backup-job'], required=True)
+    reconcile_capture.add_argument('--expected-lock-sha256', required=True)
+    reconcile_capture.add_argument('--requested-by', required=True)
+    rollback_capture = actions.add_parser('capture-rollback')
+    rollback_capture.add_argument('--run-id', required=True)
+    rollback_capture.add_argument('--requested-by', required=True)
     create = actions.add_parser("repository-create")
     create.add_argument("--authorization", type=Path, required=True)
     plan = actions.add_parser("plan")
@@ -181,6 +201,19 @@ def execute(args):
                 root = safe_path(Path(protected), file=False)
                 if resolved.is_relative_to(root) or root.is_relative_to(resolved):
                     raise StorageError("OUTPUT_PROTECTED_ROOT_OVERLAP")
+    if args.action == 'health':
+        from .backup_health import health
+        result = health(raw)
+        if args.output:
+            write_immutable(args.output, result)
+        return result
+    if args.action == 'capture-reconcile-lock':
+        from .capture_lifecycle import reconcile_lock
+        return reconcile_lock(raw, args.run_id, kind=args.kind,
+            expected_lock_sha256=args.expected_lock_sha256, requested_by=args.requested_by)
+    if args.action == 'capture-rollback':
+        from .capture_lifecycle import rollback
+        return rollback(raw, args.run_id, requested_by=args.requested_by)
     if args.action == "history":
         return {"status": "PASS", "jobs": history(operations)}
     if args.action == "retention-preview":
@@ -207,6 +240,11 @@ def execute(args):
         return {"status": "XML_EXPORTED_NOT_REGISTERED", "enabled": schedule.enabled, "path": str(args.output)}
     if args.action in {"scheduled", "event"} and not schedule.enabled:
         return {"status": "DISABLED", "reason": "SCHEDULER_DISABLED", "side_effects": False}
+    if args.action == 'capture-cycle' and not raw.get('capture_lifecycle', {}).get('enabled', False):
+        return {'status': 'DISABLED', 'side_effects': False}
+    if (args.action in {'capture-cycle', 'scheduled', 'event'} and
+            raw.get('capture_lifecycle', {}).get('enabled', False) and cfg.provider not in {'filesystem', 'local'}):
+        raise StorageError('V31_CLOUD_GATE_BLOCKED')
     if not cfg.enabled or not policy.enabled:
         return {"status": "DISABLED", "side_effects": False}
     from .kopia_backend import BackendCredentials, KopiaBackend
@@ -227,6 +265,11 @@ def execute(args):
             backend.disconnect()
     backend.connect(readonly=args.action in {"usage", "plan", "verify", "restore-preview", "restore", "capture-core"})
     try:
+        if args.action == 'capture-cycle':
+            from .capture_lifecycle import cycle
+            grant_path = args.grant or raw.get('capture_disposition_grant_path')
+            return cycle(raw, backend, args.run_id,
+                grant=read_json(Path(grant_path)) if grant_path else None, retire=args.retire)
         if args.action == "usage":
             return storage_usage_report(operations, backend=backend, policy=policy)
         if args.action == "release-owned-stage":
@@ -246,6 +289,14 @@ def execute(args):
             write_immutable(args.output, {"plan": plan, "roots": roots})
             return {"status": "CORE_CAPTURED", "plan_sha256": plan["document_sha256"], "path": str(args.output)}
         if args.action in {"now", "scheduled", "event"}:
+            if args.action in {'scheduled', 'event'} and raw.get('capture_lifecycle', {}).get('enabled'):
+                from .capture_lifecycle import cycle
+                key = (event_key(trigger=args.trigger, event_id=args.event_id, commit_id=args.commit_id, profile='CORE_BACKUP')
+                       if args.action == 'event' else event_key(trigger=schedule.trigger,
+                       event_id=datetime.now().date().isoformat(), commit_id='daily-capture', profile='CORE_BACKUP'))
+                grant_path = raw.get('capture_disposition_grant_path')
+                return cycle(raw, backend, key,
+                    grant=read_json(Path(grant_path)) if grant_path else None, retire=bool(grant_path))
             if args.action == "now":
                 value = read_json(args.plan)
                 plan = value.get("plan", value)
@@ -292,7 +343,7 @@ def main(argv=None):
     try:
         result = execute(args)
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 0
+        return result.get('suggested_exit_code', 0)
     except Exception as exc:
         category = str(exc) if isinstance(exc, StorageError) and re.fullmatch(r"[A-Z][A-Z0-9_]{0,100}", str(exc)) else "BACKUP_OPERATION_FAILED"
         print(json.dumps({"status": "BLOCKED", "reason": category}))

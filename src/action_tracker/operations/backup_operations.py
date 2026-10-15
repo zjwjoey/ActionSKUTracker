@@ -186,7 +186,8 @@ def _usage_snapshot(backend):
 
 def _staging_budget(operations_root, plan, policy):
     already = 0
-    for directory in (operations_root / "captures", operations_root / "sessions"):
+    for directory in (operations_root / "captures", operations_root / "sessions",
+                      operations_root / 'capture-workspaces', operations_root / 'capture-lifecycle'):
         if directory.is_dir():
             for existing in directory.rglob("*"):
                 if existing.is_file():
@@ -219,7 +220,7 @@ def storage_usage_report(operations_root: Path, *, backend, policy: OperationPol
     # A backend reports only its current private session. Include all prior
     # sessions and captures in the local budget, without double counting it.
     other = {}
-    for name in ("captures", "sessions"):
+    for name in ("captures", "sessions", 'capture-workspaces', 'capture-lifecycle'):
         directory = safe_path(Path(operations_root) / name, file=False)
         other[name] = 0
         if directory.is_dir():
@@ -233,6 +234,8 @@ def storage_usage_report(operations_root: Path, *, backend, policy: OperationPol
             "logical_backup_bytes": sum(r["logical_bytes"] for r in rows),
             "staged_bytes": {"status": "OBSERVED", "value": scratch},
             "capture_bytes": {"status": "OBSERVED", "value": other["captures"]},
+            "managed_workspace_bytes": {"status": "OBSERVED", "value": other['capture-workspaces']},
+            "capture_lifecycle_bytes": {"status": "OBSERVED", "value": other['capture-lifecycle']},
             "session_bytes": {"status": "OBSERVED", "value": other["sessions"]},
             "total_scratch_bytes": {"status": "OBSERVED", "value": total_scratch},
             "scratch_scope": "job stages, all captures and all sessions under operations_root; external restores excluded",
@@ -250,11 +253,13 @@ def _timeboxed(function):
     def call(*args, **kwargs):
         backend, policy = kwargs["backend"], kwargs["policy"]
         if policy.enabled and hasattr(backend, "set_deadline"):
-            backend.set_deadline(time.monotonic() + policy.max_runtime_seconds)
+            previous = getattr(backend, '_deadline', None)
+            deadline = time.monotonic() + policy.max_runtime_seconds
+            backend.set_deadline(min(previous, deadline) if previous is not None else deadline)
             try:
                 return function(*args, **kwargs)
             finally:
-                backend.set_deadline(None)
+                backend.set_deadline(previous)
         return function(*args, **kwargs)
     return call
 
@@ -267,7 +272,7 @@ def cloud_selection_scope(plan: dict, roots: dict[str, str], operations_root: Pa
             raise StorageError("ASSET_UNAVAILABLE")
         path = safe_path(Path(roots[root_id]), file=False)
         owned_capture = safe_path(operations_root, file=False) / "captures" / plan["run_id"]
-        if path == owned_capture:
+        if path == owned_capture or _managed_capture(operations_root, plan['run_id'], path):
             context = read_json(path / "capture-context.json")
             if (context.get("contract") != "CORE_CAPTURE_CONTEXT_V1" or
                     context.get("run_id") != plan["run_id"] or not context.get("projection_sources")):
@@ -303,6 +308,11 @@ def _authorize_cloud(grant, plan, policy, selection_scope, operation_configurati
               plan["logical_bytes"] <= grant["max_logical_bytes"] and grant.get("instruction_reference"))
     if not common or not (exact or scoped):
         raise StorageError("BUSINESS_CLOUD_UPLOAD_NOT_AUTHORIZED")
+
+
+def _managed_capture(operations_root, run_id, source):
+    from .capture_lifecycle import owns_capture
+    return owns_capture(operations_root, run_id, source)
 
 
 @_timeboxed
@@ -343,7 +353,8 @@ def run_backup(plan: dict, roots: dict[str, str], *, backend, operations_root: P
     writer_lock_directory = safe_path(writer_lock_directory, file=False)
     for source_root in roots.values():
         source = safe_path(Path(source_root), file=False)
-        owned_capture = source == operations_root / "captures" / plan["run_id"]
+        owned_capture = (source == operations_root / "captures" / plan["run_id"] or
+                         _managed_capture(operations_root, plan['run_id'], source))
         if owned_capture:
             capture = read_json(source / "capture-context.json")
             if capture.get("contract") != "CORE_CAPTURE_CONTEXT_V1" or capture.get("run_id") != plan["run_id"]:

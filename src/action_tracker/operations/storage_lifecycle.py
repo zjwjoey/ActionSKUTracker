@@ -284,7 +284,10 @@ class ScratchTask:
             raise StorageError('SCRATCH_OWNERSHIP_INVALID')
         obj.owner_task, obj.run_id, obj.token = owner_task, run_id, owner['token']
         obj.budget_bytes, obj.assets = owner['budget_bytes'], {}
-        for line in (obj.directory / 'lifecycle.jsonl').read_text(encoding='utf-8').splitlines():
+        journal = obj.directory / 'lifecycle.jsonl'
+        # A process may stop immediately after publishing owner.json, before
+        # registering its first file. Ownership still has to match exactly.
+        for line in (journal.read_text(encoding='utf-8').splitlines() if journal.exists() else []):
             record = json.loads(line)
             path = Path(record['path']).resolve()
             if (not path.is_relative_to(obj.directory) or record.get('owner_token') != obj.token or
