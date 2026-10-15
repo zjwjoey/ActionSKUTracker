@@ -171,5 +171,11 @@ tests/test_storage_lifecycle.py
 # CI_SAFE: Kopia config/error guards and mocked CLI/TLS, no cloud access.
 tests/test_kopia_connectivity.py
 
+# CI_SAFE: isolated synthetic backend/SQLite, no real Kopia binary or cloud.
+tests/test_backup_operations.py
+tests/test_backup_review_regressions.py
+tests/test_backup_cli.py
+tests/test_kopia_backend.py
+
 # CI_SAFE: P2.1 explicit evidence parsing and immutable fixtures.
 tests/test_cleanup_evidence.py

@@ -109,3 +109,7 @@ P1 经 PR #10 正常合并为 e69dfe1，未激活生产；生产 active.json 仍
 
 ## 2026-10-14 P2 合并与 P2.1 证据审核
 P2 已合并 PR #11 / 14b3747，仍未部署。P2.1 在 fix/storage-cleanup-evidence-p21 核查首批14份旧 restore-check、补充89/193份元数据引用概览；首批资格0，停止无新证据的深度扩大。证据位于 StorageAuditOutputs/ActionSKUTracker_P21_20261014，详见 STORAGE_CLEANUP_EVIDENCE_P21.md。
+
+## 2026-10-15 Storage V3 Backup V1 独立实现
+
+feature/storage-kopia-backup-v1 实现受控 Kopia 本地/S3 适配、P1 CORE 捕获、明确资产选择、不可变 Backup Set、任务日志/幂等 Resume、隔离恢复、预算/状态和默认关闭的调度入口。真实本地 Kopia 两版本恢复与既有 P1 备份的1,318,004,219字节CORE集合恢复通过；Integrity/FK/Commit/三件套Hash均一致。证据在 ActionStorageCandidates/StorageV3_20261015/acceptance-01。新OSS验收因STS过期且用户明确暂不更新而BLOCKED；此前PoC成功仍单独保留，不能计作本版本已完成新云端验收。COS未实测。原生产/历史资产未修改，未启用调度或部署。最终测试及远端CI以外部StorageV3验收报告的确切HEAD为准。
