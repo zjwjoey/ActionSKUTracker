@@ -321,6 +321,15 @@ def test_partial_batch_failure_retains_first_completed_receipt(tmp_path):
     assert error.value.operation_state['status'] == 'PARTIAL'
     assert len(error.value.operation_state['completed_items']) == 1
     assert not Path(first['path']).exists() and Path(second['path']).exists()
+    first_id = plan['items'][0]['asset_id']
+    with pytest.raises(StorageError, match='TRANSITION_SCOPE_INVALID'):
+        e.transition_plan(plan, action='ROLLBACK', asset_ids=['unknown'])
+    rollback = e.transition_plan(plan, action='ROLLBACK', asset_ids=[first_id])
+    assert len(rollback['items']) == 1 and rollback['logical_bytes'] == first['size_bytes']
+    assert rollback['previous_plan_sha256'] == plan['record_sha256']
+    run(rollback)
+    assert sha256_file(first['path']) == first['sha256']
+    assert Path(second['path']).read_text() == 'changed only after batch planning'
 
 
 def test_cli_existing_output_blocks_before_any_mutation(tmp_path, capsys):

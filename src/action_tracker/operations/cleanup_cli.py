@@ -35,6 +35,7 @@ def main(argv=None):
         transition.add_argument('--out', required=True)
         transition.add_argument('--references')
         transition.add_argument('--observation')
+        transition.add_argument('--asset-id', action='append', dest='asset_ids')
     execute = commands.add_parser('execute')
     for name in ('plan', 'approval', 'approval-sha256', 'out'):
         execute.add_argument('--' + name, required=True)
@@ -73,7 +74,8 @@ def main(argv=None):
             result = engine.transition_plan(engine.read_json(args.previous_plan),
                 action='ROLLBACK' if args.command == 'rollback-preview' else 'PURGE',
                 observation=engine.read_json(args.observation) if args.observation else None,
-                references=engine.read_json(args.references) if args.references else None)
+                references=engine.read_json(args.references) if args.references else None,
+                asset_ids=args.asset_ids)
         else:
             result = engine.execute(engine.read_json(args.plan), engine.read_json(args.approval),
                 approval_sha256=args.approval_sha256, enabled=args.enable_execution)

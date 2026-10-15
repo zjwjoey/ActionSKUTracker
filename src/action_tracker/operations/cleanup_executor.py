@@ -377,12 +377,18 @@ def _receipt_path(plan, item, suffix):
     return _root(plan['context']) / 'receipts' / (key + '.' + suffix + '.json')
 
 
-def transition_plan(previous, *, action, observation=None, references=None):
+def transition_plan(previous, *, action, observation=None, references=None, asset_ids=None):
     verify_seal(previous)
     if previous['action'] != 'QUARANTINE' or action not in {'ROLLBACK', 'PURGE'}:
         raise StorageError('INVALID_STATE_TRANSITION')
+    selected_items = previous['items']
+    if asset_ids is not None:
+        if (not isinstance(asset_ids, list) or not asset_ids or len(set(asset_ids)) != len(asset_ids) or
+                not set(asset_ids) <= {i['asset_id'] for i in previous['items']}):
+            raise StorageError('TRANSITION_SCOPE_INVALID')
+        selected_items = [i for i in previous['items'] if i['asset_id'] in asset_ids]
     receipts = []
-    for item in previous['items']:
+    for item in selected_items:
         receipt = verify_seal(read_json(_receipt_path(previous, item, 'done')))
         if receipt.get('state') != 'QUARANTINED' or receipt.get('plan_sha256') != previous['record_sha256']:
             raise StorageError('QUARANTINE_RECEIPT_REQUIRED')
@@ -401,11 +407,11 @@ def transition_plan(previous, *, action, observation=None, references=None):
             raise StorageError('INVALID_OBSERVATION_TIMESTAMP')
         observation = {**observation, 'evidence_files': [
             {**identity(path), 'sha256': sha256_file(path)} for path in observation['evidence_paths']]}
-    items = [{**i, 'references': references or i['references']} for i in previous['items']]
+    items = [{**i, 'references': references or i['references']} for i in selected_items]
     return seal({**{k: v for k, v in previous.items() if k not in {'record_sha256', 'plan_id', 'created_at', 'action'}},
         'plan_id': uuid.uuid4().hex, 'created_at': now().isoformat(), 'action': action,
         'previous_plan_sha256': previous['record_sha256'], 'quarantine_receipts': receipts,
-        'observation': observation, 'items': items})
+        'observation': observation, 'items': items, 'logical_bytes': sum(i['size_bytes'] for i in items)})
 
 
 def approval_request(plan):

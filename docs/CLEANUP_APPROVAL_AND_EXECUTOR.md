@@ -89,6 +89,10 @@ Batch exceptions retain explicit PARTIAL results with completed receipt paths an
 pending intent paths. CLI checks the output destination before side effects; if a
 late report write fails it returns the actual result and exit 3, not a claim that
 the operation never happened.
+After a partial batch, `rollback-preview --asset-id ID` (repeat for each completed
+asset) prepares an independently approved rollback only for selected completed
+quarantines. The original complete plan hash remains bound; unprocessed or unknown
+items cannot enter the rollback. The same explicit narrowing is supported by purge.
 
 Quarantine requires its own exact approval and returns QUARANTINED. The default
 minimum observation is 86,400 seconds. The prior quarantine receipt plus externally
