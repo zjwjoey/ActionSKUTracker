@@ -120,3 +120,13 @@ feature/storage-cleanup-lifecycle-v1 在 P2.1 上新增不可变逐文件计划�
 ## 2026-10-15 Storage V3 合并与启用前验收
 
 Backup PR #14 已正常合并为 5472d66，Cleanup PR #15 更新主线并通过 Windows/Ubuntu CI 后正常合并为 627f7a8。生产仍为 b09bcea 加原有本地改动，未切换部署或启用任务。独立验收发现旧部署预检在 detached HEAD 下仅凭相同 SHA 可绕过命名分支检查；本分支修复为必须明确提供匹配的审计 ref，并增加拒绝空分支和错误 ref 的回归。新 OSS 验收仍按用户决定 BLOCKED，真实业务上传和历史处置未获授权。稳定门禁见 STORAGE_V3_PRE_ENABLE_GATES.md；运行证据保留于独立 StorageV3_PreEnable_20261015 审计目录。
+# Storage V3.1 independent operations path
+
+An optional, default-disabled managed Capture path reuses P1/P2/V3 to register
+new workspaces, verify independent restores, apply scoped preapproved new-asset
+disposition and expose read-only machine-consumable health. Legacy files remain
+under the unchanged P2.1/Cleanup review. Production daily-run, task registration,
+real cloud uploads and password custody are separate gates. Actual commit/CI,
+three-process-run and four-asset findings are retained in the independent
+StorageAuditOutputs/ActionSKUTracker_StorageV31_20261015 delivery; do not infer
+production activation from code presence. See STORAGE_V31_OPERATIONS.md.
