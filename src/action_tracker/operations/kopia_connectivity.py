@@ -23,6 +23,14 @@ STAGES = ("ENVIRONMENT_READY", "NETWORK_OK", "AUTH_OK", "BUCKET_ACCESS_OK",
           "REPOSITORY_CONNECTED", "ROUNDTRIP_PASS")
 
 
+def subprocess_environment(env: Mapping | None = None) -> dict[str, str]:
+    """Explicit OS-only allowlist: unrelated application secrets never propagate."""
+    allowed = {"PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "LOCALAPPDATA",
+               "APPDATA", "USERPROFILE", "HOME", "LANG", "LC_ALL", "COMSPEC", "PATHEXT"}
+    source = os.environ if env is None else env
+    return {k: v for k, v in source.items() if k.upper() in allowed}
+
+
 @dataclass(frozen=True)
 class ConnectionConfig:
     enabled: bool = False
@@ -115,10 +123,11 @@ def cli_environment(cli_path: str = "kopia") -> dict:
     try:
         base = [executable, "--disable-file-logging", "--disable-content-log"]
         version = subprocess.run(base + ["--version"], capture_output=True,
-                                 text=True, timeout=15, stdin=subprocess.DEVNULL)
+                                 text=True, timeout=15, stdin=subprocess.DEVNULL,
+                                 env=subprocess_environment())
         help_result = subprocess.run(base + ["repository", "connect", "s3", "--help"],
                                      capture_output=True, text=True, timeout=15,
-                                     stdin=subprocess.DEVNULL)
+                                     stdin=subprocess.DEVNULL, env=subprocess_environment())
         match = re.search(r"\b\d+\.\d+\.\d+\b", version.stdout)
         if version.returncode or help_result.returncode or not match:
             return {"status": "BLOCKED", "reason": "KOPIA_CLI_UNUSABLE"}
@@ -152,7 +161,7 @@ def error_reason(diagnostics: str) -> str:
         (("signaturedoesnotmatch", "invalidaccesskeyid", "invalidtoken", "expiredtoken"), "AUTH_REJECTED"),
         (("accessdenied", "forbidden"), "ACCESS_DENIED"),
         (("nosuchbucket",), "BUCKET_NOT_FOUND"),
-        (("repository not found", "unable to find repository"), "REPOSITORY_NOT_FOUND"),
+        (("repository not found", "unable to find repository", "repository is not initialized"), "REPOSITORY_NOT_FOUND"),
         (("password", "decrypt"), "REPOSITORY_PASSWORD_REJECTED"),
         (("x509", "certificate"), "TLS_CERTIFICATE_INVALID"),
         (("timeout", "deadline"), "CONNECTION_TIMEOUT"),
@@ -167,10 +176,10 @@ def _private_workspace(path: Path):
     if os.name == "nt":
         # New directory only. Remove inherited access before creating config/logs.
         identity = subprocess.run(["whoami"], capture_output=True, text=True,
-                                  timeout=10, check=True).stdout.strip()
+                                  timeout=10, check=True, env=subprocess_environment()).stdout.strip()
         subprocess.run(["icacls", str(path), "/inheritance:r", "/grant:r",
                         f"{identity}:(OI)(CI)F", "*S-1-5-18:(OI)(CI)F"],
-                       capture_output=True, timeout=10, check=True)
+                       capture_output=True, timeout=10, check=True, env=subprocess_environment())
     else:
         path.chmod(0o700)
 
@@ -209,8 +218,7 @@ def connection_test(config: ConnectionConfig, *, workspace: Path | None = None,
                 "--no-persist-credentials", "--disable-repository-log",
                 "--disable-file-logging", "--disable-content-log",
                 "--log-dir", str(Path(workspace) / "logs")]
-        child_env = {k: v for k, v in os.environ.items()
-                     if not k.startswith(("AWS_", "KOPIA_", "ACTION_KOPIA_"))}
+        child_env = subprocess_environment()
         child_env.update(AWS_ACCESS_KEY_ID=credentials.access_key,
                          AWS_SECRET_ACCESS_KEY=credentials.secret_key,
                          AWS_SESSION_TOKEN=credentials.session_token,
