@@ -83,3 +83,25 @@ def test_warning_health_does_not_create_a_failed_invocation(configuration, tmp_p
     assert main(['--config', str(path), 'health']) == 1
     from pathlib import Path
     assert not Path(raw['operations_root']).exists()
+
+
+def test_mixed_root_is_rejected_before_capacity_scan(configuration, monkeypatch):
+    from pathlib import Path
+    from action_tracker.operations import backup_health
+    raw, _ = configuration
+    root = Path(raw['operations_root']); root.mkdir()
+    (root / 'unowned-data').mkdir()
+    def forbidden(*args): pytest.fail('mixed root was recursively scanned')
+    monkeypatch.setattr(backup_health, '_usage', forbidden)
+    with pytest.raises(StorageError, match='OPERATIONS_ROOT_UNOWNED_CONTENT'):
+        backup_health.health(raw)
+
+
+def test_filesystem_root_is_never_scanned(configuration, tmp_path, monkeypatch):
+    from action_tracker.operations import backup_health
+    raw, _ = configuration
+    raw['operations_root'] = tmp_path.anchor
+    def forbidden(*args): pytest.fail('filesystem root was recursively scanned')
+    monkeypatch.setattr(backup_health, '_usage', forbidden)
+    with pytest.raises(StorageError):
+        backup_health.health(raw)

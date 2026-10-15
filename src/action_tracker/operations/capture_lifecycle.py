@@ -69,9 +69,26 @@ def _protect_root(raw, root):
     fixed = ['F:/ActionSKUTracker', 'F:/ActionSKUTracker_production'] if os.name == 'nt' else []
     context = {'protected_roots': [*raw['protected_roots'], *fixed]}
     cleanup._protect(root, context)
-    for protected in raw['protected_roots']:
+    for protected in context['protected_roots']:
         if safe_path(Path(protected), file=False).is_relative_to(root):
             raise StorageError('CAPTURE_PROTECTED_ROOT_OVERLAP')
+    return root
+
+
+def operations_root(raw):
+    """Reject broad/mixed roots before recursive capacity accounting."""
+    root = _protect_root(raw, Path(raw['operations_root']))
+    if root == Path(root.anchor):
+        raise StorageError('CAPTURE_OPERATIONS_ROOT_TOO_BROAD')
+    folders = {'jobs', 'sessions', 'captures', 'capture-admission', 'capture-workspaces',
+        'capture-lifecycle', 'capture-reconciliations', 'invocations', 'health', 'reports', 'grants'}
+    if root.exists():
+        for entry in root.iterdir():
+            checked = safe_path(entry, file=entry.is_file())
+            if entry.name == '.storage_candidate.json' and checked.is_file():
+                require_candidate(root)
+            elif entry.name not in folders or not checked.is_dir():
+                raise StorageError('CAPTURE_OPERATIONS_ROOT_UNOWNED_CONTENT')
     return root
 
 
@@ -319,7 +336,7 @@ def _cycle(raw, backend, run_id, *, grant=None, retire=False):
     _runtime(raw, backend)
     if Path(raw['operations_root'], 'jobs', run_id, 'cancel.json').exists():
         raise StorageError('BACKUP_CANCELLED')
-    operations = _protect_root(raw, Path(raw['operations_root']))
+    operations = operations_root(raw)
     with storage_lock(operations / 'capture-admission', run_id=run_id):
         prior = _directory(operations, run_id)
         if (prior / 'manifest.json').exists() and _state(prior) == 'RETIRED':

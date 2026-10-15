@@ -53,6 +53,11 @@ zero unresolved dynamic references and zero excluded required sources. Unknown
 coverage is never converted to zero. The configuration digest binds existing
 operation limits, optional operations policy and backend settings as well as
 source paths and protection roots; changing them requires a new review.
+Capacity accounting rejects a filesystem root, a parent/child overlap with
+protected roots, or mixed/unowned top-level contents before recursive scanning.
+Use a dedicated operations root with the documented runtime namespaces; put
+health outputs beneath `health`/`reports` or outside that root, not beside an
+unrelated historical dataset. This gate never silently adopts mixed old data.
 The grant's unknown fields are rejected, including accidental credential fields.
 Grants contain no passwords or cloud keys.
 

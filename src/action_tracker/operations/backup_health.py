@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .backup_sets import read_json, validate_seal
 from .backup_operations import job_events
-from .capture_lifecycle import _usage, manifest, _state, retired_intact
+from .capture_lifecycle import _usage, manifest, _state, retired_intact, operations_root
 from .storage_foundation import StorageError
 
 
@@ -32,7 +32,7 @@ def validate_policy(value, raw):
 def health(raw):
     policy = raw.get('operations_policy') or {}
     validate_policy(raw.get('operations_policy'), raw)
-    operations = Path(raw['operations_root'])
+    operations = operations_root(raw)
     failures, successes, restored, captures, blockers = [], [], [], [], []
     for path in (operations / 'invocations').glob('*.json'):
         invocation = validate_seal(read_json(path), 'BACKUP_INVOCATION_V1')

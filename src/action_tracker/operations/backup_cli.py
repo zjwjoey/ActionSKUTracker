@@ -385,9 +385,10 @@ def _record_invocation(args, result, code):
         return
     if not cfg.enabled or not policy.enabled:
         return
-    from .capture_lifecycle import _protect_root
+    from .capture_lifecycle import _protect_root, operations_root
     from .backup_sets import now
-    root = _protect_root(raw, Path(raw['operations_root']))
+    root = (operations_root(raw) if raw.get('capture_lifecycle', {}).get('enabled') else
+            _protect_root(raw, Path(raw['operations_root'])))
     record = seal({'contract': 'BACKUP_INVOCATION_V1', 'created_at': now(),
         'action': args.action, 'status': result.get('status'), 'exit_code': code,
         'reason': result.get('reason'), 'run_id': result.get('run_id') or getattr(args, 'run_id', None) or getattr(args, 'backup_set_id', None)})
