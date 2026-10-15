@@ -452,6 +452,9 @@ def restore_backup(receipt: dict, *, backend, target: Path, policy: OperationPol
         if report_path.is_relative_to(safe_path(protected, file=False)):
             raise StorageError("RESTORE_REPORT_PROTECTED_ROOT_OVERLAP")
     preview = restore_preview(receipt, backend=backend, target=target, policy=policy, protected_roots=protected_roots)
+    target = safe_path(Path(preview["target"]), file=False)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    safe_path(target.parent, file=False)
     start = time.monotonic()
     result = backend.restore_snapshot(receipt["snapshot_id"], target)
     checked = verify_restored(receipt["plan"], target)

@@ -56,6 +56,10 @@ class Backend:
         return {"status": "PASS"}
 
     def restore_snapshot(self, snapshot_id, target):
+        # Match the real adapter's exclusive-target contract: operations must
+        # prepare the parent, while the backend alone creates the target.
+        assert target.parent.is_dir()
+        assert not target.exists()
         snapshot = next(s for s in self.snapshots if s["snapshot_id"] == snapshot_id)
         shutil.copytree(snapshot["saved"], target)
         return {"status": "PASS", "metrics": {"downloaded_bytes": {"status": "UNKNOWN"}}}
