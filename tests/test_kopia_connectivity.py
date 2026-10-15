@@ -105,6 +105,24 @@ def test_readonly_connection_isolated_secrets_not_arguments(tmp_path, monkeypatc
     assert "synthetic-secret" not in json.dumps(result)
 
 
+def test_probe_and_acl_helper_environment_excludes_unrelated_secrets(monkeypatch):
+    monkeypatch.setenv("UNRELATED_PROVIDER_SECRET", "never-pass-this")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "never-pass-this-either")
+    allowed = k.subprocess_environment()
+    assert "UNRELATED_PROVIDER_SECRET" not in allowed
+    assert "AWS_SECRET_ACCESS_KEY" not in allowed
+    monkeypatch.setattr(k.shutil, "which", lambda _: "kopia")
+    observed = []
+    def run(args, **kwargs):
+        observed.append(kwargs["env"])
+        value = "0.23.1" if "--version" in args else "--endpoint --bucket --region --prefix --readonly"
+        return subprocess.CompletedProcess(args, 0, value, "")
+    monkeypatch.setattr(k.subprocess, "run", run)
+    assert k.cli_environment()["status"] == "ENVIRONMENT_READY"
+    assert len(observed) == 2
+    assert all("never-pass" not in str(value) for value in observed)
+
+
 def test_failed_cloud_connection_cannot_claim_auth_or_bucket(tmp_path, monkeypatch):
     monkeypatch.setattr(k, "cli_environment", lambda *_: {"status": "ENVIRONMENT_READY"})
     monkeypatch.setattr(k, "tls_probe", lambda *_: {"status": "NETWORK_OK"})
