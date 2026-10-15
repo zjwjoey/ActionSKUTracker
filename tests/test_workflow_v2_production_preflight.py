@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 
 import yaml
+import pytest
 
 from action_tracker.database.connection import connect
 from action_tracker.database.schema import migrate_v2
@@ -32,7 +33,9 @@ def _args(tmp_path, config, *, branch=BRANCH, head=None):
     return argparse.Namespace(
         source_root=source, data_root=tmp_path, config=config,
         expected_branch=branch, expected_head=head or __import__("subprocess").check_output(["git", "rev-parse", "HEAD"], cwd=source, text=True).strip(),
-        expected_ref=None,
+        # A valid detached checkout explicitly audits its immutable source ref.
+        # Negative branch/head cases intentionally retain no such override.
+        expected_ref="HEAD" if not BRANCH and branch == BRANCH and head is None else None,
     )
 
 
@@ -60,6 +63,38 @@ def test_preflight_wrong_branch_fails(tmp_path):
     _valid_environment(tmp_path)
     report = run(_args(tmp_path, _profile(tmp_path), branch="wrong"))
     assert report["status"] == "NOT_READY"
+
+
+@pytest.mark.parametrize(
+    "audited_ref,ref_matches,expected_branch,expected_status",
+    [(None, True, "reviewed-production-branch", "NOT_READY"),
+     (None, True, "", "NOT_READY"),
+     ("HEAD", True, "reviewed-production-branch", "PASS"),
+     ("HEAD", False, "reviewed-production-branch", "NOT_READY")],
+)
+def test_detached_preflight_requires_explicit_matching_audited_ref(
+    tmp_path, monkeypatch, audited_ref, ref_matches, expected_branch, expected_status,
+):
+    from scripts import workflow_v2_production_preflight as preflight
+
+    _valid_environment(tmp_path)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
+    args = _args(tmp_path, _profile(tmp_path), branch=expected_branch)
+    args.expected_ref = audited_ref
+    original_git = preflight._git
+
+    def detached_git(root, *argv):
+        if argv == ("branch", "--show-current"):
+            return ""
+        if argv == ("rev-parse", "HEAD^{commit}") and not ref_matches:
+            return "0" * 40
+        return original_git(root, *argv)
+
+    monkeypatch.setattr(preflight, "_git", detached_git)
+    report = preflight.run(args)
+    assert report["status"] == expected_status
+    checks = {check["name"]: check for check in report["checks"]}
+    assert checks["source_branch"]["status"] == ("PASS" if expected_status == "PASS" else "FAIL")
 
 
 def test_preflight_wrong_head_fails(tmp_path):
