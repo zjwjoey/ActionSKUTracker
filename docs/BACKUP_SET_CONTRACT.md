@@ -56,6 +56,8 @@ absent target. It then verifies every restored path, size and SHA-256, full
 SQLite integrity/FK, schema/commit, and the three projection hashes against the
 database's export_sync. It emits an explicit portable root mapping and never
 switches production. Missing assets are `ASSET_UNAVAILABLE`, never SOURCE_EMPTY.
+The restore report must be new and outside the restored root; conflicts fail
+before downloading so report publication cannot contaminate the restored set.
 
 Owned stage release requires both the matching restore receipt and a currently
 available, revalidated independent restored copy. It reverifies the snapshot,

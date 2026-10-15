@@ -189,6 +189,22 @@ def test_budget_failure_is_before_any_snapshot(setup):
     assert backend.writes == 0
 
 
+@pytest.mark.parametrize("existing", [False, True])
+def test_restore_report_conflict_blocks_before_download(setup, tmp_path, existing):
+    _, roots, backend, _, plan, kwargs = setup
+    receipt = op.run_backup(plan, roots, **kwargs)
+    target = tmp_path / "new-parent" / "restored"
+    report = tmp_path / "old-report.json" if existing else target / "report.json"
+    if existing:
+        report.write_text("prior evidence")
+    with pytest.raises(StorageError, match="RESTORE_REPORT_.*"):
+        op.restore_backup(receipt, backend=backend, target=target, policy=kwargs["policy"],
+                          protected_roots=[], report_path=report)
+    assert not target.parent.exists()
+    if existing:
+        assert report.read_text() == "prior evidence"
+
+
 @pytest.mark.parametrize("path", ["../a", "C:/a", "a\\b", "/a", "a:stream", "a/CON.txt", "a./x"])
 def test_relative_paths_reject_windows_and_posix_escapes(path):
     with pytest.raises(StorageError): bs.relative_path(path)
