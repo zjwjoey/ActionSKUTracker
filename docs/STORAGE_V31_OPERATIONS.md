@@ -130,6 +130,14 @@ new independent snapshot restore, not a fabricated rollback.
 Run the audited Python from the audited checkout's `src` directory; no
 interactive PYTHONPATH is necessary. Dedicated config/protection roots and
 credentials must be provisioned for that exact account. No credentials in argv.
+For local repositories only, optional `local_password_dpapi_path` reads the
+existing current-user DPAPI binary format. The absolute regular single-link
+file must be owned by the current SID, with allow ACEs only for that SID and
+SYSTEM. The configured private file takes precedence over an interactive
+password environment variable. It is decrypted in process, never printed, and
+does not provide independent escrow. Cloud providers reject this local source.
+Task-account DPAPI/profile availability still requires actual account setup;
+the generated-secret test is not a production service-account acceptance.
 
 ```text
 python -m action_tracker.operations.backup_cli --config CONFIG health --output NEW_STATUS_FILE

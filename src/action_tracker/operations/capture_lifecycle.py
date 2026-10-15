@@ -54,6 +54,7 @@ def _scope(raw, backend):
                    'backend_configuration': raw.get('backend', {}),
                    'operation_policy': asdict(op.OperationPolicy(**raw.get('policy', {}))),
                    'operations_policy': raw.get('operations_policy'),
+                   'local_password_dpapi_path': raw.get('local_password_dpapi_path'),
                    'operations_root': str(Path(raw['operations_root']).resolve())})
 
 

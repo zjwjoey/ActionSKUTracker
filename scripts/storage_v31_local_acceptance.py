@@ -82,6 +82,7 @@ def main():
     backend.config = cfg
     raw['backend'] = asdict(cfg)
     raw['capture']['code_version'] = 'STORAGE_V31_SYNTHETIC_LOCAL_ACCEPTANCE'
+    raw['local_password_dpapi_path'] = str(root / 'private-test-password/test-password.dpapi')
     backend.disconnect()
     write(root / 'operations-config.json', raw)
     # No real password is involved. Preserve only a DPAPI-encrypted test secret;
@@ -144,11 +145,21 @@ def main():
     # This proves process/environment portability, not another Windows account.
     status = health(raw)
     assert status['unfinished_capture_count'] == 0
+    clean_env = dict(env)
+    clean_env.pop('ACTION_KOPIA_LOCAL_PASSWORD', None)
+    clean_env.pop('PYTHONPATH', None)
+    private_cli = subprocess.run([sys.executable, '-m', 'action_tracker.operations.backup_cli',
+        '--config', str(root / 'operations-config.json'), 'capture-cycle', '--run-id', 'cycle-3',
+        '--grant', str(root / 'SYNTHETIC_ONLY_GRANT.json'), '--retire'],
+        cwd=REPO / 'src', env=clean_env, capture_output=True, encoding='utf-8', timeout=120)
+    if private_cli.returncode or json.loads(private_cli.stdout).get('reused') is not True:
+        raise RuntimeError('NONINTERACTIVE_PRIVATE_DPAPI_CLI_FAILED: ' + private_cli.stdout[-1000:])
     write(root / 'THREE_RUN_ACCEPTANCE.json', {'status': 'PASS', 'synthetic_only': True,
         'code_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip(),
         'repository_id': cfg.expected_repository_id, 'results': results,
         'process_interrupt_and_dead_lock_reconciliation': 'PASS_CYCLE_2',
         'separate_process_password_supply_without_dpapi': 'PASS_GENERATED_TEST_PASSWORD_ONLY',
+        'noninteractive_private_dpapi_cli_without_password_environment': 'PASS_GENERATED_TEST_PASSWORD_ONLY',
         'cross_account_or_cross_device': 'NOT_TESTED', 'real_repository_password_offline_custody': 'PENDING',
         'production_mutations': 0, 'historical_mutations': 0, 'cloud_calls': 0,
         'health': status, 'all_final_files': inventory(root)})

@@ -176,6 +176,7 @@ tests/test_backup_operations.py
 tests/test_backup_review_regressions.py
 tests/test_capture_lifecycle.py
 tests/test_backup_health.py
+tests/test_kopia_private_credentials.py
 tests/test_backup_cli.py
 tests/test_kopia_backend.py
 

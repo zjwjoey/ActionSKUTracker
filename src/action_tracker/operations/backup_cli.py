@@ -27,7 +27,8 @@ def load_config(path):
     raw = read_json(path)
     allowed = {"contract", "backend", "policy", "operations_root", "writer_lock_directory", "roots",
                "protected_roots", "schedule", "request_path", "capture", "config_version", "activation_receipt_path",
-               "cloud_authorization_path", 'capture_lifecycle', 'capture_disposition_grant_path', 'operations_policy'}
+               "cloud_authorization_path", 'capture_lifecycle', 'capture_disposition_grant_path', 'operations_policy',
+               'local_password_dpapi_path'}
     if set(raw) - allowed or raw.get("contract") != "BACKUP_OPERATIONS_CONFIG_V1":
         raise StorageError("BACKUP_CONFIG_INVALID_OR_UNKNOWN_FIELDS")
     # Do not allow passwords, access keys or arbitrary environment values here.
@@ -35,6 +36,9 @@ def load_config(path):
     if set(raw.get("backend", {})) - {f.name for f in fields(BackendConfig)}:
         raise StorageError("BACKEND_CONFIG_UNKNOWN_FIELDS")
     config = BackendConfig(**raw.get("backend", {}))
+    if raw.get('local_password_dpapi_path') and (
+            config.provider not in {'filesystem', 'local'} or not Path(raw['local_password_dpapi_path']).is_absolute()):
+        raise StorageError('KOPIA_DPAPI_LOCAL_ABSOLUTE_PATH_REQUIRED')
     policy = OperationPolicy(**raw.get("policy", {}))
     schedule = SchedulePolicy(**raw.get("schedule", {}))
     from .capture_lifecycle import CaptureDispositionPolicy
@@ -250,7 +254,11 @@ def execute(args):
     from .kopia_backend import BackendCredentials, KopiaBackend
     workspace = safe_path(operations / "sessions" / uuid.uuid4().hex, file=False)
     workspace.parent.mkdir(parents=True, exist_ok=True)
-    backend = KopiaBackend(cfg, BackendCredentials.from_environment(cfg.provider), workspace)
+    credentials = BackendCredentials.from_environment(cfg.provider)
+    if raw.get('local_password_dpapi_path'):
+        from .kopia_private_credentials import local_password
+        credentials = replace(credentials, password=local_password(Path(raw['local_password_dpapi_path']), provider=cfg.provider))
+    backend = KopiaBackend(cfg, credentials, workspace)
     if args.action == "status":
         return {"environment": backend.probe(), "enabled": policy.enabled,
                 "schedule_enabled": schedule.enabled, "jobs": history(operations)}
