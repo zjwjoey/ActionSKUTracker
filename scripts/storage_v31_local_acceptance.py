@@ -154,6 +154,16 @@ def main():
         cwd=REPO / 'src', env=clean_env, capture_output=True, encoding='utf-8', timeout=120)
     if private_cli.returncode or json.loads(private_cli.stdout).get('reused') is not True:
         raise RuntimeError('NONINTERACTIVE_PRIVATE_DPAPI_CLI_FAILED: ' + private_cli.stdout[-1000:])
+    status = health(raw)
+    reader = KopiaBackend(cfg, BackendCredentials(password=password), root / 'sessions' / 'final-readonly-check')
+    try:
+        reader.connect(readonly=True)
+        snapshots = reader.list_snapshots()
+        assert len(snapshots) == 3
+        assert {s['snapshot_id'] for s in snapshots} == {r['result']['snapshot_id'] for r in results}
+        final_usage = reader.storage_usage()
+    finally:
+        reader.disconnect()
     write(root / 'THREE_RUN_ACCEPTANCE.json', {'status': 'PASS', 'synthetic_only': True,
         'code_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip(),
         'repository_id': cfg.expected_repository_id, 'results': results,
@@ -162,7 +172,8 @@ def main():
         'noninteractive_private_dpapi_cli_without_password_environment': 'PASS_GENERATED_TEST_PASSWORD_ONLY',
         'cross_account_or_cross_device': 'NOT_TESTED', 'real_repository_password_offline_custody': 'PENDING',
         'production_mutations': 0, 'historical_mutations': 0, 'cloud_calls': 0,
-        'health': status, 'all_final_files': inventory(root)})
+        'health': status, 'final_kopia_usage': final_usage,
+        'snapshot_count_after_repeated_runs': len(snapshots), 'all_final_files': inventory(root)})
     print(json.dumps({'status': 'PASS', 'root': str(root), 'rounds': 3}))
 
 

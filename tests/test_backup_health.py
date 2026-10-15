@@ -41,3 +41,45 @@ def test_disabled_capture_cli_never_loads_credentials(configuration, monkeypatch
     def forbidden(*args, **kwargs): pytest.fail('disabled command accessed credentials')
     monkeypatch.setattr(kopia_backend.BackendCredentials, 'from_environment', forbidden)
     assert main(['--config', str(path), 'capture-cycle', '--run-id', 'first']) == 0
+
+
+def test_pre_job_credentials_failure_is_persisted_for_health(configuration, tmp_path, monkeypatch, capsys):
+    import json
+    from action_tracker.operations import backup_cli as cli
+    raw, path = configuration
+    raw.update(policy={'enabled': True}, backend={'enabled': True, 'provider': 'filesystem',
+        'repository_path': str(tmp_path / 'repo'), 'expected_repository_id': 'a'*64})
+    path.write_text(json.dumps(raw), encoding='utf-8')
+    def fail(_): raise StorageError('KOPIA_DPAPI_CURRENT_USER_UNAVAILABLE')
+    monkeypatch.setattr(cli, 'execute', fail)
+    assert cli.main(['--config', str(path), 'capture-cycle', '--run-id', 'before-job']) == 2
+    report = health(raw)
+    assert report['latest_failed_job']['reason'] == 'KOPIA_DPAPI_CURRENT_USER_UNAVAILABLE'
+    assert report['latest_failed_job']['run_id'] == 'before-job'
+    assert report['suggested_exit_code'] == 2
+
+
+def test_status_write_failure_preserves_success_result_and_nonzero_exit(configuration, monkeypatch, capsys):
+    import json
+    from action_tracker.operations import backup_cli as cli
+    _, path = configuration
+    monkeypatch.setattr(cli, 'execute', lambda _: {'status': 'SNAPSHOT_VERIFIED'})
+    def fail(*args): raise OSError('never-log-arbitrary-secret')
+    monkeypatch.setattr(cli, '_record_invocation', fail)
+    assert cli.main(['--config', str(path), 'capture-cycle', '--run-id', 'test']) == 2
+    value = json.loads(capsys.readouterr().out)
+    assert value['result']['status'] == 'SNAPSHOT_VERIFIED'
+    assert value['reason'] == 'BACKUP_STATUS_FILE_WRITE_FAILED'
+    assert 'never-log' not in json.dumps(value)
+
+
+def test_warning_health_does_not_create_a_failed_invocation(configuration, tmp_path, capsys):
+    import json
+    raw, path = configuration
+    raw.update(policy={'enabled': True}, backend={'enabled': True, 'provider': 'filesystem',
+        'repository_path': str(tmp_path / 'repo'), 'expected_repository_id': 'a'*64})
+    (tmp_path / 'repo').mkdir()
+    path.write_text(json.dumps(raw), encoding='utf-8')
+    assert main(['--config', str(path), 'health']) == 1
+    from pathlib import Path
+    assert not Path(raw['operations_root']).exists()

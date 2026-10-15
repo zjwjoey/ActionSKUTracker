@@ -153,6 +153,13 @@ timestamped output is suitable for an external monitor: exit 0 healthy/disabled,
 independent restore, all unfinished captures, pending bytes, observed local
 storage, capacity/expiry warnings and next-run blockers. Repository live
 connectivity is explicitly NOT_PROBED; no actual notification is claimed.
+Mutating CLI invocations also publish sealed `BACKUP_INVOCATION_V1` files under
+the operations root. Thus authentication/credential failures before a Backup
+job exists still appear as the latest failed invocation in health, with an
+exit code and sanitized category. Disabled/read-only commands create no such
+files. Invalid configuration cannot authorize an arbitrary log root and falls
+back to stdout/exit code; inability to persist an otherwise completed command's
+status returns exit 2 with the successful result preserved as degraded evidence.
 
 `BACKUP_OPERATIONS_POLICY_V1` is an optional strict metadata policy with
 `approved=false` by default: CORE/current success-age expectations, archive

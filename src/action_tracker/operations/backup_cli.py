@@ -350,12 +350,48 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         result = execute(args)
+        code = result.get('suggested_exit_code', 0)
+        try:
+            _record_invocation(args, result, code)
+        except Exception:
+            result = {'status': 'RESULT_WITH_STATUS_WRITE_FAILURE', 'result': result,
+                      'reason': 'BACKUP_STATUS_FILE_WRITE_FAILED'}
+            code = 2
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        return result.get('suggested_exit_code', 0)
+        return code
     except Exception as exc:
         category = str(exc) if isinstance(exc, StorageError) and re.fullmatch(r"[A-Z][A-Z0-9_]{0,100}", str(exc)) else "BACKUP_OPERATION_FAILED"
-        print(json.dumps({"status": "BLOCKED", "reason": category}))
+        result = {'status': 'BLOCKED', 'reason': category}
+        try:
+            _record_invocation(args, result, 2)
+        except Exception:
+            result['status_file_error'] = 'BACKUP_STATUS_FILE_WRITE_FAILED'
+        print(json.dumps(result))
         return 2
+
+
+def _record_invocation(args, result, code):
+    """Persist failures before a job exists, without logging credentials/argv.
+
+    Invalid configuration cannot authorize a log root; stdout/exit code remain
+    the fallback. Health and other read-only commands do not mutate runtime.
+    """
+    if args.action in {'health', 'status', 'history', 'usage', 'plan', 'verify',
+                       'restore-preview', 'retention-preview', 'schedule-export'} or result.get('status') == 'DISABLED':
+        return
+    try:
+        raw, cfg, policy, schedule = load_config(args.config)
+    except Exception:
+        return
+    if not cfg.enabled or not policy.enabled:
+        return
+    from .capture_lifecycle import _protect_root
+    from .backup_sets import now
+    root = _protect_root(raw, Path(raw['operations_root']))
+    record = seal({'contract': 'BACKUP_INVOCATION_V1', 'created_at': now(),
+        'action': args.action, 'status': result.get('status'), 'exit_code': code,
+        'reason': result.get('reason'), 'run_id': result.get('run_id') or getattr(args, 'run_id', None) or getattr(args, 'backup_set_id', None)})
+    write_immutable(root / 'invocations' / (uuid.uuid4().hex + '.json'), record)
 
 
 if __name__ == "__main__":

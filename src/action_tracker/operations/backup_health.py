@@ -34,6 +34,10 @@ def health(raw):
     validate_policy(raw.get('operations_policy'), raw)
     operations = Path(raw['operations_root'])
     failures, successes, restored, captures, blockers = [], [], [], [], []
+    for path in (operations / 'invocations').glob('*.json'):
+        invocation = validate_seal(read_json(path), 'BACKUP_INVOCATION_V1')
+        if invocation['exit_code']:
+            failures.append({k: invocation.get(k) for k in ('run_id', 'created_at', 'reason', 'action')})
     for job in (operations / 'jobs').glob('*'):
         for event in job_events(job):
             if event['status'] in {'FAILED', 'CANCELLED'}:
@@ -64,12 +68,22 @@ def health(raw):
     scratch = _usage(operations)
     maximum = raw.get('policy', {}).get('max_scratch_bytes', 16 * 1024**3)
     warnings = []
+    legacy = operations / 'captures'
+    legacy_entries = list(legacy.iterdir()) if legacy.is_dir() else []
+    if raw.get('capture_lifecycle', {}).get('enabled') and legacy_entries:
+        blockers.append({'run_id': None, 'reason': 'LEGACY_CAPTURE_REQUIRES_SEPARATE_DISPOSITION'})
+    if scratch >= maximum:
+        blockers.append({'run_id': None, 'reason': 'SCRATCH_CAPACITY_EXHAUSTED'})
     if scratch * 100 >= maximum * policy.get('capacity_warning_percent', 80):
         warnings.append('SCRATCH_CAPACITY_WARNING')
     backend = raw.get('backend', {})
     repository_bytes = None
     if backend.get('provider', 'filesystem') in {'filesystem', 'local'} and backend.get('repository_path'):
+        if not Path(backend['repository_path']).is_dir():
+            blockers.append({'run_id': None, 'reason': 'KOPIA_REPOSITORY_UNAVAILABLE'})
         repository_bytes = _usage(Path(backend['repository_path']))
+        if repository_bytes >= policy.get('max_repository_bytes', 30 * 1024**3):
+            blockers.append({'run_id': None, 'reason': 'REPOSITORY_CAPACITY_EXHAUSTED'})
         if repository_bytes * 100 >= policy.get('max_repository_bytes', 30 * 1024**3) * policy.get('capacity_warning_percent', 80):
             warnings.append('REPOSITORY_CAPACITY_WARNING')
     latest_success = max(successes, key=lambda x: x['created_at']) if successes else None
@@ -95,12 +109,15 @@ def health(raw):
             warnings.append('CREDENTIALS_EXPIRED')
     else:
         credential = 'NOT_APPLICABLE' if backend.get('provider', 'filesystem') in {'filesystem', 'local'} else 'UNKNOWN'
+    if raw.get('capture_lifecycle', {}).get('enabled') and backend.get('provider', 'filesystem') not in {'filesystem', 'local'}:
+        blockers.append({'run_id': None, 'reason': 'V31_CLOUD_GATE_BLOCKED'})
     status = 'DISABLED' if not enabled else 'BLOCKED' if blockers else 'WARNING' if warnings else 'HEALTHY'
     return {'contract': 'BACKUP_HEALTH_V1', 'status': status,
         'observed_at': datetime.now(timezone.utc).isoformat(),
         'latest_successful_backup': latest_success, 'latest_failed_job': latest_failure,
         'latest_restore_verified_at': max(restored) if restored else None,
-        'captures': captures, 'unfinished_capture_count': len(blockers),
+        'captures': captures, 'unfinished_capture_count': sum(c['state'] != 'RETIRED' for c in captures),
+        'legacy_unmanaged_entry_count': len(legacy_entries),
         'pending_disposition_bytes': sum(c['pending_payload_bytes'] for c in captures if c['state'] != 'RETIRED'),
         'scratch_bytes': scratch, 'scratch_budget_bytes': maximum,
         'repository_bytes': repository_bytes, 'repository_live_status': 'NOT_PROBED',
