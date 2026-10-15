@@ -20,7 +20,7 @@ from .backup_operations import (OperationPolicy, history, public_backend_identit
                                 restore_backup, restore_preview, retention_preview, resume_cancelled, run_backup,
                                 release_owned_stage, storage_usage_report)
 from .backup_scheduler import SchedulePolicy, event_key, windows_task_xml
-from .storage_foundation import StorageError
+from .storage_foundation import StorageError, storage_lock
 
 
 def load_config(path):
@@ -129,13 +129,30 @@ def _capture(raw, backend, run_id):
     allowed = {"source", "projections", "code_version", "recovery_owner", "retention"}
     if set(capture) - allowed or not allowed.issubset(capture):
         raise StorageError("CORE_CAPTURE_CONFIGURATION_REQUIRED")
+    # Serialize admission as well as the existing production writer lock in
+    # capture_core. Two different event IDs must not both pass an empty scan.
+    operations = safe_path(Path(raw["operations_root"]), file=False)
+    with storage_lock(operations / "capture-admission", run_id=run_id):
+        return _capture_locked(raw, backend, run_id, capture, capture_core)
+
+
+def _capture_locked(raw, backend, run_id, capture, capture_core):
     policy = OperationPolicy(**raw.get("policy", {}))
     operations = safe_path(Path(raw["operations_root"]), file=False)
+    planned_capture = operations / "captures" / run_id
+    # Captures are recovery assets, not disposable stage files. Until an
+    # operator retires the prior capture through the existing Cleanup gates,
+    # refuse another full copy. Never infer deletion rights from backup success.
+    captures = safe_path(operations / "captures", file=False)
+    if not planned_capture.exists() and captures.is_dir():
+        for entry in captures.iterdir():
+            checked = safe_path(entry, file=entry.is_file())
+            if checked.is_file() or any(checked.iterdir()):
+                raise StorageError("PRIOR_CAPTURE_REQUIRES_DISPOSITION")
     occupied = 0
     for directory in (operations / "captures", operations / "sessions", operations / "jobs"):
         if directory.is_dir():
             occupied += sum(safe_path(p).stat().st_size for p in directory.rglob("*") if p.is_file())
-    planned_capture = operations / "captures" / run_id
     if not planned_capture.exists():
         source = safe_path(Path(capture["source"]))
         needed = source.stat().st_size + sum(safe_path(Path(p)).stat().st_size for p in capture["projections"].values())
