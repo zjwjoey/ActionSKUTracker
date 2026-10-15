@@ -185,3 +185,6 @@ Operations backup 共用不可覆盖、流式校验的备份原语；Storage CLI
 
 ## Storage Lifecycle P2（分支实现，未部署）
 ActionData/Archive/Scratch 隔离候选和精确旧路径绑定复用 P1；旧资产仅清理预览，新专属 Scratch 有证据门禁。详见 P2_STORAGE_ARCHITECTURE.md。
+
+## P2.1 证据适配
+cleanup_evidence 只读输入实际身份、备份、终态、覆盖范围及恢复证明，复用 P2 cleanup_preview；不新增旧资产删除入口，不连接活跃 PRIMARY。

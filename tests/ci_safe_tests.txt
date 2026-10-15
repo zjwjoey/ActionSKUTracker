@@ -176,3 +176,6 @@ tests/test_backup_operations.py
 tests/test_backup_review_regressions.py
 tests/test_backup_cli.py
 tests/test_kopia_backend.py
+
+# CI_SAFE: P2.1 explicit evidence parsing and immutable fixtures.
+tests/test_cleanup_evidence.py

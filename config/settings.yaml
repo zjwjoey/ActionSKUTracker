@@ -92,6 +92,13 @@ storage_foundation:
     copy_budget_bytes: 8589934592
     archive_sample_budget_bytes: 268435456
     scratch_root: null
+  cleanup_review:
+    legacy_deletion_enabled: false
+    pilot_limit: 14
+    evidence_file_max_bytes: 1048576
+    evidence_read_budget_bytes: 67108864
+    full_hash_budget_bytes: 8589934592
+    fresh_pair_limit: 3
 
 operations:
   # Minimum free space required on every production data volume.

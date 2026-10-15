@@ -201,6 +201,16 @@ def cleanup_preview(items: list[dict], *, at: datetime | None = None) -> dict:
     results, whitelist = [], []
     for item in items:
         blockers = []
+        if item.get('evidence_contract') == 'LEGACY_CLEANUP_EVIDENCE_V1':
+            if not item.get('file_id'): blockers.append('FILE_ID_UNKNOWN')
+            if item.get('current_integrity') != 'PASS' or item.get('current_foreign_keys') != 'PASS':
+                blockers.append('DATABASE_INTEGRITY_NOT_VERIFIED')
+            if item.get('task_terminal_verified') is not True: blockers.append('TASK_OWNERSHIP_TERMINAL_UNKNOWN')
+            if item.get('production_dependency_verified') is not True or item.get('production_dependency') is not False:
+                blockers.append('PRODUCTION_DEPENDENCY_UNKNOWN_OR_PRESENT')
+            if item.get('retention_policy_verified') is not True: blockers.append('RETENTION_POLICY_NOT_VERIFIED')
+            if item.get('recovery_release_verified') is not True or item.get('independent_rollback_obligation') is not False:
+                blockers.append('INDEPENDENT_RECOVERY_OBLIGATION_UNKNOWN_OR_PRESENT')
         if item.get('identity_verified') is not True: blockers.append('IDENTITY_UNKNOWN')
         if item.get('unique_business_data') is not False: blockers.append('UNIQUE_DATA_UNKNOWN_OR_PRESENT')
         if item.get('recovery_required') is not False: blockers.append('RECOVERY_REQUIRED_OR_UNKNOWN')
