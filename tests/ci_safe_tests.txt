@@ -179,3 +179,6 @@ tests/test_kopia_backend.py
 
 # CI_SAFE: P2.1 explicit evidence parsing and immutable fixtures.
 tests/test_cleanup_evidence.py
+
+# CI_SAFE: owned synthetic cleanup approval/quarantine/rollback/purge and archive fixtures.
+tests/test_cleanup_executor.py
