@@ -213,3 +213,6 @@ BACKUP_ASSET_V1/STORAGE_BASELINE_CONTEXT_V1/ASSET_INDEX_V1 是独立 JSON 元数
 
 ## Storage Lifecycle P2 非业务元数据
 ISOLATED_STORAGE_CANDIDATE_V1、ACTIVE_DATA_CANDIDATE_V1、SAFE_CLEANUP_PREVIEW_V1 及追加 Scratch lifecycle 记录保存内容身份与多业务绑定；不修改 SQLite schema 或官方事实。
+
+## LEGACY_CLEANUP_EVIDENCE_V1
+旧资产证据记录 file ID、current integrity/FK、精确 owner终态、引用覆盖/观察数、保留政策和独立回滚释放。引用未知为 null，不用0代替；证据包含源文件SHA、JSON pointer、核验方法/时间与Evidence ID。

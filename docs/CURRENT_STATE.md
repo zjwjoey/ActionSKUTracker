@@ -106,3 +106,6 @@ main protection 只读查询显示未保护；建议 PR required、Ubuntu/Window
 
 ## 2026-10-14 P1 合并与 P2 分支
 P1 经 PR #10 正常合并为 e69dfe1，未激活生产；生产 active.json 仍指向 b09bcea 加既有改动。P2 在 feature/action-storage-lifecycle-p2 实现隔离目录、受控复制、Scratch 生命周期、旧数据库分类与清理预览；真实候选和运行证据在 ActionStorageCandidates/P2_20261014 与 StorageAuditOutputs/ActionSKUTracker_P2_20261014。详见 P2_STORAGE_ARCHITECTURE.md；全生产消费者与 P3 尚未完成。
+
+## 2026-10-14 P2 合并与 P2.1 证据审核
+P2 已合并 PR #11 / 14b3747，仍未部署。P2.1 在 fix/storage-cleanup-evidence-p21 核查首批14份旧 restore-check、补充89/193份元数据引用概览；首批资格0，停止无新证据的深度扩大。证据位于 StorageAuditOutputs/ActionSKUTracker_P21_20261014，详见 STORAGE_CLEANUP_EVIDENCE_P21.md。
