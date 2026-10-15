@@ -64,6 +64,13 @@ storage:
 # Storage Foundation P1 is operator driven. These settings never enable cleanup
 # or relocation in data-update. Archive offline means ASSET_UNAVAILABLE.
 storage_foundation:
+  # V3 uses a separate explicit operations config. These defaults install no
+  # scheduled task and never change ordinary daily-run behavior.
+  backup_v1:
+    enabled: false
+    scheduler_enabled: false
+    cloud_business_upload_authorized: false
+    operations_config: null
   # Explicit operator-only connection seam; no daily-run or backup integration.
   kopia:
     enabled: false

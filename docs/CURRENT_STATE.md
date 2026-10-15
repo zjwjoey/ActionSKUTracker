@@ -106,3 +106,7 @@ main protection 只读查询显示未保护；建议 PR required、Ubuntu/Window
 
 ## 2026-10-14 P1 合并与 P2 分支
 P1 经 PR #10 正常合并为 e69dfe1，未激活生产；生产 active.json 仍指向 b09bcea 加既有改动。P2 在 feature/action-storage-lifecycle-p2 实现隔离目录、受控复制、Scratch 生命周期、旧数据库分类与清理预览；真实候选和运行证据在 ActionStorageCandidates/P2_20261014 与 StorageAuditOutputs/ActionSKUTracker_P2_20261014。详见 P2_STORAGE_ARCHITECTURE.md；全生产消费者与 P3 尚未完成。
+
+## 2026-10-15 Storage V3 Backup V1 独立实现
+
+feature/storage-kopia-backup-v1 实现受控 Kopia 本地/S3 适配、P1 CORE 捕获、明确资产选择、不可变 Backup Set、任务日志/幂等 Resume、隔离恢复、预算/状态和默认关闭的调度入口。真实本地 Kopia 两版本恢复与既有 P1 备份的1,318,004,219字节CORE集合恢复通过；Integrity/FK/Commit/三件套Hash均一致。证据在 ActionStorageCandidates/StorageV3_20261015/acceptance-01。新OSS验收因STS过期且用户明确暂不更新而BLOCKED；此前PoC成功仍单独保留，不能计作本版本已完成新云端验收。COS未实测。原生产/历史资产未修改，未启用调度或部署。最终测试及远端CI以外部StorageV3验收报告的确切HEAD为准。
