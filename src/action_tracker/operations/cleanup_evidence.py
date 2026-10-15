@@ -80,21 +80,66 @@ def reference_conclusion(hits: list[dict], coverage: dict) -> dict:
             'coverage':coverage,'hits':hits}
 
 
-def task_completion(document, *, run_id: str | None, database_path: str) -> dict:
-    """QA PASS or co-location cannot substitute for terminal task ownership."""
-    if not run_id:return {'task_status':'UNKNOWN','reason':'TASK_RUN_BINDING_MISSING'}
-    for pointer,node in walk(document):
-        if not isinstance(node,dict) or node.get('run_id')!=run_id:continue
-        bound=node.get('database_path') or node.get('backup_path')
-        if not isinstance(bound,str) or path_key(bound)!=path_key(database_path):continue
-        if node.get('state')=='SUCCESS' and node.get('finished_at'):
-            try:datetime.fromisoformat(node['finished_at'])
-            except (ValueError,TypeError):
-                return {'task_status':'UNKNOWN','reason':'MALFORMED_TERMINAL_TIMESTAMP','json_pointer':pointer}
-            return {'task_status':'COMPLETED','run_id':run_id,'json_pointer':pointer,'scope':'EXACT_RUN_AND_DATABASE'}
-        if node.get('state') in {'RUNNING','PAUSED','DEGRADED','FAILED','BLOCKED'}:
-            return {'task_status':node['state'],'run_id':run_id,'json_pointer':pointer}
-    return {'task_status':'UNKNOWN','reason':'NO_BOUND_TERMINAL_RECORD'}
+def _absolute_path(value) -> bool:
+    return (isinstance(value, str) and bool(value) and '\0' not in value and
+            (PureWindowsPath(value).is_absolute() or Path(value).is_absolute()))
+
+
+def _evidence_time(value, at: datetime) -> datetime | None:
+    try:
+        result = datetime.fromisoformat(value)
+        if result.tzinfo is None or result > at:
+            return None
+        return result
+    except (ValueError, TypeError):
+        return None
+
+
+def task_completion(document, *, run_id: str | None, database_path: str,
+                    at: datetime | None = None) -> dict:
+    """Only the unambiguous latest bound event can close a non-resumable task.
+
+    Callers must pass the complete event collection for the run, rather than
+    taking the first SUCCESS across separate documents. Coverage is a separate
+    certificate obligation; this parser does not infer it from event contents.
+    """
+    if not isinstance(run_id, str) or not run_id.strip() or not _absolute_path(database_path):
+        return {'task_status':'UNKNOWN','reason':'TASK_RUN_BINDING_MISSING'}
+    at = at or datetime.now(timezone.utc)
+    if at.tzinfo is None:
+        return {'task_status':'UNKNOWN','reason':'EVIDENCE_TIME_INVALID'}
+    events = []
+    for pointer, node in walk(document):
+        if not isinstance(node, dict) or node.get('run_id') != run_id:
+            continue
+        bound = node.get('database_path') or node.get('backup_path')
+        if not _absolute_path(bound) or path_key(bound) != path_key(database_path):
+            continue
+        state = node.get('state')
+        if state not in {'SUCCESS','RUNNING','PAUSED','DEGRADED','FAILED','BLOCKED','CANCELLED'}:
+            return {'task_status':'UNKNOWN','reason':'TASK_EVENT_STATE_UNKNOWN','json_pointer':pointer}
+        stamp = node.get('finished_at') if state == 'SUCCESS' else (
+            node.get('updated_at') or node.get('event_at') or node.get('started_at'))
+        timestamp = _evidence_time(stamp, at)
+        if timestamp is None:
+            return {'task_status':'UNKNOWN','reason':'MALFORMED_TERMINAL_TIMESTAMP','json_pointer':pointer}
+        events.append((timestamp, pointer, node))
+    if not events:
+        return {'task_status':'UNKNOWN','reason':'NO_BOUND_TERMINAL_RECORD'}
+    latest_at = max(e[0] for e in events)
+    latest = [e for e in events if e[0] == latest_at]
+    signatures = {(e[2]['state'], e[2].get('resume_allowed') is False) for e in latest}
+    if len(signatures) != 1:
+        return {'task_status':'UNKNOWN','reason':'CONFLICTING_LATEST_TASK_EVENTS'}
+    timestamp, pointer, node = latest[0]
+    result = {'run_id':run_id, 'database_path':database_path, 'json_pointer':pointer,
+              'scope':'EXACT_RUN_AND_DATABASE', 'latest_event_at':timestamp.isoformat(),
+              'matched_events':len(events), 'resume_allowed':node.get('resume_allowed')}
+    if node['state'] != 'SUCCESS':
+        return {**result, 'task_status':node['state']}
+    if node.get('resume_allowed') is not False:
+        return {**result, 'task_status':'UNKNOWN','reason':'TASK_RESUME_NOT_RETIRED'}
+    return {**result, 'task_status':'COMPLETED', 'terminal_verified':True}
 
 
 def file_identity(path: Path) -> dict:
@@ -134,13 +179,18 @@ def inspect_database(path: Path, *, full_integrity=False, protected_paths=()) ->
 
 
 def hash_pair(candidate: Path, backup: Path, *, budget_bytes: int) -> dict:
-    c,b=Path(candidate),Path(backup)
+    c,b=Path(candidate).resolve(),Path(backup).resolve()
+    if c.samefile(b):raise StorageError('ALTERNATIVE_RECOVERY_IS_CANDIDATE')
     needed=c.stat().st_size+b.stat().st_size
     if needed>budget_bytes:raise StorageError('EVIDENCE_HASH_BUDGET_EXCEEDED')
+    identities=[file_identity(p) for p in (c,b)]
     before=[source_signature(p) for p in (c,b)]
     hashes=[sha256_file(p) for p in (c,b)]
-    if before!=[source_signature(p) for p in (c,b)]:raise StorageError('OLD_DATABASE_CHANGED_DURING_HASH')
+    if (before!=[source_signature(p) for p in (c,b)] or
+            identities!=[file_identity(p) for p in (c,b)]):
+        raise StorageError('OLD_DATABASE_CHANGED_DURING_HASH')
     return {'method':'FRESH_FULL_SHA256_PAIR','candidate_sha256':hashes[0],'backup_sha256':hashes[1],
+        'candidate_path':str(c),'backup_path':str(b),'file_ids':[v['file_id'] for v in identities],
         'content_equal':hashes[0]==hashes[1],'unique_business_data_relative_to_backup':False if hashes[0]==hashes[1] else None,
         'read_bytes':needed,'signatures':before,'verified_at':datetime.now(timezone.utc).isoformat()}
 
@@ -162,16 +212,50 @@ def legacy_certificate(inspection: dict, *, task: dict, references: dict,
         'retention_policy_verified':retention.get('policy_verified') is True,
         'retention_evidence':retention,'production_dependency':references.get('production_dependency'),
         'production_dependency_verified':references.get('production_dependency_verified') is True,
-        'task_terminal_verified':task.get('scope')=='EXACT_RUN_AND_DATABASE' and task.get('task_status')=='COMPLETED',
+        'task_terminal_verified':(task.get('scope')=='EXACT_RUN_AND_DATABASE' and
+            task.get('task_status')=='COMPLETED' and task.get('terminal_verified') is True and
+            task.get('resume_allowed') is False and _absolute_path(task.get('database_path')) and
+            path_key(task['database_path'])==path_key(inspection.get('path',''))),
         'delete_allowed':False}
 
 
 def normalize_restore_proof(pair: dict, original: dict, restored: dict) -> dict:
-    """Translate real existing-copy checks into P1/P2's restore proof contract."""
-    equal_identity=original.get('database_identity')==restored.get('database_identity')
-    valid=(pair.get('content_equal') is True and pair.get('backup_sha256')==pair.get('candidate_sha256') and
-        equal_identity and all(r.get('current_integrity')=='PASS' and r.get('current_foreign_keys')=='PASS'
-                               for r in (original,restored)))
+    """Normalize complete, bound observations; missing values never imply equality."""
+    identity=original.get('database_identity')
+    metadata=identity.get('metadata') if isinstance(identity,dict) else None
+    identity_valid=(isinstance(metadata,dict) and metadata.get('schema_family')=='ACTION_SQLITE_DATA' and
+        metadata.get('schema_version')=='2.0.0' and metadata.get('database_role') in {'PRIMARY','SHADOW'} and
+        'commit_id' in identity and
+        (identity['commit_id'] is None or isinstance(identity['commit_id'],str) and bool(identity['commit_id'].strip())))
+    paths_valid=all(_absolute_path(v) for v in
+        (pair.get('backup_path'),pair.get('candidate_path'),original.get('path'),restored.get('path')))
+    if paths_valid:
+        paths_valid=(path_key(pair['backup_path'])==path_key(original['path']) and
+            path_key(pair['candidate_path'])==path_key(restored['path']) and
+            path_key(pair['backup_path'])!=path_key(pair['candidate_path']))
+    sha=pair.get('backup_sha256')
+    hashes_valid=isinstance(sha,str) and re.fullmatch('[0-9a-f]{64}',sha) is not None and sha==pair.get('candidate_sha256')
+    observations_valid=all(r.get('exists') is True and r.get('status')=='IDENTIFIED_READ_ONLY' and
+        r.get('inspection_method')=='IMMUTABLE_QUERY_ONLY_NO_WAL_OR_SHM_WRITES' and
+        r.get('current_integrity')=='PASS' and r.get('current_foreign_keys')=='PASS' and
+        isinstance(r.get('file_id'),str) and bool(r['file_id']) and
+        isinstance(r.get('source_signature'),dict) and 'main' in r['source_signature']
+        for r in (original,restored))
+    if observations_valid:
+        for record in (original, restored):
+            main = record['source_signature'].get('main')
+            if (set(record['source_signature'])!={'main'} or not isinstance(main,dict) or
+                    type(record.get('size_bytes')) is not int or record['size_bytes']<=0 or
+                    type(record.get('mtime_ns')) is not int or record['mtime_ns']<0 or
+                    main.get('size_bytes')!=record['size_bytes'] or main.get('mtime_ns')!=record['mtime_ns']):
+                observations_valid=False
+    signatures_valid=(pair.get('signatures')==[restored.get('source_signature'),original.get('source_signature')] and
+        pair.get('file_ids')==[restored.get('file_id'),original.get('file_id')] and
+        restored.get('file_id')!=original.get('file_id'))
+    valid=(identity_valid and identity==restored.get('database_identity') and paths_valid and hashes_valid and
+        observations_valid and signatures_valid and pair.get('content_equal') is True and
+        pair.get('method')=='FRESH_FULL_SHA256_PAIR' and
+        _evidence_time(pair.get('verified_at'),datetime.now(timezone.utc)) is not None)
     return {'contract':'RESTORE_VALIDATION_V1','status':'PASS' if valid else 'REVIEW_REQUIRED',
         'backup_sha256':pair.get('backup_sha256'),'candidate_sha256':pair.get('candidate_sha256'),
         'backup_path':pair.get('backup_path'),'restore_check_path':pair.get('candidate_path'),
