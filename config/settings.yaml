@@ -64,6 +64,14 @@ storage:
 # Storage Foundation P1 is operator driven. These settings never enable cleanup
 # or relocation in data-update. Archive offline means ASSET_UNAVAILABLE.
 storage_foundation:
+  # Explicit operator-only connection seam; no daily-run or backup integration.
+  kopia:
+    enabled: false
+    provider: oss
+    cli_path: null
+    bucket: null
+    endpoint: null
+    region: null
   roots:
     code: null
     archive: null
