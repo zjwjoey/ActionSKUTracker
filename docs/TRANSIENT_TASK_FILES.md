@@ -1,6 +1,9 @@
 # 临时任务文件与容量
 
-本地实现于独立开发分支；启用生产版本仍遵循 GIT_SYNC_AND_RELEASE。
+生产启用遵循 GIT_SYNC_AND_RELEASE。数据根的现有正式入口使用版本化模板
+`scripts/run_active_production.ps1`，严格校验active.json中的SHA、data_root和main/release分支身份，
+再调用候选源码的原有daily入口。`-ValidateOnly`仅核对代码路由，不执行备份、采集或入库。
+具体验收SHA、CI及启用状态保存在部署记录中，不能从代码存在推断已经切换。
 
 ## 存放约定
 

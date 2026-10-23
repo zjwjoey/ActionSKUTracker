@@ -188,3 +188,4 @@ tests/test_cleanup_executor.py
 
 # CI_SAFE: isolated task workspaces and bounded snapshot writers, no production/network.
 tests/test_transient_footprint.py
+tests/test_active_production_wrapper.py
