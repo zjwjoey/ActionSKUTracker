@@ -11,8 +11,14 @@ from pathlib import Path
 from typing import Any
 
 
-def _json(obj: Any) -> str:
-    return json.dumps(obj, ensure_ascii=False, indent=2, default=str)
+def _write_json_atomic(path: Path, obj: Any, *, compact: bool = False) -> None:
+    """Stream evidence to the existing atomic path without a full JSON copy."""
+    temp = path.with_suffix(path.suffix + ".tmp")
+    with temp.open("w", encoding="utf-8") as stream:
+        json.dump(obj, stream, ensure_ascii=False, default=str,
+                  indent=None if compact else 2,
+                  separators=(",", ":") if compact else None)
+    temp.replace(path)
 
 
 def _write_text_atomic(path: Path, text: str) -> None:
@@ -55,7 +61,7 @@ def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> 
     if data.get("sitemap_skus"):
         _write_csv(snap_dir / "sitemap_skus.csv", [{"sku": s} for s in data["sitemap_skus"]])
     if data.get("listing_raw"):
-        _write_text_atomic(snap_dir / "listing_raw.json", _json(data["listing_raw"]))
+        _write_json_atomic(snap_dir / "listing_raw.json", data["listing_raw"], compact=True)
     if data.get("listing_products"):
         _write_csv(snap_dir / "listing_products.csv", data["listing_products"])
     if data.get("products_normalized"):
@@ -65,12 +71,12 @@ def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> 
     if data.get("presence_evidence"):
         _write_csv(snap_dir / "presence_evidence.csv", data["presence_evidence"])
     if data.get("coverage") is not None:
-        _write_text_atomic(snap_dir / "coverage.json", _json(data["coverage"]))
+        _write_json_atomic(snap_dir / "coverage.json", data["coverage"])
     if data.get("site_structure") is not None:
-        _write_text_atomic(snap_dir / "site_structure.json", _json(data["site_structure"]))
+        _write_json_atomic(snap_dir / "site_structure.json", data["site_structure"])
         _write_csv(snap_dir / "category_structure.csv", data["site_structure"].get("categories") or [])
     if data.get("run_manifest") is not None:
-        _write_text_atomic(snap_dir / "run_manifest.json", _json(data["run_manifest"]))
+        _write_json_atomic(snap_dir / "run_manifest.json", data["run_manifest"])
     if data.get("detail_evidence"):
         _write_csv(snap_dir / "detail_evidence.csv", data["detail_evidence"])
     if data.get("product_updates"):
@@ -78,9 +84,9 @@ def write_snapshot(cfg: dict[str, Any], run_date: str, data: dict[str, Any]) -> 
     if data.get("translation_updates"):
         _write_csv(snap_dir / "translation_updates.csv", data["translation_updates"])
     if data.get("qa_report"):
-        _write_text_atomic(snap_dir / "qa_report.json", _json(data["qa_report"]))
+        _write_json_atomic(snap_dir / "qa_report.json", data["qa_report"])
     if data.get("run_report"):
-        _write_text_atomic(snap_dir / "run_report.json", _json(data["run_report"]))
+        _write_json_atomic(snap_dir / "run_report.json", data["run_report"])
     return snap_dir
 
 

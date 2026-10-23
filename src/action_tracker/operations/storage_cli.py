@@ -46,6 +46,8 @@ def code_evidence(data_root: Path) -> tuple[dict, bytes]:
 
 
 def run_storage_command(args) -> dict:
+    if args.storage_action == "task-workspace":
+        return _task_workspace(args)
     if args.storage_action == "resolve":
         if args.roots:
             roots = _json(args.roots)
@@ -159,3 +161,70 @@ def run_storage_command(args) -> dict:
     # A repeat baseline keeps previous evidence rather than replacing it.
     _write_new(output / ("acceptance-" + run_id + ".json"), result)
     return result
+
+
+def _task_workspace(args) -> dict:
+    """Expose existing P2 ownership/budget journals, without a cleanup executor."""
+    from .storage_lifecycle import ScratchTask, create_candidate, relative_target
+
+    root = Path(args.scratch_root).resolve()
+    protected = [Path(p).resolve() for p in (
+        "F:/ActionSKUTracker", "F:/ActionSKUTracker_production", "F:/Action_Master",
+        "F:/按日期整理", "F:/Action-ES-Data-System", Path(__file__).resolve().parents[3],
+        *args.protected_root,
+    )]
+    if any(root.is_relative_to(p) or p.is_relative_to(root) for p in protected):
+        raise StorageError("CANDIDATE_PRODUCTION_OVERLAP")
+    if any((p / ".git").exists() for p in (root, *root.parents)):
+        raise StorageError("TASK_WORKSPACE_SOURCE_OVERLAP")
+    if not args.owner_task.strip() or not args.run_id.strip() or args.budget_mib <= 0:
+        raise StorageError("INVALID_TASK_IDENTITY_OR_BUDGET")
+    action_path = args.register or args.complete
+    if action_path:
+        if not args.task_dir:
+            raise StorageError("TASK_DIRECTORY_REQUIRED")
+        # Validate namespace before creating directories or journal entries.
+        relative_target(root, action_path)
+        parts = Path(action_path.replace("\\", "/")).parts
+        if len(parts) < 2 or parts[0] not in {"scripts", "data", "debug"}:
+            raise StorageError("TASK_ARTIFACT_NAMESPACE_REQUIRED")
+    if args.register and (not args.source or args.expected_bytes is None or args.expected_bytes < 0):
+        raise StorageError("TASK_ARTIFACT_SOURCE_AND_SIZE_REQUIRED")
+    if args.task_dir:
+        task = ScratchTask.resume(root, Path(args.task_dir), owner_task=args.owner_task, run_id=args.run_id)
+    else:
+        if not root.exists():
+            create_candidate(root, protected_roots=protected)
+        task = ScratchTask(root, owner_task=args.owner_task, run_id=args.run_id,
+                           budget_bytes=args.budget_mib * 1024**2)
+        for name in ("scripts", "data", "debug"):
+            (task.directory / name).mkdir()
+    reused = False
+    if args.register:
+        path = relative_target(task.directory, args.register)
+        if path in task.assets:
+            record = task.assets[path]
+            if record['source'] != args.source or record['expected_bytes'] != args.expected_bytes:
+                raise StorageError("TASK_ARTIFACT_REGISTRATION_CHANGED")
+            reused = True
+        else:
+            task.register(args.register, source=args.source, expected_bytes=args.expected_bytes)
+    if args.complete:
+        path = relative_target(task.directory, args.complete)
+        if path not in task.assets:
+            raise StorageError("TASK_ARTIFACT_NOT_REGISTERED")
+        record = task.assets[path]
+        if record['task_status'] == 'COMPLETED':
+            if path.stat().st_size != record['size_bytes'] or sha256_file(path) != record['sha256']:
+                raise StorageError("SCRATCH_IDENTITY_CHANGED")
+            reused = True
+        else:
+            task.complete(args.complete)
+    assets = list(task.assets.values())
+    completed_bytes = sum(a.get("size_bytes") or 0 for a in assets)
+    return {"status": "PASS", "task_dir": str(task.directory), "owner_task": task.owner_task,
+            "run_id": task.run_id, "budget_bytes": task.budget_bytes,
+            "registered_files": len(assets), "completed_bytes": completed_bytes, "reused": reused,
+            "budget_alert": any(a.get("budget_alert", False) for a in assets),
+            "scripts": str(task.directory / "scripts"), "data": str(task.directory / "data"),
+            "debug": str(task.directory / "debug"), "automatic_cleanup": False}

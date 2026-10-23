@@ -18,6 +18,7 @@
 - `F:\Action_Master\Action_Master.xlsx` 是历史原件：只允许读取或复制。
 - 正式工作 Master 是 `F:\ActionSKUTracker\runtime\master\Action_Master.xlsx`。
 - `runtime/` 中的 Master、Snapshot、State、图片、导出和临时文件原则上不进入 Git。
+- 新的一次性任务脚本、候选和调试数据集中到现有 P2 ScratchTask 的同一任务目录（scripts/data/debug）；用 `storage-foundation task-workspace` 登记预算、来源、Hash和终态。可复用能力留在版本管理代码中，正式入库证据和恢复备份保留权威位置并以引用复用。恢复同任务传回task-dir，不按批复制整库；未知旧文件保持原样。见 `docs/TRANSIENT_TASK_FILES.md`。
 - 多个执行者不得同时写 `Action_Master.xlsx`、正式字典或同一 Review Queue。
 - Excel 写入必须集中、原子化并保留备份；不得由多个模块各自写同一工作簿。
 
