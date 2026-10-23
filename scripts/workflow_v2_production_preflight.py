@@ -201,7 +201,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     latest_run_id: str | None = None
     # Reject a truncated/non-SQLite file before opening it so preflight emits
     # a normal NOT_READY report instead of exposing a traceback.
-    sqlite_header_ok = db_path.exists() and db_path.read_bytes()[:16] == b"SQLite format 3\x00"
+    sqlite_header_ok = False
+    if db_path.is_file():
+        with db_path.open("rb") as stream:
+            sqlite_header_ok = stream.read(16) == b"SQLite format 3\x00"
     if sqlite_header_ok:
         with sqlite3.connect(db_path) as db:
             db.row_factory = sqlite3.Row

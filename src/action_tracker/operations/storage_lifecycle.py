@@ -287,13 +287,15 @@ class ScratchTask:
         journal = obj.directory / 'lifecycle.jsonl'
         # A process may stop immediately after publishing owner.json, before
         # registering its first file. Ownership still has to match exactly.
-        for line in (journal.read_text(encoding='utf-8').splitlines() if journal.exists() else []):
-            record = json.loads(line)
-            path = Path(record['path']).resolve()
-            if (not path.is_relative_to(obj.directory) or record.get('owner_token') != obj.token or
-                    record.get('owner_task') != owner_task or record.get('run_id') != run_id):
-                raise StorageError('SCRATCH_OWNERSHIP_INVALID')
-            obj.assets[path] = record
+        if journal.exists():
+            with journal.open(encoding='utf-8') as stream:
+                for line in stream:
+                    record = json.loads(line)
+                    path = Path(record['path']).resolve()
+                    if (not path.is_relative_to(obj.directory) or record.get('owner_token') != obj.token or
+                            record.get('owner_task') != owner_task or record.get('run_id') != run_id):
+                        raise StorageError('SCRATCH_OWNERSHIP_INVALID')
+                    obj.assets[path] = record
         obj.resumed = True
         return obj
 

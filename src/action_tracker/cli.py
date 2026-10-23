@@ -315,6 +315,18 @@ def build_parser() -> argparse.ArgumentParser:
     sroots = sr.add_mutually_exclusive_group(required=True)
     sroots.add_argument("--roots")
     sroots.add_argument("--data-root")
+    st = sfsub.add_parser("task-workspace", help="复用P2临时任务目录，集中脚本/数据/调试输出；不删除文件")
+    st.add_argument("--scratch-root", required=True)
+    st.add_argument("--owner-task", required=True)
+    st.add_argument("--run-id", required=True)
+    st.add_argument("--budget-mib", type=int, default=128)
+    st.add_argument("--task-dir", help="恢复已有任务；省略时创建新目录")
+    st.add_argument("--protected-root", action="append", default=[])
+    task_action = st.add_mutually_exclusive_group()
+    task_action.add_argument("--register", help="预登记scripts/、data/或debug/内的文件")
+    task_action.add_argument("--complete", help="记录已登记文件的实际容量和Hash")
+    st.add_argument("--source")
+    st.add_argument("--expected-bytes", type=int)
     return p
 
 

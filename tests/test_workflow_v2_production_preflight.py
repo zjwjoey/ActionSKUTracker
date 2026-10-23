@@ -122,6 +122,19 @@ def test_preflight_missing_key_fails(tmp_path, monkeypatch):
     assert run(_args(tmp_path, _profile(tmp_path)))["status"] == "NOT_READY"
 
 
+def test_preflight_does_not_load_database_whole_to_inspect_header(tmp_path, monkeypatch):
+    db = _valid_environment(tmp_path)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
+    original = Path.read_bytes
+
+    def bounded_database_read(path):
+        assert path != db, "preflight must not allocate the entire database"
+        return original(path)
+
+    monkeypatch.setattr(Path, "read_bytes", bounded_database_read)
+    assert run(_args(tmp_path, _profile(tmp_path)))["status"] == "PASS"
+
+
 def test_preflight_unsafe_switches_fail(tmp_path, monkeypatch):
     _valid_environment(tmp_path)
     monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
