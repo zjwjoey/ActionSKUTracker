@@ -528,6 +528,39 @@ def _structured_material_atom(source_term: str, source_text: str, target: str, f
     return source_term.casefold() in source_atoms and short in target_atoms
 
 
+def _is_source_bound_laundry_powder(source: SourceFacts, source_text: str) -> bool:
+    """Disambiguate a complete own-field powder noun using explicit usage.
+
+    The form must come from this field. Same-SKU prose/typed appliance
+    attributes may clarify laundry usage, but a mixed category cannot.
+    Conflicting uses, accessories, negation and multiple forms stay on the
+    existing review path. This neither translates nor changes source facts.
+    """
+    powder = r"\bdetergentes?\s+en\s+polvo\b"
+    count = len(re.findall(powder, source_text, re.I))
+    if not count or count != len(re.findall(r"\bdetergentes?\b", source_text, re.I)):
+        return False
+    if re.search(r"\b(?:dosificador|dispensador|recipiente|organizador|cuchara|caja|bote)\s+(?:para|de)\s+detergentes?\b", source_text, re.I):
+        return False
+    texts = (source.name_es, source.spec_es, source.desc_es, source.details_es)
+    product_text = "\n".join(str(t or "") for t in texts)
+    # Categories such as 'Detergentes y lavavajillas' group different uses;
+    # only actual product text may establish or contradict the use.
+    if re.search(r"\b(?:lavavajillas|vajillas?|platos?|inodoros?|suelos?|alfombras?|moquetas?)\b", product_text, re.I):
+        return False
+    if re.search(r"\b(?:no|sin)\b[^.;\n；!?]{0,50}\bdetergentes?\s+en\s+polvo\b", product_text, re.I):
+        return False
+    if re.search(r"\bno\b[^.;\n；!?]{0,50}\b(?:ropa|colada|lavadora)\b", product_text, re.I):
+        return False
+    laundry_prose = re.search(r"\b(?:para\s+(?:la\s+)?(?:ropa|colada)|lava\s+(?:la|tu)\s+ropa)\b", product_text, re.I)
+    laundry_appliance = any(
+        p.key.strip().casefold() in {"apto para tipo de aparato", "uso previsto"}
+        and p.value.strip().casefold() == "lavadora"
+        for p in parse_structured_details(source.details_es)
+    )
+    return bool(laundry_prose or laundry_appliance)
+
+
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
     # An appearance simile is not a claim of actual wood composition. Only
     # consume it when no separate wood occurrence remains in this field.
@@ -1051,6 +1084,13 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
             represented = any(alias.casefold() in target.casefold() for alias in aliases)
+            if (fact_type == "PRODUCT_TYPE" and source_term.casefold() in {"detergente", "detergentes"}
+                    and _is_source_bound_laundry_powder(source, source_text)):
+                canonical = "洗衣粉"
+                aliases = ("洗衣粉", "衣物洗涤粉")
+                affirmative = re.sub(r"(?:不是|并非|不属于|不含|没有|无|非|不)\s*(?:衣物洗涤粉|洗衣粉)", "", target)
+                represented = (any(alias in affirmative for alias in aliases)
+                    and not re.search(r"洗洁精|洗衣液|洗衣凝珠|洗涤凝珠|洗碗粉|洗碗机粉", target))
             if fact_type == "MATERIAL":
                 represented = represented or _structured_material_atom(source_term, source_text, target, field_name)
             if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
