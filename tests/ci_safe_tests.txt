@@ -141,6 +141,7 @@ tests/test_current_delegated_approval.py
 
 # CI_SAFE: source-faithful text QA uses in-memory fixtures only.
 tests/test_current_source_faithful_qa.py
+tests/test_mokoji_body_identity.py
 # CI_SAFE: isolated SQLite fixtures and planner mocks; no production/network access.
 tests/test_detail_refresh_judgment.py
 tests/test_current_price_projection.py

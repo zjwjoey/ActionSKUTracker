@@ -11,6 +11,7 @@ REVIEWED_BODY_NAMES = (
     "Finall Oxi Active Power Gel Multi-Color",
     "Accelerate Energy Gel",
     "El Grinch",
+    "mokoji",
 )
 
 
