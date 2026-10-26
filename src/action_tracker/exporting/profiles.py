@@ -1,7 +1,7 @@
 """读取并校验正式导出 Profile；不包含任何导出执行逻辑。"""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +27,20 @@ class ExportProfile:
 
     def filename_for(self, date_compact: str) -> str:
         return self.filename_pattern.format(date_compact=date_compact)
+
+
+def annotated_profile(profile: ExportProfile) -> ExportProfile:
+    """Explicit source-notes variant of the existing, unchanged column contract."""
+    if profile.language != "zh":
+        raise ExportProfileError("ANNOTATED_RELEASE_ZH_ONLY")
+    if not profile.filename_pattern.endswith(".xlsx"):
+        raise ExportProfileError("ANNOTATED_PROFILE_FILENAME_INVALID")
+    return replace(
+        profile, profile_id=profile.profile_id + "_annotated", version=profile.version + 1,
+        filename_pattern=profile.filename_pattern[:-5] + "_来源待核备注版.xlsx",
+        source_policy={**profile.source_policy, "delivery_quality": "SOURCE_NOTES_NOT_RESEARCH_VERIFIED"},
+        field_sources={**profile.field_sources, "remarks": "explicit_source_bound_annotation_plan_v1"},
+    )
 
 
 def _profile_path(cfg: dict[str, Any]) -> Path:

@@ -202,3 +202,7 @@ tests/test_export60_source_bound_qa.py
 
 # CI_SAFE: own-field source anomaly note language checks; no IO/network/Apply.
 tests/test_source_note_language_qa.py
+
+# CI_SAFE: pure annotation bindings plus temporary workbook publication fixtures.
+tests/test_annotated_projection.py
+tests/test_annotated_export_service.py

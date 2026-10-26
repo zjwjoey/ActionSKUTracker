@@ -108,7 +108,7 @@ def write_catalog_xlsx(
                     missing_skus.append(sku)
         description_lines = max(
             (_wrapped_line_count(ws.cell(row=row_no, column=index[header]).value, widths[header])
-             for header in ("描述", "产品详情") if header in index),
+             for header in ("描述", "产品详情", "备注") if header in index),
             default=1,
         )
         text_height = max(20, 15 * description_lines + 4)

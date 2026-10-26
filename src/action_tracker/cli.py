@@ -50,6 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--run-id", help="可选：指定该日期已正式提交的 run_id")
     e.add_argument("--selection-id", help="可选：仅导出已保存 Selection 的 SKU")
     e.add_argument("--research-release", action="store_true", help="启用严格 research_release 门禁（仅 SQLite 已 Apply 中文来源）")
+    e.add_argument("--annotation-plan", type=Path, help="使用已授权、精确来源绑定的计划导出带来源待核备注中文版")
     x = sub.add_parser("extract", help="统一商品提取（SQLite PRIMARY 只读）")
     x.add_argument("--query-json", help="查询 JSON 文件或 JSON 字符串")
     x.add_argument("--keyword")
@@ -404,12 +405,21 @@ def main(argv=None) -> int:
     if args.command == "export":
         from .exporting.service import ExportValidationError, export_catalog
         try:
+            extra = {}
+            if args.annotation_plan is not None:
+                if args.research_release:
+                    raise ExportValidationError("ANNOTATED_AND_STRICT_MODES_ARE_EXCLUSIVE")
+                extra = {
+                    "release_mode": "ANNOTATED_RELEASE",
+                    "annotation_plan": json.loads(args.annotation_plan.read_text(encoding="utf-8")),
+                }
             result = export_catalog(
                 cfg, language=args.lang, export_date=args.date,
                 no_images=not args.with_images, run_id=args.run_id, selection_id=args.selection_id,
                 research_release=bool(args.research_release),
+                **extra,
             )
-        except ExportValidationError as exc:
+        except (ExportValidationError, OSError, json.JSONDecodeError) as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False))
