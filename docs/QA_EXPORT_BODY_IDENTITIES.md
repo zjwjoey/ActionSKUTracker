@@ -26,7 +26,10 @@ Source anomalies, STALE and unresolved release checks still block release.
 
 Local live-data evidence is kept outside Git in the registered tasks
 `export60-stale-review` and `export-brand25-review`. The latter reviews 25
-new residual blockers exposed by preserving brands: 17 existing values are
-semantically reusable; 8 have separately reviewed minimal corrections. Apply
+new residual blockers exposed by preserving brands: 16 existing values are
+semantically reusable; 8 have separately reviewed minimal corrections. One
+additional existing value remains unchanged with a source-conflict note:
+3209451 has three bracelets in description/specification but four in details.
+This conflict is not resolved by accepting its source-bound brand spelling. Apply
 counts and verification outcomes come from the task manifests, not this file.
 No runtime dictionary, schema, collection behavior or release exceptions change.
