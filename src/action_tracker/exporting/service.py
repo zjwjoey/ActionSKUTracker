@@ -33,7 +33,7 @@ from .dictionary_join import (
 from .repair import ExportRepairEngine, default_overrides_path
 from .repair_report import ExportRepairReport, audit_repaired_rows
 from .excel_writer import write_catalog_xlsx
-from .profiles import ExportProfile, ExportProfileError, load_profile
+from .profiles import ExportProfile, ExportProfileError, load_profile, annotated_profile
 
 
 class ExportValidationError(ValueError):
@@ -42,6 +42,7 @@ class ExportValidationError(ValueError):
 
 PREVIEW = "PREVIEW"
 PRODUCTION_RELEASE = "PRODUCTION_RELEASE"
+ANNOTATED_RELEASE = "ANNOTATED_RELEASE"
 _HASHED_ZH_COLUMNS = ("编号", "标题", "分类1", "分类2", "规格", "单价", "描述", "产品详情", "折后价", "原价", "图片链接", "商品链接")
 
 
@@ -49,7 +50,7 @@ def export_output_path(cfg: dict[str, Any], filename: str, mode: str) -> Path:
     """Preview has a dedicated namespace; existing unknown bundles are protected."""
     mode = _release_mode(mode)
     root = Path(cfg["paths"]["exports"]).resolve()
-    directory = root / "preview" if mode == PREVIEW else root
+    directory = root / "preview" if mode == PREVIEW else root / "annotated" if mode == ANNOTATED_RELEASE else root
     if directory.resolve() != directory:
         raise ExportValidationError("EXPORT_DIRECTORY_ALIAS_FORBIDDEN")
     output = directory / filename
@@ -96,6 +97,14 @@ def validate_production_release(cfg: dict[str, Any], source: "ExportSource", row
     validate_zh_rows_against_source(rows, source.records)
     if [str(row.get('编号') or '') for row in rows] != [str(row.get('编号') or '') for row in build_es_rows(source.records)]:
         raise ExportValidationError('RESEARCH_RELEASE_ES_ZH_ORDER_MISMATCH')
+    release, master_quality = _research_release_result(cfg, source, rows)
+    if not release.ok:
+        raise ExportValidationError(f"RESEARCH_RELEASE_GATE_FAILED:{','.join(release.issues[:8])}")
+    return {"status": "PASS", "es_audit": "PASS", "zh_audit": "PASS", "parity": "PASS", "master_quality": master_quality}
+
+
+def _research_release_result(cfg: dict[str, Any], source: "ExportSource", rows: list[dict[str, Any]]):
+    """Return the unchanged strict result, also retained by annotated delivery."""
     from ..localization.release_gate import audit_research_release, load_allowed_tokens, load_explicit_exceptions
     from ..data_quality.master_gate import audit_master_quality
     try:
@@ -109,9 +118,7 @@ def validate_production_release(cfg: dict[str, Any], source: "ExportSource", row
         explicit_exceptions=load_explicit_exceptions(Path(cfg["project_root"]) / "config" / "research_release_exceptions.json"),
         master_quality=master_quality,
     )
-    if not release.ok:
-        raise ExportValidationError(f"RESEARCH_RELEASE_GATE_FAILED:{','.join(release.issues[:8])}")
-    return {"status": "PASS", "es_audit": "PASS", "zh_audit": "PASS", "parity": "PASS", "master_quality": master_quality}
+    return release, master_quality
 
 
 def _export_repair_allowed_tokens(dictionary: Any) -> set[str]:
@@ -236,6 +243,27 @@ _CJK_RE = re.compile(r"[\u3400-\u9fff]")
 
 
 def export_catalog(
+    cfg: dict[str, Any], *, language: str, export_date: str, no_images: bool,
+    run_id: str | None = None, selection_id: str | None = None,
+    research_release: bool = False, release_mode: str = PREVIEW,
+    annotation_plan: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Publish with the shared writer lock for explicit annotated delivery."""
+    options = dict(language=language, export_date=export_date, no_images=no_images,
+                   run_id=run_id, selection_id=selection_id, research_release=research_release,
+                   release_mode=release_mode, annotation_plan=annotation_plan)
+    mode = PRODUCTION_RELEASE if research_release else _release_mode(release_mode)
+    if mode != ANNOTATED_RELEASE:
+        return _export_catalog_impl(cfg, **options)
+    from ..operations.storage_foundation import storage_lock, StorageError
+    try:
+        with storage_lock(Path(cfg["paths"]["state"]), run_id="annotated-catalog-" + export_date):
+            return _export_catalog_impl(cfg, **options)
+    except StorageError as exc:
+        raise ExportValidationError(str(exc)) from exc
+
+
+def _export_catalog_impl(
     cfg: dict[str, Any],
     *,
     language: str,
@@ -245,19 +273,33 @@ def export_catalog(
     selection_id: str | None = None,
     research_release: bool = False,
     release_mode: str = PREVIEW,
+    annotation_plan: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """导出一个正式全量清单；整个过程只读取来源并写入 exports 目录。"""
     _validate_date(export_date)
+    if research_release:
+        release_mode = PRODUCTION_RELEASE
+    release_mode = _release_mode(release_mode)
+    if release_mode == ANNOTATED_RELEASE:
+        if language != "zh":
+            raise ExportValidationError("ANNOTATED_RELEASE_ZH_ONLY")
+        if selection_id:
+            raise ExportValidationError("ANNOTATED_RELEASE_REQUIRES_FULL_CURRENT_SET")
+        if not isinstance(annotation_plan, dict) or not annotation_plan:
+            raise ExportValidationError("ANNOTATED_RELEASE_PLAN_REQUIRED")
+    elif annotation_plan is not None:
+        raise ExportValidationError("ANNOTATION_PLAN_REQUIRES_ANNOTATED_RELEASE")
     try:
         profile = load_profile(cfg, language=language, no_images=no_images)
+        if release_mode == ANNOTATED_RELEASE:
+            profile = annotated_profile(profile)
     except ExportProfileError as exc:
         raise ExportValidationError(str(exc)) from exc
     if profile.language != language:
         raise ExportValidationError(f"EXPORT_PROFILE_LANGUAGE_MISMATCH: {profile.profile_id}")
     source = resolve_formal_source(cfg, export_date=export_date, requested_run_id=run_id, profile=profile)
-    if research_release:
-        release_mode = PRODUCTION_RELEASE
-    release_mode = _release_mode(release_mode)
+    if release_mode == ANNOTATED_RELEASE and source.kind != "SQLITE_CURRENT":
+        raise ExportValidationError("ANNOTATED_RELEASE_REQUIRES_SQLITE_CURRENT")
     if release_mode == PRODUCTION_RELEASE:
         if language != "zh":
             raise ExportValidationError("RESEARCH_RELEASE_ZH_ONLY")
@@ -305,6 +347,23 @@ def export_catalog(
     repair_audit: dict[str, Any] | None = locals().get("repair_audit")
     repair_report_path: Path | None = None
     final_zh_rows_hash = locals().get("final_zh_rows_hash")
+    annotation_audit = None
+    baseline_rows = None
+    if release_mode == ANNOTATED_RELEASE:
+        from .annotated import apply_annotation_plan, AnnotatedDeliveryError
+        validate_spanish_source_fields(source.records)
+        strict_result, _ = _research_release_result(cfg, source, rows)
+        baseline_rows = [dict(row) for row in rows]
+        try:
+            rows, annotation_audit = apply_annotation_plan(
+                source, rows, annotation_plan, source_hash=canonical_source_hash(source.records),
+                repair_audit=repair_audit or {}, strict_audit=strict_result.as_dict(),
+            )
+        except AnnotatedDeliveryError as exc:
+            raise ExportValidationError(str(exc)) from exc
+        validate_zh_rows_against_source(rows, source.records)
+        validate_output_rows(rows)
+        final_zh_rows_hash = canonical_export_rows_hash(rows)
     if release_mode == PRODUCTION_RELEASE:
         release_audit = validate_production_release(cfg, source, rows)
 
@@ -315,6 +374,10 @@ def export_catalog(
     output_path = export_output_path(cfg, output_name, release_mode)
     headers = [str(column["header"]) for column in profile.columns]
     expected_skus = {str(r["编号"]) for r in rows}
+    if release_mode == ANNOTATED_RELEASE:
+        reused = _reuse_annotated_bundle(output_path, source, rows, headers, annotation_audit)
+        if reused is not None:
+            return reused
     image_root = (Path(cfg["paths"]["images"]) / "derivatives" / "excel_250") if not no_images else None
     image_eligibility = _resolve_image_eligibility(cfg, source.records, image_root) if image_root else None
     # 先写入并验证旁路临时文件；工作簿和 manifest 通过校验后成对发布，
@@ -328,7 +391,8 @@ def export_catalog(
             image_eligibility=image_eligibility,
         )
         _verify_written_workbook(preview_path, headers=headers, expected_skus=expected_skus,
-                                 expect_images=not no_images, expected_image_count=image_stats["embedded_count"])
+                                 expect_images=not no_images, expected_image_count=image_stats["embedded_count"],
+                                 expected_sku_order=[str(row["编号"]) for row in rows])
         if not no_images and image_stats["embedded_count"] + image_stats["missing_count"] != len(rows):
             raise ExportValidationError("EXPORT_IMAGE_COVERAGE_MISMATCH")
         source_hash = canonical_source_hash(source.records)
@@ -363,6 +427,20 @@ def export_catalog(
         }
         if release_mode == PRODUCTION_RELEASE:
             manifest["strict_release_audit"] = release_audit
+        if release_mode == ANNOTATED_RELEASE:
+            from .annotated import full_delivery_rows_hash, verify_annotation_delivery
+            published_rows = _read_catalog_rows(preview_path, headers)
+            try:
+                verify_annotation_delivery(source, baseline_rows, published_rows, annotation_audit)
+            except ValueError as exc:
+                raise ExportValidationError(str(exc)) from exc
+            published_full_hash = full_delivery_rows_hash(published_rows, headers)
+            if published_full_hash != annotation_audit["full_rows_hash"]:
+                raise ExportValidationError("ANNOTATED_PUBLISHED_ROWS_OR_NOTES_CHANGED")
+            manifest["annotated_delivery_audit"] = {
+                **annotation_audit, "published_full_rows_hash": published_full_hash,
+                "research_verified": False, "annotated_delivery_ready": True,
+            }
         if language == "es":
             # Persist before/after evidence atomically with the workbook.
             manifest["spanish_projection"] = es_projection_report
@@ -400,6 +478,11 @@ def export_catalog(
             manifest["repair_report_digest"] = _json_digest(repair_payload)
         if release_mode == PREVIEW:
             validate_preview_destination(output_path)
+        elif release_mode == ANNOTATED_RELEASE:
+            if any(p.exists() or p.is_symlink() for p in (
+                output_path, manifest_path, repair_report_path,
+            ) if p is not None):
+                raise ExportValidationError("ANNOTATED_DESTINATION_CHANGED_DURING_BUILD")
         _publish_export_bundle(
             preview_path, output_path, manifest_path, manifest,
             repair_report_path=repair_report_path,
@@ -436,6 +519,8 @@ def export_catalog(
         "repair_audit": repair_audit,
         "audited_zh_rows_hash": final_zh_rows_hash,
         "published_zh_rows_hash": published_zh_rows_hash,
+        **({"annotated_delivery_audit": manifest["annotated_delivery_audit"], "idempotent_reuse": False}
+           if release_mode == ANNOTATED_RELEASE else {}),
     }
 
 
@@ -859,15 +944,69 @@ def _hash_cell_value(value: Any) -> str | None:
     return text or None
 
 
+def _reuse_annotated_bundle(output: Path, source: ExportSource, rows: list[dict[str, Any]],
+                           headers: list[str], annotation_audit: dict[str, Any]) -> dict[str, Any] | None:
+    """Only reuse an intact, identical approved delivery; never overwrite it."""
+    manifest_path = output.with_suffix(".manifest.json")
+    repair_path = output.with_suffix(".repair-report.json")
+    paths = (output, manifest_path, repair_path)
+    if not any(p.exists() or p.is_symlink() for p in paths):
+        return None
+    try:
+        if any(p.is_symlink() or not p.is_file() for p in paths):
+            raise ValueError("incomplete or aliased bundle")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        audit = manifest["annotated_delivery_audit"]
+        if not (
+            manifest["release_mode"] == "annotated_release"
+            and manifest["output_file"] == output.name
+            and manifest["artifact_source_commit_id"] == source.source_commit_id
+            and manifest["source_master_hash"] == canonical_source_hash(source.records)
+            and manifest["output_sha256"] == hashlib.sha256(output.read_bytes()).hexdigest()
+            and audit["plan_digest"] == annotation_audit["plan_digest"]
+            and audit["full_rows_hash"] == annotation_audit["full_rows_hash"]
+            and audit["published_full_rows_hash"] == annotation_audit["full_rows_hash"]
+            and audit["research_verified"] is False
+            and audit["annotated_delivery_ready"] is True
+            and audit == {**annotation_audit, "published_full_rows_hash": annotation_audit["full_rows_hash"],
+                          "research_verified": False, "annotated_delivery_ready": True}
+            and manifest["repair_report_digest"] == _json_digest(json.loads(repair_path.read_text(encoding="utf-8")))
+        ):
+            raise ValueError("bundle identity or approval differs")
+        from .annotated import full_delivery_rows_hash
+        published = _read_catalog_rows(output, headers)
+        expected = [str(row["编号"]) for row in rows]
+        if [str(row["编号"]) for row in published] != expected or len(set(expected)) != len(expected):
+            raise ValueError("published SKU order or count differs")
+        if full_delivery_rows_hash(published, headers) != annotation_audit["full_rows_hash"]:
+            raise ValueError("published cells or notes differ")
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise ExportValidationError("ANNOTATED_EXISTING_ARTIFACT_UNTRUSTED_OR_DIFFERENT_PLAN") from exc
+    return {
+        "output": str(output), "manifest": str(manifest_path), "run_id": source.run_id,
+        "sku_count": len(rows), "source_kind": source.kind, "profile": manifest["profile_id"],
+        "artifact_source_commit_id": source.source_commit_id, "release_mode": "annotated_release",
+        "image_embedded_count": manifest["image_embedded_count"],
+        "image_missing_count": manifest["image_missing_count"],
+        "missing_image_skus": manifest["missing_image_skus"],
+        "image_eligible_count": manifest["image_eligible_count"], "selection_id": None,
+        "repair_report": str(repair_path), "repair_audit": None,
+        "audited_zh_rows_hash": manifest["export_repair"]["audited_zh_rows_hash"],
+        "published_zh_rows_hash": manifest["export_repair"]["published_zh_rows_hash"],
+        "annotated_delivery_audit": audit, "idempotent_reuse": True,
+    }
+
+
 def _release_mode(value: str) -> str:
     mode = str(value or PREVIEW).strip().upper()
-    if mode not in {PREVIEW, PRODUCTION_RELEASE}:
+    if mode not in {PREVIEW, PRODUCTION_RELEASE, ANNOTATED_RELEASE}:
         raise ExportValidationError(f"EXPORT_RELEASE_MODE_INVALID: {value}")
     return mode
 
 
 def _verify_written_workbook(path: Path, *, headers: list[str], expected_skus: set[str],
-                             expect_images: bool = False, expected_image_count: int = 0) -> None:
+                             expect_images: bool = False, expected_image_count: int = 0,
+                             expected_sku_order: list[str] | None = None) -> None:
     workbook = openpyxl.load_workbook(path, read_only=False, data_only=True)
     try:
         if workbook.sheetnames != ["商品全量"]:
@@ -879,9 +1018,12 @@ def _verify_written_workbook(path: Path, *, headers: list[str], expected_skus: s
         if ws.auto_filter.ref != f"A1:N{len(expected_skus) + 1}":
             raise ExportValidationError("EXPORT_XLSX_FILTER_MISMATCH")
         sku_column = headers.index("编号") + 1
-        actual_skus = {str(ws.cell(row=row, column=sku_column).value or "").strip() for row in range(2, ws.max_row + 1)}
-        if actual_skus != expected_skus or len(actual_skus) != len(expected_skus):
+        sku_list = [str(ws.cell(row=row, column=sku_column).value or "").strip() for row in range(2, ws.max_row + 1)]
+        actual_skus = set(sku_list)
+        if actual_skus != expected_skus or len(sku_list) != len(expected_skus) or len(actual_skus) != len(sku_list):
             raise ExportValidationError("EXPORT_XLSX_SKU_SET_MISMATCH")
+        if expected_sku_order is not None and sku_list != expected_sku_order:
+            raise ExportValidationError("EXPORT_XLSX_SKU_ORDER_MISMATCH")
         if expect_images and len(getattr(ws, "_images", ())) != expected_image_count:
             raise ExportValidationError("EXPORT_XLSX_IMAGE_COUNT_MISMATCH")
     finally:
