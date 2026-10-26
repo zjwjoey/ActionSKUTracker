@@ -1011,9 +1011,8 @@ def _repair_export_details(value: str | None, source: str | None) -> str | None:
         if "来源异常：官网字段Sustancia=Válido" not in text:
             text += "；来源异常：官网字段Sustancia=Válido"
     if "incluye oído" in source_text:
-        text = re.sub(r"(?:带把手|是否带耳)：(?:是|否)", "来源异常：官网字段Incluye oído", text)
-        if "来源异常：官网字段Incluye oído" not in text:
-            text += "；来源异常：官网字段Incluye oído"
+        from ..localization.source_notes import repair_legacy_detail_source_notes
+        text = repair_legacy_detail_source_notes(source, text)
     # The legacy detail parser sometimes appended the raw uppercase Spanish
     # enum/value after the article number (for example ``商品编号：2527246；
     # CALCULADORA``).  These are ordinary source words, not model/certification

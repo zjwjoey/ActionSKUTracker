@@ -199,3 +199,6 @@ tests/test_current151_qa_false_blocks.py
 
 # CI_SAFE: in-memory body identity preservation and source-bound boolean aliases.
 tests/test_export60_source_bound_qa.py
+
+# CI_SAFE: own-field source anomaly note language checks; no IO/network/Apply.
+tests/test_source_note_language_qa.py

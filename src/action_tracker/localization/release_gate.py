@@ -14,6 +14,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from ..services.hashing import localization_field_source_hash, localization_source_hash
 from .body_names import mask_source_bound_body_names
+from .source_notes import mask_verified_detail_source_notes
 import re
 import json
 
@@ -216,6 +217,8 @@ def audit_research_release(
             if field in {"desc_zh", "details_zh"}:
                 source_key = "desc_es" if field == "desc_zh" else "details_es"
                 inspected = mask_source_bound_body_names(str(row.get(source_key) or ""), inspected)
+                if field == "details_zh":
+                    inspected = mask_verified_detail_source_notes(str(row.get(source_key) or ""), inspected)
             if _has_release_spanish_residual(inspected, allowed_tokens=allowed_tokens):
                 counts["SPANISH_RESIDUAL"] += 1
                 issues.append(f"SPANISH_RESIDUAL:{sku}:{field}")

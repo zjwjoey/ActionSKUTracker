@@ -8,6 +8,7 @@ import re
 from typing import Any, Callable, Iterable, Mapping
 
 from .repair_tokens import canonical_fact_token, token_is_preserved
+from ..localization.source_notes import mask_verified_detail_source_notes
 
 
 REPAIR_REPORT_VERSION = "1.0"
@@ -704,7 +705,8 @@ def audit_repaired_rows(
                 # for malformed official source keys.  Their Spanish spelling
                 # is not a product-language residual.
                 residual_text = residual_text.replace("来源异常：官网字段Sustancia=Válido", "")
-                residual_text = residual_text.replace("来源异常：官网字段Incluye oído", "")
+                if finding.field_name == "details":
+                    residual_text = mask_verified_detail_source_notes(source_text, residual_text)
                 if not has_ordinary_spanish(residual_text, allowed_tokens=source_allowed):
                     continue
             findings.append({
