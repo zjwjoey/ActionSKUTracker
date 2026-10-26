@@ -970,7 +970,7 @@ def _detail_boolean_findings(source_text, target):
     """Compare presence truth, including explicit negative source labels."""
     attributes = ((r"\balcohol\b", r"酒精"), (r"\bsilicona\b", r"硅(?:酮|胶)?"),
         (r"\bgluten\b", r"麸质"), (r"\blactosa\b", r"乳糖"),
-        (r"\b(?:perfume|perfumad[oa])\b", r"香(?:料|精|型|味)|(?:无|有)香"),
+        (r"\b(?:perfume|perfumad[oa])\b", r"香(?:料|精|型|味)|(?:无|有)香|^(?:是否)?香[薰氛]$"),
         (r"\bjab[oó]n\b", r"皂"), (r"\baz[uú]car(?:es)?\b", r"(?<!乳)糖"),
         (r"^aclarado$", r"冲洗|免洗"))
     bools = {"si": True, "sí": True, "yes": True, "true": True, "是": True,
