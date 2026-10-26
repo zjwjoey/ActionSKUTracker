@@ -144,11 +144,11 @@ def test_title_drops_brand_number_fragments_but_keeps_model_numbers():
     assert repair_title("相框｜A4", "Marco A4") == "相框｜A4"
 
 
-def test_description_and_details_hide_confirmed_brand_tokens():
+def test_description_and_details_preserve_confirmed_source_brand_tokens():
     from action_tracker.exporting.repair_rules import repair_content_with_context, repair_details_with_context
 
-    assert "Nutini" not in repair_content_with_context("Nutini巧克力饼干", "Galletas Nutini", excluded_tokens={"Nutini"})
-    assert "Nutini" not in repair_details_with_context("品牌：Nutini；商品编号：1", "Marca: Nutini; Número del artículo: 1", excluded_tokens={"Nutini"})
+    assert "Nutini" in repair_content_with_context("Nutini巧克力饼干", "Galletas Nutini", excluded_tokens={"Nutini"})
+    assert "Nutini" in repair_details_with_context("品牌：Nutini；商品编号：1", "Marca: Nutini; Número del artículo: 1", excluded_tokens={"Nutini"})
 
 
 def test_description_removes_adapter_parameter_and_repeated_size_tails():

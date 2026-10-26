@@ -196,3 +196,6 @@ tests/test_laundry_powder_qa.py
 
 # CI_SAFE: pure current-source unit, boolean, charging and body identity guards; no IO/network.
 tests/test_current151_qa_false_blocks.py
+
+# CI_SAFE: in-memory body identity preservation and source-bound boolean aliases.
+tests/test_export60_source_bound_qa.py
