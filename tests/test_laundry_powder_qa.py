@@ -91,3 +91,27 @@ def test_description_needs_its_own_complete_powder_phrase():
     assert check({"desc_es": "Detergente en polvo para ropa"}, "洗衣粉", "description")["overall_ready"]
     assert not check({"name_es": "Detergente en polvo para ropa", "desc_es": "Detergente"},
                      "洗衣粉", "description")["overall_ready"]
+
+
+@pytest.mark.parametrize("name", [
+    "Bolsa para detergente en polvo para ropa",
+    "Soporte para detergente en polvo para ropa",
+    "Tapa para detergente en polvo para ropa",
+    "Bolsa para el detergente en polvo",
+    "Tapa de detergente en polvo",
+    "Soporte del detergente en polvo",
+    "Organizador para tu detergente en polvo",
+    "Para detergente en polvo",
+])
+def test_dependent_powder_noun_cannot_replace_accessory_identity(name):
+    record = {"name_es": name, "details_es": "Uso previsto: Lavadora"}
+    assert not check(record, "洗衣粉")["overall_ready"]
+
+
+@pytest.mark.parametrize("record,field", [
+    ({"name_es": "Detergente en polvo para ropa"}, "name"),
+    ({"name_es": "Detergente en polvo", "details_es": "Uso previsto: Lavadora"}, "name"),
+    ({"desc_es": "Lava la ropa con el detergente en polvo."}, "description"),
+])
+def test_product_identity_is_not_rejected_by_its_own_purpose_or_use(record, field):
+    assert check(record, "洗衣粉", field)["overall_ready"]

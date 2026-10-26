@@ -22,6 +22,10 @@ allowlist, dictionary promotion or approval bypass. Production changes still
 require semantic review, delegated approval, immutable patches and Apply.
 
 `tests/test_laundry_powder_qa.py` contains the real source and negative controls;
-it is offline and CI_SAFE. Code on the development branch is not an activated
-production release. The active deployment manifest is unchanged; rollout is a
-separate authorized release operation.
+it is offline and CI_SAFE. Release remains a separate authorized operation. The active production
+identity is recorded in `runtime/deployment/active.json`; this document does
+not establish whether a particular commit is deployed.
+
+A powder phrase governed by `para` or `de` is an accessory/material context,
+not proof that the sold object is washing powder. Bags, stands and lids must
+not become washing powder merely because their intended contents are named.

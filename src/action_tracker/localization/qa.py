@@ -40,6 +40,9 @@ _UNIT_ALIASES = {
 
 
 def _units(value: str) -> set[str]:
+    # Ø is a diameter symbol here, not part of a Latin model identifier.
+    # Normalize only a standalone symbol immediately before a measurement.
+    value = re.sub(r"(?<![A-Za-z0-9])(?:Ø|ø|⌀)\s*(?=\d)", " ", value)
     value = re.sub(r"(?<=\d)(\s*)(km|cm|mm|m)([23])(?![A-Za-z0-9])", lambda m: m[1] + m[2] + {"2": "²", "3": "³"}[m[3]], value, flags=re.I)
     units = {_normalize_unit(unit) for unit in _STRICT_UNIT_RE.findall(value)}
     units.update(_UNIT_ALIASES.get(unit, unit) for unit in _CHINESE_UNIT_RE.findall(value))
@@ -152,6 +155,8 @@ _OMITTABLE_DISPLAY_BRAND_TECH = {"hp"}
 # must be allowed only when the exact token is present in both source and
 # target; ordinary Spanish words remain blocked.
 _SOURCE_BOUND_SPANISH_STOPWORDS = {
+    "ángel",  # ordinary angel unless the body identity contract proves the Disney character
+
     "a", "al", "como", "con", "de", "del", "desde", "el", "en", "entre",
     "esta", "este", "la", "las", "lo", "los", "más", "no", "o", "para",
     "por", "que", "se", "sin", "su", "sus", "un", "una", "y",
@@ -540,6 +545,17 @@ def _is_source_bound_laundry_powder(source: SourceFacts, source_text: str) -> bo
     count = len(re.findall(powder, source_text, re.I))
     if not count or count != len(re.findall(r"\bdetergentes?\b", source_text, re.I)):
         return False
+    # A powder noun governed by para/de describes the purpose or contents of
+    # something else (e.g. a bag *for* powder), not necessarily this product's
+    # identity. Same-SKU laundry usage cannot promote that dependent noun to
+    # the product itself. Keep these ambiguous constructions on the existing
+    # review path rather than maintaining an ever-growing accessory list.
+    for match in re.finditer(powder, source_text, re.I):
+        if re.search(
+            r"\b(?:para|de|del)\s+(?:(?:el|los|un|unos|este|estos|ese|esos|aquel|aquellos|mi|mis|tu|tus|su|sus|nuestro|nuestros|vuestro|vuestros)\s+)?$",
+            source_text[:match.start()], re.I,
+        ):
+            return False
     if re.search(r"\b(?:dosificador|dispensador|recipiente|organizador|cuchara|caja|bote)\s+(?:para|de)\s+detergentes?\b", source_text, re.I):
         return False
     texts = (source.name_es, source.spec_es, source.desc_es, source.details_es)
@@ -763,6 +779,13 @@ def _numbers(value: str) -> Counter[str]:
         if re.search(r"\b(?:veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos|seiscientos|setecientos|ochocientos|novecientos|mil)\s*(?:(?:y|e)\s*)?$", prefix, re.I):
             continue
         numbers[spanish_cardinals[match.group(1).casefold()]] += 1
+    # A complete alternative-count phrase is still two source counts, e.g.
+    # cordones con seis o siete agujeros. Do not extract a last digit from
+    # unsupported compounds or arbitrary unquantified prose.
+    for match in re.finditer(rf"\b({'|'.join(spanish_cardinals)})\s+(?:o|u)\s+({'|'.join(spanish_cardinals)})\s+agujeros\b", text, re.I):
+        if not re.search(r"\b(?:veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos|seiscientos|setecientos|ochocientos|novecientos|mil)\s*(?:y\s*)?$", text[:match.start()], re.I):
+            numbers[spanish_cardinals[match.group(1).casefold()]] += 1
+            numbers[spanish_cardinals[match.group(2).casefold()]] += 1
     # Chinese display text commonly renders source numerals as characters,
     # e.g. ``3 en 1`` -> ``三合一``.  Count those simple digit forms as the
     # same facts without weakening the Arabic-number checks.
@@ -926,7 +949,7 @@ def _detail_charging_speed_findings(source_text, target):
         if re.fullmatch(r"cargador\s+r[aá]pido\s*/\s*lento", p.key.strip(), re.I)
         and p.value.strip().casefold() in {"rápido", "rapido", "lento"}]
     target_items = [p for p in parse_structured_details(target)
-        if "充电" in p.key or "充电器" in p.key or re.search(r"快充|慢充", p.key)]
+        if re.fullmatch(r"(?:充电器)?充电(?:速度|方式|模式)(?:[（(]快\s*/\s*慢[）)])?|充电器(?:速度|方式|模式)|充电(?:器)?快\s*/\s*慢|快充\s*/\s*慢充", p.key.strip())]
     findings = []
     if source_items and len(source_items) != len(target_items):
         return [QAFinding("DETAIL_CHARGING_SPEED_MISSING", "BLOCKER", "details", {},
@@ -947,7 +970,7 @@ def _detail_boolean_findings(source_text, target):
     """Compare presence truth, including explicit negative source labels."""
     attributes = ((r"\balcohol\b", r"酒精"), (r"\bsilicona\b", r"硅(?:酮|胶)?"),
         (r"\bgluten\b", r"麸质"), (r"\blactosa\b", r"乳糖"),
-        (r"\bperfume\b", r"香(?:料|精|型|味)|(?:无|有)香"),
+        (r"\b(?:perfume|perfumad[oa])\b", r"香(?:料|精|型|味)|(?:无|有)香"),
         (r"\bjab[oó]n\b", r"皂"), (r"\baz[uú]car(?:es)?\b", r"(?<!乳)糖"),
         (r"^aclarado$", r"冲洗|免洗"))
     bools = {"si": True, "sí": True, "yes": True, "true": True, "是": True,

@@ -78,7 +78,13 @@ def parse_structured_details(text: str) -> tuple[StructuredDetail, ...]:
             # recover only a syntax boundary, never guess a damaged key's meaning.
             match = re.fullmatch(r"(Apto para el lavavajillas|Apto para el microondas|Incluye oído|Resistente al horno)\s+(Sí|Si|No)", part, re.I)
             if not match:
-                match = re.fullmatch(r"(Tipo de taza / vaso)\s+(.+)", part, re.I)
+                match = re.fullmatch(
+                    r"(Tipo de taza / vaso|Instalación|Tema|Tipo de decoración de temporada|"
+                    r"Tipo de decoración|Tipo de temporada|Tipo de alimentación|Tipo de fuente de luz|"
+                    r"Código de batería)\s+(.+)", part, re.I,
+                )
+            if not match:
+                match = re.fullmatch(r"(Incluye fuente de luz|Pilas incluidas)\s+(Sí|Si|No)", part, re.I)
             if not match:
                 continue
         key, value = match.group(1).strip(), match.group(2).strip()
