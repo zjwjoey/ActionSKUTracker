@@ -141,6 +141,7 @@ tests/test_current_delegated_approval.py
 
 # CI_SAFE: source-faithful text QA uses in-memory fixtures only.
 tests/test_current_source_faithful_qa.py
+tests/test_mokoji_body_identity.py
 # CI_SAFE: isolated SQLite fixtures and planner mocks; no production/network access.
 tests/test_detail_refresh_judgment.py
 tests/test_current_price_projection.py
@@ -189,3 +190,9 @@ tests/test_cleanup_executor.py
 # CI_SAFE: isolated task workspaces and bounded snapshot writers, no production/network.
 tests/test_transient_footprint.py
 tests/test_active_production_wrapper.py
+
+# CI_SAFE: source-bound laundry powder QA, public source literals only, no IO/network.
+tests/test_laundry_powder_qa.py
+
+# CI_SAFE: pure current-source unit, boolean, charging and body identity guards; no IO/network.
+tests/test_current151_qa_false_blocks.py

@@ -23,7 +23,9 @@ def environment(tmp_path):
     protected = tmp_path / 'protected'; protected.mkdir()
     raw = {'operations_root': str(tmp_path / 'operations'),
         'protected_roots': [str(protected)], 'writer_lock_directory': str(tmp_path / 'state'),
-        'policy': {'enabled': True},
+        # Synthetic SQLite/projections are small. Do not reserve the production
+        # 16 GiB default on CI runners; retain the real disk-budget gate.
+        'policy': {'enabled': True, 'max_scratch_bytes': 128 * 1024**2},
         'backend': {'provider': 'filesystem', 'repository_path': str(tmp_path / 'repo')},
         'capture_lifecycle': {'enabled': True, 'minimum_retention_seconds': 0,
             'quarantine_seconds': 0, 'keep_latest_capture': False, 'independent_rollback_required': False},
@@ -334,3 +336,26 @@ def test_retired_workspace_reappearance_is_visible_to_health_and_resume(environm
     with pytest.raises(StorageError, match='WORKSPACE_CHANGED'):
         c.cycle(raw, backend, 'first', grant=grant, retire=True)
     assert (workspace / 'unregistered.sqlite3').exists()
+
+
+@pytest.mark.parametrize('free_bytes, expected', [
+    (256 * 1024**2, 'DISPOSITION_PENDING'),
+    (128 * 1024**2, 'STORAGE_DISK_BUDGET_EXCEEDED'),
+])
+def test_synthetic_budget_works_on_small_disks_and_still_checks_free_space(environment, monkeypatch, free_bytes, expected):
+    from types import SimpleNamespace
+    from action_tracker.operations import storage_lifecycle
+    raw, backend = environment
+    assert raw['policy']['max_scratch_bytes'] == 128 * 1024**2
+    assert op.OperationPolicy().max_scratch_bytes == 16 * 1024**3
+    monkeypatch.setattr(storage_lifecycle.shutil, 'disk_usage',
+        lambda _: SimpleNamespace(total=1024**3, used=1024**3-free_bytes, free=free_bytes))
+    if expected == 'DISPOSITION_PENDING':
+        assert c.cycle(raw, backend, 'small-disk')['status'] == expected
+        assert backend.writes == 1
+        assert (c._directory(raw['operations_root'], 'small-disk') / 'restore.json').is_file()
+    else:
+        with pytest.raises(StorageError, match=expected):
+            c.cycle(raw, backend, 'small-disk')
+        assert backend.writes == 0
+        assert not list(Path(raw['operations_root']).rglob('*.sqlite3'))
