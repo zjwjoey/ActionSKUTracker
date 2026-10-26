@@ -9,6 +9,7 @@ from typing import Any, Mapping
 from .contracts import SourceFacts
 from .policy import FIXED_CAT1, has_ordinary_spanish
 from .body_names import mask_source_bound_body_names
+from .source_notes import mask_verified_detail_source_notes
 from .protection.tokens import ProtectedTokenError, protect_text, restore_text
 from .normalization.structured_details import parse_structured_details
 
@@ -1086,6 +1087,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         )
         residual_target = (mask_source_bound_body_names(source_text, target)
                            if field_name in {"description", "details"} else target)
+        if field_name == "details":
+            residual_target = mask_verified_detail_source_notes(source_text, residual_target)
         if has_ordinary_spanish(residual_target, allowed_tokens=allowed_display_tokens):
             findings.append(QAFinding("SPANISH_RESIDUAL", "ERROR", field_name, {"value": target}, source=source_text, target=target, blocking=True))
         # Technical/numeric guards cannot detect an omitted ordinary product
