@@ -81,7 +81,8 @@ def parse_structured_details(text: str) -> tuple[StructuredDetail, ...]:
                 match = re.fullmatch(
                     r"(Tipo de taza / vaso|Instalación|Tema|Tipo de decoración de temporada|"
                     r"Tipo de decoración|Tipo de temporada|Tipo de alimentación|Tipo de fuente de luz|"
-                    r"Código de batería)\s+(.+)", part, re.I,
+                    r"Tipos de fuentes de luz|Código de batería|Instrucciones de lavado|"
+                    r"Instrucciones de planchado|Instrucciones de secado|Tipo de cojines)\s+(.+)", part, re.I,
                 )
             if not match:
                 match = re.fullmatch(r"(Incluye fuente de luz|Pilas incluidas)\s+(Sí|Si|No)", part, re.I)

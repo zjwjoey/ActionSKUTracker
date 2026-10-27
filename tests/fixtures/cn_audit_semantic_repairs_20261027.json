@@ -1,0 +1,135 @@
+[
+  {
+    "sku": "3226213",
+    "field": "name",
+    "source": {
+      "sku": "3226213",
+      "name_es": "Detergente Coccolatevi",
+      "cat1_es": "Hogar",
+      "cat2_es": "Detergentes y lavavajillas",
+      "spec_es": "38 lavados | 1,52 litros | diferentes variantes",
+      "unit_price_es": null,
+      "desc_es": "Hasta 38 lavados | Limpieza profunda | Para elegir entre 2 aromas | Consigue una colada limpia y con un aroma fresco con este detergente líquido Coccolatevi. Esta fórmula concentrada permite 38 lavados y limpia la ropa a fondo. Disponible en The Original y White Musk.",
+      "details_es": "Contenido: 1520 ml | Función de limpieza: Sí | Número de turnos de limpieza: 36 | Tipo de dispensador: Botella | Número del artículo: 3226213"
+    },
+    "source_hash": "f6d40affc4333f0345691c8a493ed8f1ac11f614e276a0428b39f601c4e3846e",
+    "field_source_hash": "b119e1c2b3053215ecba8f6ffefae683ed2b7a71bef74247ccb533f94253e071",
+    "target": "洗衣液",
+    "original_target": "呵护洗洁精",
+    "source_snapshot": "cn-audit-20261026 frozen workbook/PRIMARY ES"
+  },
+  {
+    "sku": "2525235",
+    "field": "description",
+    "source": {
+      "sku": "2525235",
+      "name_es": "Bloc de dibujo para adultos",
+      "cat1_es": "Hobby",
+      "cat2_es": "Colorear y dibujar",
+      "spec_es": "80 hojas | diferentes variantes",
+      "unit_price_es": null,
+      "desc_es": "Bloc de dibujo con papel sin madera\nVarios diseños entre los que elegir\nPapel con certificación FSC®: papel sostenible\nHaz los dibujos más bonitos con este gran bloc de dibujo en formato A4 especial para adultos.",
+      "details_es": "Material: Papel; Cantidad: 80 hojas; Cubierta: Cubierta blanda; Forma: to del papel: A4; Número de páginas: 80; Relleno de página: Blanco; Número del artículo: 2525235"
+    },
+    "source_hash": "d5e8ce0e8f8d30cec2095a33e20e8b73b903f24d3b917d5d3a49b5e04dfe1a71",
+    "field_source_hash": "056b7adbcd7500e278b8434ff561b5fdf698067eb5ad1dafefce1fa8489af2d5",
+    "target": "采用化学浆绘图纸的绘画本；多种设计可选；采用FSC®认证的可持续纸张。这款大幅面A4绘画本专为成人设计，适合画出美丽作品。",
+    "original_target": "无木浆绘图纸；多种封面图案可选；采用 FSC® 认证的可持续纸张；大尺寸 A4 绘画本，适合成人素描和绘画",
+    "source_snapshot": "cn-audit-20261026 frozen workbook/PRIMARY ES"
+  },
+  {
+    "sku": "3010771",
+    "field": "description",
+    "source": {
+      "sku": "3010771",
+      "name_es": "Bolígrafos Pilot Frixionball Sticks",
+      "cat1_es": "Oficina y papelería",
+      "cat2_es": "Papelería",
+      "spec_es": "3 unidades",
+      "unit_price_es": null,
+      "desc_es": "Tinta borrable\nIncluyen goma de borrar para corregir\nCon tinta de 3 colores diferentes\nPrácticos bolígrafos con goma para corregir tus textos.",
+      "details_es": "Color: Multicolor; Color: de la tinta: Azul, Negro, Rojo; Borrable: Sí; Cantidad: 3 unidades; Capacidad: de borrado de tinta: Borrable; Punto de espesor: 0.7 mm; Tipo de bolígrafo: Rollerball; Número del artículo: 3010771"
+    },
+    "source_hash": "e1bb434af2e2fd2ab4a00e72eb34757c025f4386955bb00217143d0c1c36522d",
+    "field_source_hash": "2d6b71443a72db6a5510f290d85b580acbee12c6fa6696601a6e85b6d869e419",
+    "target": "可擦墨水；附橡皮，方便修改；含3种不同颜色墨水。实用的带橡皮笔，可用于修改文字。",
+    "original_target": "笔尾带橡皮，可擦除书写内容；套装含3种墨水颜色",
+    "source_snapshot": "cn-audit-20261026 frozen workbook/PRIMARY ES"
+  },
+  {
+    "sku": "3207279",
+    "field": "description",
+    "source": {
+      "sku": "3207279",
+      "name_es": "Juego de cinceles para madera Werckmann",
+      "cat1_es": "Bricolaje",
+      "cat2_es": "Herramientas",
+      "spec_es": "3 piezas",
+      "unit_price_es": null,
+      "desc_es": "Con hoja de acero CrV y mango de plástico\nEste juego de cinceles de madera de Werkmann incluye tres cinceles de 12, 18 y 24 milímetros.",
+      "details_es": "Material: Hierro, Plástico; Cantidad: 3 piezas; Material: del asa: Plástico; Tipo de cincel: Madera; Número del artículo: 3207279"
+    },
+    "source_hash": "77bf8d5f595b9995286c947b0377c42cab15655b2b0db91b07f2942d3cb7656e",
+    "field_source_hash": "b35e91e4f3e6993c3be60318399843255f00b01fe96dc5520e11411ba7c36e9a",
+    "target": "CrV钢刃，配塑料手柄。这款Werkmann木工凿套装包含三把凿子，尺寸分别为12、18和24毫米。",
+    "original_target": "带CrV钢刀片和塑料手柄；这款木工凿子套装包含三把凿子，尺寸分别为12毫米、18毫米和24毫米。",
+    "source_snapshot": "cn-audit-20261026 frozen workbook/PRIMARY ES"
+  },
+  {
+    "sku": "3216806",
+    "field": "description",
+    "source": {
+      "sku": "3216806",
+      "name_es": "Barra LED Baltimore",
+      "cat1_es": "Bricolaje",
+      "cat2_es": "Iluminación",
+      "spec_es": "55 cm | 900 lúmenes",
+      "unit_price_es": null,
+      "desc_es": "Luz brillante y fácil de instalar\nIdeal para el armario, el garaje o el trastero\nCon interruptor\nPráctica barra led Baltimore de bajo consumo para una iluminación brillante en casa. Ideal para tu armario, garaje o espacio de trabajo. Gracias a su diseño delgado y a su fácil montaje, tendrás rápidamente una buena luz donde la necesites.",
+      "details_es": "Color: Blanco; A color: No; Conectable: No; Consumo de energía: 9 kWh/1000h; Enlace EPREL: Abrir; Forma: lámpara: Barra; Incluye mando a distancia: No; Lumen: 900; Potencia: 9; Potencia: 9 vatio; Regulable: No; Smart: No; Tipo de fuente de luz: Lámpara LED; Número del artículo: 3216806"
+    },
+    "source_hash": "0c26d2d350b76424374a85463e1499384b3eeac43d5d291020c3c8f1efb6df49",
+    "field_source_hash": "fe11d41ef8c1ed4907633390d7295b5724a7e72b6965026b011480b4f7f9d1ae",
+    "target": "光线明亮且易于安装；适合衣柜、车库或储藏室；带开关；实用的Baltimore LED灯条，低能耗，为家中提供明亮照明。适合衣柜、车库或工作空间。凭借其纤薄设计和简易安装，您能快速在需要的地方获得良好光线。",
+    "original_target": "光线明亮且易于安装；适合衣柜、车库或储藏室；带开关；实用的 LED灯条，低能耗，为家中提供明亮照明。适合衣柜、车库或工作空间。凭借其纤薄设计和简易安装，您能快速在需要的地方获得良好光线。",
+    "source_snapshot": "cn-audit-20261026 frozen workbook/PRIMARY ES"
+  },
+  {
+    "sku": "3222901",
+    "field": "description",
+    "source": {
+      "sku": "3222901",
+      "name_es": "Soporte para auriculares y mando Battletron",
+      "cat1_es": "Multimedia",
+      "cat2_es": "Videojuegos",
+      "spec_es": "13x16x34 cm",
+      "unit_price_es": null,
+      "desc_es": "Para guardar tus auriculares y 4 mandos\nCon iluminación RGB\nCon 2 puertos USB-A y 1 puerto USB-C para cargar",
+      "details_es": "Color: Negro, Multicolor; Apto para videojuegos: Sí; Inalámbrica: No; Tipo de alimentación: Mediante otro producto; Tipo de conexión: USB; Número del artículo: 3222901"
+    },
+    "source_hash": "7ae171acb8cc8c87f80b8bedace2f75239f901972ccdf23efb70ce110b8053a6",
+    "field_source_hash": "ffdbd2291f9b5e1dce368c216aa5b556d25aa3c1f318eab0bc832776ed153067",
+    "target": "用于收纳您的耳机和4个游戏手柄\n带RGB灯效\n配备2个USB-A接口和1个USB-C接口，可用于充电",
+    "original_target": "用于收纳您的耳机和4个遥控器\n带RGB灯效\n配备2个USB-A接口和1个USB-C接口，可用于充电",
+    "source_snapshot": "cn-audit-20261026 frozen workbook/PRIMARY ES"
+  },
+  {
+    "sku": "3226213",
+    "field": "description",
+    "source": {
+      "sku": "3226213",
+      "name_es": "Detergente Coccolatevi",
+      "cat1_es": "Hogar",
+      "cat2_es": "Detergentes y lavavajillas",
+      "spec_es": "38 lavados | 1,52 litros | diferentes variantes",
+      "unit_price_es": null,
+      "desc_es": "Hasta 38 lavados | Limpieza profunda | Para elegir entre 2 aromas | Consigue una colada limpia y con un aroma fresco con este detergente líquido Coccolatevi. Esta fórmula concentrada permite 38 lavados y limpia la ropa a fondo. Disponible en The Original y White Musk.",
+      "details_es": "Contenido: 1520 ml | Función de limpieza: Sí | Número de turnos de limpieza: 36 | Tipo de dispensador: Botella | Número del artículo: 3226213"
+    },
+    "source_hash": "f6d40affc4333f0345691c8a493ed8f1ac11f614e276a0428b39f601c4e3846e",
+    "field_source_hash": "cb52d07efc87ec47a8dafd7a43978362854cc921b0568302e267e99791a10cdc",
+    "target": "最多可洗38次｜深层洁净｜可选两种香型｜选用这款Coccolatevi液体洗衣液，让衣物洁净如新、芬芳怡人。这款浓缩配方可满足38次洗涤，深层清洁衣物。有“经典款”与“白麝香”两款可供选择。",
+    "original_target": "最多可洗38次｜深层洁净｜可选两种香型｜选用这款液体洗衣液，让衣物洁净如新、芬芳怡人。这款浓缩配方可满足38次洗涤，深层清洁衣物。有“经典款”与“白麝香”两款可供选择。",
+    "source_snapshot": "cn-audit-20261026 frozen workbook/PRIMARY ES"
+  }
+]
