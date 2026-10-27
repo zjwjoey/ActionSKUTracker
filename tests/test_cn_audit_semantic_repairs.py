@@ -89,4 +89,3 @@ def test_numeric_and_interface_guards_still_block_dropped_facts():
     source = {"desc_es": "Con iluminación RGB y 2 puertos USB-C"}
     assert check(source, "带RGB灯效和2个USB-C接口")["overall_ready"]
     assert not check(source, "带RGB灯效")["overall_ready"]
-
