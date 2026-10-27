@@ -97,3 +97,21 @@ def test_frozen_3223393_all_source_care_pairs_preserved():
     assert pairs[2].source_text=='Instrucciones de lavado No lavar'
     # Unknown/damaged keys are not guessed and standalone headers are not pairs.
     assert not parse_structured_details('Especificaciones; Instruccione lavado No lavar; Tipo de cojín dañado Sí')
+
+
+def test_frozen_3218408_furniture_cover_source_pairs_are_lossless():
+    source=('Color: Diseño; Material: Plástico; Antideslizante No; Apto para tipo de mueble Mesa; '
+            'Extraíble Sí; Forma: Rectangular; Instrucciones de lavado No lavar; '
+            'Instrucciones de planchado Sin planchado; Instrucciones de secado No secar en tambor de secado; '
+            'Tipo de cubierta para muebles Mantel (no desechable); Uso de doble cara No; Número del artículo: 3218408')
+    expected=[('Color','Diseño'),('Material','Plástico'),('Antideslizante','No'),('Apto para tipo de mueble','Mesa'),
+              ('Extraíble','Sí'),('Forma','Rectangular'),('Instrucciones de lavado','No lavar'),
+              ('Instrucciones de planchado','Sin planchado'),('Instrucciones de secado','No secar en tambor de secado'),
+              ('Tipo de cubierta para muebles','Mantel (no desechable)'),('Uso de doble cara','No'),('Número del artículo','3218408')]
+    pairs=parse_structured_details(source)
+    assert [(x.key,x.value) for x in pairs]==expected
+    assert pairs[9].source_text=='Tipo de cubierta para muebles Mantel (no desechable)'
+    assert not parse_structured_details('Antideslizante a veces; Extraíble dato perdido; Uso de doble cara quizá')
+    assert not parse_structured_details('Apto para tipo mueble Mesa; Tipo de cubierta muebles Mantel')
+    # A source NO remains a typed polarity assertion, never a guessed YES.
+    assert parse_structured_details('Uso de doble cara No')[0].value=='No'

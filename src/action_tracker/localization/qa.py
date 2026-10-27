@@ -412,7 +412,23 @@ def _is_allowed_translated_tech_token(source_text: str, source_token: str, targe
     # A flavour phrase is not a device/model identifier. Keep this confined
     # to the complete phrase in the same source field, never BBQ model codes.
     if str(source_token or "").casefold() == "bbq":
-        return bool(re.search(r"\bBBQ\s+style\b", source_text, re.I) and "烧烤风味" in target)
+        standalone = r"(?<![A-Za-z0-9_-])BBQ(?![A-Za-z0-9_-])"
+        if not re.search(standalone, source_text, re.I):
+            return False
+        # Qualifying food/flavour words must be in this field. Neither a
+        # food category elsewhere nor a model's BBQ prefix supplies meaning.
+        flavour = (re.search(r"\bBBQ\s+style\b", source_text, re.I)
+                   or re.search(r"\b(?:Honey|American|Korean)\s+BBQ(?![A-Za-z0-9_-])", source_text, re.I)
+                   or re.search(r"\b(?:chips|patatas|fideos|tortillas|snacks?|aperitivos?)\b", source_text, re.I))
+        if (not flavour
+                or re.search(r"\b(?:dispositivo|modelo|model|c[oó]digo|cargador|m[aá]quina)\b", source_text, re.I)
+                or re.search(r"\b(?:sin|no)\b[^.;\n；!?]{0,35}" + standalone, source_text, re.I)):
+            return False
+        # A negated flavour cannot satisfy the positive source assertion.
+        affirmative = re.sub(
+            r"(?:不是|并非|不属于|不含|没有|不带|无|非|不)\s*(?:烧烤|烤肉)(?:风味|味)?",
+            "", target)
+        return bool(re.search(r"(?:烧烤|烤肉)(?:风味|味)?", affirmative))
     aliases = _TRANSLATED_TECH_TOKEN_ALIASES.get(str(source_token or "").casefold(), ())
     return _source_term_present(source_text, source_token) and any(
         alias.casefold() in str(target or "").casefold() for alias in aliases
