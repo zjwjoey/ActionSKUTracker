@@ -1,6 +1,10 @@
 # Action 西班牙站商品每日监测程序 — 全局配置
 # 所有阈值集中在此，禁止在代码中散落硬编码。
 
+# 仅导出展示层的显式选项；不批准译文，不删除来源审计。ANNOTATED_RELEASE禁止启用。
+export_delivery:
+  remove_review_notes: false
+
 site:
   base_url: https://www.action.com/es-es
   sitemap_url: https://www.action.com/es-es/product-sitemap.xml

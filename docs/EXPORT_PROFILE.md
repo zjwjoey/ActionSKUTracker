@@ -9,7 +9,7 @@
 | 项目 | 固定值 |
 | --- | --- |
 | `template_id` | `action_full_template_1` |
-| `template_version` | `1` |
+| `template_version` | `2` |
 | 输出格式 | `.xlsx` + 同名 `.manifest.json` |
 | 建议文件名 | `YYYYMMDDAction商品全量_三表版.xlsx` |
 | 工作表数量 | 3 |
@@ -53,6 +53,9 @@
 | 5 | 商品链接 | URL | 最新有效 Action ES 商品链接 |
 
 基础字段之后是按业务日期升序排列的 Presence 列。
+不输出品牌、一级／二级中文类目、西班牙语品名、西语规格、首次出现日期、
+最近出现日期、当前状态这8列。版本2统一独立历史导出与Template 1第一张表的结构；
+其他两张清单仍保持原14列。
 
 ### 3.3 日期列
 
@@ -60,9 +63,10 @@
 - 表头显示格式固定为 `yy.mm.dd`，例如 `26.08.26`；
 - 表头是日期标签，标准业务日期同时以 `YYYY-MM-DD` 写入 manifest；
 - 同一日期重复导出时必须更新原日期列，不得生成重复列；
-- 单元格只能是数值 `1` 或数值 `0`：
+- 历史单元格采用 `1/0/UNKNOWN`，当期完整CURRENT列采用数值 `1/0`：
   - `1`：该 SKU 属于该日期正式有效在售集合；
   - `0`：该 SKU 不属于该日期正式有效在售集合；
+  - `UNKNOWN`：该期缺少足够证据，不能确定；显式UNKNOWN不得改成0；
 - 不允许用空白、`Y/N`、布尔值或 Sitemap Presence 替代 0/1。
 
 ### 3.4 当日新品
@@ -71,7 +75,7 @@
 
 1. 将该 SKU 追加到 union；
 2. 填写已提取到的商品链接、图片链接及中文品名；
-3. 以前所有日期列写 `0`；
+3. 以前日期按各期来源能力判断：完整且支持缺席证明时填 `0`，否则保留 `UNKNOWN`；
 4. 当前日期列写 `1`；
 5. 中文品名尚未完成时仍保留该 SKU，并进入字典 Review Queue；
 6. 新品详情或图片缺失不得阻止 Presence 写入。
@@ -216,7 +220,8 @@ SUM(当日日期列) == COUNT(DISTINCT CURRENT_VALID.sku)
 ```json
 {
   "template_id": "action_full_template_1",
-  "template_version": 1,
+  "template_version": 2,
+  "history_fixed_headers": ["序号", "编号", "中文品名", "图片链接", "商品链接"],
   "export_date": "2026-08-26",
   "run_id": "<formal_run_id>",
   "source_kind": "MASTER_CURRENT | FORMAL_SNAPSHOT",

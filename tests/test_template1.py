@@ -3,6 +3,7 @@ import hashlib
 from pathlib import Path
 
 import openpyxl
+import pytest
 from PIL import Image
 
 from action_tracker.exporting.template1_service import export_template1
@@ -57,19 +58,27 @@ def test_template1_builds_history_union_and_three_sheets(tmp_path):
         assert workbook.sheetnames == ["商品上下架明细", "今日西班牙语清单", "今日中文清单"]
         history = workbook["商品上下架明细"]
         headers = [cell.value for cell in history[1]]
-        assert headers[:5] == ["序号", "编号", "中文品名", "品牌", "一级类目（中文）"]
+        assert headers == ["序号", "编号", "中文品名", "图片链接", "商品链接", "26.08.24", "26.08.26"]
+        assert history.auto_filter.ref == "A1:G3"
         assert headers[-2:] == ["26.08.24", "26.08.26"]
         values = {str(history.cell(row=row, column=2).value): history.cell(row=row, column=len(headers)).value for row in range(2, history.max_row + 1)}
         assert values == {"1001": 1, "9001": 0}
         assert history.freeze_panes == "A2"
         assert workbook["今日西班牙语清单"].max_row == 2
         assert workbook["今日中文清单"].max_row == 2
+        from action_tracker.exporting.template1 import CATALOG_HEADERS
+        for name in ["今日西班牙语清单", "今日中文清单"]:
+            assert tuple(c.value for c in workbook[name][1]) == CATALOG_HEADERS
+            assert workbook[name].cell(2, 2).value == "1001"
+            assert workbook[name].cell(2, 7).value == record["current_price"]
     finally:
         workbook.close()
     manifest = json.loads(Path(result["manifest"]).read_text(encoding="utf-8"))
     assert manifest["history_union_sku_count"] == 2
     assert manifest["current_valid_sku_count"] == 1
     assert manifest["presence_one_count"] == 1
+    assert manifest["template_version"] == 2
+    assert manifest["history_fixed_headers"] == ["序号", "编号", "中文品名", "图片链接", "商品链接"]
 
     first_workbook = openpyxl.load_workbook(result["output"], read_only=True, data_only=True)
     try:
@@ -147,3 +156,16 @@ def test_template1_with_images_only_embeds_today_chinese_sheet(tmp_path):
     assert manifest["missing_image_skus"] == []
     assert manifest["with_images"] is True
     assert manifest["image_profile"] == "excel_250_white_v1"
+
+
+@pytest.mark.parametrize("extra_header", ["品牌", "当前状态", "26.08.26"])
+def test_template1_verification_rejects_extra_columns_or_duplicate_dates(tmp_path, extra_header):
+    from action_tracker.exporting.template1 import write_template1_xlsx, verify_template1_xlsx
+    out = tmp_path / "three.xlsx"
+    write_template1_xlsx(out, history_rows=[], history_dates=("2026-08-26",), es_rows=[], zh_rows=[])
+    verify_template1_xlsx(out, export_date="2026-08-26", current_skus=set())
+    w = openpyxl.load_workbook(out)
+    w.active.cell(1, 7, extra_header)
+    w.save(out); w.close()
+    with pytest.raises(ValueError, match="TEMPLATE1_HISTORY_(HEADERS|DATES)_MISMATCH"):
+        verify_template1_xlsx(out, export_date="2026-08-26", current_skus=set())

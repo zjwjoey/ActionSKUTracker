@@ -1,6 +1,8 @@
 """Template 1 三表导出（第一版：历史 Presence + 两张无图清单）。"""
 from __future__ import annotations
 
+import datetime as dt
+import re
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -12,14 +14,13 @@ from openpyxl.utils import get_column_letter
 from .history import PresenceHistory
 
 
-HISTORY_HEADERS = (
-    "序号", "编号", "中文品名", "品牌", "一级类目（中文）", "二级类目（中文）",
-    "西班牙语品名", "规格（西语）", "图片链接", "商品链接", "首次出现日期", "最近出现日期", "当前状态",
-)
+HISTORY_HEADERS = ("序号", "编号", "中文品名", "图片链接", "商品链接")
+TEMPLATE1_VERSION = 2
 CATALOG_HEADERS = (
     "图片", "编号", "标题", "分类1", "分类2", "规格", "折后价", "原价", "单价",
     "描述", "产品详情", "图片链接", "商品链接", "备注",
 )
+STANDALONE_HISTORY_HEADERS = HISTORY_HEADERS
 
 
 def write_template1_xlsx(
@@ -66,7 +67,7 @@ def write_history_xlsx(
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.title = "商品上下架明细"
-    _write_history_sheet(sheet, history_rows, history_dates)
+    _write_history_sheet(sheet, history_rows, history_dates, headers=STANDALONE_HISTORY_HEADERS)
     _write_history_audit_sheet(workbook.create_sheet("历史来源审计"), source_stats)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.stem}.tmp.xlsx")
@@ -95,6 +96,15 @@ def verify_template1_xlsx(
         history = workbook["商品上下架明细"]
         date_header = _compact_date(export_date)
         headers = [cell.value for cell in history[1]]
+        historical_dates = headers[len(HISTORY_HEADERS):]
+        if headers[:len(HISTORY_HEADERS)] != list(HISTORY_HEADERS) or not historical_dates or any(
+            not isinstance(h, str) or not re.fullmatch(r"\d{2}\.\d{2}\.\d{2}", h) for h in historical_dates
+        ):
+            raise ValueError("TEMPLATE1_HISTORY_HEADERS_MISMATCH")
+        if historical_dates != sorted(set(historical_dates)):
+            raise ValueError("TEMPLATE1_HISTORY_DATES_MISMATCH")
+        for header in historical_dates:
+            dt.date.fromisoformat("20" + header.replace(".", "-"))
         if date_header not in headers:
             raise ValueError("TEMPLATE1_DATE_COLUMN_MISSING")
         date_col = headers.index(date_header) + 1
@@ -128,21 +138,21 @@ def verify_template1_xlsx(
         workbook.close()
 
 
-def _write_history_sheet(ws: Any, rows: list[dict[str, Any]], dates: tuple[str, ...]) -> None:
-    headers = list(HISTORY_HEADERS) + [_compact_date(date) for date in dates]
-    ws.append(headers)
+def _write_history_sheet(ws: Any, rows: list[dict[str, Any]], dates: tuple[str, ...], *, headers: tuple[str, ...] = HISTORY_HEADERS) -> None:
+    fixed_headers = headers
+    ws.append(list(fixed_headers) + [_compact_date(date) for date in dates])
     for number, row in enumerate(rows, 1):
-        values = [number] + [row.get(header, "") for header in HISTORY_HEADERS[1:]]
+        values = [number] + [row.get(header, "") for header in fixed_headers[1:]]
         values += [row.get(date, "UNKNOWN") for date in dates]
         ws.append(values)
-    _format_sheet(ws, wrap_columns={"中文品名", "一级类目（中文）", "二级类目（中文）", "西班牙语品名", "规格（西语）"})
-    headers = list(HISTORY_HEADERS)
+    _format_sheet(ws, wrap_columns={"中文品名"})
+    headers = list(fixed_headers)
     for header in ("图片链接", "商品链接"):
         col = headers.index(header) + 1
         for cell in ws.iter_cols(min_col=col, max_col=col, min_row=2):
             for item in cell:
                 _set_hyperlink(item)
-    for col in range(len(HISTORY_HEADERS) + 1, len(headers) + 1):
+    for col in range(len(fixed_headers) + 1, len(fixed_headers) + len(dates) + 1):
         for row_no in range(2, ws.max_row + 1):
             ws.cell(row=row_no, column=col).number_format = "0"
 
@@ -223,9 +233,8 @@ def _format_sheet(ws: Any, *, wrap_columns: set[str]) -> None:
         cell.alignment = Alignment(horizontal="center", vertical="center")
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{ws.max_row}"
-    widths = {"序号": 9, "编号": 14, "中文品名": 28, "品牌": 18, "一级类目（中文）": 18, "二级类目（中文）": 20,
-              "西班牙语品名": 30, "规格（西语）": 24, "图片链接": 42, "商品链接": 58, "首次出现日期": 14,
-              "最近出现日期": 14, "当前状态": 12, "图片": 12, "标题": 28, "分类1": 16, "分类2": 18,
+    widths = {"序号": 9, "编号": 14, "中文品名": 28, "图片链接": 42, "商品链接": 58,
+              "图片": 12, "标题": 28, "分类1": 16, "分类2": 18,
               "规格": 26, "折后价": 13, "原价": 13, "单价": 16, "描述": 48, "产品详情": 56, "备注": 34}
     for index, header in enumerate(headers, 1):
         ws.column_dimensions[get_column_letter(index)].width = widths.get(str(header), 14)

@@ -281,6 +281,10 @@ def build_zh_rows(
             description = repair_description(description, _none_or_text(record.get("desc_es")))
             details = repair_details(details, _none_or_text(record.get("details_es")))
 
+        if repair_engine is not None:
+            cat1 = repair_engine.apply_override(sku=sku, field="cat1_zh", value=cat1, record=record, source_field="cat1_es")
+            cat2 = repair_engine.apply_override(sku=sku, field="cat2_zh", value=cat2, record=record, source_field="cat2_es")
+            unit_price = repair_engine.apply_override(sku=sku, field="unit_price_zh", value=unit_price, record=record, source_field="unit_price")
         for item in fallbacks:
             fallback_counts[item] = fallback_counts.get(item, 0) + 1
         rows.append({
@@ -437,6 +441,9 @@ def build_zh_rows_from_localized_source(
         for target_field, source_field in source_by_field.items():
             if not _none_or_text(record.get(source_field)):
                 resolved[target_field] = None
+        if repair_engine is not None:
+            for target, own_source in (("cat1_zh", "cat1_es"), ("cat2_zh", "cat2_es"), ("unit_price_zh", "unit_price")):
+                resolved[target] = repair_engine.apply_override(sku=sku, field=target, value=resolved.get(target), record=record, source_field=own_source)
         labels = {"name_zh": "中文品名", "cat1_zh": "中文分类1", "cat2_zh": "中文分类2", "spec_zh": "中文规格", "unit_price_zh": "中文单价", "desc_zh": "中文描述", "details_zh": "中文产品详情"}
         source_by_field = {
             "name_zh": "name_es", "cat1_zh": "cat1_es", "cat2_zh": "cat2_es",
@@ -631,6 +638,11 @@ def _resolve_product_field(
     manual_value = _text(manual.get(field))
     if manual_value:
         return manual_value, False
+    localized_field = {"name_zh_standard": "name_zh", "spec_zh_standard": "spec_zh"}.get(field)
+    if localized_field in set(record.get("_source_bound_localization_fields") or ()):
+        primary_value = _text(record.get(localized_field))
+        if primary_value and _CJK_RE.search(primary_value):
+            return primary_value, False
     product_value = _text(product.get(field))
     product_hash_matches = _text(product.get("source_hash")) == source_hash
     product_status = _text(product.get("translation_status"))
@@ -641,14 +653,6 @@ def _resolve_product_field(
     if (model_value and _text(model.get("source_hash")) == source_hash
             and _text(model.get("quality_status")).upper() == "OK"):
         return model_value, False
-    localized_field = {
-        "name_zh_standard": "name_zh",
-        "spec_zh_standard": "spec_zh",
-    }.get(field)
-    source_bound_fields = set(record.get("_source_bound_localization_fields") or ())
-    source_bound_value = _text(record.get(localized_field)) if localized_field else ""
-    if localized_field in source_bound_fields and source_bound_value and _CJK_RE.search(source_bound_value):
-        return source_bound_value, False
     # Do not expose a known-polluted Spanish fact as a Chinese fallback.  A
     # manual/model value above may still be used, but absent trusted evidence
     # the field remains blank and is marked for review.

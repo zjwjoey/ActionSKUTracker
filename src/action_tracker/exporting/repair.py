@@ -21,6 +21,7 @@ class ExportRepairEngine:
         excluded_display_tokens: set[str] | None = None,
     ) -> None:
         self.report = report or ExportRepairReport(rule_version=self.VERSION)
+        self.overrides_path = overrides_path
         self.overrides = load_overrides(overrides_path)
         self.excluded_display_tokens = {str(token).casefold() for token in (excluded_display_tokens or set())}
 
@@ -52,11 +53,15 @@ class ExportRepairEngine:
                 sku=sku, field=field, source_field=source_field, source=record.get(source_field),
                 source_hash=row["source_hash"], before=value, after=replaced,
                 rule="APPROVED_EXPORT_OVERRIDE",
-                approval_source="config/export_repair_overrides.csv",
+                approval_source=str(self.overrides_path) if self.overrides_path else "config/export_repair_overrides.csv",
                 approved_by=row.get("approved_by") or None,
                 approved_at=row.get("approved_at") or None,
                 reason=row.get("reason") or None,
             ))
+        elif outcome == "SOURCE_MISSING" and row is not None:
+            self.report.add_unresolved(sku=sku, field=field, source_field=source_field,
+                code="OVERRIDE_SOURCE_MISSING", source=record.get(source_field), target=value,
+                blocking=True, message="approved export correction cannot invent a missing Spanish source")
         elif outcome == "REAPPROVAL_REQUIRED" and row is not None:
             self.report.add_unresolved(
                 sku=sku, field=field, source_field=source_field,

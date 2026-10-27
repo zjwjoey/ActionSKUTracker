@@ -6,6 +6,54 @@ rule names only; future rule changes are made here and carry ``RULE_VERSION``.
 """
 from __future__ import annotations
 
+
+def clean_review_notes(value, *, remarks=False, language="zh"):
+    """Remove bounded internal delivery annotations, preserving ordinary facts.
+
+    This is a display projection only. Callers must retain before/after evidence
+    and audit the resulting Chinese fields; removing a placeholder is not approval.
+    """
+    import re
+    if not isinstance(value, str) or not value:
+        return value
+    if not remarks and re.match(r"^\s*(?:待复核|待审核|待人工核验|待核验|待确认)\s*[:：]", value):
+        return None
+    internal = re.compile(
+        r"^\s*【?(?:原有来源待核|详情待核|复核(?:[·：:]|】)|来源异常|原文异常|来源物态异常|物态来源异常|"
+        r"来源冲突|来源待核|详情待核|来源不确定|未发布旧中文|核对依据|表内已修正|字段已修|"
+        r"(?:中文品名|中文分类[12]|中文规格|中文单价|中文描述|中文产品详情)待审核)", re.I)
+    spanish = re.compile(r"^\s*(?:Revisar texto de origen|pendiente de (?:revisi[oó]n|verificaci[oó]n)|no disponible en el registro fuente)\b", re.I)
+    continuation = re.compile(r"^\s*(?:完整异常原文已保留|不得据此推断)")
+    review_block = re.compile(
+        r"待核|待审核|来源异常|来源冲突|复核官方来源|"
+        r"(?:来源|字段|译文|描述|详情|规格|品名|类目|原文).{0,80}复核|"
+        r"【(?:待复核|[^】]{0,20}(?:复核|待确认|缺源|西语原文))|"
+        r"^(?:西语原文[:：]|不将品牌符号|不晋升字典|原西语类目保持|"
+        r"纸叶与单双面页数的来源口径|标准中文与准确纤维材质|旧.*表述已修正)")
+    business_note = re.compile(
+        r"^\s*(?:(?:在售|不在售|新品|促销|可持续)(?:$|[:：])|在售状态[:：]|官网官方标签[:：]|"
+        r"折扣[:：]|警告[:：]|注意[:：]|不得用于|材质[:：]|颜色[:：]|型号[:：]|数量[:：])")
+    parts = re.split(r"([;；|｜\r\n]+)", value)
+    kept = []; delimiter = ""; removed = False; following_note = False; in_review_block = False
+    for i, part in enumerate(parts):
+        if i % 2:
+            delimiter = part
+            continue
+        is_note = bool(internal.match(part)) if language == "zh" else bool(spanish.match(part))
+        if remarks and language == "zh":
+            if business_note.match(part.strip()):
+                in_review_block = False
+            elif is_note or review_block.search(part.strip()) or in_review_block:
+                in_review_block = True
+                is_note = True
+        if (remarks or language == "zh") and (is_note or (following_note and continuation.match(part))):
+            removed = following_note = True
+            continue
+        if part.strip():
+            kept.append((delimiter if kept else "") + part)
+            following_note = False
+    return ("".join(kept).strip() or None) if removed else value
+
 from typing import Any
 import re
 
