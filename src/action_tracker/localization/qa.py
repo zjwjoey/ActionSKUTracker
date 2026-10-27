@@ -1000,6 +1000,32 @@ def _detail_source_value_findings(source_text, target):
                 for part in p.value.split(","))]
 
 
+def _detail_contextual_translation_findings(source_text, target):
+    """Flag reviewed attribute/value mistranslations, never translate or guess.
+
+    Both the source attribute and the corresponding Chinese attribute must
+    match. A word in another pair or field cannot trigger these findings.
+    """
+    rules = (
+        (r'efecto deseado', r'.*dentadura blanca.*', r'预期效果|期望效果', r'假牙'),
+        (r'tipo de asa', r'agarre en fr[ií]o', r'.*(?:提手|把手).*', r'冷敷'),
+        (r'sabor', r'.*\bnaranja\b.*', r'口味|风味', r'橙色'),
+        (r'apto para tipo de animal \(de compa[ñn][ií]a\)', r'.*\bave\b.*', r'.*(?:宠物|动物).*', r'禽肉'),
+    )
+    results = []
+    for src in parse_structured_details(source_text):
+        for key, value, target_key, wrong in rules:
+            if not re.fullmatch(key, src.key.strip(), re.I) or not re.fullmatch(value, src.value.strip(), re.I):
+                continue
+            for dst in parse_structured_details(target):
+                if re.fullmatch(target_key, dst.key.strip()) and re.search(wrong, dst.value):
+                    results.append(QAFinding('DETAIL_CONTEXT_MISTRANSLATION', 'BLOCKER', 'details',
+                        {'source_key': src.key, 'source_value': src.value,
+                         'target_key': dst.key, 'target_value': dst.value}, source=source_text,
+                        target=target, message='reviewed attribute/value mistranslation', blocking=True))
+    return results
+
+
 def _detail_charging_speed_findings(source_text, target):
     """Check a selected speed, not the alternatives in its attribute label."""
     source_items = [p for p in parse_structured_details(source_text)
@@ -1066,7 +1092,7 @@ def _detail_care_findings(source_text, target):
     return []
 
 
-def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = ()) -> tuple[QAFinding, ...]:
+def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = (), allow_spec_relocation: bool = True) -> tuple[QAFinding, ...]:
     findings: list[QAFinding] = []
     for field_name in requested_fields:
         target = fields.get(field_name)
@@ -1106,6 +1132,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 message="Chinese numeric unit retains a Latin plural suffix", blocking=True))
         if field_name == "details":
             findings.extend(_detail_source_value_findings(source_text, target))
+            findings.extend(_detail_contextual_translation_findings(source_text, target))
             findings.extend(_detail_charging_speed_findings(source_text, target))
             findings.extend(_detail_boolean_findings(source_text, target))
             findings.extend(_detail_care_findings(source_text, target))
@@ -1231,7 +1258,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         # Preserve the established canonical-spec relocation contract only
         # for spec; independent source numbers avoid joined thousands groups.
         allowed_source_numbers = source_numbers.copy()
-        if field_name == "spec":
+        if field_name == "spec" and allow_spec_relocation:
             allowed_source_numbers = Counter()
             for attr in ("name_es", "spec_es", "desc_es", "details_es", "cat1_es", "cat2_es"):
                 allowed_source_numbers.update(_numbers(str(getattr(source, attr, "") or "")))

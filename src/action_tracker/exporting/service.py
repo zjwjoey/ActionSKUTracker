@@ -245,7 +245,11 @@ def build_final_zh_projection(
         source.records, rows, source_hash=canonical_source_hash(source.records),
         sku_set_hash=_sku_set_hash(str(row["编号"]) for row in rows),
     )
-    audit = audit_repaired_rows(source.records, rows, allowed_tokens=allowed_tokens)
+    from .difference_whitelist import whitelist_from_config
+    audit = audit_repaired_rows(source.records, rows, allowed_tokens=allowed_tokens,
+                               difference_whitelist=whitelist_from_config(cfg),
+                               category_mapping={key: str(value.get('cat1_zh') or '')
+                                   for key, value in dictionary.category_by_cat1.items()} if dictionary else None)
     report.set_audit(audit)
     audit = dict(report.audit)
     rows_hash = canonical_export_rows_hash(rows)

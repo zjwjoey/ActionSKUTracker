@@ -27,7 +27,8 @@ class ExportRepairOverrideError(ValueError):
     pass
 
 
-def prepare_reviewed_candidates(records, current_rows, reviewed_rows, reviewed_sources, *, evidence_ref):
+def prepare_reviewed_candidates(records, current_rows, reviewed_rows, reviewed_sources, *, evidence_ref,
+                                difference_whitelist=None):
     """Prepare six-field PENDING rows for the existing CSV, never approval.
 
     Workbook values alone are insufficient: its frozen Spanish field must
@@ -47,7 +48,7 @@ def prepare_reviewed_candidates(records, current_rows, reviewed_rows, reviewed_s
         raise ExportRepairOverrideError("REVIEWED_HANDOFF_SKU_SET_MISMATCH")
     if not isinstance(evidence_ref, str) or not evidence_ref.strip():
         raise ExportRepairOverrideError("REVIEWED_HANDOFF_EVIDENCE_REQUIRED")
-    candidates = []; blocked = []
+    candidates = []; blocked = []; acknowledged = []
     for sku, row in reviewed.items():
         for column, target in _OUTPUT_TO_TARGET.items():
             value = str(row.get(column) or "").strip()
@@ -61,10 +62,19 @@ def prepare_reviewed_candidates(records, current_rows, reviewed_rows, reviewed_s
             if code:
                 blocked.append({"sku": sku, "field": target, "code": code})
                 continue
+            if difference_whitelist is not None:
+                known = difference_whitelist.match(facts[sku], target, current[sku].get(column), value)
+                if known:
+                    acknowledged.append({'sku': sku, 'field': target, 'entry_id': known.get('id'),
+                                         'action': 'ACK_DIFFERENCE', 'does_not_waive_qa_or_approval': True})
+                    continue
             candidates.append({"sku": sku, "field": target, "source_hash": field_source_hash(facts[sku], target),
                 "replacement": value, "reason": "Reviewed workbook difference; pending field QA and approval; " + evidence_ref,
                 "rule_version": "REVIEWED_HANDOFF_V1", "approved_by": "", "approved_at": "", "status": "PENDING"})
-    return {"candidates": candidates, "blocked": blocked}
+    result = {"candidates": candidates, "blocked": blocked}
+    if difference_whitelist is not None:
+        result['acknowledged_differences'] = acknowledged
+    return result
 
 
 def load_overrides(path: Path | None) -> dict[tuple[str, str], dict[str, str]]:

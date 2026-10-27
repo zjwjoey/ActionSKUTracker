@@ -243,6 +243,10 @@ localization:
     terms: []
     tm_entries: []
 
+export_difference_whitelist:
+  enabled: false
+  path: null  # Explicit reviewed, expiring field-bound registry; no whole-SKU QA bypass.
+
 transient_tasks:
   enabled: true
   root: null  # Windows: F:/ActionStorageCandidates/ActionTasks; override explicitly if required.
