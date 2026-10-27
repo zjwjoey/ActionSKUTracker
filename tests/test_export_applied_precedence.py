@@ -84,8 +84,21 @@ def test_complete_applied_description_wins_over_old_source_bound_override(tmp_pa
     row, report = _render(record, override)
     assert row['描述'] == record['desc_zh']
     assert not any(event.field == 'desc_zh' for event in report.events)
-    # Idempotent projection never appends facts or truncates the approved text.
     assert _render(record, override)[0] == row
+
+
+@pytest.mark.parametrize('canonical', ['cat1', 'cat2'])
+@pytest.mark.parametrize('approved', [True, False])
+def test_category_csv_obeys_field_applied_binding(tmp_path, canonical, approved):
+    record = _record()
+    if approved:
+        _approve(record, canonical)
+    path = _overrides(tmp_path, record, {canonical: '旧审批分类'})
+    row, _ = _render(record, path)
+    target, _, column = FIELDS[canonical]
+    assert row[column] == (record[target] if approved else '旧审批分类')
+    # Idempotent projection never appends facts or truncates the approved text.
+    assert _render(record, path)[0] == row
 
 
 @pytest.mark.parametrize('status', ['APPROVED', 'VERIFIED', 'HUMAN_REVIEWED', 'HUMAN_APPROVED'])

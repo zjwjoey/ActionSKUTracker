@@ -460,6 +460,8 @@ def build_zh_rows_from_localized_source(
                 resolved[target_field] = None
         if repair_engine is not None:
             for target, own_source in (("cat1_zh", "cat1_es"), ("cat2_zh", "cat2_es"), ("unit_price_zh", "unit_price")):
+                if target in approved_primary:
+                    continue
                 resolved[target] = repair_engine.apply_override(sku=sku, field=target, value=resolved.get(target), record=record, source_field=own_source)
         labels = {"name_zh": "中文品名", "cat1_zh": "中文分类1", "cat2_zh": "中文分类2", "spec_zh": "中文规格", "unit_price_zh": "中文单价", "desc_zh": "中文描述", "details_zh": "中文产品详情"}
         source_by_field = {

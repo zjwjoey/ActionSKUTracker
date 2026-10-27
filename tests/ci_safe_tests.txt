@@ -209,6 +209,8 @@ tests/test_annotated_export_service.py
 
 # CI_SAFE: current applied-field export precedence; public text and temporary CSV only.
 tests/test_export_applied_precedence.py
+tests/test_export_collection_head.py
+tests/test_transient_run_workspace.py
 
 # CI_SAFE: frozen public ES semantic regressions, no provider or production I/O.
 tests/test_cn_audit_semantic_repairs.py

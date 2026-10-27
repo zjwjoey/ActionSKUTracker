@@ -73,6 +73,7 @@ def export_template1(
             export_date=source.export_date, run_id=source.run_id, kind=source.kind,
             records=tuple(records), source_master_file_hash=source.source_master_file_hash,
             directory=source.directory, source_commit_id=source.source_commit_id,
+            presence_source_commit_id=source.presence_source_commit_id,
         )
         mode = PRODUCTION_RELEASE if research_release else PREVIEW
         final_zh = build_final_zh_projection(cfg, template_source, release_mode=mode)
@@ -176,6 +177,7 @@ def export_template1(
         "selection_id": selection_id,
         "selection_source_commit_id": selection_source_commit_id,
         "artifact_source_commit_id": artifact_source_commit_id,
+        "presence_source_commit_id": source.presence_source_commit_id,
         "image_profile": "excel_250_white_v1" if with_images else None,
         "dictionary_fallback_counts": fallback_counts,
         "history_source_stats": [stat.__dict__ for stat in history.source_stats],

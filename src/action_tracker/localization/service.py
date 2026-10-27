@@ -23,7 +23,7 @@ from ..dictionary import current_product_dictionary_hash
 
 
 def _report_root(cfg: Mapping[str, Any]) -> Path:
-    return Path(cfg["paths"]["temp"]).parent / "localization" / "reports"
+    return Path(cfg["paths"].get("localization_reports") or (Path(cfg["paths"]["temp"]).parent / "localization" / "reports"))
 
 
 def _existing_zh(db_path: Path) -> dict[str, dict[str, Any]]:
@@ -196,7 +196,7 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
     ai_path.write_text(json.dumps(ai_candidates, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     # Keep the durable learning pool separate from per-run reports while
     # retaining the report-local copy required for reproducibility.
-    learning_pool = Path(cfg["paths"]["temp"]).parent / "localization" / "learning_candidates" / date_key
+    learning_pool = Path(cfg["paths"].get("localization_learning_candidates") or (Path(cfg["paths"]["temp"]).parent / "localization" / "learning_candidates")) / date_key
     learning_pool.mkdir(parents=True, exist_ok=True)
     shutil.copy2(learning["path"], learning_pool / "learning_candidates.csv")
     ready = sum(row["readiness"] in {"READY", "AUTO_READY"} for row in rows)

@@ -317,7 +317,7 @@ def build_parser() -> argparse.ArgumentParser:
     sroots.add_argument("--roots")
     sroots.add_argument("--data-root")
     st = sfsub.add_parser("task-workspace", help="复用P2临时任务目录，集中脚本/数据/调试输出；不删除文件")
-    st.add_argument("--scratch-root", required=True)
+    st.add_argument("--scratch-root", default=None)
     st.add_argument("--owner-task", required=True)
     st.add_argument("--run-id", required=True)
     st.add_argument("--budget-mib", type=int, default=128)

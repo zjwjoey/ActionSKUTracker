@@ -331,6 +331,8 @@ def run_feed(cfg: Mapping[str, Any], *, snapshot: Path, output_dir: Path, run_id
     feed_cfg["storage"] = {**dict(cfg.get("storage") or {}), "db_path": str(snapshot)}
     feed_cfg["paths"] = {**dict(cfg.get("paths") or {})}
     feed_cfg["paths"]["temp"] = output_dir.parent / "audit_tmp"
+    feed_cfg["paths"]["localization_reports"] = output_dir.parent / "localization" / "reports"
+    feed_cfg["paths"]["localization_learning_candidates"] = output_dir.parent / "localization" / "learning_candidates"
     feed_cfg["paths"]["dictionary_baseline"] = Path(cfg["project_root"]) / "data" / "dictionary"
     feed_cfg["localization"] = {**dict(cfg.get("localization") or {}), "ai": {**dict((cfg.get("localization") or {}).get("ai") or {}), "enabled": False}}
     result = audit_current(feed_cfg, run_id=run_id, persist_reviews=False)

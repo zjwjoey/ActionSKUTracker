@@ -152,6 +152,7 @@ class ExportSource:
     source_master_file_hash: str | None
     directory: Path | None = None
     source_commit_id: str | None = None
+    presence_source_commit_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -350,7 +351,8 @@ def _export_catalog_impl(
             raise ExportValidationError(f"SELECTION_MEMBER_NOT_IN_FORMAL_SOURCE: {','.join(missing[:10])}")
         source = ExportSource(source.export_date, source.run_id, source.kind,
                               tuple(r for r in source.records if str(r.get("sku") or "") in members),
-                              source.source_master_file_hash, source.directory, source.source_commit_id)
+                              source.source_master_file_hash, source.directory, source.source_commit_id,
+                              source.presence_source_commit_id)
         selection_source_commit_id = selection.get("source_commit_id")
     validate_source_records(source.records, export_date=export_date)
     dictionary_hash = None
@@ -438,6 +440,7 @@ def _export_catalog_impl(
             "source_master_hash": source_hash,
             "source_master_file_hash": source.source_master_file_hash,
             "source_kind": source.kind,
+            "presence_source_commit_id": source.presence_source_commit_id,
             "profile_id": profile.profile_id,
             "profile_version": profile.version,
             "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -745,22 +748,28 @@ def _resolve_sqlite_current_source(
 
     try:
         repo = ProductionRepository(database_path(cfg))
-        info = repo.commit_info(requested_run_id) if requested_run_id else repo.latest_commit_info()
+        latest = repo.latest_commit_info()
+        observation = repo.latest_observation_commit_info()
+        info = repo.commit_info(requested_run_id) if requested_run_id else (observation or latest)
     except ProductionRepositoryError as exc:
         raise ExportValidationError(str(exc)) from exc
     if not info or str(info.get("run_date") or "") != export_date:
         return None
-    latest = repo.latest_commit_info()
-    if latest and info.get("run_id") != latest.get("run_id"):
+    authoritative = observation or latest
+    if authoritative and info.get("run_id") != authoritative.get("run_id"):
         # A historical commit cannot be reconstructed from the current DB
         # projection; force the immutable snapshot path instead.
         return None
     records = tuple(repo.load_current_export_records())
+    after = repo.latest_commit_info()
+    if (latest or {}).get("commit_id") != (after or {}).get("commit_id"):
+        raise ExportValidationError("SQLITE_EXPORT_HEAD_CHANGED_DURING_READ")
     if not records:
         raise ExportValidationError("SQLITE_CURRENT_SOURCE_EMPTY")
     return ExportSource(
         export_date=export_date, run_id=str(info["run_id"]), kind="SQLITE_CURRENT",
-        records=records, source_master_file_hash=None, directory=None, source_commit_id=str(info["commit_id"]),
+        records=records, source_master_file_hash=None, directory=None,
+        source_commit_id=str((latest or info)["commit_id"]), presence_source_commit_id=str(info["commit_id"]),
     )
 
 

@@ -243,6 +243,11 @@ localization:
     terms: []
     tm_entries: []
 
+transient_tasks:
+  enabled: true
+  root: null  # Windows: F:/ActionStorageCandidates/ActionTasks; override explicitly if required.
+  budget_mib: 256
+
 scoped_dictionary:
   enabled: false
 
