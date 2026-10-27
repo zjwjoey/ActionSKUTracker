@@ -206,3 +206,13 @@ tests/test_source_note_language_qa.py
 # CI_SAFE: pure annotation bindings plus temporary workbook publication fixtures.
 tests/test_annotated_projection.py
 tests/test_annotated_export_service.py
+
+# CI_SAFE: current applied-field export precedence; public text and temporary CSV only.
+tests/test_export_applied_precedence.py
+
+# CI_SAFE: frozen public ES semantic regressions, no provider or production I/O.
+tests/test_cn_audit_semantic_repairs.py
+tests/test_cn_audit_body_identity_repairs.py
+
+# CI_SAFE: pure public-text flavour/token QA, no provider or production I/O.
+tests/test_bbq_flavour_token_qa.py

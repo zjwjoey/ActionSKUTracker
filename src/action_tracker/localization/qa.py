@@ -412,7 +412,23 @@ def _is_allowed_translated_tech_token(source_text: str, source_token: str, targe
     # A flavour phrase is not a device/model identifier. Keep this confined
     # to the complete phrase in the same source field, never BBQ model codes.
     if str(source_token or "").casefold() == "bbq":
-        return bool(re.search(r"\bBBQ\s+style\b", source_text, re.I) and "烧烤风味" in target)
+        standalone = r"(?<![A-Za-z0-9_-])BBQ(?![A-Za-z0-9_-])"
+        if not re.search(standalone, source_text, re.I):
+            return False
+        # Qualifying food/flavour words must be in this field. Neither a
+        # food category elsewhere nor a model's BBQ prefix supplies meaning.
+        flavour = (re.search(r"\bBBQ\s+style\b", source_text, re.I)
+                   or re.search(r"\b(?:Honey|American|Korean)\s+BBQ(?![A-Za-z0-9_-])", source_text, re.I)
+                   or re.search(r"\b(?:chips|patatas|fideos|tortillas|snacks?|aperitivos?)\b", source_text, re.I))
+        if (not flavour
+                or re.search(r"\b(?:dispositivo|modelo|model|c[oó]digo|cargador|m[aá]quina)\b", source_text, re.I)
+                or re.search(r"\b(?:sin|no)\b[^.;\n；!?]{0,35}" + standalone, source_text, re.I)):
+            return False
+        # A negated flavour cannot satisfy the positive source assertion.
+        affirmative = re.sub(
+            r"(?:不是|并非|不属于|不含|没有|不带|无|非|不)\s*(?:烧烤|烤肉)(?:风味|味)?",
+            "", target)
+        return bool(re.search(r"(?:烧烤|烤肉)(?:风味|味)?", affirmative))
     aliases = _TRANSLATED_TECH_TOKEN_ALIASES.get(str(source_token or "").casefold(), ())
     return _source_term_present(source_text, source_token) and any(
         alias.casefold() in str(target or "").casefold() for alias in aliases
@@ -578,6 +594,36 @@ def _is_source_bound_laundry_powder(source: SourceFacts, source_text: str) -> bo
     return bool(laundry_prose or laundry_appliance)
 
 
+def _is_source_bound_laundry_liquid(source: SourceFacts, source_text: str, field_name: str) -> bool:
+    """Disambiguate liquid laundry detergent, never a mixed category alone.
+
+    A bare title head may use the same product's explicit liquid/laundry
+    definition as noun context. Other fields must state their own liquid
+    form; an accessory, negated use, mixed form or conflicting purpose stays
+    on the existing review path.
+    """
+    liquid = r"\bdetergentes?\s+l[ií]quidos?\b"
+    own_liquid = bool(re.search(liquid, source_text, re.I))
+    bare_title = (field_name == "name" and source_text == source.name_es
+                  and bool(re.match(r"\s*detergentes?\b", source_text, re.I)))
+    if not own_liquid and not bare_title:
+        return False
+    if re.search(r"\b(?:para|de|del)\s+(?:(?:el|un|tu|su)\s+)?detergentes?\b", source_text, re.I):
+        return False
+    texts = "\n".join((source.name_es, source.spec_es, source.desc_es, source.details_es))
+    if (not re.search(liquid, texts, re.I)
+            or re.search(r"\b(?:lavavajillas|vajillas?|platos?|inodoros?|suelos?|alfombras?|moquetas?)\b", texts, re.I)
+            or re.search(r"\bdetergentes?\s+(?:en\s+(?:polvo|c[aá]psulas|gel)|s[oó]lidos?)\b", texts, re.I)
+            or re.search(r"\b(?:no|sin)\b[^.;\n；!?]{0,50}\bdetergentes?\b", texts, re.I)
+            or re.search(r"\bno\b[^.;\n；!?]{0,50}\b(?:ropa|colada|lavadora)\b", texts, re.I)):
+        return False
+    laundry = (re.search(r"\b(?:para\s+(?:la\s+)?(?:ropa|colada)|lava\s+(?:la|tu)\s+ropa|limpia\s+(?:la|tu)\s+ropa|colada\s+limpia)\b", texts, re.I)
+               or any(p.key.strip().casefold() in {"apto para tipo de aparato", "uso previsto"}
+                      and p.value.strip().casefold() == "lavadora"
+                      for p in parse_structured_details(source.details_es)))
+    return bool(laundry)
+
+
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
     # An appearance simile is not a claim of actual wood composition. Only
     # consume it when no separate wood occurrence remains in this field.
@@ -586,6 +632,10 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bmadera\b", remaining, re.I):
             return ("木纹", "木质外观", "木材外观")
+    if re.fullmatch(r"papel\s+sin\s+madera", source_term, re.I):
+        return ("化学浆纸", "化学浆绘图纸", "无机械木浆纸", "无磨木浆纸")
+    if re.fullmatch(r"cinceles?\s+de\s+madera", source_term, re.I) and canonical == "木工":
+        return ("木工凿", "木工用凿", "木材加工凿")
     if source_term.casefold() == "bambú":
         remaining = re.sub(r"\bfibras?\s+de\s+bambú\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bbambú\b", remaining, re.I):
@@ -619,6 +669,12 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             aliases.extend(("氛围照明", "环境照明"))
         if re.search(r"\biluminación\s+multicolor\s+RGB\b", source_text, re.I):
             aliases.extend(("RGB灯光", "RGB 灯光", "RGB照明", "RGB 照明"))
+        if (re.search(r"\biluminación\s+RGB\b", source_text, re.I)
+                and not re.search(r"\b(?:sin|no)\b[^.;\n；!?]{0,40}\biluminación\b", source_text, re.I)):
+            aliases.extend(("RGB灯效", "RGB 灯效", "RGB灯光", "RGB 灯光", "RGB照明", "RGB 照明"))
+        if (re.search(r"\biluminación\s+brillante\b", source_text, re.I)
+                and re.search(r"\bbarra\s+led\b", source_text, re.I)):
+            aliases.append("明亮照明")
         if re.search(r"\biluminación\s+led\s+destelleante\b", source_text, re.I):
             aliases.extend(("LED灯光", "LED 灯光"))
         if re.search(r"\biluminación\s+led\b", source_text, re.I):
@@ -1117,6 +1173,12 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 affirmative = re.sub(r"(?:不是|并非|不属于|不含|没有|无|非|不)\s*(?:衣物洗涤粉|洗衣粉)", "", target)
                 represented = (any(alias in affirmative for alias in aliases)
                     and not re.search(r"洗洁精|洗衣液|洗衣凝珠|洗涤凝珠|洗碗粉|洗碗机粉", target))
+            elif (fact_type == "PRODUCT_TYPE" and source_term.casefold() in {"detergente", "detergentes"}
+                    and _is_source_bound_laundry_liquid(source, source_text, field_name)):
+                canonical = "洗衣液"
+                affirmative = re.sub(r"(?:不是|并非|不属于|不含|没有|无|非|不)\s*(?:液体衣物洗涤剂|洗衣液)", "", target)
+                represented = (any(alias in affirmative for alias in ("洗衣液", "液体衣物洗涤剂"))
+                               and not re.search(r"洗洁精|洗衣粉|洗衣凝珠|洗涤凝珠|洗碗粉|洗碗机粉", target))
             if fact_type == "MATERIAL":
                 represented = represented or _structured_material_atom(source_term, source_text, target, field_name)
             if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
@@ -1135,6 +1197,20 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     "", target,
                 )
                 represented = any(alias in affirmative_target for alias in aliases)
+            if source_term.casefold() == "iluminación":
+                affirmative_target = target
+                for alias in sorted(aliases, key=len, reverse=True):
+                    affirmative_target = re.sub(
+                        r"(?:不是|并非|不具备|不支持|不带|没有|不含|无|非|不)\s*" + re.escape(alias),
+                        "", affirmative_target, flags=re.I)
+                represented = any(alias.casefold() in affirmative_target.casefold() for alias in aliases)
+            if canonical in {"化学浆纸", "木工"}:
+                affirmative_target = target
+                for alias in sorted(aliases, key=len, reverse=True):
+                    affirmative_target = re.sub(
+                        r"(?:不是|并非|不属于|不采用|没有|非)\s*" + re.escape(alias),
+                        "", affirmative_target, flags=re.I)
+                represented = any(alias.casefold() in affirmative_target.casefold() for alias in aliases)
             if _source_term_present(source_text, source_term) and not represented:
                 findings.append(QAFinding(
                     "SEMANTIC_FACT_DROPPED", "ERROR", field_name,
