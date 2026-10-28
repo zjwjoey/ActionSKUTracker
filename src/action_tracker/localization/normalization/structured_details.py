@@ -88,6 +88,15 @@ def parse_structured_details(text: str) -> tuple[StructuredDetail, ...]:
             if not match:
                 match = re.fullmatch(r"(Incluye fuente de luz|Pilas incluidas)\s+(Sí|Si|No)", part, re.I)
             if not match:
+                # Historical SKU 3222178 lost colons in these labels. Recover
+                # only explicit label/value boundaries, retaining order and
+                # duplicates; prose and unknown labels remain unparsed.
+                match = re.fullmatch(r"(Halal|Sin azúcar|Sin gluten|Vegano)\s+(Sí|Si|No)", part, re.I)
+            if not match:
+                match = re.fullmatch(r"(Carbohidratos|De los cuales azúcares|Energía)\s+(\d+(?:[.,]\d+)?\s*(?:g|kcal|kJ))", part, re.I)
+            if not match:
+                match = re.fullmatch(r"(Sabor|Consejos sobre conservación|Tipo de caramelo)\s+(.+)", part, re.I)
+            if not match:
                 continue
         key, value = match.group(1).strip(), match.group(2).strip()
         context_key, value_type = _type_for(key, value)

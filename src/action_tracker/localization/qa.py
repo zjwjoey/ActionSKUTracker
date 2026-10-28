@@ -1021,18 +1021,33 @@ def _detail_contextual_translation_findings(source_text, target):
         (r'tipo de asa', r'agarre en fr[ií]o', r'.*(?:提手|把手).*', r'冷敷'),
         (r'sabor', r'.*\bnaranja\b.*', r'口味|风味', r'橙色'),
         (r'apto para tipo de animal \(de compa[ñn][ií]a\)', r'.*\bave\b.*', r'.*(?:宠物|动物).*', r'禽肉'),
+        (r'relleno de p[aá]gina', r'.*\bcon l[ií]neas\b.*', r'页面填充|页面内容', r'条纹'),
+        (r'relleno de p[aá]gina', r'blanco', r'页面填充|页面内容', r'白色'),
+        (r'sustancia', r'bloques', r'形态|物态', r'积木'),
+        (r'uso previsto', r'taza del v[aá]ter', r'用途|预期用途', r'座圈'),
+        (r'repelen el agua', r's[ií]|no', r'防水|防水性能', r'是|否'),
     )
     results = []
-    for src in parse_structured_details(source_text):
-        for key, value, target_key, wrong in rules:
-            if not re.fullmatch(key, src.key.strip(), re.I) or not re.fullmatch(value, src.value.strip(), re.I):
-                continue
-            for dst in parse_structured_details(target):
-                if re.fullmatch(target_key, dst.key.strip()) and re.search(wrong, dst.value):
-                    results.append(QAFinding('DETAIL_CONTEXT_MISTRANSLATION', 'BLOCKER', 'details',
-                        {'source_key': src.key, 'source_value': src.value,
-                         'target_key': dst.key, 'target_value': dst.value}, source=source_text,
-                        target=target, message='reviewed attribute/value mistranslation', blocking=True))
+    if (re.search(r'\bm[eé]todo de administraci[oó]n\s*[:：]\s*oral\b', source_text, re.I)
+            and re.search(r'\bsuplemento nutricional\b', source_text, re.I)):
+        # Goma can legitimately mean rubber elsewhere. This exception is
+        # confined to an explicitly oral nutritional supplement in this field.
+        rules += ((r'sustancia', r'goma', r'形态|物态', r'橡胶'),)
+    source_pairs, target_pairs = parse_structured_details(source_text), parse_structured_details(target)
+    for key, value, target_key, wrong in rules:
+        sources = [p for p in source_pairs if re.fullmatch(key, p.key.strip(), re.I)]
+        targets = [p for p in target_pairs if re.fullmatch(target_key, p.key.strip())]
+        # Duplicate attributes are separate ordered facts, not a bag of
+        # interchangeable values. Unequal counts retain the conservative
+        # legacy check; they never grant an alignment/QA exemption.
+        pairs = (zip(sources, targets) if len(sources) == len(targets)
+                 else ((s, t) for s in sources for t in targets))
+        for src, dst in pairs:
+            if re.fullmatch(value, src.value.strip(), re.I) and re.search(wrong, dst.value):
+                results.append(QAFinding('DETAIL_CONTEXT_MISTRANSLATION', 'BLOCKER', 'details',
+                    {'source_key': src.key, 'source_value': src.value,
+                     'target_key': dst.key, 'target_value': dst.value}, source=source_text,
+                    target=target, message='reviewed attribute/value mistranslation', blocking=True))
     return results
 
 
@@ -1119,6 +1134,19 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if not source_text.strip():
             findings.append(QAFinding("EMPTY_SOURCE_TARGET_NONEMPTY", "BLOCKER", field_name, {"target": target}, source=source_text, target=target, message="target content exists without official source", blocking=True))
             continue
+        if (re.search(r'\bpercal\b', source_text, re.I)
+                and not re.search(r'\bpopel[ií]n(?:a)?\b|\bpoplin\b', source_text, re.I)
+                and '府绸' in target):
+            findings.append(QAFinding('WEAVE_MISTRANSLATION', 'BLOCKER', field_name,
+                {'source_term':'percal','target_term':'府绸'}, source=source_text, target=target,
+                message='percale weave was confused with poplin', blocking=True))
+        if field_name == 'name' and re.search(r'\bXXL\s+Nutrition\b', source_text, re.I):
+            without_brand = re.sub(r'\bXXL\s+Nutrition\b', '', source_text, flags=re.I)
+            if (not re.search(r'\bXXL\b', without_brand, re.I)
+                    and re.search(r'(?<![A-Za-z0-9])XXL(?![A-Za-z0-9])', target, re.I)):
+                findings.append(QAFinding('BRAND_SIZE_TOKEN_LEAK', 'BLOCKER', field_name,
+                    {'source_brand':'XXL Nutrition','target_token':'XXL'}, source=source_text, target=target,
+                    message='brand fragment was promoted to a size', blocking=True))
         wood_appearance_remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
         if (wood_appearance_remaining != source_text
                 and not re.search(r"\bmadera\b", wood_appearance_remaining, re.I)):
@@ -1331,6 +1359,10 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if duplicated:
             findings.append(QAFinding("NUMERIC_ADDED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "extra": dict(duplicated)}, source=source_text, target=target, message="numeric fact added", blocking=True))
         technical_source = _technical_scan_source(source_text)
+        if field_name == 'name':
+            # A verified complete brand span is not a size. Scan any XXL
+            # outside that span normally, including when both roles occur.
+            technical_source = re.sub(r'\bXXL\s+Nutrition\b', ' ', technical_source, flags=re.I)
         protected = protect_text(_capacity_scan_view(technical_source))
         target_protected = protect_text(_capacity_scan_view(target))
         def strict_key(kind, value):
