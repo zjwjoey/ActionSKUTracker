@@ -102,6 +102,20 @@ def test_resume_rejects_changed_durable_runtime_anchor(tmp_path):
         prepare_run_workspace(cfg, run_id='r1', report_dir=report)
 
 
+def test_new_default_root_does_not_move_or_strand_existing_resume(tmp_path, monkeypatch):
+    from action_tracker.operations import storage_lifecycle as storage
+    cfg = config(tmp_path)
+    cfg['transient_tasks'].pop('root')
+    monkeypatch.delenv('ACTION_TRACKER_TASK_ROOT', raising=False)
+    monkeypatch.setattr(storage, 'default_task_root', lambda: tmp_path / 'old-default')
+    report = tmp_path / 'report'
+    _, original = prepare_run_workspace(cfg, run_id='r1', report_dir=report)
+    monkeypatch.setattr(storage, 'default_task_root', lambda: tmp_path / 'new-default')
+    _, resumed = prepare_run_workspace(cfg, run_id='r1', report_dir=report)
+    assert resumed.directory == original.directory
+    assert not (tmp_path / 'new-default').exists()
+
+
 def test_runner_passes_isolated_config_to_existing_chain(tmp_path, monkeypatch):
     from action_tracker.operations import entry
     cfg = config(tmp_path)

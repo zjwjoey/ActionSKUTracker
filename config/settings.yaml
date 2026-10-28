@@ -249,7 +249,7 @@ export_difference_whitelist:
 
 transient_tasks:
   enabled: true
-  root: null  # Windows: F:/ActionStorageCandidates/ActionTasks; override explicitly if required.
+  root: null  # Windows: F:/ai文件/CodexStorage/work/ActionTasks; existing task-dir bindings stay intact.
   budget_mib: 256
 
 scoped_dictionary:

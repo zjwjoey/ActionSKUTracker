@@ -388,6 +388,21 @@ def _token_equivalence_allows(rule_id: str, evidence: Mapping[str, Any], source:
         return True
     if token and token_is_preserved(token, target):
         return True
+    # Unit/standard labels can touch their numeric value. Keep that value
+    # bound to the SAME field; GB must not match Gb, GByte models or 32GBX.
+    if token in {'GB', 'MB', 'TB'}:
+        for match in re.finditer(r'(?<![A-Za-z0-9])(\d+(?:[.,]\d+)?)\s*' + token + r'(?![A-Za-z0-9])', source):
+            number = re.escape(match.group(1)).replace(r'\,', '[.,]')
+            if re.search(r'(?<![A-Za-z0-9])' + number + r'\s*' + token + r'(?![A-Za-z0-9])', target):
+                return True
+    if token.upper() == 'SPF':
+        values = re.findall(r'(?<![A-Za-z0-9])SPF\s*(\d+)(?![A-Za-z0-9])', source, re.I)
+        if any(re.search(r'(?<![A-Za-z0-9])SPF\s*' + re.escape(n) + r'(?![A-Za-z0-9])', target, re.I) for n in values):
+            return True
+    if token.upper() == 'PPP':
+        values = re.findall(r'(?<![A-Za-z0-9])(\d+)\s*PPP(?![A-Za-z0-9])', source, re.I)
+        if any(re.search(r'(?<![A-Za-z0-9])' + re.escape(n) + r'\s*DPI(?![A-Za-z0-9])', target, re.I) for n in values):
+            return True
     # Numeric technical tokens may be rendered with a Chinese unit or with
     # the unit separated/attached differently (``30 dB`` → ``30分贝``).
     unit_match = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*(mah|kwh|db|mp|mcg|kg|cm|mm|km|m|g|w|v)", token, flags=re.I)

@@ -78,7 +78,7 @@ CI测试仅使用生成数据和隔离目录，不访问官网、生产库、模
 ## 本地候选：生产入口集中暂存（尚未部署）
 
 `transient_tasks.enabled: true` 时，现有 `run_production` 入口复用 P2 ScratchTask。
-默认根目录 `F:/ActionStorageCandidates/ActionTasks`，每次运行在一个 `task-<token>`
+默认根目录 `F:/ai文件/CodexStorage/work/ActionTasks`，每次运行在一个 `task-<token>`
 目录中保存 `scripts/`、`data/`、`debug/`。可用配置 `root` 或环境变量
 `ACTION_TRACKER_TASK_ROOT` 选择其它同盘、非生产、非代码目录。`task-workspace`
 省略 `--scratch-root` 时也使用这一默认值。缺少配置或显式关闭时保持原有适配行为。
@@ -93,6 +93,10 @@ Resume 校验后继续使用同一目录。只把 `paths.temp` 暂存重定向�
 重新嵌入新清单；容量超预算发出告警，不会删除文件或把已提交结果伪装成回滚。
 恢复义务默认保留。256 MiB 是可配置任务预算而非对 Python 进程内存的硬上限。
 本轮仅修改开发分支，生产配置和默认运行实际状态尚未切换。
+默认值变更仅作用于新任务；未显式改 root 的 Resume 继续校验并复用原有 owner
+记录指向的目录，不能自动搬动旧任务。新的测试缓存与临时文件使用
+`F:/ai文件/CodexStorage/temp` 或同一任务的 data/debug 子目录。
+已有 C 盘兼容联接保留；C 盘旧材料缺失时先核对 F 盘文件身份，不创建空替代物。
 
 ## F 盘旧文件整理方案
 

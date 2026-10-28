@@ -140,3 +140,45 @@ def test_real_contextual_mistranslations_are_flagged_without_rewriting(es,bad,go
     assert not _detail_contextual_translation_findings('Color: Naranja','颜色：橙色')
     assert not _detail_contextual_translation_findings('Efecto deseado: Dentadura blanca','适用牙列：假牙')
     assert not _detail_contextual_translation_findings('Tipo de asa: Otro','提手类型：冷敷')
+
+
+@pytest.mark.parametrize('es,zh', [('32 GB','32GB'),('128 GB','128GB'),('SPF 20 | 100 ml','SPF20｜100ml'),('1600 PPP | 1,25 m','1600DPI｜1.25米'),('Full HD','Full HD'),('Epson EcoTank 101/102/103/104 | 4 unidades','兼容Epson EcoTank 101/102/103/104，4件装')])
+def test_real_spec_token_equivalences_are_source_bound(es,zh):
+    r={**record(),'spec_es':es,'spec_zh':zh}
+    assert not any(f['field']=='spec_zh' for f in audit(r,None)['findings'])
+
+
+@pytest.mark.parametrize('token,source,target', [
+    ('GB','32 GB','32Gb'),('GB','32 GB','32GBX'),('GB','32 GB','64GB'),
+    ('SPF','SPF 20','SPF200'),('PPP','1600 PPP','800DPI'),('PPP','Modelo PPP','DPI')])
+def test_numeric_spacing_equivalence_does_not_allow_changed_units_or_models(token,source,target):
+    from action_tracker.exporting.repair_report import _token_equivalence_allows
+    assert not _token_equivalence_allows('PROTECTED_TOKEN_MISSING',{'value':token,'token_type':'TECH'},source,target)
+
+
+def test_literal_phrases_and_translated_3d_do_not_leak_to_other_source_fields():
+    from action_tracker.localization.qa import _source_bound_display_tokens, _is_allowed_translated_tech_token
+    assert not _source_bound_display_tokens('Pantalla','Full HD')
+    assert 'full' not in {s.casefold() for s in _source_bound_display_tokens('Full','Full')}
+    assert _is_allowed_translated_tech_token('Pegatinas 3D','3D','立体贴纸')
+    for source,target in [('Modelo 3D','立体'),('Pegatinas X3D','立体'),('Pegatinas','立体'),('Pegatinas 3D','非立体贴纸')]:
+        assert not _is_allowed_translated_tech_token(source,'3D',target)
+
+
+def test_puff_furniture_value_is_translatable_but_a_model_is_not():
+    from action_tracker.localization.qa import _is_allowed_translated_tech_token
+    assert _is_allowed_translated_tech_token('Tipo de puf / silla de descanso: PUFF','PUFF','软墩/休闲椅类型：软墩')
+    assert _is_allowed_translated_tech_token('Tipo de puf / silla de descanso: PUFF','PUFF','坐垫/休闲椅类型：蒲团')
+    assert _is_allowed_translated_tech_token('Tipo: PUFF','PUFF','类型：蒲团')
+    assert not _is_allowed_translated_tech_token('Modelo: PUFF','PUFF','软墩')
+
+
+def test_whitelist_cli_is_read_only_without_loading_runtime(tmp_path, monkeypatch, capsys):
+    from action_tracker import cli, config
+    def forbidden(*args,**kwargs):raise AssertionError('Must not initialize production paths')
+    monkeypatch.setattr(config,'load_settings',forbidden)
+    path=tmp_path/'registry.json';path.write_text(json.dumps({'contract':CONTRACT,'entries':[entry()]}),'utf8')
+    assert cli.main(['export-difference-whitelist','--registry',str(path),'--sku','2506346'])==0
+    result=json.loads(capsys.readouterr().out)
+    assert result['read_only'] and not result['whole_sku_bypass']
+    assert len(result['entries'])==1

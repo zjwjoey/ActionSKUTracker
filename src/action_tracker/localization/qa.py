@@ -257,7 +257,7 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
                 allowed.add("www")
     # Multiword commercial spans must occur complete in this same field.
     # Interior prose words (of/the/mini) are not general residual exceptions.
-    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini", "Play-Doh Create & Celebrate", "Max & More", "Dr. Candy Lolli Popperz"):
+    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini", "Play-Doh Create & Celebrate", "Max & More", "Dr. Candy Lolli Popperz", "Full HD", "Epson EcoTank"):
         pattern = rf"(?<![A-Za-z0-9]){re.escape(phrase)}(?![A-Za-z0-9])"
         if re.search(pattern, source, re.I) and re.search(pattern, rendered, re.I):
             allowed.update(re.findall(r"[A-Za-z]+", phrase))
@@ -402,6 +402,16 @@ def _is_allowed_translated_strict_token(source_text: str, token: str, target: st
 
 
 def _is_allowed_translated_tech_token(source_text: str, source_token: str, target: str) -> bool:
+    if str(source_token or '').casefold() == '3d':
+        standalone = r'(?<![A-Za-z0-9_-])3D(?![A-Za-z0-9_-])'
+        if (not re.search(standalone, source_text, re.I) or
+                re.search(r'\b(?:modelo|model|c[oó]digo)\b', source_text, re.I)):
+            return False
+        affirmative = re.sub(r'(?:不是|并非|不|非)\s*(?:立体|三维)', '', str(target))
+        return bool(re.search(r'立体|三维', affirmative))
+    if str(source_token or '').casefold() == 'puff':
+        return bool(re.search(r'(?:tipo de puf\s*/\s*silla de descanso|tipo)\s*[:：]\s*PUFF\b', source_text, re.I)
+                    and re.search(r'(?:软墩|坐墩|坐凳|蒲团|软凳|坐垫)', str(target)))
     if str(source_token or "").casefold() == "uv":
         # Generic UV may be localized, but UVA/UVB/UVC/model suffixes may not.
         pattern = r"(?<![A-Za-z0-9_-])UV(?![A-Za-z0-9_-])"

@@ -62,7 +62,7 @@ def require_candidate(root: Path):
 def default_task_root() -> Path:
     """One external namespace for newly generated, owned task artifacts."""
     configured = os.environ.get('ACTION_TRACKER_TASK_ROOT')
-    return Path(configured) if configured else (Path('F:/ActionStorageCandidates/ActionTasks')
+    return Path(configured) if configured else (Path('F:/ai文件/CodexStorage/work/ActionTasks')
         if os.name == 'nt' else Path.home() / '.cache' / 'actionskutracker' / 'tasks')
 
 
@@ -83,7 +83,15 @@ def prepare_run_workspace(cfg: dict, *, run_id: str, report_dir: Path):
     budget = options.get('budget_mib', 256)
     if isinstance(budget, bool) or not isinstance(budget, int) or budget <= 0:
         raise StorageError('INVALID_STORAGE_BUDGET')
-    root = Path(options.get('root') or default_task_root()).resolve()
+    report_dir = Path(report_dir)
+    pointer = report_dir / 'transient_workspace.json'
+    explicit_root = options.get('root') or os.environ.get('ACTION_TRACKER_TASK_ROOT')
+    selected_root = explicit_root or default_task_root()
+    if pointer.exists() and not explicit_root:
+        # Changing the default for NEW work must not strand an older run.
+        # The recorded root still passes all boundary/ownership checks below.
+        selected_root = json.loads(pointer.read_text(encoding='utf-8'))['root']
+    root = Path(selected_root).resolve()
     protected = [Path(cfg['project_root']).resolve(), Path(__file__).resolve().parents[3],
                  *[Path(p).resolve() for p in ('F:/ActionSKUTracker', 'F:/Action_Master', 'F:/按日期整理')],
                  *[Path(p).resolve() for p in cfg['paths'].values() if isinstance(p, (str, Path))]]
@@ -95,8 +103,6 @@ def prepare_run_workspace(cfg: dict, *, run_id: str, report_dir: Path):
     master = Path(cfg['paths']['master']).resolve()
     if root.drive.casefold() != master.drive.casefold():
         raise StorageError('TASK_WORKSPACE_CROSS_VOLUME')
-    report_dir = Path(report_dir)
-    pointer = report_dir / 'transient_workspace.json'
     with storage_lock(report_dir / 'workspace_lock', run_id=run_id):
         if pointer.exists():
             binding = json.loads(pointer.read_text(encoding='utf-8'))
