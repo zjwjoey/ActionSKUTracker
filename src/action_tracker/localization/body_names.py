@@ -8,6 +8,7 @@ import re
 
 
 REVIEWED_BODY_NAMES = (
+    "La Maison Rêve",
     "Play-Doh Create & Celebrate",
     # Complete own-field identities reviewed in the export-brand25 audit.
     # Punctuation is part of the identity; never allow individual fragments.

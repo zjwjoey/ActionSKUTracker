@@ -222,3 +222,6 @@ tests/test_bbq_flavour_token_qa.py
 
 # CI_SAFE: source-bound candidate609 semantic regressions, no runtime I/O.
 tests/test_candidate609_semantic_review.py
+
+# CI_SAFE: source-bound Apply preview QA, frozen public text, no production I/O.
+tests/test_apply_preview19_qa.py

@@ -449,6 +449,12 @@ def _is_omittable_display_brand_tech(source_text: str, source_token: str, target
     token = str(source_token or "").casefold()
     if _has_casefold_token(target, source_token):
         return False
+    if field_name == "name" and token == "fab":
+        # FAB Factory is a complete commercial name, not a FAB model. A
+        # separate occurrence outside that span still needs preservation.
+        remaining = re.sub(r"\bFAB\s+Factory\b", " ", source_text, flags=re.I)
+        if remaining != source_text and not _has_casefold_token(remaining, source_token):
+            return True
     if token in _OMITTABLE_DISPLAY_BRAND_TECH and _source_term_present(source_text, source_token):
         return True
     # A source-scoped, trusted BRAND fact resolves an uppercase brand such
@@ -634,7 +640,37 @@ def _is_source_bound_laundry_liquid(source: SourceFacts, source_text: str, field
     return bool(laundry)
 
 
+def _source_term_only_in_phrases(source_text: str, term_pattern: str, *phrases: str) -> bool:
+    """Do not let a qualified sense waive a separate ordinary occurrence."""
+    remaining = source_text
+    for phrase in phrases:
+        remaining = re.sub(phrase, " ", remaining, flags=re.I)
+    return remaining != source_text and not re.search(term_pattern, remaining, re.I)
+
+
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
+    # Resolve polysemy only from this field's complete qualifying phrase.
+    # These QA aliases neither generate translations nor relax other uses
+    # of rubber, cloth, detergent or lamp products.
+    term = source_term.casefold()
+    if term in {"detergente", "detergentes"} and _source_term_only_in_phrases(
+            source_text, r"\bdetergentes?\b", r"\btipo de detergente de limpieza de WC\s*[:：]"):
+        return ("洁厕剂", "马桶清洁剂", "厕所清洁剂")
+    if term in {"paño", "paños"} and _source_term_only_in_phrases(
+            source_text, r"\bpaños?\b", r"\bpaños?\s+hidrof[ií]licos?\b"):
+        return ("吸水布", "亲水布")
+    if term == "goma":
+        gummy_phrases = [r"\bositos\s+de\s+goma\b"]
+        # Exact affirmative attribute values only. A negated or merely
+        # mentioned supplement cannot establish the gummy dosage form.
+        if (re.search(r"(?:^|[;；\n])\s*m[eé]todo de administraci[oó]n\s*[:：]\s*oral\s*(?=[;；\n]|$)", source_text, re.I)
+                and re.search(r"(?:^|[;；\n])\s*uso previsto como\s*[:：]\s*suplemento nutricional\s*(?=[;；\n]|$)", source_text, re.I)):
+            gummy_phrases.append(r"(?:^|[;；\n])\s*sustancia\s*[:：]\s*goma\s*(?=[;；\n]|$)")
+        if _source_term_only_in_phrases(source_text, r"\bgomas?\b", *gummy_phrases):
+            return ("软糖",)
+    if term == "iluminación" and _source_term_only_in_phrases(
+            source_text, r"\biluminación\b", r"\biluminación\s+de\s+la\s+pantalla\s*[:：]"):
+        return ("屏幕照明", "屏幕背光", "显示屏照明", "显示屏背光")
     # An appearance simile is not a claim of actual wood composition. Only
     # consume it when no separate wood occurrence remains in this field.
     # Bamboo fibre likewise names a textile material, not a solid bamboo item.
@@ -727,6 +763,14 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
                 and re.search(r"\bcomo\s+un\s+paño\s+sobre\s+la\s+cara\b", source_text, re.I)):
             aliases.extend(("布片", "面膜布", "面膜"))
     if source_term.casefold() == 'calcetines':
+        for pattern, alias in (
+            (r"\bcalcetines(?:\s+de\s+senderismo)?\s+t[eé]rmicos?\b", "保暖袜"),
+            (r"\bcalcetines\s+para\s+niña\b", "女童袜"),
+            (r"\bcalcetines\s+para\s+niño\b", "男童袜"),
+            (r"\bcalcetines\s+para\s+estar\s+por\s+casa\b", "居家袜"),
+        ):
+            if _source_term_only_in_phrases(source_text, r"\bcalcetines\b", pattern):
+                aliases.append(alias)
         if re.search(r'\b(?:de|para)\s+beb[eé]s?\b',source_text,re.I):aliases.append('婴儿袜')
         for marker,alias in [('invisibles','隐形袜'),('rizo','毛圈袜')]:
             if _source_term_present(source_text,marker):aliases.append(alias)
@@ -1231,6 +1275,14 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
             represented = any(alias.casefold() in target.casefold() for alias in aliases)
+            if (source_term.casefold() in {"calcetines", "detergente", "detergentes", "paño", "paños", "goma"}
+                    and not re.search(r"\b(?:sin|no contiene|no incluye|no es|no son)\s+" + re.escape(source_term) + r"\b", source_text, re.I)):
+                # An explicitly negated rendering is not preservation of a
+                # positive source fact. Keep all other hard guards active.
+                affirmative = target
+                for alias in sorted(aliases, key=len, reverse=True):
+                    affirmative = re.sub(r"(?:不是|并非|不属于|不采用|不含|没有|无|非|不)\s*" + re.escape(alias), "", affirmative)
+                represented = any(alias.casefold() in affirmative.casefold() for alias in aliases)
             if (fact_type == "PRODUCT_TYPE" and source_term.casefold() in {"detergente", "detergentes"}
                     and _is_source_bound_laundry_powder(source, source_text)):
                 canonical = "洗衣粉"
