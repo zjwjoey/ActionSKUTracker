@@ -670,6 +670,26 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # These QA aliases neither generate translations nor relax other uses
     # of rubber, cloth, detergent or lamp products.
     term = source_term.casefold()
+    if term == "manoplas":
+        # A complete glove-type attribute names mittens. Bath mitts are a
+        # different qualified sense; never borrow winter context from a title.
+        if _source_term_only_in_phrases(
+                source_text, r"\bmanoplas\b",
+                r"\btipo\s+de\s+guantes\s*[:：]\s*manoplas\s*(?=[;；\n]|$)"):
+            return ("连指手套", "并指手套")
+        if _source_term_only_in_phrases(
+                source_text, r"\bmanoplas\b",
+                r"\bmanoplas\s+(?:de|para\s+el)\s+(?:baño|ducha)\b"):
+            return ("沐浴手套", "洗澡手套")
+    if term == "madera" and _source_term_only_in_phrases(
+            source_text, r"\bmadera\b", r"\baroma\s+a\s+madera\s+de\s+roble\b"):
+        # Oak wood scent is not a claim that the item is made from wood.
+        # A separate actual-material occurrence keeps the normal wood guard.
+        return ("橡木香气", "橡木香调", "木质香调（橡木）")
+    if term in {"paño", "paños"} and _source_term_only_in_phrases(
+            source_text, r"\bpaños?\b", r"\bpaños?\s+de\s+cocina\b"):
+        return tuple(dict.fromkeys((canonical, *_SEMANTIC_TARGET_ALIASES.get(term, ()),
+            "厨房用布", "厨房巾", "厨房抹布", "厨房毛巾", "厨房清洁布")))
     if term in {"detergente", "detergentes"} and _source_term_only_in_phrases(
             source_text, r"\bdetergentes?\b", r"\btipo de detergente de limpieza de WC\s*[:：]"):
         return ("洁厕剂", "马桶清洁剂", "厕所清洁剂")
@@ -780,6 +800,7 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             aliases.extend(("布片", "面膜布", "面膜"))
     if source_term.casefold() == 'calcetines':
         for pattern, alias in (
+            (r"\bcalcetines\s+calados\b", "镂空袜"),
             (r"\bcalcetines(?:\s+de\s+senderismo)?\s+t[eé]rmicos?\b", "保暖袜"),
             (r"\bcalcetines\s+para\s+niña\b", "女童袜"),
             (r"\bcalcetines\s+para\s+niño\b", "男童袜"),
