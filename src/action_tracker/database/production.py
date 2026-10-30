@@ -180,6 +180,8 @@ class ProductionWriter:
                     raise ProductionDatabaseError("BASELINE_CHANGED_BEFORE_COMMIT")
                 if field_only:
                     self._validate_positive_fact_scope(db, bundle)
+                from ..data_quality.historical.variance import validate_commit as validate_fact_variance_commit
+                validate_fact_variance_commit(db, bundle)
                 self._validate_field_commit_evidence(db, bundle)
                 self._validate_localization_coverage(db, bundle)
                 self._insert_run(db, bundle, now)

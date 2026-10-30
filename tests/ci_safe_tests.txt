@@ -238,3 +238,4 @@ tests/test_positive_fact_consumers.py
 
 # CI_SAFE: generated atomic CSV, exact same-run storage dedupe and fallback.
 tests/test_snapshot_atomic_staging.py
+tests/test_fact_variance_ack.py
