@@ -91,6 +91,7 @@ def _build_historical_import(db, candidates, *, run_id, base_commit_id, run_date
     """Pure candidate assembly, also rerun inside the original writer lock."""
     from urllib.parse import urlparse
     from ..services.hashing import localization_field_source_hash
+    from ..services.normalization import canonical_id
     from ..data_quality.rules import contains_html_markup, contains_ui_transport_text
     if not isinstance(candidates, list) or not candidates:
         raise ValueError("HISTORICAL_IMPORT_CANDIDATES_REQUIRED")
@@ -168,6 +169,8 @@ def _build_historical_import(db, candidates, *, run_id, base_commit_id, run_date
         collision = db.execute("SELECT official_sku FROM products WHERE canonical_id=?", (group["canonical_id"],)).fetchone()
         if (existing and existing[0] != group["canonical_id"]) or (collision and collision[0] != sku):
             raise ValueError("HISTORICAL_IMPORT_CANONICAL_CONFLICT")
+        if not existing and group['canonical_id'] != canonical_id(sku):
+            raise ValueError('HISTORICAL_IMPORT_NEW_CANONICAL_INVALID')
         row = db.execute("SELECT * FROM product_localizations WHERE official_sku=? AND language='es'", (sku,)).fetchone()
         values = dict(row) if row else {field: None for field in FIELDS}
         # A legacy product-level title is still a valid existing official fact.

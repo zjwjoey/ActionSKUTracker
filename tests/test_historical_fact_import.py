@@ -46,7 +46,7 @@ def _fixture(tmp_path, *, xlsx=False):
         'observed_at_evidence': 'Synthetic original capture metadata, not inferred from path',
         'reviewed_by': 'human:fixture', 'reviewed_at': datetime.now(timezone.utc).isoformat(),
         'review_evidence': 'Generated fixture; source SKU/columns/hash checked'}
-    candidates = [{'sku': r['sku'], 'canonical_id': 'ACT'+r['sku'], 'record_hash': typed_hash(r), 'source': source} for r in records]
+    candidates = [{'sku': r['sku'], 'canonical_id': 'ACT'+(r['sku'].zfill(7) if r['sku']=='106' else r['sku']), 'record_hash': typed_hash(r), 'source': source} for r in records]
     cfg = {'project_root': tmp_path, 'storage': {'mode': 'SQLITE_PRIMARY', 'db_path': path}, 'paths': {'state': tmp_path / 'state'}}
     return path, writer, head, asset, candidates, cfg
 
@@ -115,13 +115,14 @@ def test_history_import_preserves_status_dates_prices_approved_zh_and_registry_s
 
 def test_history_import_fails_closed_on_identity_asset_hash_record_and_source_review(tmp_path):
     fixture = _fixture(tmp_path)
-    for change in ('record', 'hash', 'sku', 'canonical', 'reviewer', 'language', 'level', 'price_field', 'url'):
+    for change in ('record', 'hash', 'sku', 'canonical', 'new_canonical', 'reviewer', 'language', 'level', 'price_field', 'url'):
         candidates = copy.deepcopy(fixture[4])
         row = candidates[0]
         if change == 'record': row['record_hash'] = '0'*64
         elif change == 'hash': row['source']['asset_sha256'] = '0'*64
         elif change == 'sku': row['sku'] = '999'
         elif change == 'canonical': row['canonical_id'] = 'ACT101'
+        elif change == 'new_canonical': candidates[-1]['canonical_id'] = 'ACT106'
         elif change == 'reviewer': row['source']['reviewed_by'] = 'service:invented'
         elif change == 'language': row['source']['language'] = 'zh'
         elif change == 'level': row['source']['evidence_level'] = 'UNKNOWN'
