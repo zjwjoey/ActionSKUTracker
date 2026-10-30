@@ -82,6 +82,30 @@ def test_complete_brand_span_not_individual_word_is_required():
     assert white.title_brand_match(r,r['name_zh'],'PROTECTED_TOKEN_MISSING',{'token_type':'TECH','value':'TMC'}) is None
 
 
+@pytest.mark.parametrize('brand_span,source,target,blocked', [
+    ('TCX Home', 'Plástico protector TCX Home modelo TCX', '防护塑料膜', True),
+    ('TCX Home', 'Plástico protector TCX Home modelo TCX', 'TCX防护塑料膜', False),
+    ('TCX Home', 'Plástico protector TCX Home modelos TCX y TCX', 'TCX防护塑料膜', True),
+    ('TCX Home', 'Plástico protector TCX Home modelos TCX y TCX', 'TCX和TCX防护塑料膜', False),
+    ('TCX', 'Plástico protector TCX modelo TCX', '防护塑料膜', True),
+])
+def test_brand_waiver_keeps_every_unbound_model_occurrence(brand_span, source, target, blocked):
+    r = {**record(), 'name_es': source, 'name_zh': target}
+    white = DifferenceWhitelist([entry(r, brand_span=brand_span, brand_tokens=['TCX'])])
+    waiver = white.title_brand_match(r, target, 'PROTECTED_TOKEN_MISSING',
+                                    {'token_type': 'TECH', 'value': 'TCX'})
+    assert (waiver is None) is blocked
+    result = audit(r, white)
+    # Full absence must remain blocked end to end. The separate legacy
+    # exporter can compact duplicate literal tokens; it must not be used as
+    # evidence that this exact brand acknowledgement covered another model.
+    if 'TCX' not in target:
+        assert not result['release_ready']
+        assert any(f['code'] == 'PROTECTED_TOKEN_MISSING' for f in result['findings'])
+    if not blocked:
+        assert result['release_ready']
+
+
 def test_valid_but_wrong_cat1_is_blocked_by_official_mapping_not_whitelisted():
     from action_tracker.dictionary import normalize_category_key
     r={**record(),'cat1_es':'Jardín'}

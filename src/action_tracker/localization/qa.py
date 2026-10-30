@@ -410,8 +410,14 @@ def _is_allowed_translated_tech_token(source_text: str, source_token: str, targe
         affirmative = re.sub(r'(?:不是|并非|不|非)\s*(?:立体|三维)', '', str(target))
         return bool(re.search(r'立体|三维', affirmative))
     if str(source_token or '').casefold() == 'puff':
-        return bool(re.search(r'(?:tipo de puf\s*/\s*silla de descanso|tipo)\s*[:：]\s*PUFF\b', source_text, re.I)
-                    and re.search(r'(?:软墩|坐墩|坐凳|蒲团|软凳|坐垫)', str(target)))
+        type_span = (r'(?:^|[;；\n])\s*(?:tipo de puf\s*/\s*silla de descanso|tipo)'
+                     r'\s*[:：]\s*PUFF\s*(?=[;；\n]|$)')
+        remaining = re.sub(type_span, ' ', source_text, flags=re.I)
+        affirmative = re.sub(r'(?:不是|并非|不属于|不采用|不含|没有|无|非|不)\s*'
+                             r'(?:软墩|坐墩|坐凳|蒲团|软凳|坐垫)', '', str(target))
+        return (remaining != source_text
+                and bool(re.search(r'软墩|坐墩|坐凳|蒲团|软凳|坐垫', affirmative))
+                and _casefold_token_count(target, 'PUFF') >= _casefold_token_count(remaining, 'PUFF'))
     if str(source_token or "").casefold() == "uv":
         # Generic UV may be localized, but UVA/UVB/UVC/model suffixes may not.
         pattern = r"(?<![A-Za-z0-9_-])UV(?![A-Za-z0-9_-])"
@@ -648,6 +654,17 @@ def _source_term_only_in_phrases(source_text: str, term_pattern: str, *phrases: 
     return remaining != source_text and not re.search(term_pattern, remaining, re.I)
 
 
+def _is_oral_nutritional_supplement(source_text: str) -> bool:
+    """Require complete affirmative attributes, not a mention or contradiction."""
+    pairs = parse_structured_details(source_text)
+    oral = [p.value.strip().casefold() for p in pairs
+            if re.fullmatch(r'm[eé]todo de administraci[oó]n', p.key.strip(), re.I)]
+    usage = [p.value.strip().casefold() for p in pairs
+             if re.fullmatch(r'uso previsto como', p.key.strip(), re.I)]
+    return bool(oral and usage and all(v == 'oral' for v in oral)
+                and all(v == 'suplemento nutricional' for v in usage))
+
+
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
     # Resolve polysemy only from this field's complete qualifying phrase.
     # These QA aliases neither generate translations nor relax other uses
@@ -663,8 +680,7 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         gummy_phrases = [r"\bositos\s+de\s+goma\b"]
         # Exact affirmative attribute values only. A negated or merely
         # mentioned supplement cannot establish the gummy dosage form.
-        if (re.search(r"(?:^|[;；\n])\s*m[eé]todo de administraci[oó]n\s*[:：]\s*oral\s*(?=[;；\n]|$)", source_text, re.I)
-                and re.search(r"(?:^|[;；\n])\s*uso previsto como\s*[:：]\s*suplemento nutricional\s*(?=[;；\n]|$)", source_text, re.I)):
+        if _is_oral_nutritional_supplement(source_text):
             gummy_phrases.append(r"(?:^|[;；\n])\s*sustancia\s*[:：]\s*goma\s*(?=[;；\n]|$)")
         if _source_term_only_in_phrases(source_text, r"\bgomas?\b", *gummy_phrases):
             return ("软糖",)
@@ -1072,8 +1088,7 @@ def _detail_contextual_translation_findings(source_text, target):
         (r'repelen el agua', r's[ií]|no', r'防水|防水性能', r'是|否'),
     )
     results = []
-    if (re.search(r'\bm[eé]todo de administraci[oó]n\s*[:：]\s*oral\b', source_text, re.I)
-            and re.search(r'\bsuplemento nutricional\b', source_text, re.I)):
+    if _is_oral_nutritional_supplement(source_text):
         # Goma can legitimately mean rubber elsewhere. This exception is
         # confined to an explicitly oral nutritional supplement in this field.
         rules += ((r'sustancia', r'goma', r'形态|物态', r'橡胶'),)

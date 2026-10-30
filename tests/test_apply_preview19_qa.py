@@ -114,3 +114,36 @@ def test_ambiguous_gummy_context_cannot_waive_rubber_fact(es, zh):
 def test_hydrophilic_context_cannot_hide_separate_cleaning_cloth():
     qa = check({'name_es': 'Paño hidrofílico y paño de limpieza'}, 'name', '吸水布')
     assert any(f['rule_id'] == 'SEMANTIC_FACT_DROPPED' for f in qa['findings']), qa
+
+
+@pytest.mark.parametrize('source,target,ready', [
+    ('Tipo de puf / silla de descanso: PUFF; Modelo: PUFF',
+     '软墩/休闲椅类型：软墩；型号：软墩', False),
+    ('Tipo de puf / silla de descanso: PUFF; Modelo: PUFF',
+     '软墩/休闲椅类型：软墩；型号：PUFF', True),
+    ('Tipo: PUFF; Código: PUFF; Modelo: PUFF', '类型：软墩；代码：PUFF；型号：软墩', False),
+    ('Prototipo: PUFF', '原型：软墩', False),
+    ('Tipo: PUFF; Modelo: Otro', '类型：非软墩；型号：其他', False),
+])
+def test_puff_type_does_not_waive_models_or_negated_type(source, target, ready):
+    assert check({'details_es': source}, 'details', target)['overall_ready'] is ready
+
+
+@pytest.mark.parametrize('usage', [
+    'No es un suplemento nutricional',
+    'No incluye suplemento nutricional',
+    'Descripción de un suplemento nutricional',
+])
+def test_nonaffirmative_supplement_context_does_not_mistranslate_rubber(usage):
+    source = 'Método de administración: Oral; Sustancia: Goma; Uso previsto como: ' + usage
+    from action_tracker.localization.qa import _detail_contextual_translation_findings
+    assert not _detail_contextual_translation_findings(source, '使用方式：口服；形态：橡胶')
+
+
+def test_conflicting_supplement_values_cannot_establish_gummy_context():
+    source = ('Método de administración: Oral; Sustancia: Goma; '
+              'Uso previsto como: Suplemento nutricional; '
+              'Uso previsto como: No es un suplemento nutricional')
+    from action_tracker.localization.qa import _detail_contextual_translation_findings
+    assert '软糖' not in _semantic_aliases('goma', source, '橡胶')
+    assert not _detail_contextual_translation_findings(source, '使用方式：口服；形态：橡胶')

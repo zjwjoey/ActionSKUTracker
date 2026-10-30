@@ -13,6 +13,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from .repair_overrides import field_source_hash
+from ..localization.qa import _casefold_token_count
 
 CONTRACT = 'EXPORT_DIFFERENCE_WHITELIST_V1'
 FIELDS = {'name_zh', 'cat1_zh', 'cat2_zh', 'spec_zh', 'desc_zh', 'details_zh'}
@@ -95,6 +96,12 @@ class DifferenceWhitelist:
         if (not re.fullmatch('[A-Za-z]{2,12}', token) or token.upper() in TECHNICAL or
                 token.casefold() not in {str(t).casefold() for t in item.get('brand_tokens', [])} or
                 not span or not _contains(record.get('name_es') or '', span) or not _contains(span, token)):
+            return None
+        # The acknowledgement covers one exact brand occurrence. Identical
+        # model/code tokens elsewhere still need their full source count.
+        remaining = re.sub(r'(?<![\w])' + re.escape(span) + r'(?![\w])', ' ',
+                           str(record.get('name_es') or ''), count=1, flags=re.I)
+        if _casefold_token_count(str(current), token) < _casefold_token_count(remaining, token):
             return None
         return item
 
