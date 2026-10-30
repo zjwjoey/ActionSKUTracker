@@ -21,7 +21,8 @@ jobs:
   test:
     name: CI-safe tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    # Windows tests take about 9.5 minutes; allow dependency setup and cleanup.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
