@@ -16,12 +16,12 @@
 
 | 字段族 | 权威层 | 允许的派生层 |
 | --- | --- | --- |
-| SKU、商品 URL | 官网事实 / Master | Export 只读 |
-| 西语名称、类目、规格、描述、详情 | 官网事实 / Snapshot / Master | 字典只做中文派生 |
-| 当前售价、原价、单价 | 官网事实 / Master | Export 格式化 |
+| SKU、商品 URL | 官网事实，经 PRIMARY 正式提交 | Master / Export 兼容投影只读消费 |
+| 西语名称、类目、规格、描述、详情 | 官网事实，经 PRIMARY 正式提交 | 字典只做中文派生 |
+| 当前售价、原价、单价 | 官网事实，经 PRIMARY 正式提交并校验本轮观察 | Master / Export 格式化 |
 | Presence 来源、CURRENT | 冻结的 Observation | Lifecycle / Export 消费 |
 | NEW/MISSING/OFFLINE/REAPPEARED | Lifecycle | Master、事件和 Export 展示 |
-| 中文名称、分类、规格、描述、详情 | Dictionary | Export 消费 |
+| 中文名称、分类、规格、描述、详情 | PRIMARY 已审批本地化及其来源绑定 | Dictionary 提供候选，Master / Export 消费 |
 | 品牌、术语、人工覆盖 | Dictionary | 中文标准化 |
 | 历史日期 0/1 | 对应历史批次 SKU 集合 | Export 矩阵 |
 | 图片 | 本地图片缓存 | 中文 Export 嵌入 |

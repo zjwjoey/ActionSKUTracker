@@ -366,7 +366,8 @@ class LocalizationRegistry:
                 raw_value = record.get(present_key) if present_key else None
                 fields[key] = None if raw_value is None else str(raw_value).strip()
             aggregate_hash = source_hash(fields)
-            source_id = self.register_source(facts.sku, fields, aggregate_hash, observed_at=observed_at, source_run_id=source_run_id)
+            source_id = self.register_source(facts.sku, fields, aggregate_hash,
+                observed_at=record.get('_registry_observed_at', observed_at), source_run_id=source_run_id)
             source_count += 1
             with connect(self.path) as db:
                 units = db.execute("""SELECT u.unit_id,u.field_name,u.source_text,u.current_revision_id,
@@ -375,6 +376,9 @@ class LocalizationRegistry:
                     WHERE u.source_version_id=?""", (source_id,)).fetchall()
                 for unit in units:
                     unit_count += 1
+                    allowed = record.get('_registry_allowed_fields')
+                    if allowed is not None and str(unit['field_name']) not in allowed:
+                        continue
                     if not str(unit["source_text"] or "").strip():
                         continue
                     # Unchanged fields with a fresh approved revision are

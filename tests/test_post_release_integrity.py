@@ -317,7 +317,10 @@ def test_daily_report_and_master_log_count_only_content_events(tmp_path, monkeyp
     monkeypatch.setattr(daily, "git_commit_info", lambda: "fixture")
     events = [{"事件类型": kind} for kind in event_types]
     original = [dict(event) for event in events]
-    qa = SimpleNamespace(state="PASS", passed=True)
+    from action_tracker.qa.validator import QAReport
+    qa = QAReport(True, "PASS", issues=[{'level': 'WARNING', 'sku': '3207872',
+        'field_name': 'details_es', 'reason': 'DETAIL_COVERAGE',
+        'source_value': '', 'source_hash': ''}])
     counts = daily._counts({}, set(), None, {}, [], [], events, [])
     report = daily._run_report(
         {"paths": {"master": tmp_path / "master.xlsx"}},
@@ -326,4 +329,5 @@ def test_daily_report_and_master_log_count_only_content_events(tmp_path, monkeyp
     )
     log = daily._run_log_row("fixture", "2026-10-13", "00:00:00", counts, qa, False, 0, 0)
     assert counts["content_change"] == report["content_change"] == log["CONTENT_CHANGE"] == expected
+    assert report['qa_issues'] == qa.issues
     assert events == original

@@ -6,9 +6,33 @@
 | --- | --- | --- |
 | PASS | Presence 和必要质量检查完整 | 是，且必须非 dry-run |
 | PASS_PRESENCE_ONLY | 有效 Sitemap Presence 已冻结，后续 Listing/Detail 不完整 | 只允许提交 Presence/Lifecycle；字段来源必须标记 |
-| FAIL | Presence 或关键数据不可信 | 否 |
+| FAIL / BLOCKED | 整轮 Presence 或关键范围不可信 | 不允许完整提交；仅可按下述持久字段范围保存独立可信事实 |
 
-QA FAIL 和 dry-run 都可以保存 Snapshot、Staging 和报告，但不得更新 Master、known_skus 或 offline_skus。
+dry-run 只保存证据。QA FAIL/BLOCKED 保留真实失败状态；无有效字段范围时不提交。
+
+### 字段分类与受限提交
+
+`HARD_BLOCK` 保护身份、业务主键、并发 head、完整性及危险缺失推进；`FIELD_REVIEW` 保留缺失或异常字段的原值／空值与来源 Hash；`WARNING` 保留非关键覆盖和解析问题。原有指标和阈值仍记录，不通过增大阈值取消保护。即使 Presence 失败，也继续检查已得到的商品身份和字段。
+
+完整入口优先使用 `FULL_OBSERVATION`。当完整门禁未通过时，`TRUSTED_FIELD_COMMIT_V1` 只授权明确的 SKU、官方 URL、字段、当前来源和精确值 Hash。该范围必须持久到 Collection marker，并由同一 `CommitBundle → ProductionWriter` 事务反查先前事实、实际 QA、观察、scope、base head。受限提交为 `POSITIVE_FACTS_ONLY`，禁止改写旧生命周期、CURRENT 集、日期、缺失计数及生命周期／价格事件；新增身份仅 UNKNOWN。正向观察不具备完整性或缺失权限。
+
+结果为 `FIELDS_COMMITTED` 或 `FIELDS_COMMITTED_EXPORT_PENDING`，运营终态 DEGRADED；不是新的 QA PASS。Master／State 仅同步数据库兼容投影，不能据此发布今日完整清单。正式导出及 V2 完整日源拒绝最新 facts-only head。Registry 读取已提交事实，只为范围内西语字段排队，不采用提交前被拒收的候选。
+
+同一父运行身份传给 daily 并在提交前绑定；提交后报告失败时，Operations 先核实数据库中的精确运行、质量证据和提交，再恢复 Registry／兼容投影。不能重新抓取或扩大原 scope。
+
+新 facts-only 身份的 `new_identity_skus` 必须由事务反查实际先前数据库验证，不能把已有历史 UNKNOWN 猜成新品。仅这种已验证、无历史 Presence 日期的身份保留首次有效观察资格；后续完整观察由监测结果驱动 `FIRST_SEEN` 事件，保留既有字段用于价格及徽章比较，不因已有商品行而漏记。完整提交及同一提交 Resume 不得重复产生该事件。
+
+`CommitBundle` 的显式 `bundle_hash` 必须等于程序按实际载荷计算的 Hash；不能用旧 Hash 让已变化的来源范围或身份声明冒充幂等 Resume。Hash 不一致在事务写入前拒绝。
+
+Repository 统一返回规范化的提交范围；导出不另开 SQLite 查询推断范围。旧记录没有 evidence 或旧 JSON 对象缺省 scope 时兼容为 FULL_OBSERVATION，但仍必须存在实际完整观察才能取得 Presence 权限，提交计数不代替观察证据。坏 JSON、非对象和显式非法 scope 均拒绝；没有完整观察时，不得拿最新修复提交充当采集来源。后续修复可叠加事实，正式来源日期仍取此前完整观察。
+
+价格有效性先按真实观察选取每个 SKU 的最新来源，再按选中 Run 提取小型价格标记并复用。三类标记各自保留原有类型与首个重复键的读取语义；后续无观察的中文或元数据提交不能刷新价格。此只读查询使用 SQLite 3.35+ 的 MATERIALIZED CTE，当前 Windows／Ubuntu Python 3.12 运行环境须通过同一回归；不增加持久缓存或业务表。
+
+### 售价可用性和历史来源
+
+历史售价可以保存在 products，但不能冒充本轮观察价。缺价、异常价及 `HISTORY_RETAINED/SOURCE_MISSING` 售价进入 FIELD_REVIEW；当前价格观察为空，不写虚假价格事件，也不作为健康基线。当前现价、原价、单价、中文单价及价格筛选使用同一观察有效性；原价／单价各自未被观察时分别遮罩。`last_valid_*` 和真实历史极值保留；后续中文或元数据提交不能刷新价格。
+
+字段来源与全局 commit head 分开。现代字段按精确 provenance；旧 listing 快照不能证明描述、详情或二级类目刚被采集，应回溯实际 detail 版本。已提交历史恢复／规范化修正按其字段值、来源 Hash、文件 Hash 和引用验证。缺证据或无合法观察时间保持 UNKNOWN，不能用恢复提交日或路径字符串充当采集时间。来源解析资格不等于全量商品语义审查。
 
 `CONTENT_CHANGE` 统计只计同名事件类型，不包含 `FIRST_SEEN`。daily 报告、
 `05_RUN_LOG` 与 SQLite event_history 的兼容投影使用同一口径；首次建档仍由 NEW/FIRST_SEEN 单独统计。

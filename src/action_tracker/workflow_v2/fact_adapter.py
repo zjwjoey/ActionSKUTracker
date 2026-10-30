@@ -14,6 +14,10 @@ def load_committed_daily_source(cfg: Mapping[str, Any], *, business_date: str) -
     path = database_path(cfg)
     head = latest_commit_id(path)
     with connect(path) as db:
+        head_evidence = db.execute('''SELECT e.evidence_json FROM commit_batches c
+            JOIN run_evidence e ON e.run_id=c.run_id WHERE c.commit_id=?''', (head,)).fetchone()
+        if head_evidence and json.loads(head_evidence[0] or '{}').get('commit_scope') in {'POSITIVE_FACTS_ONLY', 'HISTORICAL_FACTS_ONLY'}:
+            raise ValueError('WORKFLOW_V2_REQUIRES_COMPLETE_PRESENCE')
         row = db.execute('''SELECT b.commit_id,b.run_id,e.evidence_json FROM commit_batches b
             JOIN runs r ON r.run_id=b.run_id JOIN run_evidence e ON e.run_id=b.run_id
             WHERE b.status='COMMITTED' AND r.run_date=? AND r.dry_run=0
@@ -22,6 +26,8 @@ def load_committed_daily_source(cfg: Mapping[str, Any], *, business_date: str) -
         selected = None
         for candidate in row:
             evidence = json.loads(candidate['evidence_json'])
+            if evidence.get('commit_scope') in {'POSITIVE_FACTS_ONLY', 'HISTORICAL_FACTS_ONLY'}:
+                continue
             if evidence.get('collection_metrics_hash'):
                 selected = candidate, evidence
                 break
@@ -29,12 +35,16 @@ def load_committed_daily_source(cfg: Mapping[str, Any], *, business_date: str) -
             raise ValueError('WORKFLOW_V2_REQUIRES_COMMITTED_DAILY_FACTS')
         candidate, evidence = selected
         state = str(evidence.get('collection_quality_state') or '')
-        if state != 'COLLECTION_OK':
-            # Degraded collections require the same one-shot override as daily.
-            from ..data_quality.collection.gates import validate_collection_override
-            if state != 'COLLECTION_DEGRADED' or not evidence.get('collection_quality_override') or not validate_collection_override(
-                evidence.get('collection_quality_override_evidence') or {}, run_id=candidate['run_id'], metrics_hash=evidence['collection_metrics_hash']):
-                raise ValueError('WORKFLOW_V2_DAILY_COLLECTION_NOT_READY')
+        # Consume exactly the same commit policy as daily and the writer.
+        # A legal WARN does not become a second, stricter V2 ingestion gate.
+        from ..data_quality.collection.gates import collection_commit_allowed
+        if not collection_commit_allowed(
+            state, override=bool(evidence.get('collection_quality_override')),
+            override_evidence=evidence.get('collection_quality_override_evidence') or {},
+            run_id=candidate['run_id'], metrics_hash=evidence['collection_metrics_hash'],
+            requires_collection_integrity=True,
+        ):
+            raise ValueError('WORKFLOW_V2_DAILY_COLLECTION_NOT_READY')
         bundle = CommitBundle(run_id=candidate['run_id'], observation_date=business_date, qa_state='PASS',
                               run_record=evidence, collection_quality_state=state, requires_collection_integrity=True)
         ProductionWriter._validate_collection_quality_evidence(db, bundle)

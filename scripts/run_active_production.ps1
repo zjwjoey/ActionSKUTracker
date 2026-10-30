@@ -8,12 +8,16 @@ param(
     [switch]$ValidateOnly
 )
 $ErrorActionPreference = "Stop"
+# Keep the machine-readable wrapper contract identical on Windows PowerShell
+# and PowerShell 7, including Chinese checkout/data paths and error records.
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
 $dataRoot = Split-Path -Parent $PSScriptRoot
 if ($ProjectRoot -and [IO.Path]::GetFullPath($ProjectRoot) -ne [IO.Path]::GetFullPath($dataRoot)) {
     throw "PRODUCTION_DATA_ROOT_MISMATCH"
 }
 $manifestPath = Join-Path $dataRoot "runtime/deployment/active.json"
-$deployment = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+$deployment = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $sourceRoot = [string]$deployment.source_checkout
 $expectedBranch = [string]$deployment.source_branch
 if ($expectedBranch -notmatch '^(main|release/[a-z0-9][a-z0-9/_-]*)$' -or

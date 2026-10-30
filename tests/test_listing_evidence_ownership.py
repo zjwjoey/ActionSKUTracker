@@ -342,7 +342,7 @@ def test_unit_price_only_change_is_a_lightweight_metadata_plan():
     assert result["unit_price"] == "5,00 €/kg"
 
 
-@pytest.mark.parametrize("observed_price,qa_state", [(2.99, "PASS"), (99999, "FAIL")])
+@pytest.mark.parametrize("observed_price,qa_state", [(2.99, "PASS"), (99999, "PASS")])
 def test_mocked_full_daily_uses_historical_identity_and_real_source_qa(tmp_path, monkeypatch, observed_price, qa_state):
     from action_tracker.orchestrator import daily
     from action_tracker.monitor.listing import LightProduct
@@ -388,6 +388,10 @@ def test_mocked_full_daily_uses_historical_identity_and_real_source_qa(tmp_path,
     monkeypatch.setattr(daily, "_evaluate_daily_collection_quality", lambda _cfg, _run, report, **_kwargs: report.update(collection_quality_state="PASS"))
     result = daily.run_daily(cfg, dry_run=True, fetch_details=True, business_date="2026-10-13")
     assert result["qa"]["state"] == qa_state
+    if observed_price == 99999:
+        assert result['qa']['checks']['price_range']['ok'] is False
+        assert any(i['level'] == 'FIELD_REVIEW' and i['reason'] == 'PRICE_INVALID_OR_OUT_OF_RANGE'
+                   for i in result['qa']['issues'])
     assert result["run_report"]["new"] == 0 and result["run_report"]["reappeared"] == 0
     assert result["run_report"]["historical_identity_reused"] == 1
     assert result["run_report"]["detail_planned"] == result["run_report"]["detail_completed"] == 1

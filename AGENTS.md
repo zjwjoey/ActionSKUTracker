@@ -38,7 +38,7 @@
 - MISSING 只在有效缺失观测中推进；达到配置次数后才 OFFLINE。
 - 同一天重跑必须幂等，不推进多次缺失次数，不重复产生事件。
 - Presence 必须在 Detail 前冻结。
-- 所有正式写入必须经过 QA；QA FAIL 和 dry-run 只留证据，不覆盖 Master、known_skus 或 offline_skus。
+- 所有正式写入必须经过对应范围的 QA。dry-run 不提交；整轮 QA FAIL/BLOCKED 不得推进 Presence/Lifecycle。仅当持久的 `TRUSTED_FIELD_COMMIT_V1` 与 Collection marker、原 QA、SKU/字段/值 Hash、base head 在原 `ProductionWriter` 事务内一致时，才允许 `POSITIVE_FACTS_ONLY` 受限字段提交：保留原 QA 失败、冻结原状态/日期/缺失次数，新身份仅 UNKNOWN；兼容投影不等于当日完整清单发布。
 - SQLite PRIMARY 是当前生产主链和唯一正式读事实源；Excel/CSV 只能作为由当前 committed head 生成并经 `export_sync` 确认的兼容投影。
 - 正式写入必须经过 CommitBundle、QA、integrity、base commit 校验、事务和导出同步边界；任何 schema、commit contract 或 PRIMARY 路径结构变更都必须另立项目并补迁移与回归测试。
 
@@ -61,6 +61,7 @@
 - 普通 PREVIEW 仅写 `paths.exports/preview/`，不能覆盖正式或未知三件套；重复预览须验证已有 manifest 文件摘要。
 - Catalog 与 Template 1 PRODUCTION_RELEASE 共用完整 Gate，不以部分 Repair Audit 代替。
 - V2 production FACT_COMMIT 只复用经 QA/Collection Quality 验证的同日 daily，禁止部分事实包独立写 PRIMARY；独立 bundle 仅限临时 canary。
+- daily 的 `POSITIVE_FACTS_ONLY` 是原单写入链的持久字段范围，不得作为 V2 完整日源或正式 Export 来源；不得绕过翻译审批，运营终态为 DEGRADED。Resume 按数据库绑定的父运行/提交身份恢复，提交后的报告异常不得触发再次采集。
 - 正式入口共享 `paths.state/daily-run.lock`，提交绑定计算前 PRIMARY head。Registry 失败保留合法事实并明确 DEGRADED，只恢复来源仍一致的失败 run。
 
 - Export 是只读交付层，不访问官网、不翻译、不下载图片、不写回 Master/State/Dictionary。

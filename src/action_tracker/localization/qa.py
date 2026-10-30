@@ -1107,7 +1107,82 @@ def _detail_contextual_translation_findings(source_text, target):
                     {'source_key': src.key, 'source_value': src.value,
                      'target_key': dst.key, 'target_value': dst.value}, source=source_text,
                     target=target, message='reviewed attribute/value mistranslation', blocking=True))
+    results.extend(_detail_attribute_role_findings(source_text, target))
     return results
+
+
+def _detail_attribute_role_findings(source_text, target):
+    """Finite own-attribute contradictions recovered from d133dd6.
+
+    Compare the ordered occurrences, including duplicate keys. Another pair
+    cannot supply either an authorization or a contradiction. Structure/count
+    validation remains the responsibility of the existing structured QA.
+    """
+    sources = parse_structured_details(source_text)
+    targets = parse_structured_details(target)
+    if len(sources) != len(targets):
+        return []
+    findings = []
+    for index, (src, dst) in enumerate(zip(sources, targets)):
+        key, value = src.key.strip().casefold(), src.value.strip().casefold()
+        code = None
+        if key in {'sin colorantes artificiales', 'sin conservantes'}:
+            subject = '人工色素' if key == 'sin colorantes artificiales' else '防腐剂'
+            if subject in dst.key and not re.search(r'不含|无|未添加|不添加|零', dst.key):
+                code = 'NEGATIVE_ATTRIBUTE_ROLE_CHANGED'
+        elif key == 'apto para tipo de dentadura' and value == 'dentadura de adultos' and '假牙' in dst.key + dst.value:
+            code = 'DENTITION_CHANGED_TO_DENTURE'
+        elif key == 'número de posiciones de sentado' and '座位数' in dst.key:
+            code = 'SEATING_POSITION_CHANGED_TO_CAPACITY'
+        elif (key == 'tipo de dispositivo de corrección' and '矫正器械' in dst.key
+                and re.fullmatch(r'goma(?: de borrar)?|cinta(?: correctora)?|l[ií]quido(?: corrector)?|bol[ií]grafo(?: corrector)?', value)):
+            code = 'STATIONERY_CHANGED_TO_MEDICAL_DEVICE'
+        elif key == 'hipoalergénico' and re.search(r'抗过敏|防过敏', dst.key):
+            code = 'HYPOALLERGENIC_SCOPE_CHANGED'
+        elif key == 'vegano' and '素食' in dst.key and not re.search(r'纯素|严格素食', dst.key):
+            code = 'VEGAN_SCOPE_CHANGED'
+        elif key == 'tipo de taza / vaso' and ('玻璃类型' in dst.key or (
+                value.startswith('vaso') and '玻璃杯' in dst.value
+                and (not re.search(r'\b(?:vidrio|cristal)\b', value)
+                     or re.search(r'\b(?:sin|libre de|no(?: contiene| es de)?)\s+(?:vidrio|cristal)\b', value)))):
+            code = 'CUP_TYPE_CHANGED_TO_MATERIAL'
+        elif key == 'modo de transporte' and 'oído' in value and '携带方式' in dst.key:
+            code = 'WEARING_FORM_CHANGED_TO_TRANSPORT'
+        elif key == 'apto para tipo de fuente de calor' and 'eléctrico' in value and '电动' in dst.value:
+            code = 'ELECTRIC_HEAT_CHANGED_TO_MOTOR'
+        elif key == 'contenido' and re.search(r'\d\s*(?:g|kg|gramos?|kilogramos?)\b', value) and '容量' in dst.key:
+            code = 'MASS_ATTRIBUTE_CHANGED_TO_CAPACITY'
+        elif (key == 'halal' and '认证' in dst.key
+                and not re.search(r'\b(?:certificad[oa]s?|certificaci[oó]n)\b', value)):
+            code = 'CERTIFICATION_QUALIFIER_ADDED'
+        if code:
+            findings.append(QAFinding(code, 'BLOCKER', 'details',
+                {'pair_index': index, 'source_key': src.key, 'source_value': src.value,
+                 'target_key': dst.key, 'target_value': dst.value},
+                source=source_text, target=target, message='own attribute meaning changed', blocking=True))
+    return findings
+
+
+def _own_field_word_sense_findings(source_text, target, field_name):
+    """Diagnose finite contradictions; never copy context facts or repair."""
+    codes = []
+    if field_name == 'description':
+        if (re.search(r'\bpoliéster\b', source_text, re.I)
+                and not re.search(r'\bpoliamida\b|(?:sin|no contiene|libre de)\s+poliéster', source_text, re.I)
+                and '聚酰胺' in target):
+            codes.append('POLYESTER_CHANGED_TO_POLYAMIDE')
+    elif field_name == 'name':
+        for pattern, bad, alternate in (
+            (r'\bbolsas\s+para\s+lavadora\b', r'袜子', r'\bcalcetines\b'),
+            (r'\b(?:lienzos|paneles de pintura)\b', r'清洁布', r'\bpaños?\s+de\s+limpieza\b'),
+            (r'\bcaballete\s+de\s+corte\b', r'画架', r'\bcaballete\s+(?:de pintura|para pintar)\b'),
+            (r'\bfiletes\b.*\b(?:pollo|pato)\b', r'鱼片', r'\bpescado\b'),
+        ):
+            if (re.search(pattern, source_text, re.I) and re.search(bad, target)
+                    and not re.search(alternate, source_text, re.I)):
+                codes.append('PRODUCT_WORD_SENSE_CHANGED')
+    return [QAFinding(code, 'BLOCKER', field_name, {}, source=source_text,
+        target=target, message='own source word sense contradicted', blocking=True) for code in codes]
 
 
 def _detail_charging_speed_findings(source_text, target):
@@ -1193,6 +1268,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if not source_text.strip():
             findings.append(QAFinding("EMPTY_SOURCE_TARGET_NONEMPTY", "BLOCKER", field_name, {"target": target}, source=source_text, target=target, message="target content exists without official source", blocking=True))
             continue
+        findings.extend(_own_field_word_sense_findings(source_text, target, field_name))
         if (re.search(r'\bpercal\b', source_text, re.I)
                 and not re.search(r'\bpopel[ií]n(?:a)?\b|\bpoplin\b', source_text, re.I)
                 and '府绸' in target):

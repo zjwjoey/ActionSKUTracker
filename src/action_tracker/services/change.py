@@ -34,6 +34,8 @@ def compute_changes(
     price_min: float,
     price_max: float,
     run_id: str = "",
+    *,
+    first_presence: bool = False,
 ) -> ChangeOutcome:
     """对比 before（昨日/基线）与 after（今日），产出事件。after 已合并轻量/详情字段。"""
     out = ChangeOutcome()
@@ -85,7 +87,10 @@ def compute_changes(
     # ---- 内容哈希变化 ----
     from .hashing import content_hash
     src = run_id or "daily-run"
-    if before is not None:
+    # A trusted facts-only row may predate the first valid Presence. Keep its
+    # price/badge baseline above, but let the lifecycle classification own
+    # the first-seen content event rather than mere row existence.
+    if before is not None and not first_presence:
         if content_hash(before) != content_hash(after):
             out.content_events.append({
                 "Canonical_ID": canonical_id,

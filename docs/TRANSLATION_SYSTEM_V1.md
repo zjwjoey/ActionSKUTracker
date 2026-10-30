@@ -113,8 +113,7 @@ provenance, sent to Qwen only as the official `{source,target}` pair, and
 passed again to Typed QA.  A required approved term missing from the target
 is a blocking `TERMINOLOGY_VIOLATION`.
 
-The legacy `apply_zh` function remains only as a compatibility adapter for old
-fixtures.  The formal Daily path uses `apply_zh_formal`: missing Chinese stays
+The formal Daily path uses `apply_zh_formal`: missing Chinese stays
 empty/PENDING and enters the review/translation queue.  With
 `knowledge.fallback_to_spanish=false`, the formal Chinese chain never copies
 Spanish into `name_zh`, `spec_zh`, `description_zh` or `details_zh`; an export
