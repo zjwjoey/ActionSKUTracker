@@ -80,6 +80,10 @@ def source_descriptor(db, *, sku, fact_id, field):
                 raise FactVarianceError("FACT_VARIANCE_SOURCE_HASH_INVALID")
         normalization_version = stored["source_name"]
         observed_at = stored.get("observed_at")
+    if raw is None or raw == "":
+        # A SKU-level raw-available flag may refer to another field. Legacy
+        # empty scalars also cannot prove an explicitly empty official source.
+        raise FactVarianceError("FACT_VARIANCE_RAW_FIELD_UNAVAILABLE")
     if not normalization_version:
         raise FactVarianceError("FACT_VARIANCE_NORMALIZATION_VERSION_MISSING")
     precision = "UNKNOWN"

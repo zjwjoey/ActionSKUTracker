@@ -1,5 +1,6 @@
 """CI_SAFE: generated SQLite facts only; no production, network or model calls."""
 import copy
+import hashlib
 import json
 import sqlite3
 from dataclasses import replace
@@ -191,4 +192,19 @@ def test_active_source_requires_raw_availability_and_valid_frontier(fixture):
         db.execute('UPDATE product_fact_versions SET raw_fact_available=1 WHERE fact_id=?', (fact_id,))
         db.execute("UPDATE product_fact_versions SET raw_fact_json='[]' WHERE fact_id<>?", (fact_id,))
         with pytest.raises(FactVarianceError, match='FRONTIER_SOURCE_INVALID'):
+            source_descriptor(db, sku='123', fact_id=fact_id, field='spec')
+
+
+def test_sku_level_raw_flag_does_not_turn_missing_field_into_a_trusted_source(fixture):
+    path, _, _, ack, table = fixture
+    fact_id = ack['sources'][0]['source_version_id']
+    with sqlite3.connect(path) as db:
+        if table == 'product_fact_versions':
+            raw = {'spec': None, 'details': 'Raw available only for another field'}
+            db.execute('UPDATE product_fact_versions SET raw_fact_json=?,raw_fact_hash=?,raw_fact_available=1 WHERE fact_id=?',
+                (json.dumps(raw), typed_hash(raw), fact_id))
+        else:
+            db.execute('UPDATE source_fact_versions SET raw_value=NULL,raw_hash=? WHERE fact_id=?',
+                (hashlib.sha256(b'').hexdigest(), fact_id))
+        with pytest.raises(FactVarianceError, match='RAW_FIELD_UNAVAILABLE'):
             source_descriptor(db, sku='123', fact_id=fact_id, field='spec')
