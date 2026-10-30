@@ -34,7 +34,7 @@ def test_staging_centralized_resume_and_durable_paths_preserved(tmp_path):
     assert again.directory == task.directory and resumed['paths']['temp'] == effective['paths']['temp']
     assert sample.read_text(encoding='utf-8') == '{"pending":true}'
     second = record_run_workspace(again)
-    assert first['inventory'] != second['inventory']
+    assert first['inventory'] == second['inventory'] and second['reused']
     assert first['total_bytes'] == second['total_bytes'] == sample.stat().st_size
     assert len(json.loads(Path(second['inventory']).read_text(encoding='utf-8'))['files']) == 1
     assert len(list((tmp_path / 'tasks').glob('task-*'))) == 1
@@ -134,3 +134,62 @@ def test_runner_passes_isolated_config_to_existing_chain(tmp_path, monkeypatch):
     assert seen['paths']['temp'].is_relative_to(tmp_path / 'tasks')
     assert seen['paths']['master'] == cfg['paths']['master']
     assert result['transient_workspace']['automatic_cleanup'] is False
+
+
+def test_unchanged_resume_keeps_inventory_and_journal_exactly_while_changes_append(tmp_path):
+    cfg = config(tmp_path)
+    report = tmp_path / 'report'
+    effective, task = prepare_run_workspace(cfg, run_id='r1', report_dir=report)
+    sample = effective['paths']['temp'] / 'candidate.json'
+    sample.write_text('{"candidate":1}', encoding='utf-8')
+    first = record_run_workspace(task)
+    journal = (task.directory / 'lifecycle.jsonl').read_bytes()
+    _, resumed = prepare_run_workspace(cfg, run_id='r1', report_dir=report)
+    second = record_run_workspace(resumed)
+    assert second['reused'] and second['inventory'] == first['inventory']
+    assert (task.directory / 'lifecycle.jsonl').read_bytes() == journal
+    assert first['workspace_bytes'] == second['workspace_bytes']
+    sample.write_text('{"candidate":2}', encoding='utf-8')
+    third = record_run_workspace(resumed)
+    assert not third['reused'] and third['inventory'] != first['inventory']
+    assert len(list((task.directory / 'debug').glob('inventory-*.json'))) == 2
+    assert json.loads(Path(first['inventory']).read_text(encoding='utf-8'))['files'][0]['sha256'] != (
+        json.loads(Path(third['inventory']).read_text(encoding='utf-8'))['files'][0]['sha256'])
+
+
+def test_inventory_counts_unknown_namespaces_and_controls_without_deleting_them(tmp_path):
+    cfg = config(tmp_path)
+    _, task = prepare_run_workspace(cfg, run_id='r1', report_dir=tmp_path / 'report')
+    cache = task.directory / 'cache'; cache.mkdir()
+    unknown = cache / 'unregistered.bin'; unknown.write_bytes(b'x' * 1024**2)
+    disguised = task.directory / 'debug' / 'inventory-unknown.json'
+    disguised.write_text('{"unknown":true}', encoding='utf-8')
+    result = record_run_workspace(task)
+    actual = sum(p.stat().st_size for p in task.directory.rglob('*') if p.is_file())
+    payload = json.loads(Path(result['inventory']).read_text(encoding='utf-8'))
+    assert {i['path'] for i in payload['files']} == {'cache/unregistered.bin', 'debug/inventory-unknown.json'}
+    assert result['workspace_bytes'] == actual and result['budget_alert']
+    assert unknown.exists() and disguised.exists() and not result['automatic_cleanup']
+
+
+def test_inventory_reuse_rejects_tampered_registered_evidence(tmp_path):
+    cfg = config(tmp_path)
+    _, task = prepare_run_workspace(cfg, run_id='r1', report_dir=tmp_path / 'report')
+    first = record_run_workspace(task)
+    Path(first['inventory']).write_text('{"files":[]}', encoding='utf-8')
+    with pytest.raises(StorageError, match='IDENTITY_CHANGED'):
+        record_run_workspace(task)
+
+
+def test_inventory_rejects_directory_symlink_escape(tmp_path):
+    cfg = config(tmp_path)
+    _, task = prepare_run_workspace(cfg, run_id='r1', report_dir=tmp_path / 'report')
+    outside = tmp_path / 'outside'; outside.mkdir()
+    (outside / 'keep.bin').write_bytes(b'keep')
+    try:
+        (task.directory / 'cache').symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip('directory symlink permission unavailable')
+    with pytest.raises(StorageError, match='BOUNDARY'):
+        record_run_workspace(task)
+    assert (outside / 'keep.bin').read_bytes() == b'keep'

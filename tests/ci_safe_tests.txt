@@ -235,3 +235,6 @@ tests/test_retained_field_lineage.py
 # CI_SAFE: scoped facts-only commits and consumers in isolated temporary databases.
 tests/test_positive_fact_bundle.py
 tests/test_positive_fact_consumers.py
+
+# CI_SAFE: generated atomic CSV, exact same-run storage dedupe and fallback.
+tests/test_snapshot_atomic_staging.py

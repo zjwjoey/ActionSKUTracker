@@ -135,32 +135,51 @@ def prepare_run_workspace(cfg: dict, *, run_id: str, report_dir: Path):
 def record_run_workspace(task) -> dict:
     """Append a small inventory, not file copies; unique data stays protected.
 
-    Each resume gets immutable evidence. Staging bytes may legitimately change;
-    an inventory does not classify those bytes as eligible for deletion.
+    Unchanged Resume reuses its hash-verified immutable inventory and does not
+    append journal records. Changed payload gets new evidence. Control files
+    count towards actual usage but cannot recursively inventory themselves.
     """
     items = []
-    inventory_bytes = 0
+    inventories = []
+    workspace_bytes = 0
     for path in sorted(task.directory.rglob('*')):
-        if path.parent == task.directory / 'debug' and path.name.startswith('inventory-'):
-            if path.is_file():
-                inventory_bytes += path.stat().st_size
+        if path.is_symlink() or path.is_junction() or not path.resolve().is_relative_to(task.directory):
+            raise StorageError('SCRATCH_BOUNDARY_VIOLATION')
+        if not path.is_file():
             continue
-        if path.is_file() and path.parts[len(task.directory.parts)] in {'scripts', 'data', 'debug'}:
-            if path.is_symlink() or not path.resolve().is_relative_to(task.directory):
-                raise StorageError('SCRATCH_BOUNDARY_VIOLATION')
-            items.append({'path': path.relative_to(task.directory).as_posix(),
-                          'size_bytes': path.stat().st_size, 'sha256': sha256_file(path)})
+        workspace_bytes += path.stat().st_size
+        record = task.assets.get(path.resolve(), {})
+        if (path.parent == task.directory / 'debug' and path.name.startswith('inventory-')
+                and record.get('source') == 'daily-run transient inventory'
+                and record.get('task_status') == 'COMPLETED'):
+            if sha256_file(path) != record.get('sha256'):
+                raise StorageError('SCRATCH_IDENTITY_CHANGED')
+            inventories.append(path)
+            continue
+        if path in (task.directory / 'owner.json', task.directory / 'lifecycle.jsonl'):
+            continue
+        items.append({'path': path.relative_to(task.directory).as_posix(),
+                      'size_bytes': path.stat().st_size, 'sha256': sha256_file(path)})
     total = sum(item['size_bytes'] for item in items)
+    for existing in reversed(inventories):
+        prior = json.loads(existing.read_text(encoding='utf-8'))
+        if prior.get('files') == items and prior.get('budget_bytes') == task.budget_bytes:
+            return {'task_dir': str(task.directory), 'inventory': str(existing),
+                    'total_bytes': total, 'workspace_bytes': workspace_bytes,
+                    'budget_alert': workspace_bytes > task.budget_bytes,
+                    'automatic_cleanup': False, 'reused': True}
     relative = 'debug/inventory-' + uuid.uuid4().hex + '.json'
     path = relative_target(task.directory, relative)
     payload = {'files': items, 'total_bytes': total, 'budget_bytes': task.budget_bytes,
-               'prior_inventory_bytes': inventory_bytes,
-               'budget_alert': total + inventory_bytes > task.budget_bytes, 'automatic_cleanup': False}
+               'prior_inventory_bytes': sum(p.stat().st_size for p in inventories),
+               'budget_alert': workspace_bytes > task.budget_bytes, 'automatic_cleanup': False}
     write_new(path, payload)
     task.register(relative, source='daily-run transient inventory', expected_bytes=path.stat().st_size)
     task.complete(relative)
+    workspace_bytes = sum(p.stat().st_size for p in task.directory.rglob('*') if p.is_file())
     return {'task_dir': str(task.directory), 'inventory': str(path), 'total_bytes': total,
-            'budget_alert': payload['budget_alert'], 'automatic_cleanup': False}
+            'workspace_bytes': workspace_bytes, 'budget_alert': workspace_bytes > task.budget_bytes,
+            'automatic_cleanup': False, 'reused': False}
 
 
 def check_budget(root: Path, expected_bytes: int, *, reserve_bytes=64 * 1024**2):

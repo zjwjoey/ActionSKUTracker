@@ -642,7 +642,7 @@ def run_daily(
         "qa_report": qa.to_dict(),
         "run_report": run_report,
     }
-    write_snapshot(cfg, run_date, data)
+    snapshot_dir = write_snapshot(cfg, run_date, data)
     stage_data = {
         "sku_changes": sku_delta_rows,
         "product_changes": [{"sku": p["sku"], "reason": p["reason"], "canonical_id": p["canonical_id"],
@@ -653,7 +653,7 @@ def run_daily(
         "presence_evidence": data["presence_evidence"],
         "lifecycle_changes": sku_delta_rows,
     }
-    write_staging(cfg, run_id, stage_data)
+    write_staging(cfg, run_id, stage_data, snapshot_dir=snapshot_dir)
     # ---- 正式提交（只发生在 非 dry-run 且 QA PASS；否则 Master/known_skus/offline_skus 一律不动）----
     commit_status = "DRY_RUN"
     sqlite_diagnostics: dict[str, Any] = {
