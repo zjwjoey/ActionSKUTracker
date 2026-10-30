@@ -753,13 +753,21 @@ def _resolve_sqlite_current_source(
     try:
         repo = ProductionRepository(database_path(cfg))
         latest = repo.latest_commit_info()
+        if latest:
+            scope = latest.get('commit_scope', 'FULL_OBSERVATION')
+            if scope == 'POSITIVE_FACTS_ONLY':
+                raise ExportValidationError('SQLITE_POSITIVE_FACTS_ONLY_NOT_RELEASE_READY')
+            if scope != 'FULL_OBSERVATION':
+                raise ExportValidationError('SQLITE_COMMIT_SCOPE_INVALID')
         observation = repo.latest_observation_commit_info()
-        info = repo.commit_info(requested_run_id) if requested_run_id else (observation or latest)
+        if not observation:
+            return None
+        info = repo.commit_info(requested_run_id) if requested_run_id else observation
     except ProductionRepositoryError as exc:
         raise ExportValidationError(str(exc)) from exc
     if not info or str(info.get("run_date") or "") != export_date:
         return None
-    authoritative = observation or latest
+    authoritative = observation
     if authoritative and info.get("run_id") != authoritative.get("run_id"):
         # A historical commit cannot be reconstructed from the current DB
         # projection; force the immutable snapshot path instead.

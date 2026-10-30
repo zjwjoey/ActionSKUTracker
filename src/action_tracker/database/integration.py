@@ -18,6 +18,7 @@ from .production import CommitBundle, ProductionWriter, ProductionDatabaseError,
 from .connection import connect
 from ..knowledge.contracts import source_hash as knowledge_source_hash
 from ..localization.formatter import format_unit_price
+from ..localization.hashes import value_hash
 
 
 VALID_STORAGE_MODES = {"EXCEL_PRIMARY", "SQLITE_SHADOW", "SQLITE_PRIMARY"}
@@ -71,6 +72,65 @@ def snapshot_digest(directory: Path | None) -> str | None:
     return digest.hexdigest()
 
 
+def _select_trusted_fields(today_records, baseline, issues, *, run_id, observation_date):
+    """Select fields inside the existing daily bundle; retain rejected evidence."""
+    selected = {str(sku): {**row, 'fact_field_provenance': {
+        key: dict(value) for key, value in (row.get('fact_field_provenance') or {}).items()}}
+        for sku, row in today_records.items()}
+    allowed = {'name_es', 'cat1_es', 'cat2_es', 'spec_es', 'desc_es', 'details_es',
+               'current_price', 'original_price', 'unit_price', 'product_url', 'image_url'}
+    rejected = {}
+    for issue in issues:
+        if issue.get('level') != 'FIELD_REVIEW':
+            continue
+        sku, field = str(issue.get('sku') or ''), str(issue.get('field_name') or '')
+        if sku not in selected or field not in allowed:
+            raise ProductionDatabaseError('FIELD_REVIEW_SCOPE_INVALID')
+        if value_hash(today_records[sku].get(field)) != issue.get('source_hash'):
+            raise ProductionDatabaseError('FIELD_REVIEW_SOURCE_HASH_MISMATCH')
+        rejected.setdefault((sku, field), set()).add(str(issue.get('reason') or 'FIELD_REVIEW'))
+    # A retained historical price is useful baseline evidence, never a new
+    # observation. Older callers without field provenance keep their contract.
+    for sku, row in selected.items():
+        for field in ('current_price', 'original_price', 'unit_price'):
+            state = (row['fact_field_provenance'].get(field) or {}).get('state')
+            if state in {'HISTORY_RETAINED', 'SOURCE_MISSING'}:
+                rejected.setdefault((sku, field), set()).add('PRICE_NOT_OBSERVED_THIS_RUN')
+    invalid_prices = {sku for sku, field in rejected if field == 'current_price'}
+    for sku in invalid_prices:
+        for field in ('original_price', 'unit_price'):
+            rejected.setdefault((sku, field), set()).add('CURRENT_PRICE_UNVERIFIED')
+    results = []
+    for (sku, field), reasons in sorted(rejected.items()):
+        row, old = selected[sku], baseline.get(sku) or {}
+        # The read projection exposes last-valid facts separately when the
+        # previous current observation was also incomplete.
+        previous = old.get('last_valid_' + field, old.get(field))
+        origin = dict((old.get('field_source_lineage') or {}).get(field) or {
+            'status': 'UNKNOWN', 'reason': 'NO_MATCHING_TRUSTED_SOURCE'})
+        # Baseline head protects concurrency; it is not the field's source.
+        baseline_head = old.get('baseline_head_commit_id', old.get('source_commit_id'))
+        row[field] = previous
+        row['fact_field_provenance'][field] = {
+            'state': 'HISTORY_RETAINED' if previous not in (None, '') else 'SOURCE_MISSING',
+            'source': 'BASELINE' if previous not in (None, '') else 'NEEDS_REVIEW',
+            'retained_from_run_id': origin.get('field_source_run_id'),
+            'retained_from_commit_id': origin.get('field_source_commit_id'),
+            'baseline_head_commit_id': baseline_head, 'field_source': origin}
+        results.append({'sku': sku, 'field_name': field,
+            'action': 'RETAIN_LAST_VALID' if previous not in (None, '') else 'REVIEW_MISSING',
+            'reasons': sorted(reasons), 'attempted_hash': value_hash(today_records[sku].get(field)),
+            'committed_hash': value_hash(previous), 'run_id': run_id,
+            'observation_date': observation_date,
+            'baseline_head_commit_id': baseline_head,
+            'baseline_head_run_id': old.get('baseline_head_run_id'),
+            'field_source': origin})
+    for sku, field in rejected:
+        if field in {'name_es', 'cat1_es', 'cat2_es', 'spec_es', 'desc_es', 'details_es'}:
+            selected[sku]['source_hash'] = knowledge_source_hash(selected[sku])
+    return selected, results, invalid_prices
+
+
 def build_daily_bundle(
     *,
     run_id: str,
@@ -95,9 +155,15 @@ def build_daily_bundle(
     and lifecycle state can reference them.  Only today's Presence set is
     marked ``CURRENT``; this mirrors the existing CURRENT-sheet invariant.
     """
-    product_by_sku: dict[str, dict[str, Any]] = {
-        str(sku): dict(record) for sku, record in today_records.items()
-    }
+    if run_record.get('commit_scope') == 'POSITIVE_FACTS_ONLY':
+        return _build_positive_fact_bundle(
+            run_id=run_id, observation_date=observation_date, qa_state=qa_state,
+            today_records=today_records, baseline=baseline,
+            run_record=run_record, snapshot_path=snapshot_path, review_rows=review_rows)
+    selected, field_results, invalid_prices = _select_trusted_fields(
+        today_records, baseline, (run_record.get('qa_issues') or []),
+        run_id=run_id, observation_date=observation_date)
+    product_by_sku: dict[str, dict[str, Any]] = selected
     transition_known = transition.get("known") or {}
     for sku, status in statuses.items():
         sku = str(sku)
@@ -202,13 +268,19 @@ def build_daily_bundle(
             "promotion_present": int(bool(getattr(status, "promotion_present", False))),
             "observation_complete": bool(observation_complete and valid),
             "absence_capable": bool(valid and not present or observation_complete),
-            "current_price": (today_records.get(str(sku)) or {}).get("current_price"),
+            "current_price": (None if str(sku) in invalid_prices else
+                              (today_records.get(str(sku)) or {}).get("current_price")),
             "source_flag": getattr(status, "source_flag", None),
         })
 
-    prices = tuple(_price_event(row, run_id) for row in price_events)
+    prices = tuple(_price_event(row, run_id) for row in price_events
+                   if str(row.get('sku') or row.get('SKU') or '') not in invalid_prices)
     events = tuple(_event(row, run_id) for row in event_events)
     report = dict(run_record)
+    report['field_commit_results'] = field_results
+    report['price_observation_invalid'] = {sku: True for sku in sorted(invalid_prices)}
+    report['price_field_observation_invalid'] = _price_field_review_marker(products)
+    report['committed_price_event_count'] = len(prices)
     report["fact_field_provenance"] = {
         str(record["sku"]): record["fact_field_provenance"] for record in products
         if record.get("sku") and record.get("fact_field_provenance")}
@@ -226,7 +298,11 @@ def build_daily_bundle(
         observations=tuple(observations),
         price_events=prices,
         event_events=events,
-        review_rows=tuple(review_rows),
+        review_rows=tuple(review_rows) + tuple({
+            'sku': result['sku'], 'field_name': result['field_name'],
+            'issue_type': 'FIELD_REVIEW', 'evidence': json.dumps(result, ensure_ascii=False, sort_keys=True),
+            'suggested_action': 'Verify this field source; other accepted facts were committed.'}
+            for result in field_results),
         source_fact_versions=tuple(source_fact_versions),
         run_record=report,
         snapshot_path=str(snapshot_path) if snapshot_path else None,
@@ -236,6 +312,109 @@ def build_daily_bundle(
         collection_quality_override_evidence=dict(report.get("collection_quality_override_evidence") or {}),
         requires_collection_integrity=True,
     )
+
+
+def _build_positive_fact_bundle(*, run_id, observation_date, qa_state,
+                                today_records, baseline, run_record, snapshot_path, review_rows):
+    """Restrict the existing daily payload; never grant Presence authority."""
+    from ..qa.validator import validate_trusted_field_scope
+    from ..products.updater import FACT_FIELDS
+
+    scope = run_record['trusted_field_scope']
+    if not validate_trusted_field_scope(scope, run_id=run_id, business_date=observation_date):
+        raise ProductionDatabaseError('POSITIVE_FACT_SCOPE_INVALID')
+    permitted = {row['sku']: row for row in scope['rows']}
+    scoped_reviews = []
+    for review in review_rows:
+        sku = str(review.get('sku') or review.get('SKU') or review.get('official_sku')
+                  or review.get('entity_id') or '')
+        if sku in permitted:
+            scoped_reviews.append({**review, 'sku': sku})
+    originals = {}
+    issues = [issue for issue in run_record.get('qa_issues') or []
+              if str(issue.get('sku') or '') in permitted]
+    for sku, permission in permitted.items():
+        current = today_records.get(sku)
+        if (not current or current.get('canonical_id') != permission['canonical_id']
+                or current.get('product_url') != permission['product_url']
+                or (baseline.get(sku) or {}).get('canonical_id', permission['canonical_id']) != permission['canonical_id']):
+            raise ProductionDatabaseError('POSITIVE_FACT_IDENTITY_MISMATCH')
+        originals[sku] = current
+        for name, evidence in permission['fields'].items():
+            actual = (current.get('fact_field_provenance') or {}).get(name) or {}
+            if (value_hash(current.get(name)) != evidence['value_hash']
+                    or actual.get('state') != 'CURRENT_VERIFIED'
+                    or actual.get('source') != evidence['source']):
+                raise ProductionDatabaseError('POSITIVE_FACT_VALUE_HASH_MISMATCH')
+        reviewed = {i.get('field_name') for i in issues if str(i.get('sku') or '') == sku
+                    and i.get('level') == 'FIELD_REVIEW'}
+        for name in FACT_FIELDS:
+            if name not in permission['fields'] and name not in reviewed:
+                issues.append({'level': 'FIELD_REVIEW', 'sku': sku, 'field_name': name,
+                               'reason': 'OUTSIDE_TRUSTED_FIELD_SCOPE',
+                               'source_hash': value_hash(current.get(name))})
+    selected, receipts, invalid = _select_trusted_fields(
+        originals, baseline, issues, run_id=run_id, observation_date=observation_date)
+    products, localizations, versions, observations = [], [], [], []
+    spanish = {'name_es': 'name', 'cat1_es': 'cat1', 'cat2_es': 'cat2',
+               'spec_es': 'spec', 'desc_es': 'description', 'details_es': 'details'}
+    for sku, permission in permitted.items():
+        old = dict(baseline.get(sku) or {})
+        record = dict(old)
+        record.update({'sku': sku, 'canonical_id': permission['canonical_id']})
+        if '_stored_name_zh' in old:
+            record['name_zh'] = old['_stored_name_zh']
+        for name in FACT_FIELDS:
+            record[name] = selected[sku].get(name)
+        record['fact_field_provenance'] = selected[sku]['fact_field_provenance']
+        record['source_hash'] = knowledge_source_hash(record)
+        if not old:
+            record.update(status='UNKNOWN', first_seen=None, last_seen=None,
+                          first_seen_at=None, last_seen_at=None, consecutive_missing=0,
+                          _facts_only_without_presence=True)
+        products.append(record)
+        localizations.append(_localization(record, 'es'))
+        facts = {spanish[name]: {
+            'raw': originals[sku].get('_raw_' + name, originals[sku].get(name)),
+            'normalized': record[name]}
+            for name in permission['fields'] if name in spanish}
+        if facts:
+            versions.append({'sku': sku, 'run_id': run_id, 'observed_at': observation_date,
+                             'source_name': 'positive_fact_scope', 'facts': facts})
+        observations.append({'sku': sku, 'run_id': run_id, 'observation_date': observation_date,
+            'presence_state': 'PRESENT', 'sitemap_present': None, 'listing_present': None,
+            'observation_complete': False, 'absence_capable': False,
+            'current_price': None if sku in invalid else record.get('current_price'),
+            'source_flag': 'POSITIVE_FACTS_ONLY'})
+    report = {**run_record, 'commit_scope': 'POSITIVE_FACTS_ONLY',
+              'new_identity_skus': sorted(sku for sku in permitted if sku not in baseline),
+              'trusted_field_scope': scope, 'observation_complete': False,
+              'field_commit_results': receipts,
+              'price_observation_invalid': {sku: True for sku in sorted(invalid)},
+              'price_field_observation_invalid': _price_field_review_marker(products),
+              'fact_field_provenance': {row['sku']: row['fact_field_provenance'] for row in products},
+              'committed_price_event_count': 0}
+    return CommitBundle(run_id=run_id, observation_date=observation_date, qa_state=qa_state,
+        current_products=tuple(products), localization_updates=tuple(localizations),
+        observations=tuple(observations), source_fact_versions=tuple(versions),
+        review_rows=tuple(scoped_reviews) + tuple({'sku': r['sku'], 'field_name': r['field_name'], 'issue_type': 'FIELD_REVIEW',
+                           'evidence': json.dumps(r, ensure_ascii=False, sort_keys=True),
+                           'suggested_action': 'Retained outside the trusted field scope.'} for r in receipts),
+        run_record=report, snapshot_path=str(snapshot_path) if snapshot_path else None,
+        snapshot_hash=snapshot_digest(snapshot_path),
+        collection_quality_state=report.get('collection_quality_state'),
+        requires_collection_integrity=True)
+
+
+def _price_field_review_marker(products):
+    marker = {}
+    for row in products:
+        fields = {field: True for field in ('original_price', 'unit_price')
+                  if ((row.get('fact_field_provenance') or {}).get(field) or {}).get('state')
+                  in {'HISTORY_RETAINED', 'SOURCE_MISSING'}}
+        if fields:
+            marker[str(row.get('sku') or '')] = fields
+    return marker
 
 
 def commit_daily_bundle(cfg: Mapping[str, Any], bundle: CommitBundle, *, mode: str | None = None) -> str:

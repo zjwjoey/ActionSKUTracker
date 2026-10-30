@@ -459,6 +459,7 @@ def run_daily(
         outcome = change_mod.compute_changes(
             sku, rec.get("canonical_id"), fact_baseline.get(sku), rec, run_date,
             cfg["qa"]["price_min"], cfg["qa"]["price_max"], run_id,
+            first_presence=getattr(statuses.get(sku), "event", None) == "FIRST_SEEN",
         )
         price_events += outcome.price_events
         badge_events += outcome.badge_events
@@ -550,6 +551,7 @@ def run_daily(
         price_up=counts["price_up"],
         price_down=counts["price_down"],
         anomaly_count=len(anomalies),
+        price_anomalies=anomalies,
         products=products_for_qa,
         blocked=presence_blocked,
         observation_valid=observation_complete,
@@ -582,6 +584,12 @@ def run_daily(
     # Evaluate Collection Integrity before snapshot and commit decision. This
     # result is passed through the report and bundle; the writer validates it
     # but does not recalculate it.
+    from ..qa.validator import trusted_field_scope
+    run_report['commit_scope'] = 'FULL_OBSERVATION'
+    run_report['parent_workflow_run_id'] = _run_context.get('parent_workflow_run_id')
+    run_report['collection_run_id'] = run_id
+    run_report['trusted_field_scope'] = trusted_field_scope(
+        products_for_qa, qa, run_id=run_id, business_date=run_date)
     _evaluate_workflow_v2_shadow(cfg, run_id, products_for_qa, run_report)
     _evaluate_daily_collection_quality(cfg, run_id, run_report, dry_run=dry_run)
     from ..services.listing_evidence import listing_evidence
@@ -670,13 +678,36 @@ def run_daily(
                 snapshot_path=snap_dir, sqlite_diagnostics=sqlite_diagnostics, run_report=run_report,
                 expected_base_commit_id=expected_base_commit_id, enforce_expected_base=(configured_storage_mode == "SQLITE_PRIMARY"))
         else:
+            from ..qa.validator import validate_trusted_field_scope
+            field_ready = (configured_storage_mode == 'SQLITE_PRIMARY'
+                and str((run_report.get('workflow_v2_shadow') or {}).get('status') or 'DISABLED').upper() in {'DISABLED', 'PASS'}
+                and validate_trusted_field_scope(run_report.get('trusted_field_scope'),
+                                                run_id=run_id, business_date=run_date))
+            if field_ready:
+                run_report['commit_scope'] = 'POSITIVE_FACTS_ONLY'
+                run_log_row = _run_log_row(run_id, run_date, start_time, counts, qa, dry_run,
+                                           sitemap_count=len(sitemap_skus), listing_count=len(today_light))
+                commit_status = _commit_phase(
+                    cfg, statuses=statuses, known=known, run_date=run_date, run_id=run_id,
+                    offline_runs=cfg['lifecycle']['offline_confirmation_runs'],
+                    today_records=today_records, price_events=price_events, event_events=event_events,
+                    run_log_row=run_log_row, review_rows=review_rows, baseline=fact_baseline,
+                    today_set=today_set, observation_complete=False, snapshot_path=snap_dir,
+                    sqlite_diagnostics=sqlite_diagnostics, run_report=run_report,
+                    expected_base_commit_id=expected_base_commit_id, enforce_expected_base=True)
+            else:
+                commit_status = 'FIELD_SCOPE_NOT_VERIFIED'
             shadow_status = str((run_report.get("workflow_v2_shadow") or {}).get("status") or "").upper()
-            commit_status = (
+            if not field_ready:
+                commit_status = (
                 "WORKFLOW_V2_SHADOW_BLOCKED" if shadow_status == "BLOCKED"
                 else "COLLECTION_BLOCKED" if str(run_report.get("collection_quality_state") or "").upper() == "COLLECTION_BLOCKED"
                 else "QA_FAIL"
-            )
-            log.error("QA 未通过（%s），禁止写 Master / known_skus / offline_skus", qa.state)
+                )
+            if field_ready:
+                log.warning('Presence remains blocked (%s); bounded field commit status=%s', qa.state, commit_status)
+            else:
+                log.error("QA 未通过（%s），禁止写 Master / known_skus / offline_skus", qa.state)
 
     run_report["commit_status"] = commit_status
     run_report["sqlite"] = sqlite_diagnostics
@@ -849,6 +880,7 @@ def _run_report(cfg, run_id, run_date, dry_run, yesterday, today, statuses,
         "content_change": _content_change_count(content_events),
         "anomalies": len(anomalies),
         "qa_state": qa.state,
+        "qa_issues": qa.issues,
         "master": str(cfg["paths"]["master"]),
         "snapshot": str(snap_dir),
     }
@@ -932,6 +964,54 @@ def _commit_phase(
     diagnostics.setdefault("mode", mode)
     baseline = baseline or {}
     today_set = today_set or set(today_records)
+    if (run_report or {}).get('commit_scope') == 'POSITIVE_FACTS_ONLY':
+        if mode != 'SQLITE_PRIMARY':
+            return 'FIELD_SCOPE_REQUIRES_SQLITE_PRIMARY'
+        try:
+            from dataclasses import replace
+            from ..database.integration import regenerate_compatibility_exports
+            from ..operations.registry import committed_registry_records, record_registry_status
+            from ..localization.registry.repository import LocalizationRegistry
+            bundle = build_daily_bundle(
+                run_id=run_id, observation_date=run_date, qa_state=run_log_row['QA状态'],
+                today_records=today_records, baseline=baseline, statuses=statuses, known=known,
+                transition={}, today_set=today_set, observation_complete=False,
+                price_events=price_events, event_events=event_events, review_rows=review_rows,
+                run_record={**dict(run_report), 'dry_run': False, 'run_log': run_log_row},
+                snapshot_path=snapshot_path)
+            if enforce_expected_base:
+                bundle = replace(bundle, base_commit_id=expected_base_commit_id or '', bundle_hash=None)
+            commit_id = commit_daily_bundle(cfg, bundle)
+            diagnostics.update(status='COMMITTED', commit_id=commit_id, commit_scope='POSITIVE_FACTS_ONLY')
+        except Exception as exc:
+            diagnostics.update(status='FAILED', error=f'{type(exc).__name__}: {exc}')
+            return 'DB_COMMIT_FAILED'
+        if bool((cfg.get('localization') or {}).get('registry_enabled', True)):
+            registry = None
+            try:
+                records = committed_registry_records(cfg, source_run_id=run_id,
+                    fact_commit_id=commit_id, business_date=run_date)
+                registry = LocalizationRegistry(database_path(cfg), role='PRIMARY')
+                result = {**registry.ingest_records(records, source_run_id=run_id, observed_at=run_date), 'status': 'SUCCESS'}
+            except Exception as exc:
+                result = {'status': 'FAILED', 'error': f'{type(exc).__name__}: {exc}'}
+            finally:
+                if registry is not None:
+                    registry.close()
+            try:
+                diagnostics['translation_registry'] = record_registry_status(cfg,
+                    source_run_id=run_id, fact_commit_id=commit_id, business_date=run_date, result=result)
+            except Exception as exc:
+                diagnostics['translation_registry'] = {'status': 'FAILED', 'retryable': True,
+                    'error': f'REGISTRY_STATUS_PERSIST_FAILED:{exc}'}
+        try:
+            diagnostics['export_sync'] = regenerate_compatibility_exports(cfg, commit_id)
+            if diagnostics['export_sync'].get('status') != 'SUCCESS':
+                return 'FIELDS_COMMITTED_EXPORT_PENDING'
+        except Exception as exc:
+            diagnostics['export_sync'] = {'status': 'PENDING', 'error': f'{type(exc).__name__}: {exc}'}
+            return 'FIELDS_COMMITTED_EXPORT_PENDING'
+        return 'FIELDS_COMMITTED'
     # 1) 计算新状态并暂存 known_skus（失败则不触碰 Master）
     try:
         transition = st.apply_state_transition(known, statuses, run_date, run_id, offline_runs)
@@ -1045,13 +1125,20 @@ def _commit_phase(
             log.error("SQLite SHADOW 提交失败（不影响 Excel 主链）: %s", e)
     if mode == "SQLITE_PRIMARY" and diagnostics.get("commit_id"):
         if bool((cfg.get("localization") or {}).get("registry_enabled", True)):
+            registry = None
             try:
                 from ..localization.registry.repository import LocalizationRegistry
-                registry_result = LocalizationRegistry(database_path(cfg), role="PRIMARY").ingest_records(
-                    today_records.values(), source_run_id=run_id, observed_at=run_date)
+                from ..operations.registry import committed_registry_records
+                records = committed_registry_records(cfg, source_run_id=run_id,
+                    fact_commit_id=diagnostics['commit_id'], business_date=run_date)
+                registry = LocalizationRegistry(database_path(cfg), role='PRIMARY')
+                registry_result = registry.ingest_records(records, source_run_id=run_id, observed_at=run_date)
                 diagnostics["translation_registry"] = {**registry_result, "status": "SUCCESS", "production_writes": False}
             except Exception as exc:
                 diagnostics["translation_registry"] = {"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}
+            finally:
+                if registry is not None:
+                    registry.close()
             from ..operations.registry import record_registry_status
             try:
                 record_registry_status(cfg, source_run_id=run_id, fact_commit_id=diagnostics["commit_id"],

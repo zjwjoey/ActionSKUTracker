@@ -82,7 +82,11 @@ class ProductionRunner:
         self._save(state)
         if state["state"] not in {RunState.FAILED.value, RunState.BLOCKED.value}:
             failed = [s for name, s in state["steps"].items() if name != "REPORT" and s.get("status") in {"FAILED", "BLOCKED"}]
-            state["state"] = RunState.DEGRADED.value if failed else RunState.SUCCESS.value
+            field_only = any((step.get('details') or {}).get('commit_scope') == 'POSITIVE_FACTS_ONLY'
+                             for step in state['steps'].values())
+            recovered = any((step.get('details') or {}).get('post_commit_recovered')
+                            for step in state['steps'].values())
+            state["state"] = RunState.DEGRADED.value if failed or field_only or recovered else RunState.SUCCESS.value
         state["errors"] = errors
         state["finished_at"] = datetime.now().isoformat()
         state["exit_code"] = EXIT_CODES[state["state"]]

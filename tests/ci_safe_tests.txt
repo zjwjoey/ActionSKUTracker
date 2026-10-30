@@ -225,3 +225,13 @@ tests/test_candidate609_semantic_review.py
 
 # CI_SAFE: source-bound Apply preview QA, frozen public text, no production I/O.
 tests/test_apply_preview19_qa.py
+
+# CI_SAFE: isolated SQLite field selection, price freshness and tamper rejection.
+tests/test_field_commit_reviews.py
+
+# CI_SAFE: isolated dual-schema retained-field source lineage.
+tests/test_retained_field_lineage.py
+
+# CI_SAFE: scoped facts-only commits and consumers in isolated temporary databases.
+tests/test_positive_fact_bundle.py
+tests/test_positive_fact_consumers.py

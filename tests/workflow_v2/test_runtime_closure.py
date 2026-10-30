@@ -7,7 +7,7 @@ import pytest
 
 from action_tracker.config import config_evidence, load_settings, validate_phase1_profile
 from action_tracker.database.connection import connect
-from action_tracker.database.production import CommitBundle, ProductionWriter
+from action_tracker.database.production import CommitBundle, ProductionWriter, ProductionDatabaseError
 from action_tracker.services.hashing import localization_field_source_hashes, localization_source_hash
 from action_tracker.workflow_v2.context import new_context
 from action_tracker.workflow_v2.runner import WorkflowV2Runner, run_workflow_v2
@@ -73,6 +73,39 @@ def test_default_settings_remain_fail_closed():
     assert cfg["workflow_v2"]["enabled"] is False
     assert cfg["workflow_v2"]["auto_translation"]["enabled"] is False
     assert cfg["localization"]["ai"]["enabled"] is False
+
+
+def test_production_adapter_reuses_committed_warn_without_second_fact_write(tmp_path):
+    from dataclasses import replace
+    from test_database_integration import _cfg as database_cfg, _bundle
+    from action_tracker.data_quality.collection import evaluate_and_persist
+    from action_tracker.database.integration import commit_daily_bundle
+    from action_tracker.workflow_v2.fact_adapter import load_committed_daily_source
+
+    cfg = database_cfg(tmp_path, mode='SQLITE_PRIMARY')
+    old = _bundle(cfg)
+    run_id = 'daily-content-warning'
+    quality = evaluate_and_persist(cfg['storage']['db_path'], run_id, {
+        'run_date': '2026-08-30', 'qa_state': 'PASS', 'listing_unique': 1, 'current_valid': 1,
+        'price_coverage': .99, 'category_coverage': {f'cat-{i}': True for i in range(15)}})
+    assert quality.state == 'COLLECTION_WARN'
+    bundle = replace(old, run_id=run_id,
+                     observations=tuple({**row, 'run_id': run_id} for row in old.observations),
+                     source_fact_versions=tuple({**row, 'run_id': run_id} for row in old.source_fact_versions),
+                     collection_quality_state=quality.state,
+                     run_record={**old.run_record, 'collection_quality_state': quality.state,
+                                 'collection_metrics_hash': quality.metrics_hash})
+    commit_id = commit_daily_bundle(cfg, bundle)
+    with connect(cfg['storage']['db_path']) as db:
+        before = {t: db.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]
+                  for t in ('products', 'observations', 'event_history', 'price_history', 'commit_batches')}
+    source = load_committed_daily_source(cfg, business_date='2026-08-30')
+    assert source['fact_commit_id'] == commit_id and source['collection_run_id'] == run_id
+    with connect(cfg['storage']['db_path']) as db:
+        assert before == {t: db.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0] for t in before}
+        db.execute("UPDATE collection_quality_metrics SET gate_status='COLLECTION_BLOCKED' WHERE run_id=? AND metric_name='__collection_state'", (run_id,))
+    with pytest.raises(ProductionDatabaseError, match='COLLECTION_QUALITY_STATE_MISMATCH'):
+        load_committed_daily_source(cfg, business_date='2026-08-30')
 
 
 def test_profile_overlay_deep_merge_and_evidence():

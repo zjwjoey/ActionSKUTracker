@@ -62,7 +62,14 @@ def run_sku_monitor(
         # Historical identity proves existence, never a new Presence vote or
         # an invented OFFLINE/MISSING state. Only today's observed SKU uses it.
         historical = (historical_identities or {}).get(sku) if today_present else None
-        ever_seen = k is not None or bool(historical)
+        facts_without_presence = bool(historical and historical.get('_facts_only_without_presence')
+            and historical.get('status') == 'UNKNOWN'
+            and not (historical.get('first_seen') or historical.get('first_seen_at')
+                     or historical.get('last_seen') or historical.get('last_seen_at')))
+        # A scope with no Presence authority must not consume the eventual
+        # first valid observation. Older dated historical identities retain
+        # their established reuse behavior.
+        ever_seen = k is not None or bool(historical and not facts_without_presence)
         first_seen = ((k or {}).get("first_seen_date") or
                       (historical or {}).get("first_seen") or
                       (yesterday_records.get(sku) or {}).get("first_seen"))
@@ -126,6 +133,7 @@ def run_sku_monitor(
             nuevo_present=sku in nuevo_skus,
             promotion_present=sku in promo_skus,
             identity_source=("LIFECYCLE" if k is not None else
+                'FACTS_WITHOUT_VALID_PRESENCE' if facts_without_presence else
                 "PRODUCT_HISTORY_WITHOUT_LIFECYCLE" if historical else
                 "CURRENT_BASELINE" if was_yesterday else "NEW_IDENTITY"),
         )

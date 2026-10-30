@@ -1,7 +1,9 @@
 """规范 §60 测试 18-19：QA Gate。"""
+import json
 import pytest
 
-from action_tracker.qa.validator import run_qa
+from action_tracker.qa.validator import run_qa, trusted_field_scope
+from action_tracker.localization.hashes import value_hash
 
 
 def _cfg():
@@ -59,6 +61,57 @@ def test_blocked_qa_fail():
     assert qa.passed is False
 
 
+@pytest.mark.parametrize('access_blocked', [False, True])
+def test_incomplete_presence_still_checks_field_and_identity_evidence(access_blocked):
+    product = {'sku': '1001', 'canonical_id': '', 'product_url': 'u',
+               'current_price': 9999.0, 'cat1_es': 'Hogar'}
+    qa = run_qa(_cfg(), yesterday_total=10, today_total=1,
+                sitemap_count=0, listing_count=1, new_count=0, missing_count=0,
+                price_up=0, price_down=0, anomaly_count=0, products=[product],
+                observation_valid=False, blocked=access_blocked)
+    assert not qa.passed
+    assert qa.state == ('BLOCKED' if access_blocked else 'FAIL')
+    assert qa.checks['observation_valid'][0] is False
+    assert any(i['reason'] == 'CANONICAL_ID_MISSING' and i['level'] == 'HARD_BLOCK'
+               for i in qa.issues)
+    assert any(i['reason'] == 'PRICE_INVALID_OR_OUT_OF_RANGE' and i['level'] == 'FIELD_REVIEW'
+               for i in qa.issues)
+
+
+def test_trusted_field_scope_does_not_waive_presence_or_price_review():
+    product = {'sku': '1001', 'canonical_id': 'ACT0001001',
+               'product_url': 'https://www.action.com/es-es/p/1001/producto/',
+               'presence_source': 'LISTING_ONLY', 'name_es': 'Producto',
+               'current_price': 9999.0, 'cat1_es': 'Hogar', 'desc_es': 'Old',
+               'fact_field_provenance': {
+                   'name_es': {'state': 'CURRENT_VERIFIED', 'source': 'LISTING_CURRENT_RUN'},
+                   'current_price': {'state': 'CURRENT_VERIFIED', 'source': 'LISTING_CURRENT_RUN'},
+                   'desc_es': {'state': 'HISTORY_RETAINED', 'source': 'BASELINE'}}}
+    qa = run_qa(_cfg(), yesterday_total=10, today_total=1, sitemap_count=0, listing_count=1,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
+                products=[product], observation_valid=False)
+    scope = trusted_field_scope([product], qa, run_id='partial', business_date='2026-10-30')
+    assert not qa.passed and qa.state == 'FAIL'
+    assert scope['presence_authority'] is False
+    assert scope['rows'][0]['fields'] == {
+        'name_es': {'value_hash': value_hash('Producto'), 'source': 'LISTING_CURRENT_RUN'}}
+    assert scope == trusted_field_scope([product], qa, run_id='partial', business_date='2026-10-30')
+    assert trusted_field_scope([product, product], qa, run_id='partial', business_date='2026-10-30')['rows'] == []
+    assert trusted_field_scope([{**product, 'product_url': 'https://example.com/es-es/p/1001/'}],
+                               qa, run_id='partial', business_date='2026-10-30')['rows'] == []
+
+
+def test_retained_nonempty_price_is_reviewed_without_blocking_other_facts():
+    product = _products(1)[0]
+    product['fact_field_provenance'] = {'current_price': {'state': 'HISTORY_RETAINED', 'source': 'BASELINE'}}
+    qa = run_qa(_cfg(), yesterday_total=1, today_total=1, sitemap_count=1, listing_count=1,
+                new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0, products=[product])
+    assert qa.passed and qa.state == 'PASS'
+    reviews = [i for i in qa.issues if i['reason'] == 'PRICE_NOT_OBSERVED_THIS_RUN']
+    assert len(reviews) == 1
+    assert reviews[0]['source_hash'] == value_hash(1.0)
+
+
 def test_incomplete_observation_fails_qa_before_lifecycle_commit():
     qa = run_qa(_cfg(), yesterday_total=10, today_total=10, sitemap_count=10, listing_count=10,
                 new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
@@ -97,6 +150,8 @@ def test_sitemap_only_pending_fields_do_not_fail_presence_qa():
     assert qa.passed is True
     assert qa.checks["listing_field_completeness"][0] is True
     assert "待补充1" in qa.checks["listing_field_completeness"][1]
+    assert {(i['sku'], i['field_name']) for i in qa.issues if i['level'] == 'FIELD_REVIEW'} == {
+        ('100', 'current_price'), ('100', 'cat1_es')}
 
 
 def test_valid_sitemap_can_commit_presence_when_listing_is_restricted():
@@ -119,7 +174,7 @@ def test_sitemap_fallback_still_rejects_anomalous_presence_data():
     assert qa.state == "FAIL"
 
 
-def test_missing_fields_on_listing_observation_fail_qa():
+def test_missing_price_on_verified_listing_is_field_review_not_batch_failure():
     products = _products(10)
     for product in products:
         product["listing_fields_source"] = "LISTING_CURRENT_RUN"
@@ -127,5 +182,80 @@ def test_missing_fields_on_listing_observation_fail_qa():
     qa = run_qa(_cfg(), yesterday_total=10, today_total=10, sitemap_count=10, listing_count=10,
                 new_count=0, missing_count=0, price_up=0, price_down=0, anomaly_count=0,
                 products=products)
-    assert qa.passed is False
+    assert qa.passed is True
     assert qa.checks["listing_field_completeness"][0] is False
+    assert qa.issues == [{"level": "FIELD_REVIEW", "sku": "0", "field_name": "current_price",
+                          "reason": "PRICE_SOURCE_MISSING", "source_value": None,
+                          "source_hash": value_hash(None)}]
+
+
+def _normal_qa(products, **overrides):
+    args = dict(yesterday_total=len(products), today_total=len(products), sitemap_count=len(products),
+                listing_count=len(products), new_count=0, missing_count=0, price_up=0, price_down=0,
+                anomaly_count=0, products=products)
+    args.update(overrides)
+    return run_qa(_cfg(), **args)
+
+
+@pytest.mark.parametrize('value', [-1, 0, 5000, float('nan'), float('inf'), 'invalid', True])
+def test_bad_price_is_bound_to_only_its_sku_and_does_not_approve_the_value(value):
+    rows = _products(2)
+    rows[0]['current_price'] = value
+    qa = _normal_qa(rows)
+    assert qa.passed and qa.state == 'PASS'
+    assert qa.checks['price_range'][0] is False
+    assert [(i['level'], i['sku'], i['field_name']) for i in qa.issues] == [('FIELD_REVIEW', '0', 'current_price')]
+    assert qa.issues[0]['source_hash'] == value_hash(value)
+    assert qa.to_dict()['issues'] == qa.issues
+    assert json.dumps(qa.to_dict(), allow_nan=False)
+    assert rows[0]['current_price'] is value  # QA diagnoses; it does not repair sources.
+
+
+def test_missing_category_and_unparsed_tag_have_distinct_scopes():
+    rows = _products(2)
+    rows[0]['cat1_es'] = None
+    rows[1]['raw_tags'] = 'unknown transport badge'
+    qa = _normal_qa(rows)
+    assert qa.passed
+    assert {(i['level'], i['sku'], i['field_name']) for i in qa.issues} == {
+        ('FIELD_REVIEW', '0', 'cat1_es'), ('WARNING', '1', 'raw_tags')}
+    assert not qa.checks['listing_field_completeness'][0]
+    assert not qa.checks['tag_parse_rate'][0]
+
+
+def test_reported_price_anomalies_are_field_scoped_even_below_aggregate_limit():
+    qa = _normal_qa(_products(2), anomaly_count=1,
+                    price_anomalies=[{'sku': '1', 'problem': 'PRICE_ANOMALY'}])
+    assert qa.passed
+    assert [(i['level'], i['sku'], i['field_name'], i['source_value']) for i in qa.issues] == [
+        ('FIELD_REVIEW', '1', 'current_price', 1.0)]
+
+
+def test_aggregate_anomaly_threshold_is_a_warning_not_unidentified_field_permission():
+    qa = _normal_qa(_products(2), anomaly_count=21)
+    assert qa.passed and not qa.checks['anomaly_count'][0]
+    assert qa.issues[0]['level'] == 'WARNING' and qa.issues[0]['reason'] == 'PRICE_ANOMALY_COUNT'
+
+
+@pytest.mark.parametrize('field,value', [('sku', ''), ('canonical_id', ''), ('product_url', '')])
+def test_missing_identity_or_identity_url_remains_hard_block(field, value):
+    rows = _products(2)
+    rows[0][field] = value
+    qa = _normal_qa(rows)
+    assert not qa.passed
+    assert any(i['level'] == 'HARD_BLOCK' and i['field_name'] == field for i in qa.issues)
+
+
+def test_duplicate_identity_does_not_become_a_field_review():
+    rows = _products(2)
+    rows[1]['sku'] = rows[0]['sku']
+    rows[1]['canonical_id'] = rows[0]['canonical_id']
+    qa = _normal_qa(rows)
+    assert not qa.passed
+    assert {i['reason'] for i in qa.issues} >= {'DUPLICATE_SKU', 'DUPLICATE_CANONICAL_ID'}
+
+
+def test_invalid_observation_retains_explicit_hard_block_issue():
+    qa = _normal_qa(_products(2), observation_valid=False)
+    assert not qa.passed and qa.issues[0]['level'] == 'HARD_BLOCK'
+    assert qa.issues[0]['reason'] == 'OBSERVATION_INVALID'

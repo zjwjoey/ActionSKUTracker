@@ -76,14 +76,22 @@ Snapshot 保存原始证据、标准化商品、覆盖率、Presence 来源、QA
 提交分支：
 
 ```text
-QA FAIL / dry-run
-  └─ 保留 Snapshot、Staging、报告；不写 Master/State
+dry-run / 无独立可信字段范围
+  └─ 保留 Snapshot、Staging、报告；不提交
 
 QA PASS / PASS_PRESENCE_ONLY + 非 dry-run
   └─ Collection Quality + 预期 base → PRIMARY 事务 → Master/State 兼容投影
+
+整轮门禁未通过 + 持久的精确可信字段范围
+  └─ 原 QA 保留 → 同一 PRIMARY Writer 验证范围/质量证据/base
+       → 独立字段保存、生命周期冻结、新身份 UNKNOWN
+       → Registry 范围内排队 + Master/State 兼容投影
+       → DEGRADED；禁止据此发布完整日清单
 ```
 
 Detail 完整性单独记录。Presence 完整且已冻结后，Detail 中断不否定当日 CURRENT。
+
+事实 head 与最后完整 Presence head 独立读取。受限字段或中文元数据提交不会刷新完整观察日，也不会把历史保留字段重新标记为当天抓取。Operations 在提交后异常与 Resume 时先恢复数据库中绑定的委派身份，再重试 Registry／投影；不重新采集已提交 run。
 
 ## 6. Master 与 State
 

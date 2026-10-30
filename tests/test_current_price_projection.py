@@ -1,7 +1,66 @@
 from openpyxl import Workbook
 from openpyxl.styles import Font
+import sqlite3
+import pytest
 from action_tracker.database.repository import _price_projection
 from action_tracker.excel.writer import _update_or_append_current
+
+
+@pytest.mark.parametrize('evidence,expected', [
+    ('{}', (3, 5, '3 €/ud')),
+    ('{', (3, 5, '3 €/ud')),
+    ('null', (3, 5, '3 €/ud')),
+    ('{"price_observation_invalid":[]}', (3, 5, '3 €/ud')),
+    ('{"price_field_observation_invalid":"unknown"}', (3, 5, '3 €/ud')),
+    ('{"price_field_observation_invalid":{"1001":"unknown"}}', (3, 5, '3 €/ud')),
+    ('{"price_observation_invalid":{"1001":"1"}}', (3, 5, '3 €/ud')),
+    ('{"price_observation_invalid":{"1001":true}}', (None, None, None)),
+    ('{"price_field_observation_invalid":{"1001":{"original_price":true}}}', (3, None, '3 €/ud')),
+    ('{"price_field_observation_invalid":{"1001":{"unit_price":true}}}', (3, 5, None)),
+    ('{"price_observation_invalid":{"1001":false,"1001":true}}', (3, 5, '3 €/ud')),
+    ('{"price_observation_invalid":{"1001":true,"1001":false}}', (None, None, None)),
+    ('{"price_field_observation_invalid":{"1001":"unknown","1001":{"unit_price":true}}}', (3, 5, '3 €/ud')),
+    ('{"price_field_observation_invalid":{"1001":{"original_price":false},"1001":{"original_price":true}}}', (3, 5, '3 €/ud')),
+])
+def test_price_marker_projection_preserves_types_independence_and_first_key(evidence, expected):
+    db = _price_marker_fixture(evidence)
+    try:
+        assert _read_marker_prices(db) == [expected]
+    finally:
+        db.close()
+
+
+def test_price_marker_from_old_run_cannot_leak_into_new_observation():
+    db = _price_marker_fixture('{"price_observation_invalid":{"1001":true}}')
+    try:
+        db.execute("INSERT INTO commit_batches VALUES('repair','repair','2026-10-28','COMMITTED')")
+        db.execute("INSERT INTO run_evidence VALUES('repair','{}')")
+        assert _read_marker_prices(db) == [(None, None, None)]
+        db.execute("INSERT INTO commit_batches VALUES('new','new','2026-10-27','COMMITTED')")
+        db.execute("INSERT INTO run_evidence VALUES('new','{}')")
+        db.execute("INSERT INTO observations VALUES('1001','new','2026-10-27','PRESENT')")
+        assert _read_marker_prices(db) == [(3, 5, '3 €/ud')]
+    finally:
+        db.close()
+
+
+def _price_marker_fixture(evidence):
+    db = sqlite3.connect(':memory:')
+    db.executescript("""CREATE TABLE products(official_sku TEXT PRIMARY KEY,current_price REAL,original_price REAL,unit_price_raw TEXT);
+        CREATE TABLE observations(official_sku TEXT,run_id TEXT,observation_date TEXT,presence_state TEXT);
+        CREATE TABLE commit_batches(commit_id TEXT,run_id TEXT,committed_at TEXT,status TEXT);
+        CREATE TABLE run_evidence(run_id TEXT PRIMARY KEY,evidence_json TEXT);
+        INSERT INTO products VALUES('1001',3,5,'3 €/ud');
+        INSERT INTO observations VALUES('1001','old','2026-10-26','PRESENT');
+        INSERT INTO commit_batches VALUES('old','old','2026-10-26','COMMITTED');""")
+    db.execute('INSERT INTO run_evidence VALUES(?,?)', ('old', evidence))
+    return db
+
+
+def _read_marker_prices(db):
+    from action_tracker.database.repository import PRICE_REVIEW_JOIN, current_price_expression
+    expressions = ','.join(current_price_expression(c) for c in ('current_price','original_price','unit_price_raw'))
+    return db.execute('SELECT ' + expressions + ' FROM products p ' + PRICE_REVIEW_JOIN).fetchall()
 
 
 def test_last_change_is_distinct_from_current_business_period():

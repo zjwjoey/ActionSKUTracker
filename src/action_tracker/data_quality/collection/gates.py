@@ -38,6 +38,12 @@ class CollectionQualityResult:
         return self.state in {"COLLECTION_OK", "COLLECTION_WARN"}
 
     @property
+    def baseline_eligible(self) -> bool:
+        # Partial/content-warning runs may preserve trustworthy facts, but
+        # must not lower tomorrow's healthy coverage baseline.
+        return self.state == "COLLECTION_OK" and not self.warnings and not self.drift_issues
+
+    @property
     def metrics_hash(self) -> str:
         return collection_metrics_hash(self.metrics)
 
@@ -45,6 +51,7 @@ class CollectionQualityResult:
         return {
             "run_id": self.run_id, "state": self.state, "commit_allowed": self.commit_allowed,
             "metrics_hash": self.metrics_hash,
+            "baseline_eligible": self.baseline_eligible,
             "metrics": [metric.as_dict() for metric in self.metrics],
             "baselines": dict(self.baselines), "blockers": list(self.blockers),
             "warnings": list(self.warnings), "drift_issues": [issue.as_dict() for issue in self.drift_issues],
@@ -129,15 +136,15 @@ def evaluate_collection(run_id: str, metrics: list[CollectionMetric], *, history
         value = _value(values, name); base = (baselines.get(name) or {}).get("median_7d")
         if value is None or base is None: continue
         drop = (float(base) - value) * 100 if abs(float(base)) <= 1 and abs(value) <= 1 else float(base) - value
-        if drop >= float(block_points): blockers.append(f"{name.upper()}_DROP:{drop:.2f}POINTS")
+        if drop >= float(block_points): warnings.append(f"{name.upper()}_DROP:{drop:.2f}POINTS:FIELD_REVIEW")
         elif drop >= float(warn_points): warnings.append(f"{name.upper()}_DROP:{drop:.2f}POINTS")
     price = _value(values, "price_coverage")
     if price is not None:
-        if price < float(cfg["price_coverage_block_below"]): blockers.append(f"PRICE_COVERAGE:{price:.4f}")
+        if price < float(cfg["price_coverage_block_below"]): warnings.append(f"PRICE_COVERAGE:{price:.4f}:FIELD_REVIEW")
         elif price < float(cfg["price_coverage_warn_below"]): warnings.append(f"PRICE_COVERAGE:{price:.4f}")
     failure = _value(values, "detail_failure_rate")
     if failure is not None:
-        if failure > float(cfg["detail_failure_block_above"]): blockers.append(f"DETAIL_FAILURE_RATE:{failure:.4f}")
+        if failure > float(cfg["detail_failure_block_above"]): warnings.append(f"DETAIL_FAILURE_RATE:{failure:.4f}:FIELD_REVIEW")
         elif failure > float(cfg["detail_failure_warn_above"]): warnings.append(f"DETAIL_FAILURE_RATE:{failure:.4f}")
     current_plain = {name: value for name, value in values.items()}
     drift_cfg = dict(cfg.get("drift") or {})
@@ -150,10 +157,18 @@ def evaluate_collection(run_id: str, metrics: list[CollectionMetric], *, history
         drift_cfg["source_hashes"] = source_hashes
     drift_cfg.setdefault("coverage_drop_points", cfg["coverage_block_drop_points"])
     drift = detect_schema_drift(current_plain, baselines, run_id=run_id, config=drift_cfg)
-    if drift:
-        blockers.extend(f"DRIFT:{issue.issue_type}:{issue.field_name}" for issue in drift)
+    content_fields = {
+        "price_coverage", "cat1_coverage", "cat2_coverage", "spec_coverage",
+        "description_coverage", "details_coverage", "original_price",
+        "ui_contamination_rate", "html_contamination_rate",
+    }
+    for issue in drift:
+        # Retain the original drift issue, evidence/hash and high severity.
+        # Only its impact on unrelated, already-verified fact writes changes.
+        findings = warnings if issue.field_name in content_fields else blockers
+        findings.append(f"DRIFT:{issue.issue_type}:{issue.field_name}")
     if blockers: state = "COLLECTION_BLOCKED"
-    elif drift or any("DROP" in item for item in warnings): state = "COLLECTION_DEGRADED"
+    elif any(item.startswith(("LISTING_UNIQUE_DROP:", "CURRENT_VALID_DROP:")) for item in warnings): state = "COLLECTION_DEGRADED"
     elif warnings: state = "COLLECTION_WARN"
     else: state = "COLLECTION_OK"
     return CollectionQualityResult(run_id, state, _with_baselines(metrics, baselines), baselines,
@@ -171,15 +186,21 @@ def evaluate_and_persist(db_path: Path, run_id: str, payload: Mapping[str, Any],
         observation_date=str(payload.get("observation_date") or payload.get("run_date") or "") or None,
     )
     qa_state = str(payload.get("qa_state") or "").upper()
+    qa_issues = payload.get("qa_issues") or []
     baseline_eligible = (
         qa_state in {"PASS", "PASS_PRESENCE_ONLY"}
-        and result.state in {"COLLECTION_OK", "COLLECTION_WARN"}
+        and result.baseline_eligible
+        and not any(not isinstance(issue, Mapping) or issue.get("level") in {"FIELD_REVIEW", "HARD_BLOCK"}
+                    for issue in qa_issues)
     )
     state_metric = CollectionMetric(run_id=run_id, metric_name="__collection_state", metric_scope=result.state,
                                     metric_value=None, gate_status=result.state,
                                     evidence={"blockers": list(result.blockers), "warnings": list(result.warnings),
                                               "metrics_hash": result.metrics_hash, "qa_state": qa_state,
-                                              "baseline_eligible": baseline_eligible},
+                                              "baseline_eligible": baseline_eligible,
+                                              "qa_issues": qa_issues,
+                                              **({'trusted_field_scope': payload['trusted_field_scope']}
+                                                 if payload.get('trusted_field_scope') else {})},
                                     observation_date=str(payload.get("observation_date") or payload.get("run_date") or "") or None)
     # Persist the result's enriched rows so the selected healthy baselines and
     # deltas are not lost between evaluation and the audit trail.

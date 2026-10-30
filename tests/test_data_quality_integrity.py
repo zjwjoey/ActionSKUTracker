@@ -597,3 +597,69 @@ def test_collection_override_is_bounded_and_auditable():
     assert not validate_collection_override({**evidence, "metrics_hash": "other"}, run_id="r1", metrics_hash="h1")
     assert not collection_commit_allowed("COLLECTION_DEGRADED", override=True)
     assert collection_commit_allowed("COLLECTION_DEGRADED", override=True, override_evidence=evidence, run_id="r1", metrics_hash="h1")
+
+
+@pytest.mark.parametrize('metric,value', [('price_coverage', .97), ('detail_failure_rate', .30),
+                                         ('description_coverage', .20), ('cat2_coverage', .50)])
+def test_content_failure_is_warning_without_changing_metric_hash_or_evidence(metric, value):
+    healthy = _healthy_collection_report()
+    history = [m.as_dict() for m in build_collection_metrics('old-content', {**healthy, 'run_date': '2026-09-09'})]
+    payload = {**healthy, metric: value, 'source_hashes': {metric: 'bound-source-hash'}}
+    metrics = build_collection_metrics('content-warning', payload)
+    original_values = {m.metric_name: m.metric_value for m in metrics}
+    result = evaluate_collection('content-warning', metrics, history=history, observation_date=payload['run_date'])
+    assert result.state == 'COLLECTION_WARN' and result.commit_allowed
+    assert result.blockers == () and result.warnings and not result.baseline_eligible
+    row = next(m for m in result.metrics if m.metric_name == metric)
+    assert row.metric_value == value and row.evidence['source_hash'] == 'bound-source-hash'
+    assert {m.metric_name: m.metric_value for m in result.metrics} == original_values
+    assert len(result.metrics_hash) == 64
+    assert result.as_dict()['baseline_eligible'] is False
+    if result.drift_issues:
+        assert result.drift_issues[0].source_hash == 'bound-source-hash'
+
+
+@pytest.mark.parametrize('payload', [{'original_price_equals_current_ratio': .95},
+                                     {'ui_contamination_rate': .02}, {'html_contamination_rate': .03}])
+def test_content_drift_retains_findings_without_blocking_other_trusted_facts(payload):
+    result = evaluate_collection('content-drift', build_collection_metrics('content-drift', {**_healthy_collection_report(), **payload}))
+    assert result.state == 'COLLECTION_WARN' and result.commit_allowed
+    assert result.drift_issues and result.warnings and not result.baseline_eligible
+    assert all(issue.severity == 'HIGH' for issue in result.drift_issues)
+
+
+def test_content_warn_is_not_promoted_into_healthy_baselines(tmp_path):
+    from action_tracker.data_quality.collection.baseline import calculate_baselines
+    path = _db(tmp_path)
+    evaluate_and_persist(path, 'healthy-before', {**_healthy_collection_report(), 'run_date': '2026-09-08'})
+    warn = evaluate_and_persist(path, 'content-warn', {**_healthy_collection_report(), 'run_date': '2026-09-09',
+                                                     'price_coverage': .97, 'description_coverage': .25})
+    assert warn.state == 'COLLECTION_WARN'
+    rows = DataQualityRepository(path).get_metrics()
+    marker = next(r for r in rows if r['run_id'] == 'content-warn' and r['metric_name'] == '__collection_state')
+    assert json.loads(marker['evidence_json'])['baseline_eligible'] is False
+    assert calculate_baselines(rows, as_of='2026-09-10')['description_coverage']['previous'] == 1.0
+    assert calculate_baselines(rows, as_of='2026-09-10')['price_coverage']['previous'] == 1.0
+
+
+def test_core_presence_drop_is_still_degraded_and_requires_existing_override():
+    history = [m.as_dict() for m in build_collection_metrics('healthy-core', {**_healthy_collection_report(), 'run_date': '2026-09-09'})]
+    result = evaluate_collection('core-degraded', build_collection_metrics('core-degraded', {
+        **_healthy_collection_report(), 'listing_unique': 90, 'current_valid': 90}), history=history, observation_date='2026-09-10')
+    assert result.state == 'COLLECTION_DEGRADED'
+    assert not result.commit_allowed and not result.baseline_eligible
+    assert not collection_commit_allowed(result.state)
+
+
+@pytest.mark.parametrize('level,eligible', [('FIELD_REVIEW', False), ('HARD_BLOCK', False), ('WARNING', True)])
+def test_partial_qa_issues_are_not_healthy_baselines_even_with_healthy_metrics(tmp_path, level, eligible):
+    path = _db(tmp_path)
+    issue = {'level': level, 'sku': '1001', 'field_name': 'current_price', 'reason': 'reviewed-source',
+             'source_value': None, 'source_hash': hashlib.sha256(b'').hexdigest()}
+    result = evaluate_and_persist(path, 'qa-field-scope', {**_healthy_collection_report(), 'qa_issues': [issue]})
+    assert result.state == 'COLLECTION_OK'
+    marker = next(r for r in DataQualityRepository(path).get_metrics('qa-field-scope')
+                  if r['metric_name'] == '__collection_state')
+    evidence = json.loads(marker['evidence_json'])
+    assert evidence['baseline_eligible'] is eligible
+    assert evidence['qa_issues'] == [issue]

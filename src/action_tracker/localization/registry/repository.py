@@ -375,6 +375,9 @@ class LocalizationRegistry:
                     WHERE u.source_version_id=?""", (source_id,)).fetchall()
                 for unit in units:
                     unit_count += 1
+                    allowed = record.get('_registry_allowed_fields')
+                    if allowed is not None and str(unit['field_name']) not in allowed:
+                        continue
                     if not str(unit["source_text"] or "").strip():
                         continue
                     # Unchanged fields with a fresh approved revision are

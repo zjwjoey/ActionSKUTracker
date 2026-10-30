@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ..database.connection import connect
+from ..database.repository import PRICE_REVIEW_JOIN, current_price_expression
 from .contracts import ExtractionQuery, ExtractionResult
 
 
@@ -44,6 +45,7 @@ class ExtractionService:
                  "LEFT JOIN image_assets ia ON ia.official_sku=p.official_sku",
                  "LEFT JOIN (SELECT official_sku,observed_at AS latest_at,new_price-old_price AS change_amount, CASE WHEN new_price>old_price THEN 'UP' WHEN new_price<old_price THEN 'DOWN' ELSE 'FLAT' END AS change_direction, CASE WHEN old_price IS NULL OR old_price=0 THEN NULL ELSE (new_price-old_price)*100.0/old_price END AS change_percent FROM (SELECT h.*,ROW_NUMBER() OVER (PARTITION BY h.official_sku ORDER BY h.observed_at DESC,h.id DESC) AS rn FROM price_history h) ranked WHERE rn=1) ph ON ph.official_sku=p.official_sku"]
         joins.append("LEFT JOIN (SELECT official_sku,event_type AS recent_event_type,occurred_at AS recent_event_at FROM (SELECT e.official_sku,e.event_type,e.occurred_at,ROW_NUMBER() OVER (PARTITION BY e.official_sku ORDER BY e.occurred_at DESC,e.id DESC) AS rn FROM event_history e) ranked WHERE rn=1) ev_latest ON ev_latest.official_sku=p.official_sku")
+        joins.append(PRICE_REVIEW_JOIN)
         if q.keyword:
             term = f"%{' '.join(q.keyword.lower().split())}%"
             clauses.append("(lower(p.official_sku) LIKE ? OR lower(COALESCE(p.name_es,'')) LIKE ? OR lower(COALESCE(p.name_zh,'')) LIKE ? OR lower(COALESCE(es.name,'')) LIKE ? OR lower(COALESCE(zh.name,'')) LIKE ?)")
@@ -158,7 +160,13 @@ class ExtractionService:
             clauses.append("(" + " OR ".join(sql for sql, _ in event_alternatives) + ")")
             for _, values in event_alternatives: args.extend(values)
         where = " WHERE " + " AND ".join(clauses) if clauses else ""
+        # Filtering, sorting and displayed rows must agree on the current
+        # observation. Keep last-valid prices only in historical extrema.
+        for column in ('current_price', 'original_price'):
+            where = where.replace('p.' + column, '(' + current_price_expression(column) + ')')
         sort_expr = self.SORTS[q.sort]
+        if q.sort == 'current_price':
+            sort_expr = current_price_expression('current_price')
         direction = "DESC" if q.descending else "ASC"
         select = """SELECT p.canonical_id,p.official_sku,p.name_es,p.current_price,p.original_price,p.status,p.product_url,p.first_seen_at,p.last_seen_at,p.action_new_badge,p.promotion_active,p.sustainable_badge,
                    es.name AS es_name,es.cat1 AS es_cat1,es.cat2 AS es_cat2,es.spec AS es_spec,es.description AS es_description,es.details AS es_details,
@@ -166,6 +174,9 @@ class ExtractionService:
                    ia.status AS image_status, ia.master_image_path, ia.width AS image_width, ia.height AS image_height,
                    ph.change_direction,ph.change_amount,ph.change_percent, ps.historical_low,ps.historical_high,
                    ev_latest.recent_event_type,ev_latest.recent_event_at"""
+        for column in ('current_price', 'original_price'):
+            select = select.replace('p.' + column,
+                                    current_price_expression(column) + ' AS ' + column)
         # Historical extrema cover every observed endpoint, not only the
         # latest prices.  Including current_price also handles products with
         # no price_history rows and preserves the true all-time range.

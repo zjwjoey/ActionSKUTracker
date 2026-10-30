@@ -80,8 +80,6 @@ class CommitBundle:
     requires_collection_integrity: bool = False
 
     def resolved_hash(self) -> str:
-        if self.bundle_hash:
-            return self.bundle_hash
         payload = {
             "run_id": self.run_id,
             "observation_date": self.observation_date,
@@ -105,7 +103,10 @@ class CommitBundle:
             payload["collection_quality_override_evidence"] = self.collection_quality_override_evidence
         payload["requires_collection_integrity"] = self.requires_collection_integrity
         encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":")).encode("utf-8")
-        return hashlib.sha256(encoded).hexdigest()
+        computed = hashlib.sha256(encoded).hexdigest()
+        if self.bundle_hash and self.bundle_hash != computed:
+            raise ProductionDatabaseError('DB_COMMIT_BUNDLE_HASH_MISMATCH')
+        return computed
 
 
 class ProductionWriter:
@@ -131,14 +132,17 @@ class ProductionWriter:
         migrate_v2(self.path, role=role)
 
     def commit(self, bundle: CommitBundle) -> str:
-        if bundle.qa_state not in {"PASS", "PASS_PRESENCE_ONLY"}:
+        field_only = bundle.run_record.get('commit_scope') == 'POSITIVE_FACTS_ONLY'
+        if field_only and not bundle.requires_collection_integrity:
+            raise ProductionDatabaseError('POSITIVE_FACTS_REQUIRE_COLLECTION_EVIDENCE')
+        if bundle.qa_state not in {"PASS", "PASS_PRESENCE_ONLY"} and not field_only:
             raise ProductionDatabaseError("DB_COMMIT_QA_NOT_PASS")
         quality_state = str(bundle.collection_quality_state or "").upper()
         if bundle.requires_collection_integrity and not quality_state:
             raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING")
-        if quality_state == "COLLECTION_BLOCKED":
+        if quality_state == "COLLECTION_BLOCKED" and not field_only:
             raise ProductionDatabaseError("COLLECTION_QUALITY_BLOCKED")
-        if quality_state == "COLLECTION_DEGRADED":
+        if quality_state == "COLLECTION_DEGRADED" and not field_only:
             if not bundle.collection_quality_override:
                 raise ProductionDatabaseError("COLLECTION_QUALITY_DEGRADED_REQUIRES_OVERRIDE")
             from ..data_quality.collection.gates import validate_collection_override
@@ -174,6 +178,9 @@ class ProductionWriter:
                     self._validate_collection_quality_evidence(db, bundle)
                 if bundle.base_commit_id is not None and (bundle.base_commit_id or None) != latest_id:
                     raise ProductionDatabaseError("BASELINE_CHANGED_BEFORE_COMMIT")
+                if field_only:
+                    self._validate_positive_fact_scope(db, bundle)
+                self._validate_field_commit_evidence(db, bundle)
                 self._validate_localization_coverage(db, bundle)
                 self._insert_run(db, bundle, now)
                 self._upsert_products(db, bundle.current_products, commit_id, now)
@@ -210,6 +217,188 @@ class ProductionWriter:
         return commit_id
 
     @staticmethod
+    def _validate_positive_fact_scope(db: sqlite3.Connection, bundle: CommitBundle) -> None:
+        from ..qa.validator import validate_trusted_field_scope
+        from ..localization.hashes import value_hash
+
+        scope = bundle.run_record.get('trusted_field_scope')
+        if not validate_trusted_field_scope(scope, run_id=bundle.run_id, business_date=bundle.observation_date):
+            raise ProductionDatabaseError('POSITIVE_FACT_SCOPE_INVALID')
+        if bundle.lifecycle_updates or bundle.event_events or bundle.price_events:
+            raise ProductionDatabaseError('POSITIVE_FACTS_CANNOT_ADVANCE_LIFECYCLE_OR_EVENTS')
+        authorized = {r['sku']: r for r in scope['rows']}
+        products = {str(r.get('sku') or r.get('official_sku') or ''): r for r in bundle.current_products}
+        if len(products) != len(bundle.current_products) or set(products) != set(authorized):
+            raise ProductionDatabaseError('POSITIVE_FACT_SKU_SCOPE_MISMATCH')
+        expected_new = {sku for sku in authorized if db.execute(
+            'SELECT 1 FROM products WHERE official_sku=?', (sku,)).fetchone() is None}
+        claimed_new = bundle.run_record.get('new_identity_skus', [])
+        if (not isinstance(claimed_new, list) or any(not isinstance(sku, str) for sku in claimed_new)
+                or len(set(claimed_new)) != len(claimed_new) or set(claimed_new) != expected_new):
+            raise ProductionDatabaseError('POSITIVE_FACT_IDENTITY_ORIGIN_MISMATCH')
+        observed = {str(o.get('sku') or o.get('official_sku') or '') for o in bundle.observations}
+        if observed != set(authorized) or len(observed) != len(bundle.observations):
+            raise ProductionDatabaseError('POSITIVE_FACT_OBSERVATION_SCOPE_MISMATCH')
+        for observation in bundle.observations:
+            if (observation.get('presence_state') != 'PRESENT'
+                    or observation.get('observation_complete') not in (False, 0)
+                    or observation.get('absence_capable') not in (False, 0)):
+                raise ProductionDatabaseError('POSITIVE_FACTS_HAVE_NO_ABSENCE_AUTHORITY')
+        text_columns = {'name_es': 'name', 'cat1_es': 'cat1', 'cat2_es': 'cat2',
+                        'spec_es': 'spec', 'desc_es': 'description', 'details_es': 'details'}
+        product_columns = {'current_price': 'current_price', 'original_price': 'original_price',
+                           'unit_price': 'unit_price_raw', 'product_url': 'product_url', 'image_url': 'image_url'}
+        frozen = {'status': 'status', 'consecutive_missing': 'consecutive_missing',
+                  'first_seen_at': 'first_seen_at', 'last_seen_at': 'last_seen_at',
+                  'action_new_badge': 'action_new_badge', 'promotion_active': 'promotion_active',
+                  'sustainable_badge': 'sustainable_badge', 'name_zh': 'name_zh'}
+        for sku, record in products.items():
+            permission = authorized[sku]
+            prior = db.execute('SELECT * FROM products WHERE official_sku=?', (sku,)).fetchone()
+            if record.get('canonical_id') != permission['canonical_id'] or (prior and prior['canonical_id'] != permission['canonical_id']):
+                raise ProductionDatabaseError('POSITIVE_FACT_IDENTITY_MISMATCH')
+            if prior:
+                for key, column in frozen.items():
+                    incoming = record.get(key, record.get({'first_seen_at': 'first_seen', 'last_seen_at': 'last_seen'}.get(key, key)))
+                    if key == 'consecutive_missing':
+                        incoming = int(incoming or 0)
+                    elif key in {'action_new_badge', 'promotion_active', 'sustainable_badge'}:
+                        incoming = int(bool(incoming))
+                    if incoming != prior[column]:
+                        raise ProductionDatabaseError('POSITIVE_FACT_LIFECYCLE_CHANGED:' + key)
+            elif (record.get('status') != 'UNKNOWN' or record.get('first_seen_at')
+                  or record.get('last_seen_at') or record.get('consecutive_missing', 0)):
+                raise ProductionDatabaseError('POSITIVE_NEW_IDENTITY_MUST_BE_UNKNOWN')
+            previous_es = db.execute("SELECT * FROM product_localizations WHERE official_sku=? AND language='es'", (sku,)).fetchone()
+            for name in (*text_columns, *product_columns):
+                value = record.get(name)
+                if name in permission['fields']:
+                    if value_hash(value) != permission['fields'][name]['value_hash']:
+                        raise ProductionDatabaseError('POSITIVE_FACT_VALUE_HASH_MISMATCH')
+                else:
+                    if name in product_columns:
+                        previous = prior[product_columns[name]] if prior else None
+                    else:
+                        previous = previous_es[text_columns[name]] if previous_es else (prior['name_es'] if prior and name == 'name_es' else None)
+                    if value_hash(value) != value_hash(previous):
+                        raise ProductionDatabaseError('POSITIVE_FACT_UNAUTHORIZED_FIELD:' + name)
+            for issue in bundle.run_record.get('qa_issues') or []:
+                if str(issue.get('sku') or '') == sku and (
+                        (issue.get('level') == 'HARD_BLOCK' and issue.get('field_name') != 'presence')
+                        or (issue.get('level') == 'FIELD_REVIEW' and issue.get('field_name') in permission['fields'])):
+                    raise ProductionDatabaseError('POSITIVE_FACT_QA_NOT_READY')
+        for row in bundle.localization_updates:
+            sku = str(row.get('sku') or row.get('official_sku') or '')
+            if sku not in products or row.get('language') != 'es':
+                raise ProductionDatabaseError('POSITIVE_FACT_LOCALIZATION_SCOPE_MISMATCH')
+            for name, column in text_columns.items():
+                if value_hash(row.get(column)) != value_hash(products[sku].get(name)):
+                    raise ProductionDatabaseError('POSITIVE_FACT_LOCALIZATION_VALUE_MISMATCH')
+        reverse_fields = {v: k for k, v in text_columns.items()}
+        for version in bundle.source_fact_versions:
+            sku = str(version.get('sku') or version.get('official_sku') or '')
+            if sku not in authorized or version.get('run_id') != bundle.run_id:
+                raise ProductionDatabaseError('POSITIVE_FACT_VERSION_SCOPE_MISMATCH')
+            for name, value in (version.get('facts') or {}).items():
+                key = reverse_fields.get(name)
+                if (key not in authorized[sku]['fields']
+                        or value_hash(value.get('normalized')) != authorized[sku]['fields'][key]['value_hash']):
+                    raise ProductionDatabaseError('POSITIVE_FACT_VERSION_VALUE_MISMATCH')
+
+    @staticmethod
+    def _validate_field_commit_evidence(db: sqlite3.Connection, bundle: CommitBundle) -> None:
+        """Keep partial-field selections bound to values, observations and run."""
+        from ..localization.hashes import value_hash
+        rows = {str(r.get('sku') or r.get('official_sku') or ''): r for r in bundle.current_products}
+        invalid = dict(bundle.run_record.get('price_observation_invalid') or {})
+        invalid_fields = dict(bundle.run_record.get('price_field_observation_invalid') or {})
+        if bundle.requires_collection_integrity:
+            present = {str(o.get('sku') or o.get('official_sku') or '')
+                       for o in bundle.observations if o.get('presence_state') == 'PRESENT'}
+            expected = {sku for sku, row in rows.items() if not row.get('_historical_minimal')
+                        and str(row.get('status') or 'CURRENT') == 'CURRENT'}
+            if not expected.issubset(present):
+                raise ProductionDatabaseError('CURRENT_PRODUCT_OBSERVATION_MISSING')
+            for observation in bundle.observations:
+                if observation.get('presence_state') != 'PRESENT':
+                    continue
+                sku = str(observation.get('sku') or observation.get('official_sku') or '')
+                price = observation.get('current_price')
+                if price is None and invalid.get(sku) is not True:
+                    raise ProductionDatabaseError('PRICE_REVIEW_EVIDENCE_MISSING')
+                if price is not None and (sku not in rows or price != rows[sku].get('current_price')):
+                    raise ProductionDatabaseError('OBSERVATION_PRODUCT_PRICE_MISMATCH')
+        for sku, row in rows.items():
+            price_state = ((row.get('fact_field_provenance') or {}).get('current_price') or {}).get('state')
+            if price_state in {'HISTORY_RETAINED', 'SOURCE_MISSING'} and invalid.get(sku) is not True:
+                raise ProductionDatabaseError('PRICE_REVIEW_EVIDENCE_MISSING')
+        seen = set()
+        for result in bundle.run_record.get('field_commit_results') or []:
+            sku, field = str(result.get('sku') or ''), str(result.get('field_name') or '')
+            if ((sku, field) in seen or sku not in rows or
+                    result.get('run_id') != bundle.run_id or
+                    result.get('observation_date') != bundle.observation_date or
+                    result.get('action') not in {'RETAIN_LAST_VALID', 'REVIEW_MISSING'} or
+                    result.get('committed_hash') != value_hash(rows[sku].get(field))):
+                raise ProductionDatabaseError('FIELD_COMMIT_EVIDENCE_MISMATCH')
+            seen.add((sku, field))
+            price_columns = {'current_price': 'current_price', 'original_price': 'original_price',
+                             'unit_price': 'unit_price_raw'}
+            if field in price_columns:
+                previous = db.execute('SELECT ' + price_columns[field] +
+                                      ' FROM products WHERE official_sku=?', (sku,)).fetchone()
+                if result['committed_hash'] != value_hash(previous[0] if previous else None):
+                    raise ProductionDatabaseError('LAST_VALID_PRICE_RETENTION_MISMATCH')
+            else:
+                spanish_columns = {'name_es': 'name', 'cat1_es': 'cat1', 'cat2_es': 'cat2',
+                                   'spec_es': 'spec', 'desc_es': 'description', 'details_es': 'details'}
+                if field in spanish_columns:
+                    previous = db.execute('SELECT ' + spanish_columns[field] +
+                        " FROM product_localizations WHERE official_sku=? AND language='es'", (sku,)).fetchone()
+                    if field == 'name_es' and (not previous or previous[0] in (None, '')):
+                        previous = db.execute('SELECT name_es FROM products WHERE official_sku=?', (sku,)).fetchone()
+                elif field in {'product_url', 'image_url'}:
+                    previous = db.execute('SELECT ' + field + ' FROM products WHERE official_sku=?', (sku,)).fetchone()
+                else:
+                    raise ProductionDatabaseError('FIELD_REVIEW_SCOPE_INVALID')
+                if result['committed_hash'] != value_hash(previous[0] if previous else None):
+                    raise ProductionDatabaseError('LAST_VALID_FIELD_RETENTION_MISMATCH')
+        for issue in bundle.run_record.get('qa_issues') or []:
+            if (bundle.run_record.get('commit_scope') == 'POSITIVE_FACTS_ONLY'
+                    and str(issue.get('sku') or '') not in rows):
+                continue
+            if issue.get('level') == 'FIELD_REVIEW' and (
+                    str(issue.get('sku') or ''), str(issue.get('field_name') or '')) not in seen:
+                raise ProductionDatabaseError('FIELD_REVIEW_SELECTION_MISSING')
+            if issue.get('level') == 'FIELD_REVIEW':
+                receipt = next(result for result in bundle.run_record['field_commit_results']
+                               if str(result.get('sku') or '') == str(issue.get('sku') or '')
+                               and str(result.get('field_name') or '') == str(issue.get('field_name') or ''))
+                if receipt.get('attempted_hash') != issue.get('source_hash'):
+                    raise ProductionDatabaseError('FIELD_REVIEW_SOURCE_HASH_MISMATCH')
+        if any(field == 'current_price' and invalid.get(sku) is not True for sku, field in seen):
+            raise ProductionDatabaseError('PRICE_REVIEW_EVIDENCE_MISSING')
+        for sku, flags in invalid_fields.items():
+            if (sku not in rows or not isinstance(flags, dict)
+                    or any(field not in {'original_price', 'unit_price'} or flag is not True
+                           or (sku, field) not in seen for field, flag in flags.items())):
+                raise ProductionDatabaseError('PRICE_FIELD_REVIEW_EVIDENCE_MISSING')
+        for sku, row in rows.items():
+            for field in ('original_price', 'unit_price'):
+                state = ((row.get('fact_field_provenance') or {}).get(field) or {}).get('state')
+                if (state in {'HISTORY_RETAINED', 'SOURCE_MISSING'} and invalid.get(sku) is not True
+                        and (invalid_fields.get(sku) or {}).get(field) is not True):
+                    raise ProductionDatabaseError('PRICE_FIELD_REVIEW_EVIDENCE_MISSING')
+        for sku, flag in invalid.items():
+            if flag is not True or (sku, 'current_price') not in seen:
+                raise ProductionDatabaseError('PRICE_REVIEW_EVIDENCE_MISSING')
+            if any(str(o.get('sku') or o.get('official_sku') or '') == sku and
+                   o.get('current_price') is not None for o in bundle.observations):
+                raise ProductionDatabaseError('UNVERIFIED_CURRENT_OBSERVATION_PRICE')
+            if any(str(p.get('sku') or p.get('official_sku') or '') == sku for p in bundle.price_events):
+                raise ProductionDatabaseError('UNVERIFIED_CURRENT_PRICE_EVENT')
+
+    @staticmethod
     def _validate_collection_quality_evidence(db: sqlite3.Connection, bundle: CommitBundle) -> None:
         """Bind the commit to the exact persisted collection-quality evidence.
 
@@ -235,7 +424,7 @@ class ProductionWriter:
             or values[name].get("metric_value") is None
             or str(values[name].get("gate_status") or "").upper() == "UNAVAILABLE"
         ]
-        if missing:
+        if missing and bundle.run_record.get('commit_scope') != 'POSITIVE_FACTS_ONLY':
             raise ProductionDatabaseError("COLLECTION_REQUIRED_METRIC_MISSING:" + ",".join(missing))
 
         state_rows = [row for row in rows if str(row.get("metric_name") or "") == "__collection_state"]
@@ -266,6 +455,13 @@ class ProductionWriter:
             raise ProductionDatabaseError("COLLECTION_QUALITY_EVIDENCE_MISSING")
         if marker_hash != expected_hash:
             raise ProductionDatabaseError("COLLECTION_QUALITY_HASH_MISMATCH")
+        if ('qa_issues' in marker_evidence and
+                marker_evidence['qa_issues'] != list(bundle.run_record.get('qa_issues') or [])):
+            raise ProductionDatabaseError('COLLECTION_FIELD_REVIEW_EVIDENCE_MISMATCH')
+        if bundle.run_record.get('commit_scope') == 'POSITIVE_FACTS_ONLY':
+            if (marker_evidence.get('trusted_field_scope') != bundle.run_record.get('trusted_field_scope')
+                    or marker_evidence.get('qa_state') != bundle.qa_state):
+                raise ProductionDatabaseError('POSITIVE_FACT_COLLECTION_SCOPE_MISMATCH')
         persisted_hash = collection_metrics_hash(row for row in rows if str(row.get("metric_name") or "") != "__collection_state")
         if persisted_hash != expected_hash:
             raise ProductionDatabaseError("COLLECTION_QUALITY_HASH_MISMATCH")
@@ -397,7 +593,9 @@ class ProductionWriter:
             # missing detail-page node must not become an equal original price
             # and make every regular product look discounted.
             try:
-                if current_price is not None and original_price is not None and float(original_price) <= float(current_price):
+                retained_original = ((r.get('fact_field_provenance') or {}).get('original_price') or {}).get('state') in {'HISTORY_RETAINED', 'SOURCE_MISSING'}
+                if (not retained_original and current_price is not None and original_price is not None
+                        and float(original_price) <= float(current_price)):
                     original_price = None
             except (TypeError, ValueError):
                 pass
@@ -440,6 +638,16 @@ class ProductionWriter:
                     "source_hash": localization_source_hash(source),
                     **{f"{field}_source_hash": value for field, value in localization_field_source_hashes(source).items()},
                 }
+        explicit_zh = {str(row.get('sku') or row.get('official_sku') or '')
+                       for row in materialized if row.get('language') == 'zh'}
+        for sku, source in same_batch_es.items():
+            if sku not in explicit_zh and db.execute(
+                    "SELECT 1 FROM product_localizations WHERE official_sku=? AND language='zh'", (sku,)).fetchone():
+                # Existing field-preserving Chinese upsert performs freshness
+                # invalidation without introducing any new target or approval.
+                materialized.append({'sku': sku, 'language': 'zh',
+                    'source_hash': source['source_hash'],
+                    **{key: value for key, value in source.items() if key.endswith('_source_hash')}})
         for r in materialized:
             sku = str(r.get("official_sku") or r.get("sku") or "").strip()
             language = str(r.get("language") or "zh")
