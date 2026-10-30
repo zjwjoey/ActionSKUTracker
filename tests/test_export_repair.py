@@ -402,7 +402,8 @@ def test_reviewed_workbook_handoff_never_auto_approves_and_requires_same_source(
         prepare_reviewed_candidates([record], [current], [], [record], evidence_ref="fixture")
 
 
-def test_catalog_template1_publish_same_approved_clean_projection(tmp_path, monkeypatch):
+@pytest.mark.parametrize("selected", [False, True])
+def test_catalog_template1_publish_same_approved_clean_projection(tmp_path, monkeypatch, selected):
     import openpyxl
     from test_exporting import _cfg, _record as fact_record, _write_dictionary
     from test_template1 import _write_seed
@@ -418,7 +419,23 @@ def test_catalog_template1_publish_same_approved_clean_projection(tmp_path, monk
     _write_dictionary(cfg["paths"]["dictionary_baseline"], record)
     approved = tmp_path / "approved.csv"; _approved_file(approved, record, replacement="家用清洁布")
     cfg["export_repair_overrides_path"] = approved
-    source = service.ExportSource("2026-08-26", "fixture", "SQLITE_CURRENT", (record,), None, source_commit_id="head")
+    selection_id = None
+    source_commit = "head"
+    source_records = (record,)
+    if selected:
+        from action_tracker.database.production import CommitBundle, ProductionWriter
+        from action_tracker.extraction.selections import SelectionService
+        db_path = tmp_path / "selection.sqlite3"
+        cfg["storage"] = {"db_path": db_path}
+        source_commit = ProductionWriter(db_path, role="PRIMARY").commit(CommitBundle(
+            run_id="selection-seed", observation_date="2026-08-26", qa_state="PASS",
+            current_products=({"sku": record["sku"], "canonical_id": record["canonical_id"],
+                               "name_es": record["name_es"], "status": "CURRENT"},)))
+        selection_id = SelectionService(db_path).create("Chosen product", {"skus": [record["sku"]]})["selection_id"]
+        # The unselected product is deliberately not covered by the approved
+        # repair. Both consumers must filter membership before projecting.
+        source_records = (record, fact_record("1002", last_seen="2026-08-26"))
+    source = service.ExportSource("2026-08-26", "fixture", "SQLITE_CURRENT", source_records, None, source_commit_id=source_commit)
     monkeypatch.setattr(service, "resolve_formal_source", lambda *a, **k: source)
     # Template1 binds its imported resolver separately; all downstream builders
     # and both writers remain real, sharing one source-bound approved CSV.
@@ -427,14 +444,16 @@ def test_catalog_template1_publish_same_approved_clean_projection(tmp_path, monk
     config = tmp_path / "history.yaml"
     config.write_text("seed:\n  path: '" + seed.as_posix() + "'\n  sheet: ACTION商品上下架明细\n  sku_header: 编号\n  presence_capability: true\n  absence_capability: true\n  observation_complete: true\n  evidence_level: A\nsources: []\n", "utf8")
     cfg["history_sources_path"] = config
-    a = service.export_catalog(cfg, language="zh", export_date="2026-08-26", no_images=True)
-    b = export_template1(cfg, export_date="2026-08-26")
+    a = service.export_catalog(cfg, language="zh", export_date="2026-08-26", no_images=True, selection_id=selection_id)
+    b = export_template1(cfg, export_date="2026-08-26", selection_id=selection_id)
     def read(path, sheet=None):
         w = openpyxl.load_workbook(path, read_only=True, data_only=True)
         rows = list((w[sheet] if sheet else w.active).values); w.close(); return rows
     published = read(a["output"])
     assert published == read(b["output"], "今日中文清单")
     row = dict(zip(published[0], published[1]))
+    assert len(published[0]) == 14 and len(published) == 2
+    assert row["编号"] == record["sku"]
     assert row["标题"] == "家用清洁布" and row["产品详情"] == "材质：塑料"
     assert row["折后价"] == record["current_price"] and row["商品链接"] == record["product_url"]
     manifest = json.loads(Path(a["manifest"]).read_text("utf8"))
@@ -442,5 +461,10 @@ def test_catalog_template1_publish_same_approved_clean_projection(tmp_path, monk
     assert manifest["delivery_note_cleanup"]["changed_cells"] > 0
     report = json.loads(Path(a["repair_report"]).read_text("utf8"))
     assert any(e["rule"] == "APPROVED_EXPORT_OVERRIDE" and e["approval_source"] == str(approved) for e in report["repairs"])
-    again = service.export_catalog(cfg, language="zh", export_date="2026-08-26", no_images=True)
+    if selected:
+        from action_tracker.delivery.artifacts import ArtifactService
+        artifacts = ArtifactService(db_path).list(selection_id)
+        assert len(artifacts) == 2
+        assert all(item["source_commit_id"] == source_commit and item["row_count"] == 1 for item in artifacts)
+    again = service.export_catalog(cfg, language="zh", export_date="2026-08-26", no_images=True, selection_id=selection_id)
     assert published == read(again["output"])
