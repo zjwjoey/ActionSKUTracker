@@ -293,7 +293,7 @@ def _presence_value(value: Any, error: str) -> PresenceValue:
     raise HistoryExportError(error)
 
 
-def _read_workbook(path: Path, sheet: str | None, sku_header: str, *, required_headers: tuple[str, ...] = ()) -> list[dict[str, Any]]:
+def _read_workbook(path: Path, sheet: str | None, sku_header: str, *, required_headers: tuple[str, ...] = (), reject_duplicate_headers: bool = False) -> list[dict[str, Any]]:
     workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
         if sheet and sheet not in workbook.sheetnames:
@@ -301,6 +301,9 @@ def _read_workbook(path: Path, sheet: str | None, sku_header: str, *, required_h
         worksheet = workbook[sheet] if sheet else workbook.active
         iterator = worksheet.iter_rows(values_only=True)
         headers = [str(value).strip() if value is not None else "" for value in next(iterator, ())]
+        named_headers = [header for header in headers if header]
+        if reject_duplicate_headers and len(set(named_headers)) != len(named_headers):
+            raise HistoryExportError(f"HISTORY_DUPLICATE_HEADERS: {path}/{sheet}")
         if sku_header not in headers:
             raise HistoryExportError(f"HISTORY_SKU_HEADER_NOT_FOUND: {path}/{sku_header}")
         for header in required_headers:

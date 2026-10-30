@@ -1334,7 +1334,7 @@ def _status(cfg) -> int:
         print("Database Path: ", db_path)
         print("SQLite HEAD Commit: ", (status.get("latest_commit") or {}).get("commit_id"))
         print("Latest Formal Run: ", dict(latest_run) if latest_run else None)
-        for name in ("CURRENT", "MISSING", "OFFLINE", "HISTORICAL"):
+        for name in ("CURRENT", "MISSING", "OFFLINE", "HISTORICAL", "HISTORICAL_ONLY", "UNKNOWN"):
             print(f"{name}: ", counts.get(name, 0))
         print("Integrity: ", validation["integrity"])
         print("Foreign Keys: ", validation["foreign_keys"])

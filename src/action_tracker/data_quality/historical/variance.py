@@ -56,6 +56,8 @@ def source_descriptor(db, *, sku, fact_id, field):
     if not stored:
         raise FactVarianceError("FACT_VARIANCE_SOURCE_VERSION_MISSING")
     if table == "product_fact_versions":
+        if stored.get("raw_fact_available") != 1:
+            raise FactVarianceError("FACT_VARIANCE_RAW_SOURCE_UNAVAILABLE")
         try:
             raw_map = json.loads(stored["raw_fact_json"])
             normalized_map = json.loads(stored["normalized_fact_json"])
@@ -103,8 +105,13 @@ def source_descriptor(db, *, sku, fact_id, field):
     for values in cursor:
         version = dict(zip(columns, values))
         if table == "product_fact_versions":
-            raw_fields = json.loads(version["raw_fact_json"])
-            normalized_fields = json.loads(version["normalized_fact_json"])
+            try:
+                raw_fields = json.loads(version["raw_fact_json"])
+                normalized_fields = json.loads(version["normalized_fact_json"])
+                if not isinstance(raw_fields, dict) or not isinstance(normalized_fields, dict):
+                    raise ValueError("object required")
+            except (ValueError, TypeError) as exc:
+                raise FactVarianceError("FACT_VARIANCE_FRONTIER_SOURCE_INVALID") from exc
             if field not in raw_fields or field not in normalized_fields:
                 continue
             frontier.append([version["fact_id"], raw_fields[field], normalized_fields[field], version["normalization_version"]])
@@ -165,7 +172,7 @@ def seal_ack(payload):
     return result
 
 
-def validate_ack(db, ack, *, now=None):
+def validate_ack(db, ack, *, now=None, authorized_service_actors=()):
     now = now or datetime.now(timezone.utc)
     if not isinstance(ack, dict) or ack.get("contract") != CONTRACT or ack.get("hash_version") != "TYPED_JSON_SHA256_V1":
         raise FactVarianceError("FACT_VARIANCE_CONTRACT_INVALID")
@@ -179,7 +186,7 @@ def validate_ack(db, ack, *, now=None):
             or ack.get("status") != "CONFIRMED" or typed_hash(ack.get("effects")) != typed_hash(EFFECTS)):
         raise FactVarianceError("FACT_VARIANCE_EFFECT_NOT_PERMITTED")
     review = ack.get("review") or {}
-    validate_patch_approval_actor(review.get("reviewed_by"))  # Existing human boundary; no payload service allowlist.
+    validate_patch_approval_actor(review.get("reviewed_by"), authorized_service_actors=authorized_service_actors)
     if (not isinstance(review.get("reason"), str) or not review["reason"].strip()
             or not isinstance(review.get("evidence_refs"), list) or not review["evidence_refs"]
             or not all(isinstance(ref, str) and ref.strip() for ref in review["evidence_refs"])):
@@ -212,7 +219,7 @@ def validate_ack(db, ack, *, now=None):
     return ack
 
 
-def match_ack(db, *, ack_id, sku, field, sources, current_value, now=None):
+def match_ack(db, *, ack_id, sku, field, sources, current_value, now=None, authorized_service_actors=()):
     """Return an exact active ACK as context, never a QA/approval boolean."""
     ack, revoked = _state(db, ack_id)
     if not ack or revoked or ack.get("sku") != sku or ack.get("field") != field:
@@ -220,12 +227,12 @@ def match_ack(db, *, ack_id, sku, field, sources, current_value, now=None):
     if typed_hash(sources) != typed_hash(ack.get("sources")) or typed_hash(current_value) != ack.get("current_value_hash"):
         return None
     try:
-        return validate_ack(db, ack, now=now)
+        return validate_ack(db, ack, now=now, authorized_service_actors=authorized_service_actors)
     except (ValueError, TypeError):
         return None
 
 
-def validate_commit(db, bundle):
+def validate_commit(db, bundle, *, authorized_service_actors=()):
     """Called by the sole writer inside its existing BEGIN IMMEDIATE boundary."""
     operation = bundle.run_record.get("operation")
     if operation not in OPERATIONS:
@@ -237,14 +244,14 @@ def validate_commit(db, bundle):
     if bundle.base_commit_id is None:
         raise FactVarianceError("FACT_VARIANCE_EXECUTION_BASE_REQUIRED")
     if operation == "FACT_VARIANCE_ACK":
-        ack = validate_ack(db, bundle.run_record.get("fact_variance_ack"))
+        ack = validate_ack(db, bundle.run_record.get("fact_variance_ack"), authorized_service_actors=authorized_service_actors)
         if _state(db, ack["ack_id"])[0]:
             raise FactVarianceError("FACT_VARIANCE_ALREADY_RECORDED")
     else:
         revocation = bundle.run_record.get("fact_variance_revocation") or {}
         if revocation.get("contract") != CONTRACT:
             raise FactVarianceError("FACT_VARIANCE_CONTRACT_INVALID")
-        validate_patch_approval_actor(revocation.get("reviewed_by"))
+        validate_patch_approval_actor(revocation.get("reviewed_by"), authorized_service_actors=authorized_service_actors)
         if not revocation.get("reason") or not revocation.get("evidence_refs"):
             raise FactVarianceError("FACT_VARIANCE_REVIEW_EVIDENCE_MISSING")
         if _time(revocation.get("revoked_at")) > datetime.now(timezone.utc):
@@ -256,7 +263,7 @@ def validate_commit(db, bundle):
             raise FactVarianceError("FACT_VARIANCE_REVOCATION_PRECEDES_REVIEW")
 
 
-def build_ack_bundle(database, payload, *, run_id, run_date, base_commit_id, revoke=False):
+def build_ack_bundle(database, payload, *, run_id, run_date, base_commit_id, revoke=False, authorized_service_actors=()):
     """Read-only preview; commit rechecks sources/target/review in the transaction."""
     from ...localization.history_audit import ro
     from ...database.production import CommitBundle
@@ -267,5 +274,5 @@ def build_ack_bundle(database, payload, *, run_id, run_date, base_commit_id, rev
     bundle = CommitBundle(run_id=run_id, observation_date=run_date, qa_state="PASS",
         base_commit_id=base_commit_id, run_record={"operation": operation, key: frozen})
     with ro(database) as db:
-        validate_commit(db, bundle)
+        validate_commit(db, bundle, authorized_service_actors=authorized_service_actors)
     return bundle

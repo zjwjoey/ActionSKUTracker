@@ -156,7 +156,7 @@ class OperationsService:
             return None
         # Membership is immutable, while the displayed facts are always read
         # from the current SQLite state.
-        facts = self.extract({"skus": selection["members"], "statuses": ["CURRENT", "MISSING", "OFFLINE", "HISTORICAL"], "limit": 10000})
+        facts = self.extract({"skus": selection["members"], "statuses": ["CURRENT", "MISSING", "OFFLINE", "HISTORICAL", "HISTORICAL_ONLY", "UNKNOWN"], "limit": 10000})
         return {**selection, "items": facts["items"], "artifacts": self.artifacts(selection_id)}
 
     def save_view_selection(self, view_id: str, name: str, *, description: str = "") -> dict[str, Any]:

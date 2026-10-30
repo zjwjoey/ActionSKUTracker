@@ -22,8 +22,9 @@ remain distinct. Existing fact and localization hash contracts stay unchanged.
 Product-version import `created_at` is never treated as original observation
 time; unavailable original observation dates remain `UNKNOWN`.
 
-Only `ACK_SOURCE_VARIANCE` / `KEEP_BOTH` is supported. Human actor validation
-reuses the immutable-patch actor boundary. Service actors are not authorized
+Only `ACK_SOURCE_VARIANCE` / `KEEP_BOTH` is supported. Actor validation
+reuses the immutable-patch actor boundary. Service actors require exact external
+builder/writer review context, default empty; they are never authorized
 by an allowlist contained in the submitted payload. Every ACK explicitly grants
 no fact write, QA waiver, Chinese approval or Presence authority. Dedicated ACK
 and revocation commits reject every business mutation array, even with QA PASS.

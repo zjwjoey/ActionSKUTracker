@@ -757,7 +757,7 @@ def _resolve_sqlite_current_source(
             scope = latest.get('commit_scope', 'FULL_OBSERVATION')
             if scope == 'POSITIVE_FACTS_ONLY':
                 raise ExportValidationError('SQLITE_POSITIVE_FACTS_ONLY_NOT_RELEASE_READY')
-            if scope != 'FULL_OBSERVATION':
+            if scope not in {'FULL_OBSERVATION', 'HISTORICAL_FACTS_ONLY'}:
                 raise ExportValidationError('SQLITE_COMMIT_SCOPE_INVALID')
         observation = repo.latest_observation_commit_info()
         if not observation:

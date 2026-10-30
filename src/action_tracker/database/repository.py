@@ -348,7 +348,7 @@ def _commit_info_row(db: sqlite3.Connection, row) -> dict[str, Any]:
         if not isinstance(evidence, dict):
             raise ProductionRepositoryError('COMMIT_SCOPE_EVIDENCE_INVALID')
         scope = evidence.get('commit_scope', 'FULL_OBSERVATION')
-        if not isinstance(scope, str) or scope not in {'FULL_OBSERVATION', 'POSITIVE_FACTS_ONLY'}:
+        if not isinstance(scope, str) or scope not in {'FULL_OBSERVATION', 'POSITIVE_FACTS_ONLY', 'HISTORICAL_FACTS_ONLY'}:
             raise ProductionRepositoryError('COMMIT_SCOPE_EVIDENCE_INVALID')
     return {'commit_id': row[0], 'run_id': row[1], 'run_date': row[2],
             'committed_at': row[3], 'status': row[4], 'commit_scope': scope}
@@ -478,7 +478,7 @@ def _read_fact_lineage(db: sqlite3.Connection, rows) -> dict[str, dict[str, dict
             FROM run_evidence e JOIN commit_batches c ON c.run_id=e.run_id
             JOIN runs r ON r.run_id=e.run_id WHERE c.status='COMMITTED'
             AND CASE WHEN json_valid(e.evidence_json) THEN json_extract(e.evidence_json,'$.operation') END
-                IN ('HISTORICAL_SOURCE_RECOVERY','HISTORICAL_NORMALIZATION_CORRECTION')
+                IN ('HISTORICAL_SOURCE_RECOVERY','HISTORICAL_NORMALIZATION_CORRECTION','HISTORICAL_FACT_IMPORT')
             ORDER BY c.committed_at DESC,c.commit_id DESC"""):
         try:
             evidence = run_evidence(item['run_id'])
@@ -511,7 +511,7 @@ def _read_fact_lineage(db: sqlite3.Connection, rows) -> dict[str, dict[str, dict
                     "field_source_run_id": item["run_id"], "field_source_commit_id": item["commit_id"],
                     "field_source_observed_at": observed,
                     "field_source_time_precision": ("DAY" if len(str(observed)) == 10 else "DECLARED") if observed else "UNKNOWN",
-                    "field_source_business_date": item["run_date"], "field_raw_hash": value_hash(raw),
+                    "field_source_business_date": (str(observed)[:10] if observed else None) if evidence['operation'] == 'HISTORICAL_FACT_IMPORT' else item["run_date"], "field_raw_hash": value_hash(raw),
                     "field_value_hash": value_hash(normalized), "source_snapshot_hash": None,
                     "source_reference": source["reference"], "source_artifact_hash": source["file_hash"],
                     "source_field_hash": source["field_hash"], "evidence_contract": evidence["operation"]}

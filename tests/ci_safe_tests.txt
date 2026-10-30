@@ -240,3 +240,4 @@ tests/test_positive_fact_consumers.py
 tests/test_snapshot_atomic_staging.py
 tests/test_fact_variance_ack.py
 tests/test_operations_backup_first_write.py
+tests/test_historical_fact_import.py

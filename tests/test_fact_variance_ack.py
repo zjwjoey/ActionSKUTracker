@@ -177,3 +177,18 @@ def test_third_source_version_invalidates_only_its_exact_field(fixture):
         source_fact_versions=({"sku": "123", "run_id": "third-source", "facts": {"spec": {"raw": "400 ml", "normalized": "400 ml"}}},)))
     with sqlite3.connect(path) as db:
         assert match_ack(db, ack_id=ack["ack_id"], sku="123", field="spec", sources=ack["sources"], current_value="500 ml") is None
+
+
+def test_active_source_requires_raw_availability_and_valid_frontier(fixture):
+    path, _, _, ack, table = fixture
+    if table != 'product_fact_versions':
+        return  # Legacy columns store their raw values directly.
+    fact_id = ack['sources'][0]['source_version_id']
+    with sqlite3.connect(path) as db:
+        db.execute('UPDATE product_fact_versions SET raw_fact_available=0 WHERE fact_id=?', (fact_id,))
+        with pytest.raises(FactVarianceError, match='RAW_SOURCE_UNAVAILABLE'):
+            source_descriptor(db, sku='123', fact_id=fact_id, field='spec')
+        db.execute('UPDATE product_fact_versions SET raw_fact_available=1 WHERE fact_id=?', (fact_id,))
+        db.execute("UPDATE product_fact_versions SET raw_fact_json='[]' WHERE fact_id<>?", (fact_id,))
+        with pytest.raises(FactVarianceError, match='FRONTIER_SOURCE_INVALID'):
+            source_descriptor(db, sku='123', fact_id=fact_id, field='spec')

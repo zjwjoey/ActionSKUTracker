@@ -117,10 +117,14 @@ class ProductionWriter:
     enabled explicitly once cutover acceptance is complete.
     """
 
-    def __init__(self, path: Path, *, role: str = "SHADOW", localization_drop_threshold: float = 0.5) -> None:
+    def __init__(self, path: Path, *, role: str = "SHADOW", localization_drop_threshold: float = 0.5,
+                 authorized_fact_review_service_actors: Iterable[str] = ()) -> None:
         self.path = Path(path)
         self.role = role
         self.localization_drop_threshold = float(localization_drop_threshold)
+        self.fact_review_service_actors = tuple(str(actor).strip() for actor in authorized_fact_review_service_actors)
+        if any(not actor.startswith('service:') or '*' in actor for actor in self.fact_review_service_actors):
+            raise ProductionDatabaseError('FACT_REVIEW_SERVICE_ACTOR_CONFIG_INVALID')
         if self.path.exists():
             try:
                 with sqlite3.connect(self.path) as raw:
@@ -170,6 +174,8 @@ class ProductionWriter:
                         raise ProductionDatabaseError("DB_COMMIT_RUN_ALREADY_EXISTS_WITH_DIFFERENT_BUNDLE")
                     if bundle.requires_collection_integrity:
                         self._validate_collection_quality_evidence(db, bundle)
+                    from ..localization.history_recovery import validate_historical_import_resume
+                    validate_historical_import_resume(bundle, authorized_service_actors=self.fact_review_service_actors)
                     db.commit()
                     return str(existing[0])
                 latest = db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC LIMIT 1").fetchone()
@@ -181,7 +187,9 @@ class ProductionWriter:
                 if field_only:
                     self._validate_positive_fact_scope(db, bundle)
                 from ..data_quality.historical.variance import validate_commit as validate_fact_variance_commit
-                validate_fact_variance_commit(db, bundle)
+                validate_fact_variance_commit(db, bundle, authorized_service_actors=self.fact_review_service_actors)
+                from ..localization.history_recovery import validate_historical_import_commit
+                validate_historical_import_commit(db, bundle, authorized_service_actors=self.fact_review_service_actors)
                 self._validate_field_commit_evidence(db, bundle)
                 self._validate_localization_coverage(db, bundle)
                 self._insert_run(db, bundle, now)

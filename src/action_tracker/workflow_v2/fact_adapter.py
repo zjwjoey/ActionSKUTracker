@@ -16,7 +16,7 @@ def load_committed_daily_source(cfg: Mapping[str, Any], *, business_date: str) -
     with connect(path) as db:
         head_evidence = db.execute('''SELECT e.evidence_json FROM commit_batches c
             JOIN run_evidence e ON e.run_id=c.run_id WHERE c.commit_id=?''', (head,)).fetchone()
-        if head_evidence and json.loads(head_evidence[0] or '{}').get('commit_scope') == 'POSITIVE_FACTS_ONLY':
+        if head_evidence and json.loads(head_evidence[0] or '{}').get('commit_scope') in {'POSITIVE_FACTS_ONLY', 'HISTORICAL_FACTS_ONLY'}:
             raise ValueError('WORKFLOW_V2_REQUIRES_COMPLETE_PRESENCE')
         row = db.execute('''SELECT b.commit_id,b.run_id,e.evidence_json FROM commit_batches b
             JOIN runs r ON r.run_id=b.run_id JOIN run_evidence e ON e.run_id=b.run_id
@@ -26,7 +26,7 @@ def load_committed_daily_source(cfg: Mapping[str, Any], *, business_date: str) -
         selected = None
         for candidate in row:
             evidence = json.loads(candidate['evidence_json'])
-            if evidence.get('commit_scope') == 'POSITIVE_FACTS_ONLY':
+            if evidence.get('commit_scope') in {'POSITIVE_FACTS_ONLY', 'HISTORICAL_FACTS_ONLY'}:
                 continue
             if evidence.get('collection_metrics_hash'):
                 selected = candidate, evidence
