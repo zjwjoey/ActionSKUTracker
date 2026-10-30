@@ -74,3 +74,34 @@ python -m action_tracker storage-foundation task-workspace `
 避免为了查看几行反复输出完整商品数据。容量节省以独立实测为准。
 
 CI测试仅使用生成数据和隔离目录，不访问官网、生产库、模型或云服务。
+
+## 本地候选：生产入口集中暂存（尚未部署）
+
+`transient_tasks.enabled: true` 时，现有 `run_production` 入口复用 P2 ScratchTask。
+默认根目录 `F:/ai文件/CodexStorage/work/ActionTasks`，每次运行在一个 `task-<token>`
+目录中保存 `scripts/`、`data/`、`debug/`。可用配置 `root` 或环境变量
+`ACTION_TRACKER_TASK_ROOT` 选择其它同盘、非生产、非代码目录。`task-workspace`
+省略 `--scratch-root` 时也使用这一默认值。缺少配置或显式关闭时保持原有适配行为。
+
+每日正式报告目录的 `transient_workspace.json` 绑定 owner、run 和任务目录，
+Resume 校验后继续使用同一目录。只把 `paths.temp` 暂存重定向到
+`data/runtime_temp/`，本地化报告和学习候选使用显式权威路径，防止随 temp 漂移。
+隔离 feed 的本地化报告仍在其隔离输出下。Master、PRIMARY、State、正式 Snapshot、
+审批记录、备份和交付文件的位置均不变。原子发布临时文件仍可短暂位于目标同目录。
+
+每次运行结束追加清单记录文件大小与 SHA-256，不复制暂存内容，不把上一版清单
+重新嵌入新清单；容量超预算发出告警，不会删除文件或把已提交结果伪装成回滚。
+恢复义务默认保留。256 MiB 是可配置任务预算而非对 Python 进程内存的硬上限。
+本轮仅修改开发分支，生产配置和默认运行实际状态尚未切换。
+默认值变更仅作用于新任务；未显式改 root 的 Resume 继续校验并复用原有 owner
+记录指向的目录，不能自动搬动旧任务。新的测试缓存与临时文件使用
+`F:/ai文件/CodexStorage/temp` 或同一任务的 data/debug 子目录。
+已有 C 盘兼容联接保留；C 盘旧材料缺失时先核对 F 盘文件身份，不创建空替代物。
+
+## F 盘旧文件整理方案
+
+1. 新的一次性脚本、候选和排障输出从现在起只登记到对应任务目录，续跑复用目录。
+2. 旧文件先建立只读身份清单，区分代码工作树、正式数据、可恢复证据和待确认文件。
+3. 正式证据以路径及 Hash 引用复用，不为每批复制整库或全量表。
+4. 旧文件迁移、压缩或清理另立明确名单；未知归属、唯一来源和未完成恢复验证的
+   文件保留。本轮不搬动、不删除任何 F 盘历史文件。

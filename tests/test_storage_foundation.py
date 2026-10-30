@@ -219,7 +219,7 @@ def test_image_index_uses_manifest_identity_not_filename(tmp_path):
     image.parent.mkdir()
     image.write_bytes(b"image fixture")
     manifest = tmp_path / "images.csv"
-    with manifest.open("w", newline="") as stream:
+    with manifest.open("w", newline="", encoding="utf-8") as stream:
         w = csv.DictWriter(stream, fieldnames=["sku", "master_image_path", "master_hash",
                                              "source_image_url", "source_hash"])
         w.writeheader()

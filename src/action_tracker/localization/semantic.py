@@ -69,6 +69,30 @@ def stationery_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
     return tuple(spans)
 
 
+def pen_correction_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
+    """A pen's correction eraser is not an assertion of rubber material."""
+    if not (re.search(r"\bbol[ií]grafos?\b", text, re.I)
+            and re.search(r"\btinta\s+borrable\b", text, re.I)):
+        return ()
+    return tuple(m.span(1) for m in re.finditer(
+        r"\b(goma)\s+para\s+corregir\b", text, re.I))
+
+
+def qualified_wood_spans(text: str) -> tuple[tuple[int, int, str, str], ...]:
+    """Identify only complete woodfree-paper and steel wood-chisel phrases.
+
+    Each returned span carries a positive own-field semantic requirement;
+    a separate wood material occurrence remains protected.
+    """
+    spans = [(m.start(), m.end(), "VARIANT", "化学浆纸") for m in re.finditer(
+        r"\bpapel\s+sin\s+madera\b", text, re.I)]
+    if (re.search(r"\bhoja\s+de\s+acero\b", text, re.I)
+            and re.search(r"\bmango\s+de\s+pl[aá]stico\b", text, re.I)):
+        spans.extend((m.start(), m.end(), "FUNCTION", "木工") for m in re.finditer(
+            r"\bcinceles?\s+de\s+madera\b", text, re.I))
+    return tuple(sorted(spans))
+
+
 def correction_device_eraser_spans(text: str) -> tuple[tuple[int, int], ...]:
     """Resolve only a unique own-field correction-device value Goma.
 
@@ -141,6 +165,13 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
     eraser_detail_spans = correction_device_eraser_spans(source.details_es)
     body_cloth_spans = body_cloth_form_spans(source.details_es)
     def add(kind: str, source_text: str, zh: str, field: str, evidence: str, *, canonical: str | None = None) -> None:
+        if kind == "MATERIAL" and source_text.casefold() == "madera":
+            own = dict(text_fields).get(field, "")
+            spans = qualified_wood_spans(own)
+            for start, end, _, _ in reversed(spans):
+                own = own[:start] + " " + own[end:]
+            if spans and not re.search(r"\bmadera\b", own, re.I):
+                return
         if (field == "details_es" and body_cloth_spans and source_text.casefold() == "paño"
                 and kind == "PRODUCT_TYPE"):
             remaining = source.details_es
@@ -191,6 +222,8 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
             # Material: Goma assertion must remain a rubber fact.
             for start, end in reversed(stationery_eraser_spans(remaining)):
                 remaining = remaining[:start] + " " + remaining[end:]
+            for start, end in reversed(pen_correction_eraser_spans(remaining)):
+                remaining = remaining[:start] + " " + remaining[end:]
             # The complete peelable-candy phrase is disambiguated only by
             # an explicit gummy noun in this same source field. A separate
             # rubber-band occurrence remains a separate product fact.
@@ -207,6 +240,10 @@ def parse_semantic_facts(source: SourceFacts, *, known_brands: set[str] | None =
         seen.add(key)
     for field, text in text_fields:
         lower = text.lower()
+        for start, end, kind, zh in qualified_wood_spans(text):
+            add(kind, text[start:end], zh, field, "source_bound_qualified_wood")
+        for start, end in pen_correction_eraser_spans(text):
+            add("PRODUCT_TYPE", text[start:end], "橡皮擦", field, "source_bound_pen_correction")
         if field == "details_es":
             for start, end in body_cloth_spans:
                 add("VARIANT", text[start:end], "巾片", field, "source_bound_body_cloth_form")

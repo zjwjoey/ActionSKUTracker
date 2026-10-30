@@ -149,6 +149,18 @@ class ProductionRepository:
             ).fetchone()
         return {"commit_id": row[0], "run_id": row[1], "run_date": row[2], "committed_at": row[3], "status": row[4]} if row else None
 
+    def latest_observation_commit_info(self) -> dict[str, Any] | None:
+        """Read the latest authoritative collection, separately from repair heads."""
+        with connect(self.path) as db:
+            self._check_v2(db)
+            row = db.execute(
+                "SELECT c.commit_id,c.run_id,r.run_date,c.committed_at,c.status FROM commit_batches c "
+                "JOIN runs r ON r.run_id=c.run_id WHERE c.status='COMMITTED' "
+                "AND c.observation_count>0 AND r.dry_run=0 AND r.qa_state IN ('PASS','PASS_PRESENCE_ONLY') "
+                "ORDER BY c.committed_at DESC,c.commit_id DESC LIMIT 1"
+            ).fetchone()
+        return {"commit_id": row[0], "run_id": row[1], "run_date": row[2], "committed_at": row[3], "status": row[4]} if row else None
+
     def load_current_export_records(self, *, include_non_current: bool = False) -> list[dict[str, Any]]:
         """Return facts plus both language localization projections.
 

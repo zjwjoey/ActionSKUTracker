@@ -27,6 +27,9 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
     if resume:
         run_id, auto_selected = _resolve_resume_run(report_root, business_date, run_id)
     run_id = run_id or f"{business_date}_{datetime.now().strftime('%H%M%S')}_{uuid.uuid4().hex[:6]}"
+    from .storage_lifecycle import prepare_run_workspace, record_run_workspace
+    cfg, transient_task = prepare_run_workspace(cfg, run_id=run_id,
+                                               report_dir=report_root / business_date / run_id)
     delegated: dict[str, Any] = {}
     if resume:
         prior_state = report_root / business_date / str(run_id) / "state.json"
@@ -184,6 +187,13 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
     # Backup artifact needs the generated run id in its manifest; runner's
     # backup step is still safe if the destination is fixed per business date.
     result = runner.run(resume=resume, from_step=from_step)
+    if transient_task is not None:
+        try:
+            result['transient_workspace'] = record_run_workspace(transient_task)
+        except Exception as exc:
+            # Never reinterpret an already committed business result as rolled back.
+            result['transient_workspace'] = {'task_dir': str(transient_task.directory),
+                                             'inventory_status': 'FAILED', 'error_code': type(exc).__name__}
     if auto_selected:
         selection = {"code": "AUTO_SELECTED_RESUME_RUN", "run_id": run_id}
         result["resume_selection"] = selection

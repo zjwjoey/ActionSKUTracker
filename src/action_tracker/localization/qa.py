@@ -257,7 +257,7 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
                 allowed.add("www")
     # Multiword commercial spans must occur complete in this same field.
     # Interior prose words (of/the/mini) are not general residual exceptions.
-    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini", "Play-Doh Create & Celebrate", "Max & More", "Dr. Candy Lolli Popperz"):
+    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini", "Play-Doh Create & Celebrate", "Max & More", "Dr. Candy Lolli Popperz", "Full HD", "Epson EcoTank"):
         pattern = rf"(?<![A-Za-z0-9]){re.escape(phrase)}(?![A-Za-z0-9])"
         if re.search(pattern, source, re.I) and re.search(pattern, rendered, re.I):
             allowed.update(re.findall(r"[A-Za-z]+", phrase))
@@ -402,6 +402,22 @@ def _is_allowed_translated_strict_token(source_text: str, token: str, target: st
 
 
 def _is_allowed_translated_tech_token(source_text: str, source_token: str, target: str) -> bool:
+    if str(source_token or '').casefold() == '3d':
+        standalone = r'(?<![A-Za-z0-9_-])3D(?![A-Za-z0-9_-])'
+        if (not re.search(standalone, source_text, re.I) or
+                re.search(r'\b(?:modelo|model|c[oó]digo)\b', source_text, re.I)):
+            return False
+        affirmative = re.sub(r'(?:不是|并非|不|非)\s*(?:立体|三维)', '', str(target))
+        return bool(re.search(r'立体|三维', affirmative))
+    if str(source_token or '').casefold() == 'puff':
+        type_span = (r'(?:^|[;；\n])\s*(?:tipo de puf\s*/\s*silla de descanso|tipo)'
+                     r'\s*[:：]\s*PUFF\s*(?=[;；\n]|$)')
+        remaining = re.sub(type_span, ' ', source_text, flags=re.I)
+        affirmative = re.sub(r'(?:不是|并非|不属于|不采用|不含|没有|无|非|不)\s*'
+                             r'(?:软墩|坐墩|坐凳|蒲团|软凳|坐垫)', '', str(target))
+        return (remaining != source_text
+                and bool(re.search(r'软墩|坐墩|坐凳|蒲团|软凳|坐垫', affirmative))
+                and _casefold_token_count(target, 'PUFF') >= _casefold_token_count(remaining, 'PUFF'))
     if str(source_token or "").casefold() == "uv":
         # Generic UV may be localized, but UVA/UVB/UVC/model suffixes may not.
         pattern = r"(?<![A-Za-z0-9_-])UV(?![A-Za-z0-9_-])"
@@ -412,7 +428,23 @@ def _is_allowed_translated_tech_token(source_text: str, source_token: str, targe
     # A flavour phrase is not a device/model identifier. Keep this confined
     # to the complete phrase in the same source field, never BBQ model codes.
     if str(source_token or "").casefold() == "bbq":
-        return bool(re.search(r"\bBBQ\s+style\b", source_text, re.I) and "烧烤风味" in target)
+        standalone = r"(?<![A-Za-z0-9_-])BBQ(?![A-Za-z0-9_-])"
+        if not re.search(standalone, source_text, re.I):
+            return False
+        # Qualifying food/flavour words must be in this field. Neither a
+        # food category elsewhere nor a model's BBQ prefix supplies meaning.
+        flavour = (re.search(r"\bBBQ\s+style\b", source_text, re.I)
+                   or re.search(r"\b(?:Honey|American|Korean)\s+BBQ(?![A-Za-z0-9_-])", source_text, re.I)
+                   or re.search(r"\b(?:chips|patatas|fideos|tortillas|snacks?|aperitivos?)\b", source_text, re.I))
+        if (not flavour
+                or re.search(r"\b(?:dispositivo|modelo|model|c[oó]digo|cargador|m[aá]quina)\b", source_text, re.I)
+                or re.search(r"\b(?:sin|no)\b[^.;\n；!?]{0,35}" + standalone, source_text, re.I)):
+            return False
+        # A negated flavour cannot satisfy the positive source assertion.
+        affirmative = re.sub(
+            r"(?:不是|并非|不属于|不含|没有|不带|无|非|不)\s*(?:烧烤|烤肉)(?:风味|味)?",
+            "", target)
+        return bool(re.search(r"(?:烧烤|烤肉)(?:风味|味)?", affirmative))
     aliases = _TRANSLATED_TECH_TOKEN_ALIASES.get(str(source_token or "").casefold(), ())
     return _source_term_present(source_text, source_token) and any(
         alias.casefold() in str(target or "").casefold() for alias in aliases
@@ -423,6 +455,12 @@ def _is_omittable_display_brand_tech(source_text: str, source_token: str, target
     token = str(source_token or "").casefold()
     if _has_casefold_token(target, source_token):
         return False
+    if field_name == "name" and token == "fab":
+        # FAB Factory is a complete commercial name, not a FAB model. A
+        # separate occurrence outside that span still needs preservation.
+        remaining = re.sub(r"\bFAB\s+Factory\b", " ", source_text, flags=re.I)
+        if remaining != source_text and not _has_casefold_token(remaining, source_token):
+            return True
     if token in _OMITTABLE_DISPLAY_BRAND_TECH and _source_term_present(source_text, source_token):
         return True
     # A source-scoped, trusted BRAND fact resolves an uppercase brand such
@@ -578,7 +616,77 @@ def _is_source_bound_laundry_powder(source: SourceFacts, source_text: str) -> bo
     return bool(laundry_prose or laundry_appliance)
 
 
+def _is_source_bound_laundry_liquid(source: SourceFacts, source_text: str, field_name: str) -> bool:
+    """Disambiguate liquid laundry detergent, never a mixed category alone.
+
+    A bare title head may use the same product's explicit liquid/laundry
+    definition as noun context. Other fields must state their own liquid
+    form; an accessory, negated use, mixed form or conflicting purpose stays
+    on the existing review path.
+    """
+    liquid = r"\bdetergentes?\s+l[ií]quidos?\b"
+    own_liquid = bool(re.search(liquid, source_text, re.I))
+    bare_title = (field_name == "name" and source_text == source.name_es
+                  and bool(re.match(r"\s*detergentes?\b", source_text, re.I)))
+    if not own_liquid and not bare_title:
+        return False
+    if re.search(r"\b(?:para|de|del)\s+(?:(?:el|un|tu|su)\s+)?detergentes?\b", source_text, re.I):
+        return False
+    texts = "\n".join((source.name_es, source.spec_es, source.desc_es, source.details_es))
+    if (not re.search(liquid, texts, re.I)
+            or re.search(r"\b(?:lavavajillas|vajillas?|platos?|inodoros?|suelos?|alfombras?|moquetas?)\b", texts, re.I)
+            or re.search(r"\bdetergentes?\s+(?:en\s+(?:polvo|c[aá]psulas|gel)|s[oó]lidos?)\b", texts, re.I)
+            or re.search(r"\b(?:no|sin)\b[^.;\n；!?]{0,50}\bdetergentes?\b", texts, re.I)
+            or re.search(r"\bno\b[^.;\n；!?]{0,50}\b(?:ropa|colada|lavadora)\b", texts, re.I)):
+        return False
+    laundry = (re.search(r"\b(?:para\s+(?:la\s+)?(?:ropa|colada)|lava\s+(?:la|tu)\s+ropa|limpia\s+(?:la|tu)\s+ropa|colada\s+limpia)\b", texts, re.I)
+               or any(p.key.strip().casefold() in {"apto para tipo de aparato", "uso previsto"}
+                      and p.value.strip().casefold() == "lavadora"
+                      for p in parse_structured_details(source.details_es)))
+    return bool(laundry)
+
+
+def _source_term_only_in_phrases(source_text: str, term_pattern: str, *phrases: str) -> bool:
+    """Do not let a qualified sense waive a separate ordinary occurrence."""
+    remaining = source_text
+    for phrase in phrases:
+        remaining = re.sub(phrase, " ", remaining, flags=re.I)
+    return remaining != source_text and not re.search(term_pattern, remaining, re.I)
+
+
+def _is_oral_nutritional_supplement(source_text: str) -> bool:
+    """Require complete affirmative attributes, not a mention or contradiction."""
+    pairs = parse_structured_details(source_text)
+    oral = [p.value.strip().casefold() for p in pairs
+            if re.fullmatch(r'm[eé]todo de administraci[oó]n', p.key.strip(), re.I)]
+    usage = [p.value.strip().casefold() for p in pairs
+             if re.fullmatch(r'uso previsto como', p.key.strip(), re.I)]
+    return bool(oral and usage and all(v == 'oral' for v in oral)
+                and all(v == 'suplemento nutricional' for v in usage))
+
+
 def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tuple[str, ...]:
+    # Resolve polysemy only from this field's complete qualifying phrase.
+    # These QA aliases neither generate translations nor relax other uses
+    # of rubber, cloth, detergent or lamp products.
+    term = source_term.casefold()
+    if term in {"detergente", "detergentes"} and _source_term_only_in_phrases(
+            source_text, r"\bdetergentes?\b", r"\btipo de detergente de limpieza de WC\s*[:：]"):
+        return ("洁厕剂", "马桶清洁剂", "厕所清洁剂")
+    if term in {"paño", "paños"} and _source_term_only_in_phrases(
+            source_text, r"\bpaños?\b", r"\bpaños?\s+hidrof[ií]licos?\b"):
+        return ("吸水布", "亲水布")
+    if term == "goma":
+        gummy_phrases = [r"\bositos\s+de\s+goma\b"]
+        # Exact affirmative attribute values only. A negated or merely
+        # mentioned supplement cannot establish the gummy dosage form.
+        if _is_oral_nutritional_supplement(source_text):
+            gummy_phrases.append(r"(?:^|[;；\n])\s*sustancia\s*[:：]\s*goma\s*(?=[;；\n]|$)")
+        if _source_term_only_in_phrases(source_text, r"\bgomas?\b", *gummy_phrases):
+            return ("软糖",)
+    if term == "iluminación" and _source_term_only_in_phrases(
+            source_text, r"\biluminación\b", r"\biluminación\s+de\s+la\s+pantalla\s*[:：]"):
+        return ("屏幕照明", "屏幕背光", "显示屏照明", "显示屏背光")
     # An appearance simile is not a claim of actual wood composition. Only
     # consume it when no separate wood occurrence remains in this field.
     # Bamboo fibre likewise names a textile material, not a solid bamboo item.
@@ -586,6 +694,10 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bmadera\b", remaining, re.I):
             return ("木纹", "木质外观", "木材外观")
+    if re.fullmatch(r"papel\s+sin\s+madera", source_term, re.I):
+        return ("化学浆纸", "化学浆绘图纸", "无机械木浆纸", "无磨木浆纸")
+    if re.fullmatch(r"cinceles?\s+de\s+madera", source_term, re.I) and canonical == "木工":
+        return ("木工凿", "木工用凿", "木材加工凿")
     if source_term.casefold() == "bambú":
         remaining = re.sub(r"\bfibras?\s+de\s+bambú\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bbambú\b", remaining, re.I):
@@ -619,6 +731,12 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             aliases.extend(("氛围照明", "环境照明"))
         if re.search(r"\biluminación\s+multicolor\s+RGB\b", source_text, re.I):
             aliases.extend(("RGB灯光", "RGB 灯光", "RGB照明", "RGB 照明"))
+        if (re.search(r"\biluminación\s+RGB\b", source_text, re.I)
+                and not re.search(r"\b(?:sin|no)\b[^.;\n；!?]{0,40}\biluminación\b", source_text, re.I)):
+            aliases.extend(("RGB灯效", "RGB 灯效", "RGB灯光", "RGB 灯光", "RGB照明", "RGB 照明"))
+        if (re.search(r"\biluminación\s+brillante\b", source_text, re.I)
+                and re.search(r"\bbarra\s+led\b", source_text, re.I)):
+            aliases.append("明亮照明")
         if re.search(r"\biluminación\s+led\s+destelleante\b", source_text, re.I):
             aliases.extend(("LED灯光", "LED 灯光"))
         if re.search(r"\biluminación\s+led\b", source_text, re.I):
@@ -661,6 +779,14 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
                 and re.search(r"\bcomo\s+un\s+paño\s+sobre\s+la\s+cara\b", source_text, re.I)):
             aliases.extend(("布片", "面膜布", "面膜"))
     if source_term.casefold() == 'calcetines':
+        for pattern, alias in (
+            (r"\bcalcetines(?:\s+de\s+senderismo)?\s+t[eé]rmicos?\b", "保暖袜"),
+            (r"\bcalcetines\s+para\s+niña\b", "女童袜"),
+            (r"\bcalcetines\s+para\s+niño\b", "男童袜"),
+            (r"\bcalcetines\s+para\s+estar\s+por\s+casa\b", "居家袜"),
+        ):
+            if _source_term_only_in_phrases(source_text, r"\bcalcetines\b", pattern):
+                aliases.append(alias)
         if re.search(r'\b(?:de|para)\s+beb[eé]s?\b',source_text,re.I):aliases.append('婴儿袜')
         for marker,alias in [('invisibles','隐形袜'),('rizo','毛圈袜')]:
             if _source_term_present(source_text,marker):aliases.append(alias)
@@ -944,6 +1070,46 @@ def _detail_source_value_findings(source_text, target):
                 for part in p.value.split(","))]
 
 
+def _detail_contextual_translation_findings(source_text, target):
+    """Flag reviewed attribute/value mistranslations, never translate or guess.
+
+    Both the source attribute and the corresponding Chinese attribute must
+    match. A word in another pair or field cannot trigger these findings.
+    """
+    rules = (
+        (r'efecto deseado', r'.*dentadura blanca.*', r'预期效果|期望效果', r'假牙'),
+        (r'tipo de asa', r'agarre en fr[ií]o', r'.*(?:提手|把手).*', r'冷敷'),
+        (r'sabor', r'.*\bnaranja\b.*', r'口味|风味', r'橙色'),
+        (r'apto para tipo de animal \(de compa[ñn][ií]a\)', r'.*\bave\b.*', r'.*(?:宠物|动物).*', r'禽肉'),
+        (r'relleno de p[aá]gina', r'.*\bcon l[ií]neas\b.*', r'页面填充|页面内容', r'条纹'),
+        (r'relleno de p[aá]gina', r'blanco', r'页面填充|页面内容', r'白色'),
+        (r'sustancia', r'bloques', r'形态|物态', r'积木'),
+        (r'uso previsto', r'taza del v[aá]ter', r'用途|预期用途', r'座圈'),
+        (r'repelen el agua', r's[ií]|no', r'防水|防水性能', r'是|否'),
+    )
+    results = []
+    if _is_oral_nutritional_supplement(source_text):
+        # Goma can legitimately mean rubber elsewhere. This exception is
+        # confined to an explicitly oral nutritional supplement in this field.
+        rules += ((r'sustancia', r'goma', r'形态|物态', r'橡胶'),)
+    source_pairs, target_pairs = parse_structured_details(source_text), parse_structured_details(target)
+    for key, value, target_key, wrong in rules:
+        sources = [p for p in source_pairs if re.fullmatch(key, p.key.strip(), re.I)]
+        targets = [p for p in target_pairs if re.fullmatch(target_key, p.key.strip())]
+        # Duplicate attributes are separate ordered facts, not a bag of
+        # interchangeable values. Unequal counts retain the conservative
+        # legacy check; they never grant an alignment/QA exemption.
+        pairs = (zip(sources, targets) if len(sources) == len(targets)
+                 else ((s, t) for s in sources for t in targets))
+        for src, dst in pairs:
+            if re.fullmatch(value, src.value.strip(), re.I) and re.search(wrong, dst.value):
+                results.append(QAFinding('DETAIL_CONTEXT_MISTRANSLATION', 'BLOCKER', 'details',
+                    {'source_key': src.key, 'source_value': src.value,
+                     'target_key': dst.key, 'target_value': dst.value}, source=source_text,
+                    target=target, message='reviewed attribute/value mistranslation', blocking=True))
+    return results
+
+
 def _detail_charging_speed_findings(source_text, target):
     """Check a selected speed, not the alternatives in its attribute label."""
     source_items = [p for p in parse_structured_details(source_text)
@@ -1010,7 +1176,7 @@ def _detail_care_findings(source_text, target):
     return []
 
 
-def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = ()) -> tuple[QAFinding, ...]:
+def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_fields: tuple[str, ...], *, terminology: tuple[Mapping[str, Any], ...] = (), semantic_facts: tuple[Any, ...] = (), allow_spec_relocation: bool = True) -> tuple[QAFinding, ...]:
     findings: list[QAFinding] = []
     for field_name in requested_fields:
         target = fields.get(field_name)
@@ -1027,6 +1193,19 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if not source_text.strip():
             findings.append(QAFinding("EMPTY_SOURCE_TARGET_NONEMPTY", "BLOCKER", field_name, {"target": target}, source=source_text, target=target, message="target content exists without official source", blocking=True))
             continue
+        if (re.search(r'\bpercal\b', source_text, re.I)
+                and not re.search(r'\bpopel[ií]n(?:a)?\b|\bpoplin\b', source_text, re.I)
+                and '府绸' in target):
+            findings.append(QAFinding('WEAVE_MISTRANSLATION', 'BLOCKER', field_name,
+                {'source_term':'percal','target_term':'府绸'}, source=source_text, target=target,
+                message='percale weave was confused with poplin', blocking=True))
+        if field_name == 'name' and re.search(r'\bXXL\s+Nutrition\b', source_text, re.I):
+            without_brand = re.sub(r'\bXXL\s+Nutrition\b', '', source_text, flags=re.I)
+            if (not re.search(r'\bXXL\b', without_brand, re.I)
+                    and re.search(r'(?<![A-Za-z0-9])XXL(?![A-Za-z0-9])', target, re.I)):
+                findings.append(QAFinding('BRAND_SIZE_TOKEN_LEAK', 'BLOCKER', field_name,
+                    {'source_brand':'XXL Nutrition','target_token':'XXL'}, source=source_text, target=target,
+                    message='brand fragment was promoted to a size', blocking=True))
         wood_appearance_remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
         if (wood_appearance_remaining != source_text
                 and not re.search(r"\bmadera\b", wood_appearance_remaining, re.I)):
@@ -1050,6 +1229,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 message="Chinese numeric unit retains a Latin plural suffix", blocking=True))
         if field_name == "details":
             findings.extend(_detail_source_value_findings(source_text, target))
+            findings.extend(_detail_contextual_translation_findings(source_text, target))
             findings.extend(_detail_charging_speed_findings(source_text, target))
             findings.extend(_detail_boolean_findings(source_text, target))
             findings.extend(_detail_care_findings(source_text, target))
@@ -1110,6 +1290,14 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
             represented = any(alias.casefold() in target.casefold() for alias in aliases)
+            if (source_term.casefold() in {"calcetines", "detergente", "detergentes", "paño", "paños", "goma"}
+                    and not re.search(r"\b(?:sin|no contiene|no incluye|no es|no son)\s+" + re.escape(source_term) + r"\b", source_text, re.I)):
+                # An explicitly negated rendering is not preservation of a
+                # positive source fact. Keep all other hard guards active.
+                affirmative = target
+                for alias in sorted(aliases, key=len, reverse=True):
+                    affirmative = re.sub(r"(?:不是|并非|不属于|不采用|不含|没有|无|非|不)\s*" + re.escape(alias), "", affirmative)
+                represented = any(alias.casefold() in affirmative.casefold() for alias in aliases)
             if (fact_type == "PRODUCT_TYPE" and source_term.casefold() in {"detergente", "detergentes"}
                     and _is_source_bound_laundry_powder(source, source_text)):
                 canonical = "洗衣粉"
@@ -1117,6 +1305,12 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 affirmative = re.sub(r"(?:不是|并非|不属于|不含|没有|无|非|不)\s*(?:衣物洗涤粉|洗衣粉)", "", target)
                 represented = (any(alias in affirmative for alias in aliases)
                     and not re.search(r"洗洁精|洗衣液|洗衣凝珠|洗涤凝珠|洗碗粉|洗碗机粉", target))
+            elif (fact_type == "PRODUCT_TYPE" and source_term.casefold() in {"detergente", "detergentes"}
+                    and _is_source_bound_laundry_liquid(source, source_text, field_name)):
+                canonical = "洗衣液"
+                affirmative = re.sub(r"(?:不是|并非|不属于|不含|没有|无|非|不)\s*(?:液体衣物洗涤剂|洗衣液)", "", target)
+                represented = (any(alias in affirmative for alias in ("洗衣液", "液体衣物洗涤剂"))
+                               and not re.search(r"洗洁精|洗衣粉|洗衣凝珠|洗涤凝珠|洗碗粉|洗碗机粉", target))
             if fact_type == "MATERIAL":
                 represented = represented or _structured_material_atom(source_term, source_text, target, field_name)
             if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
@@ -1135,6 +1329,20 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     "", target,
                 )
                 represented = any(alias in affirmative_target for alias in aliases)
+            if source_term.casefold() == "iluminación":
+                affirmative_target = target
+                for alias in sorted(aliases, key=len, reverse=True):
+                    affirmative_target = re.sub(
+                        r"(?:不是|并非|不具备|不支持|不带|没有|不含|无|非|不)\s*" + re.escape(alias),
+                        "", affirmative_target, flags=re.I)
+                represented = any(alias.casefold() in affirmative_target.casefold() for alias in aliases)
+            if canonical in {"化学浆纸", "木工"}:
+                affirmative_target = target
+                for alias in sorted(aliases, key=len, reverse=True):
+                    affirmative_target = re.sub(
+                        r"(?:不是|并非|不属于|不采用|没有|非)\s*" + re.escape(alias),
+                        "", affirmative_target, flags=re.I)
+                represented = any(alias.casefold() in affirmative_target.casefold() for alias in aliases)
             if _source_term_present(source_text, source_term) and not represented:
                 findings.append(QAFinding(
                     "SEMANTIC_FACT_DROPPED", "ERROR", field_name,
@@ -1155,7 +1363,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         # Preserve the established canonical-spec relocation contract only
         # for spec; independent source numbers avoid joined thousands groups.
         allowed_source_numbers = source_numbers.copy()
-        if field_name == "spec":
+        if field_name == "spec" and allow_spec_relocation:
             allowed_source_numbers = Counter()
             for attr in ("name_es", "spec_es", "desc_es", "details_es", "cat1_es", "cat2_es"):
                 allowed_source_numbers.update(_numbers(str(getattr(source, attr, "") or "")))
@@ -1218,6 +1426,10 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         if duplicated:
             findings.append(QAFinding("NUMERIC_ADDED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "extra": dict(duplicated)}, source=source_text, target=target, message="numeric fact added", blocking=True))
         technical_source = _technical_scan_source(source_text)
+        if field_name == 'name':
+            # A verified complete brand span is not a size. Scan any XXL
+            # outside that span normally, including when both roles occur.
+            technical_source = re.sub(r'\bXXL\s+Nutrition\b', ' ', technical_source, flags=re.I)
         protected = protect_text(_capacity_scan_view(technical_source))
         target_protected = protect_text(_capacity_scan_view(target))
         def strict_key(kind, value):

@@ -30,12 +30,13 @@ from .service import (
     validate_source_records,
     validate_spanish_source_fields,
     validate_zh_rows_against_source,
+    _clean_delivery_notes,
     _resolve_image_eligibility,
     _commit_id_for_run,
     _export_repair_allowed_tokens,
     _publish_export_bundle,
 )
-from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, verify_template1_xlsx, write_template1_xlsx
+from .template1 import CATALOG_HEADERS, HISTORY_HEADERS, TEMPLATE1_VERSION, verify_template1_xlsx, write_template1_xlsx
 
 
 def export_template1(
@@ -67,10 +68,12 @@ def export_template1(
         validate_source_records(records, export_date=export_date)
         validate_spanish_source_fields(records)
         es_rows = build_es_rows(records)
+        es_rows, es_note_cleanup = _clean_delivery_notes(cfg, es_rows, language="es")
         template_source = ExportSource(
             export_date=source.export_date, run_id=source.run_id, kind=source.kind,
             records=tuple(records), source_master_file_hash=source.source_master_file_hash,
             directory=source.directory, source_commit_id=source.source_commit_id,
+            presence_source_commit_id=source.presence_source_commit_id,
         )
         mode = PRODUCTION_RELEASE if research_release else PREVIEW
         final_zh = build_final_zh_projection(cfg, template_source, release_mode=mode)
@@ -148,7 +151,9 @@ def export_template1(
     repair_report_path = output.with_suffix(".repair-report.json")
     manifest = {
         "template_id": "action_full_template_1",
-        "template_version": 1,
+        "template_version": TEMPLATE1_VERSION,
+        "history_fixed_headers": list(HISTORY_HEADERS),
+        "delivery_note_cleanup": {"es": es_note_cleanup, "zh": final_zh.delivery_note_cleanup},
         "release_mode": mode.casefold(),
         "output_file": output.name,
         "output_sha256": hashlib.sha256(temporary.read_bytes()).hexdigest(),
@@ -172,6 +177,7 @@ def export_template1(
         "selection_id": selection_id,
         "selection_source_commit_id": selection_source_commit_id,
         "artifact_source_commit_id": artifact_source_commit_id,
+        "presence_source_commit_id": source.presence_source_commit_id,
         "image_profile": "excel_250_white_v1" if with_images else None,
         "dictionary_fallback_counts": fallback_counts,
         "history_source_stats": [stat.__dict__ for stat in history.source_stats],

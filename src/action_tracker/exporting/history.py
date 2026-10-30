@@ -42,6 +42,7 @@ class PresenceHistory:
     source_stats: tuple[HistorySourceStat, ...]
     seed_path: str | None
     seed_row_count: int
+    excluded_months: tuple[str, ...] = ()
 
 
 def build_history_only_rows(history: PresenceHistory) -> list[dict[str, Any]]:
@@ -57,6 +58,10 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
     if not config_path.exists():
         raise HistoryExportError(f"HISTORY_CONFIG_MISSING: {config_path}")
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    excluded = raw.get("excluded_months", [])
+    if not isinstance(excluded, list) or any(not isinstance(m, str) or not re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", m) for m in excluded):
+        raise HistoryExportError("HISTORY_EXCLUDED_MONTHS_INVALID")
+    excluded_months = tuple(sorted(set(excluded)))
     seed = raw.get("seed") or {}
     presence: dict[str, dict[str, PresenceValue]] = {}
     latest: dict[str, dict[str, Any]] = {}
@@ -71,6 +76,16 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         path = _resolve_path(cfg, seed["path"])
         seed_path = str(path)
         seed_records, seed_dates = _read_seed(path, seed)
+        kept_dates = {d for d in seed_dates if d[:7] not in excluded_months}
+        filtered = []
+        for record in seed_records:
+            original = record["presence"]
+            retained = {d: v for d, v in original.items() if d in kept_dates}
+            # Excluded-only positive evidence cannot introduce a SKU into this export.
+            if not retained or (any(v == 1 for d, v in original.items() if d not in kept_dates) and not any(v == 1 for v in retained.values())):
+                continue
+            filtered.append({**record, "presence": retained})
+        seed_records, seed_dates = filtered, kept_dates
         dates.update(seed_dates)
         seed_row_count = len(seed_records)
         seed_cfg = _capabilities(seed, source_name="seed")
@@ -88,6 +103,8 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
     seen_dates = set(dates)
     for source in raw.get("sources") or []:
         date = _parse_iso_date(source.get("date"))
+        if date[:7] in excluded_months:
+            continue
         if date in seen_dates:
             # The seed is an explicitly confirmed snapshot. Preserve its date
             # instead of silently letting a differently formatted source win.
@@ -99,7 +116,11 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         unique = set(sku_values)
         for record in records:
             sku = record["sku"]
-            presence.setdefault(sku, {})[date] = 1
+            value = record.get("presence_value", 1)
+            existing = presence.setdefault(sku, {})
+            if date in existing and existing[date] != value:
+                raise HistoryExportError(f"HISTORY_SOURCE_PRESENCE_CONFLICT: {date}/{sku}")
+            existing[date] = value
             fields = record.get("fields") or {}
             if fields:
                 latest.setdefault(sku, {}).update(fields)
@@ -113,7 +134,10 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
 
     # Fill absence only when the source explicitly proves completeness and
     # absence capability. Partial sources remain UNKNOWN; not observed is not 0.
-    all_skus = set(presence)
+    # Matrix rows containing only 0/UNKNOWN are not positive SKU membership evidence.
+    all_skus = set(seed_rows) | {sku for sku, values in presence.items() if 1 in values.values()}
+    presence = {sku: values for sku, values in presence.items() if sku in all_skus}
+    latest = {sku: fields for sku, fields in latest.items() if sku in all_skus}
     for date, stat in source_by_date.items():
         default: PresenceValue = 0 if stat.absence_capability and stat.observation_complete else PRESENCE_UNKNOWN
         for sku in all_skus:
@@ -127,6 +151,7 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         source_stats=tuple(sorted(source_by_date.values(), key=lambda item: item.date)),
         seed_path=seed_path,
         seed_row_count=seed_row_count,
+        excluded_months=excluded_months,
     )
 
 
@@ -147,6 +172,7 @@ def build_presence_rows(
     zh_by_sku = {str(row.get("编号") or "").strip(): row for row in zh_rows}
     all_skus = set(history.presence_by_sku) | set(current_by_sku)
     dates = list(history.dates)
+    stats_by_date = {stat.date: stat for stat in history.source_stats}
     if export_date is not None and export_date not in dates:
         dates.append(export_date)
         dates.sort()
@@ -180,7 +206,11 @@ def build_presence_rows(
         if export_date is not None:
             row["presence"][export_date] = 1 if sku in current_by_sku else 0
         for date in dates:
-            value = row["presence"].get(date, PRESENCE_UNKNOWN)
+            stat = stats_by_date.get(date)
+            # A SKU newly added to the union still has to respect each old
+            # observation's absence capability. Never rewrite explicit UNKNOWN.
+            default = 0 if stat and stat.absence_capability and stat.observation_complete else PRESENCE_UNKNOWN
+            value = row["presence"].get(date, default)
             if value not in (0, 1, PRESENCE_UNKNOWN):
                 raise HistoryExportError(f"HISTORY_BAD_PRESENCE: {sku}/{date}")
             row[date] = value
@@ -223,12 +253,9 @@ def _read_seed(path: Path, seed_cfg: dict[str, Any]) -> tuple[list[dict[str, Any
         sku = str(raw.get(seed_cfg.get("sku_header") or "编号") or "").strip()
         if not sku:
             continue
-        values: dict[str, int] = {}
+        values: dict[str, PresenceValue] = {}
         for header, date in date_columns.items():
-            value = raw.get(header)
-            if str(value).strip() not in {"0", "1"} and value not in {0, 1}:
-                raise HistoryExportError(f"HISTORY_SEED_BAD_PRESENCE: {path}/{sku}/{header}")
-            values[date] = int(value)
+            values[date] = _presence_value(raw.get(header), f"HISTORY_SEED_BAD_PRESENCE: {path}/{sku}/{header}")
         fields = {key: raw.get(header) for key, header in field_map.items() if header in raw}
         output.append({"sku": sku, "presence": values, **fields, "fields": fields})
     return output, set(date_columns.values())
@@ -240,7 +267,10 @@ def _read_source(path: Path, source_cfg: dict[str, Any]) -> list[dict[str, Any]]
     sku_header = str(source_cfg.get("sku_header") or "").strip()
     if not sku_header:
         raise HistoryExportError(f"HISTORY_SKU_HEADER_MISSING: {path}")
-    records = _read_workbook(path, source_cfg.get("sheet"), sku_header)
+    presence_header = source_cfg.get("presence_header")
+    if presence_header is not None and (not isinstance(presence_header, str) or not presence_header.strip()):
+        raise HistoryExportError(f"HISTORY_PRESENCE_HEADER_INVALID: {path}")
+    records = _read_workbook(path, source_cfg.get("sheet"), sku_header, required_headers=(presence_header,) if presence_header else ())
     field_map = source_cfg.get("fields") or {}
     output: list[dict[str, Any]] = []
     for raw in records:
@@ -248,11 +278,22 @@ def _read_source(path: Path, source_cfg: dict[str, Any]) -> list[dict[str, Any]]
         if not sku:
             continue
         fields = {key: raw.get(header) for key, header in field_map.items() if header in raw}
-        output.append({"sku": sku, "fields": fields})
+        value = _presence_value(raw.get(presence_header), f"HISTORY_SOURCE_BAD_PRESENCE: {path}/{sku}/{presence_header}") if presence_header else 1
+        output.append({"sku": sku, "fields": fields, "presence_value": value})
     return output
 
 
-def _read_workbook(path: Path, sheet: str | None, sku_header: str) -> list[dict[str, Any]]:
+def _presence_value(value: Any, error: str) -> PresenceValue:
+    if isinstance(value, bool):
+        raise HistoryExportError(error)
+    if value == PRESENCE_UNKNOWN:
+        return PRESENCE_UNKNOWN
+    if value in (0, 1, "0", "1"):
+        return int(value)
+    raise HistoryExportError(error)
+
+
+def _read_workbook(path: Path, sheet: str | None, sku_header: str, *, required_headers: tuple[str, ...] = ()) -> list[dict[str, Any]]:
     workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
         if sheet and sheet not in workbook.sheetnames:
@@ -262,6 +303,9 @@ def _read_workbook(path: Path, sheet: str | None, sku_header: str) -> list[dict[
         headers = [str(value).strip() if value is not None else "" for value in next(iterator, ())]
         if sku_header not in headers:
             raise HistoryExportError(f"HISTORY_SKU_HEADER_NOT_FOUND: {path}/{sku_header}")
+        for header in required_headers:
+            if header not in headers:
+                raise HistoryExportError(f"HISTORY_PRESENCE_HEADER_NOT_FOUND: {path}/{header}")
         return [dict(zip(headers, row)) for row in iterator]
     finally:
         workbook.close()

@@ -9,6 +9,11 @@ from action_tracker.exporting.repair_report import (
 from action_tracker.exporting.dictionary_join import _repair_export_description, _repair_export_details, _translate_official_tags, _zh_remarks
 from action_tracker.exporting.repair_rules import repair_details, repair_spec, repair_title
 from action_tracker.exporting.repair_tokens import repair_source_model_fragments
+import csv
+import json
+from pathlib import Path
+from copy import deepcopy
+import pytest
 
 
 def _record():
@@ -233,3 +238,209 @@ def test_override_field_hash_survives_unrelated_source_change_and_records_approv
     event = report.events[-1].as_dict()
     assert event["approved_by"] == "human:tester"
     assert event["reason"] == "reviewed source"
+
+
+@pytest.mark.parametrize("separator", ["\n", "\r\n", ";", "；", " | ", "｜"])
+def test_delivery_cleanup_handles_real_history_annotation_separators(separator):
+    from action_tracker.exporting.repair_rules import clean_review_notes
+    original = separator.join(["颜色：米色", "来源异常：官网字段Incluye oído=Sí", "材质：陶瓷", "商品编号：3217835"])
+    expected = separator.join(["颜色：米色", "材质：陶瓷", "商品编号：3217835"])
+    assert clean_review_notes(original) == expected
+    assert clean_review_notes(expected) == expected
+
+
+@pytest.mark.parametrize("sku,note", [
+    ("3217518", "来源异常：官网字段Sustancia=Válido, Loción（Loción译为乳液，Válido保留官网异常原词）"),
+    ("3217835", "来源异常：官网字段Incluye oído=Sí"),
+    ("3218940", "来源异常：官网字段Incluye oído=Sí"),
+    ("3219068", "来源异常：官网字段Incluye oído=No"),
+])
+def test_four_real_sku_note_regressions_keep_facts(sku, note):
+    from action_tracker.exporting.repair_rules import clean_review_notes
+    original = "数量：4件\n" + note + "\n商品编号：" + sku
+    assert clean_review_notes(original) == "数量：4件\n商品编号：" + sku
+
+
+def test_cleanup_keeps_business_tags_and_ordinary_uses_of_review_words():
+    from action_tracker.exporting.repair_rules import clean_review_notes
+    assert clean_review_notes("在售；新品\n【复核·详情·来源待核】未知；促销", remarks=True) == "在售；新品；促销"
+    note = "【原有来源待核：产品详情；【来源异常】官网物态字段无有效物态值；不得据此推断固态、液态或凝胶。"
+    assert clean_review_notes(note, remarks=True) is None
+    assert clean_review_notes("适用于复核账目；不得用于微波炉") == "适用于复核账目；不得用于微波炉"
+    assert clean_review_notes("Nuevo;Revisar texto de origen;Promoción", remarks=True, language="es") == "Nuevo;Promoción"
+    assert clean_review_notes("Evita la condensación de cristales", language="es") == "Evita la condensación de cristales"
+
+
+def test_cleanup_is_explicit_and_cannot_turn_empty_translation_into_qa_pass(tmp_path, monkeypatch):
+    from action_tracker.exporting import service
+    from test_exporting import _record as fact_record
+    record = fact_record(); source = service.ExportSource("2026-08-24", "run", "SQLITE_CURRENT", (record,), None, source_commit_id="head")
+    row = service.build_es_rows([record])[0]
+    row.update({"标题": "待复核：来源字段存在异常，详见备注", "分类1": "家务清洁", "分类2": "清洁用品", "规格": "2件装", "描述": "清洁用品", "产品详情": "材质：塑料", "备注": "在售；来源冲突待核"})
+    original = deepcopy(row)
+    monkeypatch.setattr(service, "build_zh_rows_from_localized_source", lambda *a, **k: ([dict(row)], {}))
+    monkeypatch.setattr(service, "audit_repaired_rows", lambda *a, **k: {"release_ready": True, "p0_findings": 0})
+    cfg = {"project_root": tmp_path, "paths": {}}
+    assert service.build_final_zh_projection(cfg, source).rows[0]["标题"] == row["标题"]
+    cfg["export_delivery"] = {"remove_review_notes": True}
+    projection = service.build_final_zh_projection(cfg, source)
+    assert projection.rows[0]["标题"] is None
+    assert projection.repair_audit["release_ready"] is False
+    assert projection.delivery_note_cleanup["changed_cells"] == 2
+    assert any(e.rule == "DELIVERY_REVIEW_NOTE_CLEANUP" and e.before == original["标题"] for e in projection.repair_report.events)
+    assert row == original
+    with pytest.raises(service.ExportValidationError, match="EXPORT_REPAIR_GATE_FAILED"):
+        service.build_final_zh_projection(cfg, source, release_mode=service.PRODUCTION_RELEASE)
+    with pytest.raises(service.ExportValidationError, match="ANNOTATED_DELIVERY_REQUIRES_REVIEW_NOTES"):
+        service.build_final_zh_projection(cfg, source, release_mode=service.ANNOTATED_RELEASE)
+    cfg["export_delivery"]["remove_review_notes"] = "false"
+    with pytest.raises(service.ExportValidationError, match="MUST_BE_BOOLEAN"):
+        service.build_final_zh_projection(cfg, source)
+
+
+def _approved_file(path, record, **updates):
+    row = dict(sku=record["sku"], field="name_zh", source_hash=field_source_hash(record, "name_zh"), replacement="已核对中文", reason="own Spanish field checked", rule_version="1.0", approved_by="human:reviewer", approved_at="2026-10-27", status="APPROVED")
+    row.update(updates)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=HEADERS); w.writeheader(); w.writerow(row)
+
+
+@pytest.mark.parametrize("field", ["reason", "approved_at", "approved_by", "replacement", "rule_version"])
+def test_approved_override_requires_complete_evidence(tmp_path, field):
+    from action_tracker.exporting.repair_overrides import ExportRepairOverrideError
+    path = tmp_path / "overrides.csv"; _approved_file(path, _record(), **{field: ""})
+    with pytest.raises(ExportRepairOverrideError, match="APPROVAL_REQUIRED"):
+        load_overrides(path)
+
+
+def test_approved_correction_rejects_missing_or_changed_own_source(tmp_path):
+    record = _record(); path = tmp_path / "overrides.csv"; _approved_file(path, record)
+    report = ExportRepairReport(); engine = ExportRepairEngine(report=report, overrides_path=path)
+    assert engine.apply_override(sku="1001", field="name_zh", value="旧中文", record={**record, "name_es": ""}, source_field="name_es") == "旧中文"
+    assert report.unresolved[-1].code == "OVERRIDE_SOURCE_MISSING"
+    assert engine.apply_override(sku="1001", field="name_zh", value="旧中文", record={**record, "name_es": "Otro producto"}, source_field="name_es") == "旧中文"
+    assert report.unresolved[-1].code == "STALE_OVERRIDE"
+    assert engine.apply_override(sku="1001", field="name_zh", value="旧中文", record={**record, "spec_es": "500 gramos"}, source_field="name_es") == "已核对中文"
+    assert report.events[-1].approval_source == str(path)
+
+
+@pytest.mark.parametrize("sqlite", [False, True])
+@pytest.mark.parametrize("field,column,replacement", [("cat1_zh", "分类1", "家居布置"), ("cat2_zh", "分类2", "家用清洁用品"), ("unit_price_zh", "单价", "1,25欧元/件")])
+def test_categories_and_unit_price_use_the_existing_approved_override_path(tmp_path, sqlite, field, column, replacement):
+    from test_exporting import _record as fact_record, _write_dictionary
+    from action_tracker.exporting.dictionary_join import load_dictionary_context, build_zh_rows, build_zh_rows_from_localized_source
+    record = fact_record(); root = tmp_path / "dict"; _write_dictionary(root, record)
+    context = load_dictionary_context({"paths": {"dictionary_baseline": root, "dictionary": tmp_path / "runtime_dict"}})
+    path = tmp_path / "override.csv"
+    _approved_file(path, record, field=field, source_hash=field_source_hash(record, field), replacement=replacement)
+    report = ExportRepairReport()
+    if sqlite:
+        rows, _ = build_zh_rows_from_localized_source([record], category_context=context, repair_report=report, repair_overrides_path=path)
+    else:
+        rows, _ = build_zh_rows([record], context, repair_report=report, repair_overrides_path=path)
+    assert rows[0][column] == replacement
+    assert any(e.field == field and e.rule == "APPROVED_EXPORT_OVERRIDE" for e in report.events)
+
+
+@pytest.mark.parametrize("kind", ["MASTER_CURRENT", "FORMAL_SNAPSHOT"])
+def test_source_bound_primary_chinese_wins_over_old_dictionary_on_file_paths(tmp_path, monkeypatch, kind):
+    from test_exporting import _cfg, _record as fact_record, _write_dictionary
+    from action_tracker.exporting import service
+    from action_tracker.database.repository import ProductionRepository
+    record = fact_record(); record["name_es"] = "Paño de limpieza"
+    reference = {**record, "name_zh": "已核对清洁布", "zh_freshness_status": "CURRENT"}
+    cfg = _cfg(tmp_path); cfg["storage"] = {"mode": "SQLITE_PRIMARY"}
+    _write_dictionary(cfg["paths"]["dictionary_baseline"], record)
+    monkeypatch.setattr(ProductionRepository, "__init__", lambda self, path: None)
+    monkeypatch.setattr(ProductionRepository, "load_current_export_records", lambda *a, **k: [reference])
+    source = service.ExportSource("2026-08-24", "run", kind, (record,), None)
+    projection = service.build_final_zh_projection(cfg, source)
+    assert projection.rows[0]["标题"] == "已核对清洁布"
+    changed = {**record, "name_es": "Otro producto"}
+    reused, audit = service._reuse_source_bound_localizations(cfg, [changed])
+    assert "name_zh" not in reused[0].get("_source_bound_localization_fields", ())
+    assert audit["source_changed_counts"]["name_zh"] == 1
+    reference["zh_field_provenance"] = {"name": {"source_hash": "0" * 64, "freshness_status": "CURRENT", "value": "旧版本中文"}}
+    reused, audit = service._reuse_source_bound_localizations(cfg, [record])
+    assert "name_zh" not in reused[0].get("_source_bound_localization_fields", ())
+    assert audit["source_changed_counts"]["name_zh"] == 1
+
+
+def test_review_blocks_keep_business_notes_and_normal_uses_of_review():
+    from action_tracker.exporting.repair_rules import clean_review_notes
+    text = "在售状态：在售；新品\n待核字段：标题；正式品牌身份尚未确认；西语原文：Producto\n包装文字引用\n【品名待核】需核对\n促销；注意：远离火源"
+    assert clean_review_notes(text, remarks=True) == "在售状态：在售；新品\n促销；注意：远离火源"
+    assert clean_review_notes("适用于复核账目", remarks=True) == "适用于复核账目"
+    assert clean_review_notes("颜色：米色 | 来源异常：官网字段Incluye oído=Sí | 材质：陶瓷") == "颜色：米色 | 材质：陶瓷"
+
+
+def test_real_3217754_details_after_leading_note_are_not_emptied():
+    from action_tracker.exporting.repair_rules import clean_review_notes
+    # Own Spanish: Tipo de desatascador de tuberías: Abridor de tuberías -
+    # uso general; Tipo de dispensador: Botella; Número del artículo: 3217754.
+    facts = "管道疏通产品类型：通用管道疏通产品；分配器类型：瓶；商品编号：3217754"
+    assert clean_review_notes("来源异常：官网字段Sustancia=Válido；" + facts) == facts
+
+
+def test_reviewed_workbook_handoff_never_auto_approves_and_requires_same_source(tmp_path):
+    from action_tracker.exporting.repair_overrides import prepare_reviewed_candidates, ExportRepairOverrideError
+    record = _record(); current = _row(); reviewed = {**current, "标题": "清洁用品 A4", "单价": "1欧元/件"}
+    result = prepare_reviewed_candidates([record], [current], [reviewed], [record], evidence_ref="fixture.xlsx SHA256 verified")
+    assert len(result["candidates"]) == 1 and not result["blocked"]
+    candidate = result["candidates"][0]
+    assert candidate["status"] == "PENDING" and not candidate["approved_by"] and not candidate["approved_at"]
+    assert candidate["source_hash"] == field_source_hash(record, "name_zh")
+    p = tmp_path / "candidates.csv"
+    with p.open("w", encoding="utf8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=HEADERS); writer.writeheader(); writer.writerows(result["candidates"])
+    assert load_overrides(p) == {}
+    changed = {**record, "name_es": "Otro producto"}
+    r = prepare_reviewed_candidates([changed], [current], [reviewed], [record], evidence_ref="fixture")
+    assert not r["candidates"] and r["blocked"][0]["code"] == "SOURCE_CHANGED"
+    with pytest.raises(ExportRepairOverrideError, match="SKU_SET_MISMATCH"):
+        prepare_reviewed_candidates([record], [current], [], [record], evidence_ref="fixture")
+
+
+def test_catalog_template1_publish_same_approved_clean_projection(tmp_path, monkeypatch):
+    import openpyxl
+    from test_exporting import _cfg, _record as fact_record, _write_dictionary
+    from test_template1 import _write_seed
+    from action_tracker.exporting import service
+    from action_tracker.exporting.template1_service import export_template1
+    record = fact_record(last_seen="2026-08-26")
+    record.update(name_es="Paño de limpieza", name_zh="清洁布", details_es="Material: Plástico",
+                  details_zh="材质：塑料\n来源异常：官网字段Incluye oído=Sí", zh_freshness_status="CURRENT", zh_review_status="VERIFIED")
+    cfg = _cfg(tmp_path)
+    cfg["export_profiles_path"] = cfg["project_root"] / "config" / "export_profiles.yaml"
+    cfg["project_root"] = tmp_path
+    cfg["export_delivery"] = {"remove_review_notes": True}
+    _write_dictionary(cfg["paths"]["dictionary_baseline"], record)
+    approved = tmp_path / "approved.csv"; _approved_file(approved, record, replacement="家用清洁布")
+    cfg["export_repair_overrides_path"] = approved
+    source = service.ExportSource("2026-08-26", "fixture", "SQLITE_CURRENT", (record,), None, source_commit_id="head")
+    monkeypatch.setattr(service, "resolve_formal_source", lambda *a, **k: source)
+    # Template1 binds its imported resolver separately; all downstream builders
+    # and both writers remain real, sharing one source-bound approved CSV.
+    monkeypatch.setattr("action_tracker.exporting.template1_service.resolve_formal_source", lambda *a, **k: source)
+    seed = tmp_path / "seed.xlsx"; _write_seed(seed)
+    config = tmp_path / "history.yaml"
+    config.write_text("seed:\n  path: '" + seed.as_posix() + "'\n  sheet: ACTION商品上下架明细\n  sku_header: 编号\n  presence_capability: true\n  absence_capability: true\n  observation_complete: true\n  evidence_level: A\nsources: []\n", "utf8")
+    cfg["history_sources_path"] = config
+    a = service.export_catalog(cfg, language="zh", export_date="2026-08-26", no_images=True)
+    b = export_template1(cfg, export_date="2026-08-26")
+    def read(path, sheet=None):
+        w = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        rows = list((w[sheet] if sheet else w.active).values); w.close(); return rows
+    published = read(a["output"])
+    assert published == read(b["output"], "今日中文清单")
+    row = dict(zip(published[0], published[1]))
+    assert row["标题"] == "家用清洁布" and row["产品详情"] == "材质：塑料"
+    assert row["折后价"] == record["current_price"] and row["商品链接"] == record["product_url"]
+    manifest = json.loads(Path(a["manifest"]).read_text("utf8"))
+    assert manifest["export_repair"]["audited_zh_rows_hash"] == manifest["export_repair"]["published_zh_rows_hash"]
+    assert manifest["delivery_note_cleanup"]["changed_cells"] > 0
+    report = json.loads(Path(a["repair_report"]).read_text("utf8"))
+    assert any(e["rule"] == "APPROVED_EXPORT_OVERRIDE" and e["approval_source"] == str(approved) for e in report["repairs"])
+    again = service.export_catalog(cfg, language="zh", export_date="2026-08-26", no_images=True)
+    assert published == read(again["output"])

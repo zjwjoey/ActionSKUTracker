@@ -94,6 +94,9 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--research-release", action="store_true", help="启用严格中文修复发布门禁")
     he = sub.add_parser("export-history", help="导出历史 Presence 上下架矩阵")
     he.add_argument("--date", required=True, help="导出标记日期（YYYY-MM-DD）")
+    ew = sub.add_parser('export-difference-whitelist', help='只读查看字段差异白名单，不加载生产配置或写入业务数据')
+    ew.add_argument('--registry', required=True)
+    ew.add_argument('--sku', help='只查看一个货号的登记项；不会放行整个货号')
     ims = sub.add_parser("image-sync", help="同步正式 CURRENT 的本地图片资产")
     ims.add_argument("--date", required=True, help="业务日期（YYYY-MM-DD）")
     ims.add_argument("--run-id", help="可选：指定正式 run")
@@ -317,7 +320,7 @@ def build_parser() -> argparse.ArgumentParser:
     sroots.add_argument("--roots")
     sroots.add_argument("--data-root")
     st = sfsub.add_parser("task-workspace", help="复用P2临时任务目录，集中脚本/数据/调试输出；不删除文件")
-    st.add_argument("--scratch-root", required=True)
+    st.add_argument("--scratch-root", default=None)
     st.add_argument("--owner-task", required=True)
     st.add_argument("--run-id", required=True)
     st.add_argument("--budget-mib", type=int, default=128)
@@ -337,6 +340,22 @@ def main(argv=None) -> int:
         # Must be set before load_settings() so database_path() resolves the
         # explicit production data root rather than an empty worktree DB.
         os.environ["ACTION_TRACKER_PROJECT_ROOT"] = str(args.data_root)
+    if args.command == 'export-difference-whitelist':
+        from collections import Counter
+        from .exporting.difference_whitelist import DifferenceWhitelist
+        try:
+            registry = DifferenceWhitelist.load(args.registry)
+        except (OSError, ValueError, TypeError) as exc:
+            print(json.dumps({'status':'BLOCKED', 'reason':str(exc)}, ensure_ascii=False), file=sys.stderr)
+            return 2
+        entries = [item for item in registry.entries.values() if not args.sku or item['sku']==args.sku]
+        result = {'status':'PASS','tracked_skus':len(registry.tracked_skus), 'entry_count':len(entries),
+                  'status_counts':dict(Counter(item['status'] for item in entries)),
+                  'read_only':True,'production_apply':False,'whole_sku_bypass':False}
+        if args.sku:
+            result.update(sku=args.sku, entries=entries)
+        print(json.dumps(result,ensure_ascii=False))
+        return 0
     if args.command == "storage-foundation":
         from .operations.storage_cli import run_storage_command
         from .operations.storage_foundation import StorageError

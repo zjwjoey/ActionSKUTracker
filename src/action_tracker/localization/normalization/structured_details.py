@@ -76,15 +76,26 @@ def parse_structured_details(text: str) -> tuple[StructuredDetail, ...]:
         if not match:
             # Finite official flattened labels: preserve original fragment,
             # recover only a syntax boundary, never guess a damaged key's meaning.
-            match = re.fullmatch(r"(Apto para el lavavajillas|Apto para el microondas|Incluye oído|Resistente al horno)\s+(Sí|Si|No)", part, re.I)
+            match = re.fullmatch(r"(Apto para el lavavajillas|Apto para el microondas|Incluye oído|Resistente al horno|Antideslizante|Extraíble|Uso de doble cara)\s+(Sí|Si|No)", part, re.I)
             if not match:
                 match = re.fullmatch(
                     r"(Tipo de taza / vaso|Instalación|Tema|Tipo de decoración de temporada|"
                     r"Tipo de decoración|Tipo de temporada|Tipo de alimentación|Tipo de fuente de luz|"
-                    r"Código de batería)\s+(.+)", part, re.I,
+                    r"Tipos de fuentes de luz|Código de batería|Instrucciones de lavado|"
+                    r"Instrucciones de planchado|Instrucciones de secado|Tipo de cojines|"
+                    r"Apto para tipo de mueble|Tipo de cubierta para muebles)\s+(.+)", part, re.I,
                 )
             if not match:
                 match = re.fullmatch(r"(Incluye fuente de luz|Pilas incluidas)\s+(Sí|Si|No)", part, re.I)
+            if not match:
+                # Historical SKU 3222178 lost colons in these labels. Recover
+                # only explicit label/value boundaries, retaining order and
+                # duplicates; prose and unknown labels remain unparsed.
+                match = re.fullmatch(r"(Halal|Sin azúcar|Sin gluten|Vegano)\s+(Sí|Si|No)", part, re.I)
+            if not match:
+                match = re.fullmatch(r"(Carbohidratos|De los cuales azúcares|Energía)\s+(\d+(?:[.,]\d+)?\s*(?:g|kcal|kJ))", part, re.I)
+            if not match:
+                match = re.fullmatch(r"(Sabor|Consejos sobre conservación|Tipo de caramelo)\s+(.+)", part, re.I)
             if not match:
                 continue
         key, value = match.group(1).strip(), match.group(2).strip()

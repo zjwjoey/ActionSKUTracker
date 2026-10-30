@@ -1,8 +1,10 @@
 # 历史 Presence 的唯一事实来源。每增加一期，只增加一项；禁止由 first_seen/
 # last_seen 或商品字典反推某一期的在售状态。F:\按日期整理 仅只读。
+excluded_months: ['2026-04']
 seed:
-  path: "D:/Users/Administrator/Desktop/Action商品上下架明细 26.08.24.xlsx"
-  sheet: "ACTION商品上下架明细"
+  # User-confirmed historical matrix; read only. Other dated sources remain explicit below.
+  path: "F:/按日期整理/action表格/20261019/20261019_Action商品上下架明细.xlsx"
+  sheet: "商品上下架明细"
   sku_header: "编号"
   presence_capability: true
   absence_capability: true

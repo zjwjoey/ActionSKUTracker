@@ -1,0 +1,401 @@
+[
+  {
+    "sku": "2547682",
+    "field": "name",
+    "source": {
+      "sku": "2547682",
+      "name_es": "Calcetines de senderismo térmicos",
+      "cat1_es": "Artículos deportivos",
+      "cat2_es": "Textil parte inferior",
+      "spec_es": "Números 39-46 | 2 pares | diferentes variantes",
+      "desc_es": "Disponible en los números 39/42 y 43/46\nPara elegir entre azul y gris\nCon estos calcetines largos tendrás los pies calientes cuando hagas senderismo o deportes de invierno. Están confeccionados con un 35 % de lana y son muy suaves y cómodos.",
+      "details_es": "Talla de los calcetines: 39-42; Color: Multicolor, Negro; Material: Lana, Poliéster, Acrílico, Viscosa / rayón, Poliamida, Algodón, Compuesto elastomérico; Cantidad: 2 pares; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud: calcetines: Largo hasta la pantorrilla; Número del artículo: 2547682"
+    },
+    "target": "徒步保暖袜",
+    "field_source_hash": "e4b10e93782b438a17d1d09ccbde066dc55fd1194b100ad4be887ac67b77d2d9",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "2561879",
+    "field": "description",
+    "source": {
+      "sku": "2561879",
+      "name_es": "Sábana bajera ajustable de percal La Maison Rêve",
+      "cat1_es": "Vivienda",
+      "cat2_es": "Accesorios de cama",
+      "spec_es": "180x200 cm | diferentes variantes",
+      "desc_es": "Disponible en varios colores\nHecha de algodón percal tejido\nProtege tu colchón con una sábana bajera de algodón La Maison Rêve.",
+      "details_es": "Color: Beige, Azul, Gris, Blanco, Negro; Material: Algodón; Forma: to de la cama: 180 x 200 cm; Instrucciones de lavado: lavado a máquina hasta 60 °C; Instrucciones de planchado: Planchado a temperatura máxima de 150 º C; Instrucciones de secado: Apto para secar a baja temperatura; Tipo de sábanas de cama: Sábanas bajeras; Número del artículo: 2561879"
+    },
+    "target": "多种颜色可选；采用棉质密织平纹面料；La Maison Rêve棉床笠，可保护床垫。",
+    "field_source_hash": "377b2871539b99b255e0178109ac68cfacd8b0a61ff7ac1bba3dc82b4058f81b",
+    "blocked_rules": [
+      "SPANISH_RESIDUAL"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "2577538",
+    "field": "details",
+    "source": {
+      "sku": "2577538",
+      "name_es": "Colgadores WC Tri-Fresh",
+      "cat1_es": "Hogar",
+      "cat2_es": "Productos de limpieza",
+      "spec_es": "2 unidades | diferentes variantes",
+      "desc_es": "Limpia el inodoro después de cada uso\nDesprende un aroma fresco\nSin fosfato\nDisfruta de un inodoro fresco y limpio después de cada uso gracias a esta pastilla para inodoro con triple acción.",
+      "details_es": "Contenido: 90 g; Función de descalcificación: Sí; Función de limpieza: Sí; Sustancia: Bloques; Tipo de detergente de limpieza de WC: Producto para la limpieza / refrescante de WC; Tipo de dispensador: Cartucho; Uso previsto: WC; Número del artículo: 2577538"
+    },
+    "target": "含量：90g；除垢功能：是；清洁功能：是；形态：块状；洁厕剂类型：洁厕/清新产品；分配器类型：挂块；用途：马桶；商品编号：2577538",
+    "field_source_hash": "54811c9c418baa85fdf23fd0c98d873dd39e9db9bf6417c0c9041d7febd43d5a",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "REVIEW_REQUIRED",
+    "review_note": "Cartucho译为挂块缺少明确形态依据，候选单独待核；本夹具只断言已确认的QA误拦规则，不作为译文Gold。"
+  },
+  {
+    "sku": "3005338",
+    "field": "details",
+    "source": {
+      "sku": "3005338",
+      "name_es": "Balanza inteligente",
+      "cat1_es": "Cuidado personal",
+      "cat2_es": "Salud",
+      "spec_es": "Con aplicación",
+      "desc_es": "Balanza con pantalla LCD\nMide el peso, el porcentaje de grasa, la masa muscular y muchos otros valores\nConecta con iOS y smartphones Android a través de bluetooth\n¿Quieres adelgazar y llevar un estilo de vida saludable? Analiza tus logros con esta balanza inteligente que controla tu peso y otros factores como el porcentaje de grasa, el BMI y la masa muscular.",
+      "details_es": "Color: Negro; Antideslizante: Sí; Análisis corporal: Sí; Código de batería: AAA; Digital: Sí; Iluminación de la pantalla: Sí; Incluye expositor: Sí; Intervalo de peso: 0.1 kg; Número de pilas necesarias: 2; Pilas incluidas: No; Tipo de alimentación: Batería; Tipo de medición: Índice de masa corporal, Masa ósea, Masa muscular, Porcentaje de grasa, Porcentaje de humedad, Grasa visceral; Tipo de monitor de diagnóstico doméstico: Báscula; Unidad de peso: Kilogramo; Visualización: Digital; Visualización de las necesidades calóricas: Sí; Número del artículo: 3005338"
+    },
+    "target": "颜色：黑色；防滑：是；身体分析：是；电池代码：AAA；数字显示：是；屏幕照明：是；含展示架：是；称重分度值：0.1千克；所需电池数量：2；是否附带电池：否；供电方式：电池；测量类型：身体质量指数、骨量、肌肉量、脂肪百分比、水分百分比、内脏脂肪；家用诊断监测仪类型：体重秤；重量单位：千克；显示方式：数字；热量需求显示：是；商品编号：3005338",
+    "field_source_hash": "cc4d052f888b8667c10ad0b2c1ddf246c9701096f18fa8bd36071315db56cc8f",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3005642",
+    "field": "details",
+    "source": {
+      "sku": "3005642",
+      "name_es": "Colgador WC Active Power 7-in-1",
+      "cat1_es": "Hogar",
+      "cat2_es": "Productos de limpieza",
+      "spec_es": "Diferentes variantes",
+      "desc_es": "Deja el inodoro limpio y fresco de forma duradera\nTiñe el agua de color\nPara elegir entre diferentes variantes\nUsa este colgador con 7 ingredientes activos para mantener limpio el inodoro.",
+      "details_es": "Color: Azul, Verde; Contenido: 39 g; Función de limpieza: Sí; Incluye recarga: No; Sustancia: Bloques; Tipo de detergente de limpieza de WC: Producto para la limpieza / refrescante de WC; Uso previsto: Taza del váter; Número del artículo: 3005642"
+    },
+    "target": "颜色：蓝色、绿色；含量：39g；清洁功能：是；含替换装：否；形态：块状；洁厕剂类型：洁厕/清新产品；用途：马桶便池；商品编号：3005642",
+    "field_source_hash": "c74c7fc955050ea287ddf105bca5a5175df52cf474290882a0ce41b6b26cc890",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3005783",
+    "field": "details",
+    "source": {
+      "sku": "3005783",
+      "name_es": "Colgador WC Bref Power Activ' Flower Sensation",
+      "cat1_es": "Hogar",
+      "cat2_es": "Productos de limpieza",
+      "spec_es": "50 gramos",
+      "desc_es": "La espuma limpia el inodoro después de cada uso\nCon un potente impulso aromático\nIncluso el inodoro huele a flores cuando colocas este inodoro Bref en el borde. Desprende un agradable aroma de flores y mantiene el inodoro limpio de forma duradera.",
+      "details_es": "Color: Multicolor; Función de limpieza: Sí; Sustancia: Bloques; Tipo de detergente de limpieza de WC: Producto para la limpieza / refrescante de WC; Tipo de dispensador: Cartucho; Uso previsto: WC; Número del artículo: 3005783"
+    },
+    "target": "颜色：彩色；清洁功能：是；形态：块状；洁厕剂类型：洁厕/清新产品；分配器类型：挂块；用途：马桶；商品编号：3005783",
+    "field_source_hash": "524b4723899a96ba8733e9d3d2ecb0c33f8ca8376dac847bddfcb24456ab1480",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "REVIEW_REQUIRED",
+    "review_note": "Cartucho译为挂块缺少明确形态依据，候选单独待核；本夹具只断言已确认的QA误拦规则，不作为译文Gold。"
+  },
+  {
+    "sku": "3007103",
+    "field": "details",
+    "source": {
+      "sku": "3007103",
+      "name_es": "Gominolas para el cabello y las uñas Innovit Arándanos",
+      "cat1_es": "Cuidado personal",
+      "cat2_es": "Salud",
+      "spec_es": "60 unidades | 145 gramos",
+      "desc_es": "Contiene biotina, que contribuye al crecimiento y al fortalecimiento\nDosis recomendada: Dos gominolas, una vez al día\nCon riquísimo sabor a arándanos\nConsigue un cabello y unas uñas más sanos con muy poco esfuerzo. Lo único que tienes que hacer es tomarte dos de estas gominolas una vez al día. El zinc y el selenio que contienen, entre otros, hace que las gominolas contribuyan al mantenimiento del cabello y las uñas. Por otra parte, la biotina ayuda también a un crecimiento capilar normal y a fortalecer el cabello. Consigue unos rizos y unas uñas bonitos y fuertes.",
+      "details_es": "Cantidad: 60 unidades; Contenido: 145 g; Método de administración: Oral; Sabor: Arándano; Sustancia: Goma; Uso previsto como: Suplemento nutricional; Vitaminas y minerales: Combinación; Número del artículo: 3007103"
+    },
+    "target": "数量：60件；含量：145g；使用方式：口服；口味：蓝莓；形态：软糖；预期用途：营养补充剂；维生素和矿物质：组合型；商品编号：3007103",
+    "field_source_hash": "da2177ba54b58e77cd26e17ba19193f6201bb94038a4749a256dd909fcf01ecc",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3010189",
+    "field": "details",
+    "source": {
+      "sku": "3010189",
+      "name_es": "Colgadores WC Active Turqoise Power 7-in-1",
+      "cat1_es": "Hogar",
+      "cat2_es": "Productos de limpieza",
+      "spec_es": "3 unidades",
+      "desc_es": "Inodoro fresco visible con líquido azul o turquesa\nNeutraliza los malos olores\nForma eficiente con efecto duradero",
+      "details_es": "Color: Azul, Verde; Cantidad: 3 unidades; Contenido: 117 g; Función de limpieza: Sí; Olor: Fresco; Sustancia: Barra; Tipo de detergente de limpieza de WC: Producto para la limpieza / refrescante de WC; Uso previsto: Taza del váter; Número del artículo: 3010189"
+    },
+    "target": "颜色：蓝色、绿色；数量：3件；含量：117g；清洁功能：是；气味：清新；形态：棒状；洁厕剂类型：洁厕/清新产品；用途：马桶便池；商品编号：3010189",
+    "field_source_hash": "bb50c5f3a9b773de64c7d184dc2405500a98f8d0d008203f49593eca121ddcb5",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3014635",
+    "field": "details",
+    "source": {
+      "sku": "3014635",
+      "name_es": "Colgador de inodoro Bref Power Activ' Beach Vibes",
+      "cat1_es": "Hogar",
+      "cat2_es": "Productos de limpieza",
+      "spec_es": "50 gramos",
+      "desc_es": "Fácil de fijar al borde el inodoro\nDifunde un agradable aroma\nBloque de baño con 4 elementos activos: espuma limpiadora, fórmula antical, antisuciedad y frescor adicional.",
+      "details_es": "Contenido: 50 g; Función de limpieza: Sí; Tipo de detergente de limpieza de WC: Producto para la limpieza / refrescante de WC; Uso previsto: Taza del váter; Número del artículo: 3014635"
+    },
+    "target": "含量：50g；清洁功能：是；洁厕剂类型：洁厕/清新产品；用途：马桶便池；商品编号：3014635",
+    "field_source_hash": "19b404b1183ee039a3123c3b7f176e9f1b84b7d0223afbaeecc1f2bbc221ac4c",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3209349",
+    "field": "name",
+    "source": {
+      "sku": "3209349",
+      "name_es": "Bálsamo labial y barra de colorete en gelatina FAB Factory",
+      "cat1_es": "Cuidado personal",
+      "cat2_es": "Maquillaje",
+      "spec_es": "Diferentes variantes",
+      "desc_es": "Apto para labios y mejillas\nLa textura de tipo gelatina es maravillosamente ligera y refrescante para la piel\nProporciona un brillo sutil",
+      "details_es": "Color: Rojo, Rosa; Contenido: 7 g; Duradero: Sí; Sustancia: Barra; Tipo de cosmética labial: Brillo de labios; Número del artículo: 3209349"
+    },
+    "target": "果冻质地润唇膏与腮红棒",
+    "field_source_hash": "630025a3f360bd7ffddd882555d947209f2752a28d74c561f0d3b55dd4634af2",
+    "blocked_rules": [
+      "PROTECTED_TOKEN_MISSING"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3210697",
+    "field": "name",
+    "source": {
+      "sku": "3210697",
+      "name_es": "Paño hidrofílico Hoodadoo",
+      "cat1_es": "Cuidado personal",
+      "cat2_es": "Cuidados para el bebé",
+      "spec_es": "100x100 cm | diferentes variantes",
+      "desc_es": "Formato extragrande (XXL)\nProducto hecho de algodón 100 %\nPerfecto para envolver, secar o como base. Disponibles en los mejores colores y estampados. Producto hecho de algodón 100 %, muy suave para la piel sensible del bebé.",
+      "details_es": "Color: Diseño; Material: Algodón; Instrucciones de lavado: lavado a máquina hasta 60 °C; Instrucciones de secado: Apto para secar a baja temperatura; Número del artículo: 3210697"
+    },
+    "target": "吸水布",
+    "field_source_hash": "ef0eb29b0f208983cc49c3b775c46afac3d7a88427394150ddd8570822d233a1",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3210699",
+    "field": "name",
+    "source": {
+      "sku": "3210699",
+      "name_es": "Paños hidrofílicos Hoodadoo",
+      "cat1_es": "Cuidado personal",
+      "cat2_es": "Cuidados para el bebé",
+      "spec_es": "3 piezas | 60x60 cm | diferentes variantes",
+      "desc_es": "3 unidades por envase\nProducto hecho de algodón 100 %\nAction se enorgullece de formar parte del programa Better Cotton Initiative (BCI)\nEstos paños hidrofílicos extrasuaves 100 % algodón son perfectos para cualquier situación con tu peque. Tanto si los utilizas para secar, como base o como paño de peluche, ¡siempre son prácticos!",
+      "details_es": "Color: Multicolor, Diseño, Blanco; Material: Algodón; Cantidad: 3 unidades; Instrucciones de lavado: lavado a máquina hasta 60 °C; Instrucciones de secado: Apto para secar a baja temperatura; Número del artículo: 3210699"
+    },
+    "target": "吸水布",
+    "field_source_hash": "079c82c1bcc0db484e743d9905fef0ec866c8614e7f2a2f33be34d96b51d707f",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3212291",
+    "field": "details",
+    "source": {
+      "sku": "3212291",
+      "name_es": "Limpiador de inodoros Miss Bubble",
+      "cat1_es": "Hogar",
+      "cat2_es": "Productos de limpieza",
+      "spec_es": "750 ml",
+      "desc_es": "Para un inodoro limpio y fresco\nEficaz contra la cal y las manchas incrustadas\nDeja un agradable aroma fresco y duradero",
+      "details_es": "Contenido: 750 ml; Función de descalcificación: Sí; Función de limpieza: Sí; Rellenable: No; Sin perfume: No; Sustancia: Líquido/liquidez; Tipo de detergente de limpieza de WC: Producto para la limpieza / refrescante de WC; Tipo de dispensador: Botella exprimible; Uso previsto: Taza del váter; Número del artículo: 3212291"
+    },
+    "target": "含量：750ml；除垢功能：是；清洁功能：是；可重新填充：否；无香型：否；形态：液体/液态；洁厕剂类型：洁厕/清新产品；分配器类型：挤压瓶；用途：马桶便池；商品编号：3212291",
+    "field_source_hash": "a484a966b5af58cb2bec9685a8edc26d88091ec3d251d07c1edc650068c03e1b",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3213453",
+    "field": "name",
+    "source": {
+      "sku": "3213453",
+      "name_es": "Calcetines para niña Pairz",
+      "cat1_es": "Moda",
+      "cat2_es": "Textil parte inferior",
+      "spec_es": "Números 23-30 | 5 pares | diferentes variantes",
+      "desc_es": "Talón y puntera bien reforzados\nDisponibles en varios colores y estampados\nAction se enorgullece de formar parte del programa Better Cotton Initiative (BCI)",
+      "details_es": "Talla de los calcetines: 23-26; Color: Diseño; Material: Algodón, Poliamida, Compuesto elastomérico; Cantidad: 5 pares; Género: Mujer; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud: calcetines: Largo hasta la pantorrilla; Número del artículo: 3213453"
+    },
+    "target": "女童袜",
+    "field_source_hash": "dd1de264f13c6bfc18a211e897f4a1d577905c278d9612cb3a22135ddf697bc1",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3214469",
+    "field": "name",
+    "source": {
+      "sku": "3214469",
+      "name_es": "Ositos de goma para deporte Accelerate",
+      "cat1_es": "Cuidado personal",
+      "cat2_es": "Salud",
+      "spec_es": "90-100 gramos | diferentes variantes",
+      "desc_es": "Contienen poca grasa\nA elegir entre energía o proteína\n¿Te apetecen unas golosinas, pero quieres tomar una decisión más consciente? Estas gominolas de Accelerate contienen muy poca grasa. Las gominolas ricas en proteínas son ideales si quieres picar algo y cumplir tus objetivos proteicos. Las energéticas son ideales para tomar antes del entrenamiento o en cualquier momento del día cuando necesites un chute de energía adicional.",
+      "details_es": "Color: Multicolor; Contenido: 100 g; Método de administración: Oral; Uso previsto como: Suplemento nutricional; Número del artículo: 3214469"
+    },
+    "target": "运动小熊软糖",
+    "field_source_hash": "056b2a29a26ce307af64de5c9f919eb82e7df005cbd7d1b690f7d48aa35397f2",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3218762",
+    "field": "name",
+    "source": {
+      "sku": "3218762",
+      "name_es": "Calcetines para niño Pairz",
+      "cat1_es": "Moda",
+      "cat2_es": "Textil parte inferior",
+      "spec_es": "Números 31-38 | 5 pares | diferentes variantes",
+      "desc_es": "Parte reforzada en talones y puntera\nLlegan hasta la mitad de la pantorrilla\nElige entre varios diseños",
+      "details_es": "Talla de los calcetines: 35-38; Color: Multicolor, Diseño; Material: Algodón, Poliamida, Compuesto elastomérico; Cantidad: Paquete de 5; Género: Hombre; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud: calcetines: Largo hasta la pantorrilla; Número del artículo: 3218762"
+    },
+    "target": "男童袜",
+    "field_source_hash": "b1c5b2115c60c5fea7250d8bf53b6ded9f0eda97fab8d39719fd44ed3a233fbb",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3223380",
+    "field": "description",
+    "source": {
+      "sku": "3223380",
+      "name_es": "Fundas de cojín de algodón percal La Maison Rêve",
+      "cat1_es": "Vivienda",
+      "cat2_es": "Accesorios de cama",
+      "spec_es": "50x80 cm | 2 uds. | varios colores",
+      "desc_es": "Funda de almohada de algodón percal 100 %\nSensación suave y fresca\nEl material es transpirable\nEstas fundas de almohada de La Maison Rêve proporcionan un confort adicional para dormir. El algodón 100 % percal tiene un tacto maravillosamente fresco y suave, además de una buena transpirabilidad, ideal para las noches cálidas. Ideal para un dormitorio cómodo y relajado. Las fundas se mantienen bonitas incluso después de varios lavados. De este modo, disfrutarás de un sueño fresco y reparador cada noche.",
+      "details_es": "Color: Beige, Gris, Rosa, Blanco; Material: Algodón; Cantidad: 2 unidades; Instrucciones de lavado: lavado a máquina hasta 60 °C; Instrucciones de planchado: Planchado a temperatura máxima de 150 º C; Instrucciones de secado: Apto para secar a baja temperatura; Tipo de funda de almohada: Funda de almohada rectangular; Tipo de textil: Tejido de algodón; Número del artículo: 3223380"
+    },
+    "target": "100%棉质密织平纹枕套\n触感柔软清爽\n材质透气性佳\nLa Maison Rêve 的这款枕套为您的睡眠带来额外的舒适体验。100%棉质密织平纹面料触感清凉柔滑，且透气性极佳，特别适合温暖的夜晚。是打造舒适放松卧室的理想之选。即使多次洗涤，枕套依然保持美观如新，让您每晚都能享受清新舒爽的优质睡眠。",
+    "field_source_hash": "1bd209df6f5f4619a97d6235a17a7f20e6620a41a02e6f98b2aae101803dba6b",
+    "blocked_rules": [
+      "SPANISH_RESIDUAL"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3225591",
+    "field": "name",
+    "source": {
+      "sku": "3225591",
+      "name_es": "Calcetines térmicos para mujer",
+      "cat1_es": "Artículos deportivos",
+      "cat2_es": "Textil parte inferior",
+      "spec_es": "3 pares | números 35-42 | diferentes variantes",
+      "desc_es": "Muy calentitos y cómodos\nTejido suave con algodón\nMantén los pies bien calentitos con estos calcetines térmicos de mujer. Estos suaves calcetines están especialmente diseñados para ofrecer una mayor comodidad en los días fríos. Ideal para casa, de paseo o de viaje.",
+      "details_es": "Talla de los calcetines: 35-38; Color: Multicolor; Material: Algodón, Poliamida, Poliéster, Compuesto elastomérico; Cantidad: 3 unidades; Género: Mujer; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de secado: No secar en tambor de secado; Número del artículo: 3225591"
+    },
+    "target": "女士保暖袜",
+    "field_source_hash": "63d54944688244e1e95156f65b99b547a0a4045d786fac6293e120931c92e692",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  },
+  {
+    "sku": "3225665",
+    "field": "name",
+    "source": {
+      "sku": "3225665",
+      "name_es": "Calcetines para estar por casa para mujer",
+      "cat1_es": "Moda",
+      "cat2_es": "Textil parte inferior",
+      "spec_es": "Números 35-42 | 2 pares | diferentes variantes",
+      "desc_es": "Modelo de media caña, llegan por encima del tobillo y por debajo de la pantorrilla\nSon increíblemente suaves y dan sensación de calidez\nPara elegir entre Snoopy, Hello Kitty, Minnie Mouse o Stitch, entre otros\nEstos calcetines de estar por casa, tan mullidos, te mantendrán los pies bien calentitos. Este tejido suave resulta muy agradable al tacto y es perfecto para relajarse en el sofá o para conciliar el sueño si tiendes a tener los pies fríos. Ideal para momentos de relax en casa.",
+      "details_es": "Talla de los calcetines: 39-42; Color: Multicolor; Material: Poliamida, Compuesto elastomérico; Cantidad: 2 unidades; Género: Mujer; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud: calcetines: Largo hasta la pantorrilla; Número del artículo: 3225665"
+    },
+    "target": "女士居家袜",
+    "field_source_hash": "957366f2e572b374a5b54a8dc15311873e8b4d00df99fdb73f6e30a412ab4b7e",
+    "blocked_rules": [
+      "SEMANTIC_FACT_DROPPED"
+    ],
+    "evidence_ref": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-31782c84fc4f47459f3b39ddfd708ec9\\data\\blocked_fields.json",
+    "semantic_review": "KEEP",
+    "review_note": "核对本字段原文；夹具验证QA误拦，不代表正式审批。"
+  }
+]

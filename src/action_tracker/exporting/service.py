@@ -152,6 +152,7 @@ class ExportSource:
     source_master_file_hash: str | None
     directory: Path | None = None
     source_commit_id: str | None = None
+    presence_source_commit_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -165,6 +166,35 @@ class FinalZhProjection:
     repair_report: ExportRepairReport
     repair_audit: dict[str, Any]
     rows_hash: str
+    delivery_note_cleanup: dict[str, Any] | None = None
+
+
+def _clean_delivery_notes(cfg, rows, *, language, report=None):
+    """Explicit delivery-only policy shared by Catalog and Template1."""
+    from .repair_rules import clean_review_notes
+    from .repair_report import RepairEvent
+    enabled = (cfg.get("export_delivery") or {}).get("remove_review_notes", False)
+    if not isinstance(enabled, bool):
+        raise ExportValidationError("DELIVERY_NOTE_POLICY_MUST_BE_BOOLEAN")
+    if not enabled:
+        return rows, None
+    output = [dict(row) for row in rows]; changes = []
+    columns = ("备注",) if language == "es" else ("备注", "标题", "分类1", "分类2", "规格", "描述", "产品详情")
+    for row in output:
+        for column in columns:
+            before = row.get(column)
+            after = clean_review_notes(before, remarks=column == "备注", language=language)
+            if before == after:
+                continue
+            row[column] = after
+            change = {"sku": str(row.get("编号") or ""), "column": column, "before": before, "after": after}
+            changes.append(change)
+            if report is not None:
+                report.events.append(RepairEvent(sku=change["sku"], field=column, source_field="delivery_note",
+                    source=before, source_hash=hashlib.sha256(str(before).encode()).hexdigest(),
+                    before=before, after=after, rule="DELIVERY_REVIEW_NOTE_CLEANUP", rule_version="1.0"))
+    return output, {"policy": "EXPLICIT_DELIVERY_REVIEW_NOTE_CLEANUP_V1", "changed_cells": len(changes),
+                    "changes": changes, "does_not_waive_qa_or_approval": True}
 
 
 def build_final_zh_projection(
@@ -176,6 +206,8 @@ def build_final_zh_projection(
     projection rather than reconstructing a second Chinese row set.
     """
     mode = _release_mode(release_mode)
+    if mode == ANNOTATED_RELEASE and (cfg.get("export_delivery") or {}).get("remove_review_notes", False):
+        raise ExportValidationError("ANNOTATED_DELIVERY_REQUIRES_REVIEW_NOTES")
     report = ExportRepairReport(run_id=source.run_id, rule_version=ExportRepairEngine.VERSION)
     dictionary_hash: str | None = None
     unresolved_brand_ids: list[str] = []
@@ -189,21 +221,22 @@ def build_final_zh_projection(
         if source.kind == "SQLITE_CURRENT":
             rows, fallbacks = build_zh_rows_from_localized_source(
                 source.records, category_context=dictionary, repair_report=report,
-                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
+                repair_overrides_path=Path(cfg.get("export_repair_overrides_path") or default_overrides_path(Path(cfg["project_root"]))),
             )
         else:
             if dictionary is None:
                 raise ExportValidationError("FORMAL_DICTIONARY_MISSING")
             records = source.records
-            if source.kind == "FORMAL_SNAPSHOT":
+            if source.kind in {"FORMAL_SNAPSHOT", "MASTER_CURRENT"}:
                 records, _ = _reuse_source_bound_localizations(cfg, source.records)
             rows, fallbacks = build_zh_rows(
                 records, dictionary, repair_report=report,
-                repair_overrides_path=default_overrides_path(Path(cfg["project_root"])),
+                repair_overrides_path=Path(cfg.get("export_repair_overrides_path") or default_overrides_path(Path(cfg["project_root"]))),
             )
             unresolved_brand_ids = unresolved_brand_ids_for_records(source.records, dictionary)
     except DictionaryJoinError as exc:
         raise ExportValidationError(str(exc)) from exc
+    rows, note_cleanup = _clean_delivery_notes(cfg, rows, language="zh", report=report)
     validate_zh_rows_against_source(rows, source.records)
     validate_output_rows(rows)
     # Finalize can discover empty targets. It must run before the audit and
@@ -212,7 +245,11 @@ def build_final_zh_projection(
         source.records, rows, source_hash=canonical_source_hash(source.records),
         sku_set_hash=_sku_set_hash(str(row["编号"]) for row in rows),
     )
-    audit = audit_repaired_rows(source.records, rows, allowed_tokens=allowed_tokens)
+    from .difference_whitelist import whitelist_from_config
+    audit = audit_repaired_rows(source.records, rows, allowed_tokens=allowed_tokens,
+                               difference_whitelist=whitelist_from_config(cfg),
+                               category_mapping={key: str(value.get('cat1_zh') or '')
+                                   for key, value in dictionary.category_by_cat1.items()} if dictionary else None)
     report.set_audit(audit)
     audit = dict(report.audit)
     rows_hash = canonical_export_rows_hash(rows)
@@ -229,7 +266,7 @@ def build_final_zh_projection(
     return FinalZhProjection(
         rows=tuple(rows), fallback_counts=dict(fallbacks), dictionary_hash=dictionary_hash,
         unresolved_brand_ids=tuple(unresolved_brand_ids), allowed_tokens=frozenset(allowed_tokens),
-        repair_report=report, repair_audit=audit, rows_hash=rows_hash,
+        repair_report=report, repair_audit=audit, rows_hash=rows_hash, delivery_note_cleanup=note_cleanup,
     )
 
 
@@ -318,7 +355,8 @@ def _export_catalog_impl(
             raise ExportValidationError(f"SELECTION_MEMBER_NOT_IN_FORMAL_SOURCE: {','.join(missing[:10])}")
         source = ExportSource(source.export_date, source.run_id, source.kind,
                               tuple(r for r in source.records if str(r.get("sku") or "") in members),
-                              source.source_master_file_hash, source.directory, source.source_commit_id)
+                              source.source_master_file_hash, source.directory, source.source_commit_id,
+                              source.presence_source_commit_id)
         selection_source_commit_id = selection.get("source_commit_id")
     validate_source_records(source.records, export_date=export_date)
     dictionary_hash = None
@@ -331,6 +369,7 @@ def _export_catalog_impl(
         validate_spanish_source_fields(source.records)
         rows = build_es_rows(source.records)
         es_projection_report = build_es_projection_report(source.records, rows)
+        rows, delivery_note_cleanup = _clean_delivery_notes(cfg, rows, language="es")
     elif language == "zh":
         projection = build_final_zh_projection(cfg, source, release_mode=release_mode)
         rows = [dict(row) for row in projection.rows]
@@ -341,6 +380,7 @@ def _export_catalog_impl(
         repair_report = projection.repair_report
         repair_audit = projection.repair_audit
         final_zh_rows_hash = projection.rows_hash
+        delivery_note_cleanup = projection.delivery_note_cleanup
     else:
         raise ExportValidationError(f"EXPORT_LANGUAGE_UNSUPPORTED: {language}")
     validate_output_rows(rows)
@@ -404,6 +444,7 @@ def _export_catalog_impl(
             "source_master_hash": source_hash,
             "source_master_file_hash": source.source_master_file_hash,
             "source_kind": source.kind,
+            "presence_source_commit_id": source.presence_source_commit_id,
             "profile_id": profile.profile_id,
             "profile_version": profile.version,
             "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -424,6 +465,7 @@ def _export_catalog_impl(
             "artifact_source_commit_id": artifact_source_commit_id,
             "release_mode": release_mode.casefold(),
             "output_sha256": hashlib.sha256(preview_path.read_bytes()).hexdigest(),
+            "delivery_note_cleanup": delivery_note_cleanup,
         }
         if release_mode == PRODUCTION_RELEASE:
             manifest["strict_release_audit"] = release_audit
@@ -590,6 +632,11 @@ def _reuse_source_bound_localizations(
                 "desc_zh": "description", "details_zh": "details",
             }[target_field]
             metadata = provenance.get(canonical) or {}
+            if metadata.get("source_hash"):
+                from ..services.hashing import localization_field_source_hash
+                if metadata["source_hash"] != localization_field_source_hash(reference, canonical):
+                    source_changed_counts[target_field] += 1
+                    continue
             freshness = str(
                 metadata.get("freshness_status")
                 or reference.get("zh_freshness_status")
@@ -705,22 +752,28 @@ def _resolve_sqlite_current_source(
 
     try:
         repo = ProductionRepository(database_path(cfg))
-        info = repo.commit_info(requested_run_id) if requested_run_id else repo.latest_commit_info()
+        latest = repo.latest_commit_info()
+        observation = repo.latest_observation_commit_info()
+        info = repo.commit_info(requested_run_id) if requested_run_id else (observation or latest)
     except ProductionRepositoryError as exc:
         raise ExportValidationError(str(exc)) from exc
     if not info or str(info.get("run_date") or "") != export_date:
         return None
-    latest = repo.latest_commit_info()
-    if latest and info.get("run_id") != latest.get("run_id"):
+    authoritative = observation or latest
+    if authoritative and info.get("run_id") != authoritative.get("run_id"):
         # A historical commit cannot be reconstructed from the current DB
         # projection; force the immutable snapshot path instead.
         return None
     records = tuple(repo.load_current_export_records())
+    after = repo.latest_commit_info()
+    if (latest or {}).get("commit_id") != (after or {}).get("commit_id"):
+        raise ExportValidationError("SQLITE_EXPORT_HEAD_CHANGED_DURING_READ")
     if not records:
         raise ExportValidationError("SQLITE_CURRENT_SOURCE_EMPTY")
     return ExportSource(
         export_date=export_date, run_id=str(info["run_id"]), kind="SQLITE_CURRENT",
-        records=records, source_master_file_hash=None, directory=None, source_commit_id=str(info["commit_id"]),
+        records=records, source_master_file_hash=None, directory=None,
+        source_commit_id=str((latest or info)["commit_id"]), presence_source_commit_id=str(info["commit_id"]),
     )
 
 

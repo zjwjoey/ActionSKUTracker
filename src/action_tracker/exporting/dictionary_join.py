@@ -27,6 +27,8 @@ from ..dictionary import (
 from ..services.normalization import parse_bool_zh, parse_price
 from ..localization.policy import OMIT_BRAND_FROM_CHINESE_DISPLAY
 from ..localization.formatter import format_spec
+from ..localization.provenance import coerce_field_provenance
+from ..services.hashing import localization_field_source_hash
 from .repair import ExportRepairEngine
 from .repair_report import ExportRepairReport
 from .repair_rules import (
@@ -281,6 +283,10 @@ def build_zh_rows(
             description = repair_description(description, _none_or_text(record.get("desc_es")))
             details = repair_details(details, _none_or_text(record.get("details_es")))
 
+        if repair_engine is not None:
+            cat1 = repair_engine.apply_override(sku=sku, field="cat1_zh", value=cat1, record=record, source_field="cat1_es")
+            cat2 = repair_engine.apply_override(sku=sku, field="cat2_zh", value=cat2, record=record, source_field="cat2_es")
+            unit_price = repair_engine.apply_override(sku=sku, field="unit_price_zh", value=unit_price, record=record, source_field="unit_price")
         for item in fallbacks:
             fallback_counts[item] = fallback_counts.get(item, 0) + 1
         rows.append({
@@ -300,6 +306,36 @@ def build_zh_rows(
             "备注": _zh_remarks(record, fallbacks),
         })
     return rows, fallback_counts
+
+
+def _approved_primary_fields(record: dict[str, Any]) -> set[str]:
+    """Prefer an applied, current, own-source-bound field over legacy repairs.
+
+    This is projection precedence only. It grants no approval, repairs no
+    provenance and does not replace the release/semantic QA gates. A row-level
+    approval or aggregate source hash cannot protect a field here.
+    """
+    provenance = coerce_field_provenance(record.get("zh_field_provenance"))
+    fields = {
+        "name": ("name_zh", "name_es"), "cat1": ("cat1_zh", "cat1_es"),
+        "cat2": ("cat2_zh", "cat2_es"), "spec": ("spec_zh", "spec_es"),
+        "description": ("desc_zh", "desc_es"), "details": ("details_zh", "details_es"),
+    }
+    protected = set()
+    for canonical, (target, source) in fields.items():
+        metadata = provenance.get(canonical) or {}
+        if (
+            _none_or_text(record.get(source))
+            and _none_or_text(record.get(target))
+            and metadata.get("value") == record.get(target)
+            and metadata.get("source_hash") == localization_field_source_hash(record, canonical)
+            and metadata.get("review_status") in {"APPROVED", "VERIFIED", "HUMAN_REVIEWED", "HUMAN_APPROVED"}
+            and metadata.get("freshness_status") == "CURRENT"
+            and _none_or_text(metadata.get("approved_by"))
+            and _none_or_text(metadata.get("applied_commit_id"))
+        ):
+            protected.add(target)
+    return protected
 
 
 def build_zh_rows_from_localized_source(
@@ -329,6 +365,7 @@ def build_zh_rows_from_localized_source(
         fallbacks: list[str] = []
         plan = engine.primary_export_plan(record)
         resolved: dict[str, Any] = {key: _none_or_text(field.value) for key, field in plan.fields.items()}
+        approved_primary = _approved_primary_fields(record)
         if category_context is not None:
             # PRIMARY values are still the source of truth for approved
             # fields, but an untranslated/fallback category must use the
@@ -341,9 +378,9 @@ def build_zh_rows_from_localized_source(
             mapped_cat2, mapped_cat2_fallback = _resolve_category_field(
                 "cat2_zh", record, {}, {}, category_context, _fact_source_hash(record),
             )
-            if mapped_cat1 and not mapped_cat1_fallback:
+            if "cat1_zh" not in approved_primary and mapped_cat1 and not mapped_cat1_fallback:
                 resolved["cat1_zh"] = mapped_cat1
-            if mapped_cat2 and not mapped_cat2_fallback:
+            if "cat2_zh" not in approved_primary and mapped_cat2 and not mapped_cat2_fallback:
                 resolved["cat2_zh"] = mapped_cat2
             # The SQLite PRIMARY path must apply the same confirmed-brand
             # display policy as the file-dictionary path.  Without this
@@ -379,57 +416,41 @@ def build_zh_rows_from_localized_source(
                 source_field="unit_price", source=record.get("unit_price"), source_hash=source_hash,
                 rule="UNIT_PRICE_NORMALIZE", repairer=repair_unit_price,
             )
-            resolved["name_zh"] = repair_engine.apply(
-                sku=sku, field="name_zh", value=resolved.get("name_zh"), source_field="name_es",
-                source=record.get("name_es"), source_hash=source_hash,
-                rule="TITLE_SOURCE_TOKEN", repairer=lambda value, source: repair_title_with_context(
-                    value, source, excluded_tokens=repair_engine.excluded_display_tokens,
-                ),
+            repairs = (
+                ("name_zh", "name_es", "TITLE_SOURCE_TOKEN", lambda value, source: repair_title_with_context(
+                    value, source, excluded_tokens=repair_engine.excluded_display_tokens)),
+                ("spec_zh", "spec_es", "SPEC_SOURCE_FACTS", lambda value, source: repair_spec(
+                    value, source, force_source_facts=plan.fields["spec_zh"].status != "READY")),
+                ("desc_zh", "desc_es", "DESCRIPTION_SOURCE_FACTS", lambda value, source: repair_content_with_context(
+                    value, source, excluded_tokens=repair_engine.excluded_display_tokens)),
+                ("details_zh", "details_es", "DETAILS_SOURCE_FACTS", lambda value, source: repair_details_with_context(
+                    value, source, excluded_tokens=repair_engine.excluded_display_tokens)),
             )
-            resolved["name_zh"] = repair_engine.apply_override(
-                sku=sku, field="name_zh", value=resolved.get("name_zh"), record=record, source_field="name_es",
-            )
-            resolved["spec_zh"] = repair_engine.apply(
-                sku=sku, field="spec_zh", value=resolved.get("spec_zh"), source_field="spec_es",
-                source=record.get("spec_es"), source_hash=source_hash,
-                rule="SPEC_SOURCE_FACTS", repairer=lambda value, source: repair_spec(
-                    value, source, force_source_facts=plan.fields["spec_zh"].status != "READY",
-                ),
-            )
-            resolved["spec_zh"] = repair_engine.apply_override(
-                sku=sku, field="spec_zh", value=resolved.get("spec_zh"), record=record, source_field="spec_es",
-            )
-            resolved["desc_zh"] = repair_engine.apply(
-                sku=sku, field="desc_zh", value=resolved.get("desc_zh"), source_field="desc_es",
-                source=record.get("desc_es"), source_hash=source_hash,
-                rule="DESCRIPTION_SOURCE_FACTS", repairer=lambda value, source: repair_content_with_context(
-                    value, source, excluded_tokens=repair_engine.excluded_display_tokens,
-                ),
-            )
-            resolved["desc_zh"] = repair_engine.apply_override(
-                sku=sku, field="desc_zh", value=resolved.get("desc_zh"), record=record, source_field="desc_es",
-            )
-            resolved["details_zh"] = repair_engine.apply(
-                sku=sku, field="details_zh", value=resolved.get("details_zh"), source_field="details_es",
-                source=record.get("details_es"), source_hash=source_hash,
-                rule="DETAILS_SOURCE_FACTS", repairer=lambda value, source: repair_details_with_context(
-                    value, source, excluded_tokens=repair_engine.excluded_display_tokens,
-                ),
-            )
-            resolved["details_zh"] = repair_engine.apply_override(
-                sku=sku, field="details_zh", value=resolved.get("details_zh"), record=record, source_field="details_es",
-            )
+            for target, source, rule, repairer in repairs:
+                if target in approved_primary:
+                    continue
+                resolved[target] = repair_engine.apply(
+                    sku=sku, field=target, value=resolved.get(target), source_field=source,
+                    source=record.get(source), source_hash=source_hash, rule=rule, repairer=repairer,
+                )
+                resolved[target] = repair_engine.apply_override(
+                    sku=sku, field=target, value=resolved.get(target), record=record, source_field=source,
+                )
         else:
             resolved["unit_price_zh"] = repair_unit_price(
                 _none_or_text(record.get("unit_price_raw")) or resolved.get("unit_price_zh")
             )
-            resolved["name_zh"] = repair_title(resolved.get("name_zh"), _none_or_text(record.get("name_es")))
-            resolved["spec_zh"] = repair_spec(
-                resolved.get("spec_zh"), _none_or_text(record.get("spec_es")),
-                force_source_facts=plan.fields["spec_zh"].status != "READY",
-            )
-            resolved["desc_zh"] = repair_description(resolved.get("desc_zh"), _none_or_text(record.get("desc_es")))
-            resolved["details_zh"] = repair_details(resolved.get("details_zh"), _none_or_text(record.get("details_es")))
+            if "name_zh" not in approved_primary:
+                resolved["name_zh"] = repair_title(resolved.get("name_zh"), _none_or_text(record.get("name_es")))
+            if "spec_zh" not in approved_primary:
+                resolved["spec_zh"] = repair_spec(
+                    resolved.get("spec_zh"), _none_or_text(record.get("spec_es")),
+                    force_source_facts=plan.fields["spec_zh"].status != "READY",
+                )
+            if "desc_zh" not in approved_primary:
+                resolved["desc_zh"] = repair_description(resolved.get("desc_zh"), _none_or_text(record.get("desc_es")))
+            if "details_zh" not in approved_primary:
+                resolved["details_zh"] = repair_details(resolved.get("details_zh"), _none_or_text(record.get("details_es")))
         source_by_field = {
             "name_zh": "name_es", "cat1_zh": "cat1_es", "cat2_zh": "cat2_es",
             "spec_zh": "spec_es", "desc_zh": "desc_es", "details_zh": "details_es",
@@ -437,6 +458,11 @@ def build_zh_rows_from_localized_source(
         for target_field, source_field in source_by_field.items():
             if not _none_or_text(record.get(source_field)):
                 resolved[target_field] = None
+        if repair_engine is not None:
+            for target, own_source in (("cat1_zh", "cat1_es"), ("cat2_zh", "cat2_es"), ("unit_price_zh", "unit_price")):
+                if target in approved_primary:
+                    continue
+                resolved[target] = repair_engine.apply_override(sku=sku, field=target, value=resolved.get(target), record=record, source_field=own_source)
         labels = {"name_zh": "中文品名", "cat1_zh": "中文分类1", "cat2_zh": "中文分类2", "spec_zh": "中文规格", "unit_price_zh": "中文单价", "desc_zh": "中文描述", "details_zh": "中文产品详情"}
         source_by_field = {
             "name_zh": "name_es", "cat1_zh": "cat1_es", "cat2_zh": "cat2_es",
@@ -631,6 +657,11 @@ def _resolve_product_field(
     manual_value = _text(manual.get(field))
     if manual_value:
         return manual_value, False
+    localized_field = {"name_zh_standard": "name_zh", "spec_zh_standard": "spec_zh"}.get(field)
+    if localized_field in set(record.get("_source_bound_localization_fields") or ()):
+        primary_value = _text(record.get(localized_field))
+        if primary_value and _CJK_RE.search(primary_value):
+            return primary_value, False
     product_value = _text(product.get(field))
     product_hash_matches = _text(product.get("source_hash")) == source_hash
     product_status = _text(product.get("translation_status"))
@@ -641,14 +672,6 @@ def _resolve_product_field(
     if (model_value and _text(model.get("source_hash")) == source_hash
             and _text(model.get("quality_status")).upper() == "OK"):
         return model_value, False
-    localized_field = {
-        "name_zh_standard": "name_zh",
-        "spec_zh_standard": "spec_zh",
-    }.get(field)
-    source_bound_fields = set(record.get("_source_bound_localization_fields") or ())
-    source_bound_value = _text(record.get(localized_field)) if localized_field else ""
-    if localized_field in source_bound_fields and source_bound_value and _CJK_RE.search(source_bound_value):
-        return source_bound_value, False
     # Do not expose a known-polluted Spanish fact as a Chinese fallback.  A
     # manual/model value above may still be used, but absent trusted evidence
     # the field remains blank and is marked for review.

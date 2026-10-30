@@ -165,9 +165,9 @@ def run_storage_command(args) -> dict:
 
 def _task_workspace(args) -> dict:
     """Expose existing P2 ownership/budget journals, without a cleanup executor."""
-    from .storage_lifecycle import ScratchTask, create_candidate, relative_target
+    from .storage_lifecycle import ScratchTask, create_candidate, relative_target, default_task_root
 
-    root = Path(args.scratch_root).resolve()
+    root = Path(args.scratch_root or default_task_root()).resolve()
     protected = [Path(p).resolve() for p in (
         "F:/ActionSKUTracker", "F:/ActionSKUTracker_production", "F:/Action_Master",
         "F:/按日期整理", "F:/Action-ES-Data-System", Path(__file__).resolve().parents[3],

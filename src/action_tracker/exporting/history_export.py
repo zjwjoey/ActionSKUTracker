@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .history import PRESENCE_UNKNOWN, HistoryExportError, build_presence_rows, load_presence_history
-from .template1 import HISTORY_HEADERS, write_history_xlsx
+from .template1 import STANDALONE_HISTORY_HEADERS, write_history_xlsx
 
 
 def export_history(cfg: dict[str, Any], *, export_date: str) -> dict[str, Any]:
@@ -32,7 +32,10 @@ def export_history(cfg: dict[str, Any], *, export_date: str) -> dict[str, Any]:
     manifest_path = output.with_suffix(".manifest.json")
     manifest = {
         "template_id": "action_history_presence",
-        "template_version": 1,
+        "template_version": 2,
+        "fixed_headers": list(STANDALONE_HISTORY_HEADERS),
+        "excluded_months": list(history.excluded_months),
+        "output_sha256": _file_hash(output),
         "export_date": export_date,
         "history_union_sku_count": len(rows),
         "history_dates": list(history.dates),
@@ -63,7 +66,7 @@ def verify_history_xlsx(path: Path, *, history_dates: tuple[str, ...], expected_
             raise HistoryExportError("HISTORY_EXPORT_SHEET_MISMATCH")
         ws = workbook["商品上下架明细"]
         headers = [cell.value for cell in ws[1]]
-        expected_headers = list(HISTORY_HEADERS) + [_compact_date(date) for date in history_dates]
+        expected_headers = list(STANDALONE_HISTORY_HEADERS) + [_compact_date(date) for date in history_dates]
         if headers != expected_headers:
             raise HistoryExportError("HISTORY_EXPORT_HEADERS_MISMATCH")
         if ws.freeze_panes != "A2" or not ws.auto_filter.ref:

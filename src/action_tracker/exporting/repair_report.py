@@ -59,6 +59,10 @@ P0_RULES = frozenset({
     "PROTECTED_TOKEN_CHANGED", "PROTECTED_TOKEN_DUPLICATED", "UNIT_DROPPED",
     "CATEGORY_INVALID", "HTML_RESIDUAL", "SEMANTIC_FACT_DROPPED",
     "TERMINOLOGY_VIOLATION", "FORBIDDEN_TERM",
+    "CATEGORY_SOURCE_MAPPING_MISMATCH",
+    "DETAIL_CONTEXT_MISTRANSLATION",
+    "FIELD_SOURCE_FACT_ADDED",
+    "WEAVE_MISTRANSLATION", "BRAND_SIZE_TOKEN_LEAK",
 })
 
 
@@ -385,6 +389,21 @@ def _token_equivalence_allows(rule_id: str, evidence: Mapping[str, Any], source:
         return True
     if token and token_is_preserved(token, target):
         return True
+    # Unit/standard labels can touch their numeric value. Keep that value
+    # bound to the SAME field; GB must not match Gb, GByte models or 32GBX.
+    if token in {'GB', 'MB', 'TB'}:
+        for match in re.finditer(r'(?<![A-Za-z0-9])(\d+(?:[.,]\d+)?)\s*' + token + r'(?![A-Za-z0-9])', source):
+            number = re.escape(match.group(1)).replace(r'\,', '[.,]')
+            if re.search(r'(?<![A-Za-z0-9])' + number + r'\s*' + token + r'(?![A-Za-z0-9])', target):
+                return True
+    if token.upper() == 'SPF':
+        values = re.findall(r'(?<![A-Za-z0-9])SPF\s*(\d+)(?![A-Za-z0-9])', source, re.I)
+        if any(re.search(r'(?<![A-Za-z0-9])SPF\s*' + re.escape(n) + r'(?![A-Za-z0-9])', target, re.I) for n in values):
+            return True
+    if token.upper() == 'PPP':
+        values = re.findall(r'(?<![A-Za-z0-9])(\d+)\s*PPP(?![A-Za-z0-9])', source, re.I)
+        if any(re.search(r'(?<![A-Za-z0-9])' + re.escape(n) + r'\s*DPI(?![A-Za-z0-9])', target, re.I) for n in values):
+            return True
     # Numeric technical tokens may be rendered with a Chinese unit or with
     # the unit separated/attached differently (``30 dB`` → ``30分贝``).
     unit_match = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*(mah|kwh|db|mp|mcg|kg|cm|mm|km|m|g|w|v)", token, flags=re.I)
@@ -550,6 +569,8 @@ def audit_repaired_rows(
     *,
     min_field_pass_rate: float = 0.99,
     allowed_tokens: set[str] | None = None,
+    difference_whitelist=None,
+    category_mapping: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Run the field-level localization QA against the actual export rows."""
     from ..localization.contracts import SourceFacts
@@ -571,6 +592,7 @@ def audit_repaired_rows(
         "规格": "spec_zh", "描述": "desc_zh", "产品详情": "details_zh",
     }
     findings: list[dict[str, Any]] = []
+    reviewed_brand_exceptions: list[dict[str, Any]] = []
     approved_tokens = {str(token).strip() for token in (allowed_tokens or set()) if str(token).strip()}
     translated_aliases = {
         "mdf": ("中密度纤维板", "纤维板"), "usb": ("USB", "通用串行总线"),
@@ -594,6 +616,14 @@ def audit_repaired_rows(
     eligible_by_field: Counter[str] = Counter()
     for sku, source in source_by_sku.items():
         output = row_by_sku.get(sku, {})
+        if category_mapping:
+            from ..dictionary import normalize_category_key
+            expected_category = category_mapping.get(normalize_category_key(_text(source.get('cat1_es'))))
+            if expected_category and _text(output.get('分类1')) != expected_category:
+                findings.append({'sku': sku, 'field': 'cat1_zh', 'code': 'CATEGORY_SOURCE_MAPPING_MISMATCH',
+                    'severity': 'BLOCKER', 'blocking': True, 'evidence': {
+                        'source_es': _text(source.get('cat1_es')), 'expected': expected_category,
+                        'actual': _text(output.get('分类1'))}})
         record = dict(source)
         targets = {
             "name": output.get("标题"),
@@ -613,9 +643,23 @@ def audit_repaired_rows(
                 eligible += 1
                 eligible_by_field[target] += 1
         source_facts = SourceFacts.from_record(record)
-        qa_findings = audit_translation(source_facts, targets, AUDIT_LOGICAL_FIELDS)
+        # Legacy canonical-spec builders retain their explicit relocation API.
+        # Exported field translations bind to their OWN Spanish source.
+        qa_findings = audit_translation(source_facts, targets, AUDIT_LOGICAL_FIELDS, allow_spec_relocation=False)
+        spec_source = _text(source.get('spec_es'))
+        spec_target = _text(output.get('规格'))
+        if spec_source and spec_target:
+            color_terms = {'蓝色': r'azul(?:es)?', '白色': r'blanc[oa]s?', '黑色': r'negr[oa]s?',
+                '红色': r'roj[oa]s?', '粉色': r'rosas?', '绿色': r'verdes?', '灰色': r'gris(?:es)?|antracita',
+                '棕色': r'marr[oó]n(?:es)?', '紫色': r'p[úu]rpura|morad[oa]s?', '黄色': r'amarill[oa]s?'}
+            for color, expression in color_terms.items():
+                if color in spec_target and not re.search(r'\b(?:' + expression + r')\b', spec_source, re.I):
+                    findings.append({'sku': sku, 'field':'spec_zh', 'code':'FIELD_SOURCE_FACT_ADDED',
+                        'severity':'BLOCKER', 'blocking':True, 'evidence':{'fact_type':'COLOR',
+                        'target_value':color,'source_field':'spec_es'}})
         for finding in qa_findings:
-            source_field = TARGET_TO_SOURCE[LOGICAL_TO_TARGET[finding.field_name]]
+            target = LOGICAL_TO_TARGET[finding.field_name]
+            source_field = TARGET_TO_SOURCE[target]
             source_text = str(source.get(source_field) or "")
             target_text = str(targets.get(finding.field_name) or "")
             token = str(finding.evidence.get("value") or "")
@@ -709,6 +753,14 @@ def audit_repaired_rows(
                     residual_text = mask_verified_detail_source_notes(source_text, residual_text)
                 if not has_ordinary_spanish(residual_text, allowed_tokens=source_allowed):
                     continue
+            if target == 'name_zh' and difference_whitelist is not None:
+                known = difference_whitelist.title_brand_match(source, target_text, finding.rule_id, finding.evidence)
+                if known:
+                    reviewed_brand_exceptions.append({'sku': sku, 'field': target, 'code': finding.rule_id,
+                        'token': str(finding.evidence.get('value') or ''), 'entry_id': known.get('id'),
+                        'source_hash': known['source_hash'], 'current_hash': known['current_hash'],
+                        'reason': known['reason'], 'evidence': known['evidence']})
+                    continue
             findings.append({
                 "sku": sku,
                 "field": LOGICAL_TO_TARGET[finding.field_name],
@@ -746,4 +798,5 @@ def audit_repaired_rows(
         "target_field_pass_rate": min_field_pass_rate,
         "release_ready": not p0_findings and not affected_fields and field_pass_rate >= min_field_pass_rate,
         "findings": findings,
+        "reviewed_title_brand_exceptions": reviewed_brand_exceptions,
     }

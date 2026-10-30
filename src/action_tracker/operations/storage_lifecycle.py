@@ -59,6 +59,110 @@ def require_candidate(root: Path):
     return root
 
 
+def default_task_root() -> Path:
+    """One external namespace for newly generated, owned task artifacts."""
+    configured = os.environ.get('ACTION_TRACKER_TASK_ROOT')
+    return Path(configured) if configured else (Path('F:/ai文件/CodexStorage/work/ActionTasks')
+        if os.name == 'nt' else Path.home() / '.cache' / 'actionskutracker' / 'tasks')
+
+
+def prepare_run_workspace(cfg: dict, *, run_id: str, report_dir: Path):
+    """Redirect only transient staging; preserve durable evidence and writer locks.
+
+    Absent/disabled configuration preserves legacy adapters. A persisted pointer
+    binds Resume to the same P2 ownership journal, never to a new batch copy.
+    """
+    from .storage_foundation import storage_lock
+
+    options = cfg.get('transient_tasks') or {}
+    enabled = options.get('enabled', False)
+    if not isinstance(enabled, bool):
+        raise StorageError('TRANSIENT_ENABLED_BOOLEAN_REQUIRED')
+    if not enabled:
+        return cfg, None
+    budget = options.get('budget_mib', 256)
+    if isinstance(budget, bool) or not isinstance(budget, int) or budget <= 0:
+        raise StorageError('INVALID_STORAGE_BUDGET')
+    report_dir = Path(report_dir)
+    pointer = report_dir / 'transient_workspace.json'
+    explicit_root = options.get('root') or os.environ.get('ACTION_TRACKER_TASK_ROOT')
+    selected_root = explicit_root or default_task_root()
+    if pointer.exists() and not explicit_root:
+        # Changing the default for NEW work must not strand an older run.
+        # The recorded root still passes all boundary/ownership checks below.
+        selected_root = json.loads(pointer.read_text(encoding='utf-8'))['root']
+    root = Path(selected_root).resolve()
+    protected = [Path(cfg['project_root']).resolve(), Path(__file__).resolve().parents[3],
+                 *[Path(p).resolve() for p in ('F:/ActionSKUTracker', 'F:/Action_Master', 'F:/按日期整理')],
+                 *[Path(p).resolve() for p in cfg['paths'].values() if isinstance(p, (str, Path))]]
+    if any(root.is_relative_to(p) or p.is_relative_to(root) for p in protected):
+        raise StorageError('CANDIDATE_PRODUCTION_OVERLAP')
+    if any((p / '.git').exists() for p in (root, *root.parents)):
+        raise StorageError('TASK_WORKSPACE_SOURCE_OVERLAP')
+    # Staged Master replacement must retain same-volume atomic semantics.
+    master = Path(cfg['paths']['master']).resolve()
+    if root.drive.casefold() != master.drive.casefold():
+        raise StorageError('TASK_WORKSPACE_CROSS_VOLUME')
+    with storage_lock(report_dir / 'workspace_lock', run_id=run_id):
+        if pointer.exists():
+            binding = json.loads(pointer.read_text(encoding='utf-8'))
+            if binding.get('root') != str(root):
+                raise StorageError('SCRATCH_BOUNDARY_VIOLATION')
+            if binding.get('original_temp') != str(cfg['paths']['temp']):
+                raise StorageError('SCRATCH_RUNTIME_ANCHOR_CHANGED')
+            task = ScratchTask.resume(root, Path(binding['task_dir']), owner_task='daily-run', run_id=run_id)
+        else:
+            if not root.exists():
+                create_candidate(root, protected_roots=protected)
+            task = ScratchTask(root, owner_task='daily-run', run_id=run_id, budget_bytes=budget * 1024**2)
+            for name in ('scripts', 'data', 'debug'):
+                (task.directory / name).mkdir()
+            binding = {'root': str(root), 'task_dir': str(task.directory), 'run_id': run_id,
+                       'owner_task': 'daily-run', 'budget_bytes': task.budget_bytes,
+                       'original_temp': str(cfg['paths']['temp']), 'automatic_cleanup': False}
+            write_new(pointer, binding)
+    effective = dict(cfg)
+    paths = effective['paths'] = dict(cfg['paths'])
+    anchor = Path(cfg['paths']['temp']).parent / 'localization'
+    paths.setdefault('localization_reports', anchor / 'reports')
+    paths.setdefault('localization_learning_candidates', anchor / 'learning_candidates')
+    paths['temp'] = relative_target(task.directory, 'data/runtime_temp')
+    paths['temp'].mkdir(parents=True, exist_ok=True)
+    effective['_transient_workspace'] = binding
+    return effective, task
+
+
+def record_run_workspace(task) -> dict:
+    """Append a small inventory, not file copies; unique data stays protected.
+
+    Each resume gets immutable evidence. Staging bytes may legitimately change;
+    an inventory does not classify those bytes as eligible for deletion.
+    """
+    items = []
+    inventory_bytes = 0
+    for path in sorted(task.directory.rglob('*')):
+        if path.parent == task.directory / 'debug' and path.name.startswith('inventory-'):
+            if path.is_file():
+                inventory_bytes += path.stat().st_size
+            continue
+        if path.is_file() and path.parts[len(task.directory.parts)] in {'scripts', 'data', 'debug'}:
+            if path.is_symlink() or not path.resolve().is_relative_to(task.directory):
+                raise StorageError('SCRATCH_BOUNDARY_VIOLATION')
+            items.append({'path': path.relative_to(task.directory).as_posix(),
+                          'size_bytes': path.stat().st_size, 'sha256': sha256_file(path)})
+    total = sum(item['size_bytes'] for item in items)
+    relative = 'debug/inventory-' + uuid.uuid4().hex + '.json'
+    path = relative_target(task.directory, relative)
+    payload = {'files': items, 'total_bytes': total, 'budget_bytes': task.budget_bytes,
+               'prior_inventory_bytes': inventory_bytes,
+               'budget_alert': total + inventory_bytes > task.budget_bytes, 'automatic_cleanup': False}
+    write_new(path, payload)
+    task.register(relative, source='daily-run transient inventory', expected_bytes=path.stat().st_size)
+    task.complete(relative)
+    return {'task_dir': str(task.directory), 'inventory': str(path), 'total_bytes': total,
+            'budget_alert': payload['budget_alert'], 'automatic_cleanup': False}
+
+
 def check_budget(root: Path, expected_bytes: int, *, reserve_bytes=64 * 1024**2):
     if isinstance(expected_bytes, bool) or not isinstance(expected_bytes, int) or expected_bytes < 0:
         raise StorageError('INVALID_STORAGE_BUDGET')
