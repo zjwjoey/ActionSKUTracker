@@ -36,9 +36,9 @@ def environment(tmp_path):
     return data, deployment
 
 
-def invoke(data, deployment, *args, host=PWSH):
+def invoke(data, deployment, *args, host=PWSH, ensure_ascii=False):
     path = data / 'runtime/deployment/active.json'
-    path.write_text(json.dumps(deployment), encoding='utf-8')
+    path.write_text(json.dumps(deployment, ensure_ascii=ensure_ascii), encoding='utf-8')
     return subprocess.run([host, '-NoProfile', '-File', str(data / 'scripts/run_production_daily.ps1'),
                            *args], capture_output=True, text=True, encoding='utf-8')
 
@@ -78,9 +78,10 @@ def test_active_wrapper_rejects_identity_mismatch(environment, field, value):
 
 
 @pytest.mark.parametrize('host', HOSTS, ids=lambda host: Path(host).stem)
-def test_wrapper_stdout_and_stderr_are_utf8_on_each_available_host(environment, host):
+@pytest.mark.parametrize('ensure_ascii', [True, False], ids=['escaped-json', 'utf8-json'])
+def test_wrapper_stdout_and_stderr_are_utf8_on_each_available_host(environment, host, ensure_ascii):
     data, deployment = environment
-    result = invoke(data, deployment, '-ValidateOnly', host=host)
+    result = invoke(data, deployment, '-ValidateOnly', host=host, ensure_ascii=ensure_ascii)
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload['source_checkout'] == deployment['source_checkout']
@@ -88,6 +89,6 @@ def test_wrapper_stdout_and_stderr_are_utf8_on_each_available_host(environment, 
     assert '源代码' in payload['source_checkout'] and '生产数据' in payload['data_root']
     source = Path(deployment['source_checkout']) / 'scripts/run_production_daily.ps1'
     source.write_text(source.read_text(encoding='utf-8') + '\n# dirty\n', encoding='utf-8')
-    rejected = invoke(data, deployment, '-ValidateOnly', host=host)
+    rejected = invoke(data, deployment, '-ValidateOnly', host=host, ensure_ascii=ensure_ascii)
     assert rejected.returncode != 0
     assert 'PRODUCTION_RELEASE_WORKTREE_DIRTY' in rejected.stderr
