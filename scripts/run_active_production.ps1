@@ -8,6 +8,10 @@ param(
     [switch]$ValidateOnly
 )
 $ErrorActionPreference = "Stop"
+# Keep the machine-readable wrapper contract identical on Windows PowerShell
+# and PowerShell 7, including Chinese checkout/data paths and error records.
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
 $dataRoot = Split-Path -Parent $PSScriptRoot
 if ($ProjectRoot -and [IO.Path]::GetFullPath($ProjectRoot) -ne [IO.Path]::GetFullPath($dataRoot)) {
     throw "PRODUCTION_DATA_ROOT_MISMATCH"
