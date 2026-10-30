@@ -8,9 +8,10 @@ from __future__ import annotations
 import json
 import hashlib
 import sqlite3
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from .connection import connect
 from .schema import migrate
@@ -216,6 +217,39 @@ class ProductionRepository:
             self._check_v2(db)
             return _complete_presence_head(db)
 
+    def load_localization_source_records(self, official_skus: Iterable[str], *,
+                                         include_non_current: bool = False) -> list[dict[str, Any]]:
+        """Read exact Registry source identities/ES fields, without export work.
+
+        Registry does not consume prices, Chinese approvals or Presence history.
+        A required SKU set keeps a historical one-field retry from reading those
+        global projections. Empty scope means no records, never all products.
+        """
+        if official_skus is None or isinstance(official_skus, (str, bytes)):
+            raise ProductionRepositoryError('LOCALIZATION_SOURCE_SKUS_INVALID')
+        selected = tuple(official_skus)
+        if any(not isinstance(sku, str) or not sku or sku != sku.strip() for sku in selected):
+            raise ProductionRepositoryError('LOCALIZATION_SOURCE_SKUS_INVALID')
+        selected = tuple(sorted(set(selected)))
+        if not selected:
+            return []
+        with closing(sqlite3.connect(self.path.resolve().as_uri() + '?mode=ro', uri=True)) as db:
+            db.execute('PRAGMA query_only=ON')
+            db.execute('BEGIN')
+            self._check_v2(db)
+            rows = db.execute(f'''SELECT p.canonical_id,p.official_sku,p.name_es,
+                es.name,es.cat1,es.cat2,es.spec,es.description,es.details,
+                p.product_url,p.image_url,p.status
+                FROM products p LEFT JOIN product_localizations es
+                  ON es.official_sku=p.official_sku AND es.language='es'
+                WHERE p.official_sku IN (SELECT value FROM json_each(?))
+                  {'' if include_non_current else "AND p.status='CURRENT'"}
+                ORDER BY p.official_sku''', (json.dumps(selected),)).fetchall()
+        return [{'canonical_id': row[0], 'sku': row[1],
+                 **_localization_source_values(row[2], row[3:9]),
+                 'product_url': row[9], 'image_url': row[10], 'status': row[11]}
+                for row in rows]
+
     def load_current_export_records(self, *, include_non_current: bool = False,
                                     include_field_lineage: bool = False) -> list[dict[str, Any]]:
         """Return facts plus both language localization projections.
@@ -288,11 +322,7 @@ class ProductionRepository:
                 "approved_by": item[8], "approved_at": item[9], "freshness_status": item[10],
             }
         for row in rows:
-            es_source = {
-                "name_es": row[16] or row[2], "cat1_es": row[17],
-                "cat2_es": row[18], "spec_es": row[19],
-                "desc_es": row[20], "details_es": row[21],
-            }
+            es_source = _localization_source_values(row[2], row[16:22])
             records.append({
                 "canonical_id": row[0], "sku": row[1], "name_es": row[16] or row[2], "name_zh": row[22] or row[3],
                 "_stored_name_zh": row[3],
@@ -334,6 +364,13 @@ class ProductionRepository:
                                     last_valid_price=row[44]),
             })
         return records
+
+
+def _localization_source_values(product_name, localized_values) -> dict[str, Any]:
+    """The existing ES name fallback; preserve None/empty for every other field."""
+    name, cat1, cat2, spec, description, details = localized_values
+    return {'name_es': name or product_name, 'cat1_es': cat1, 'cat2_es': cat2,
+            'spec_es': spec, 'desc_es': description, 'details_es': details}
 
 
 def _commit_info_row(db: sqlite3.Connection, row) -> dict[str, Any]:

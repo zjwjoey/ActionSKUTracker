@@ -63,21 +63,34 @@ def committed_registry_records(cfg: Mapping[str, Any], *, source_run_id: str,
             raise ValueError('REGISTRY_RECOVERY_HISTORICAL_SCOPE_INVALID')
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         fields = {'name': 'name_es', 'cat1': 'cat1_es', 'cat2': 'cat2_es', 'spec': 'spec_es', 'description': 'desc_es', 'details': 'details_es'}
+        selected_skus = None
+        if historical:
+            selected_skus = sorted({item['sku'] for item in evidence.get('historical_committed_fields') or []})
+        elif partial:
+            # Keep every scoped identity, including rows without translation
+            # fields; their existing missing-SKU guard must still run.
+            selected_skus = sorted({item['sku'] for item in evidence['trusted_field_scope']['rows']})
         frozen: dict[str, dict[str, Any]] = {}
         if historical:
             pass  # Historical exact fields are read from the committed receipt below.
         elif 'product_fact_versions' in tables:
-            for sku, payload in db.execute('SELECT official_sku,normalized_fact_json FROM product_fact_versions WHERE run_id=?', (source_run_id,)):
+            bounded = ' AND official_sku IN (SELECT value FROM json_each(?))' if partial else ''
+            args = (source_run_id, json.dumps(selected_skus)) if partial else (source_run_id,)
+            for sku, payload in db.execute('SELECT official_sku,normalized_fact_json FROM product_fact_versions WHERE run_id=?' + bounded, args):
                 value = json.loads(payload)
                 record = {'sku': str(sku), **{key: value.get(field) for field, key in fields.items()}}
                 if str(sku) in frozen and frozen[str(sku)] != record:
                     raise ValueError('REGISTRY_RECOVERY_SOURCE_AMBIGUOUS')
                 frozen[str(sku)] = record
         else:
-            for sku, field, value in db.execute('SELECT official_sku,field_name,normalized_value FROM source_fact_versions WHERE run_id=?', (source_run_id,)):
+            bounded = ' AND official_sku IN (SELECT value FROM json_each(?))' if partial else ''
+            args = (source_run_id, json.dumps(selected_skus)) if partial else (source_run_id,)
+            for sku, field, value in db.execute('SELECT official_sku,field_name,normalized_value FROM source_fact_versions WHERE run_id=?' + bounded, args):
                 if field in fields:
                     frozen.setdefault(str(sku), {'sku': str(sku)})[fields[field]] = value
-    current = ProductionRepository(path).load_current_export_records(include_non_current=partial or historical)
+    repository = ProductionRepository(path)
+    current = (repository.load_localization_source_records(selected_skus, include_non_current=True)
+               if partial or historical else repository.load_current_export_records())
     current_by_sku = {str(r['sku']): r for r in current}
     if historical:
         from ..data_quality.historical.variance import typed_hash
