@@ -1148,7 +1148,7 @@ def _detail_material_color_findings(source_text, target):
     colors = {'azul': ('蓝',), 'púrpura': ('紫',), 'amarillo': ('黄',),
         'rojo': ('红',), 'negro': ('黑',), 'blanco': ('白',), 'verde': ('绿',),
         'gris topo': ('灰褐', '灰棕', '褐灰', '驼灰', '鼹灰', '灰驼'), 'gris': ('灰',)}
-    roles = [('base', ('基材', '底座材质', '底座材料')),
+    roles = [('base', ('基材', '底座材质', '底座材料', '表壳材质')),
         ('del asa', ('把手材质', '手柄材质', '提手材质')),
         ('del mango', ('把手材质', '手柄材质', '提手材质')),
         ('de la cubierta', ('盖子材质', '外罩材质')),
@@ -1157,6 +1157,8 @@ def _detail_material_color_findings(source_text, target):
     for pair in sources:
         key, value = pair.key.strip().casefold(), pair.value.strip().casefold()
         if key == 'color':
+            if ':' in value or '：' in value or re.match(r'^(?:de|del|para|capa|estructura)\b', value):
+                continue  # e.g. ink/pot color is not generic product color
             role, keys, mapping = 'color', ('颜色', '色彩'), colors
         elif key == 'material':
             role, keys, mapping = 'material', ('材质', '材料'), materials
@@ -1165,6 +1167,8 @@ def _detail_material_color_findings(source_text, target):
                     role, keys = ('handle' if prefix in {'del asa', 'del mango'} else prefix), labels
                     value = re.sub('^' + re.escape(prefix) + r'\s*[:：]?\s*', '', value)
                     break
+            if role == 'material' and (':' in value or '：' in value or re.match(r'^(?:de|del|para|capa|estructura)\b', value)):
+                continue  # unimplemented qualified roles stay with existing QA
         else:
             continue
         groups.setdefault(role, {'values': [], 'keys': keys, 'mapping': mapping})['values'].append(value)

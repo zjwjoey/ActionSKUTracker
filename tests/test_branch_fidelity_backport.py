@@ -45,6 +45,7 @@ def test_lost_or_wrong_own_attribute_is_blocked(source, target):
     ('Material: Polietileno', '材质：聚乙烯'),
     ('Material: del asa Silicona; Material: del mango Vidrio', '把手材质：硅胶；手柄材质：玻璃'),
     ('Material: de la lente Plástico; Material: estructura Plástico', '材质：镜片：塑料；材质：镜架：塑料'),
+    ('Material: base: Acero inoxidable', '表壳材质：不锈钢'),
 ])
 def test_equivalent_values_compounds_roles_and_duplicates_are_preserved(source, target):
     assert qa(source, target)['status'] == 'PASS'
@@ -59,6 +60,26 @@ def test_detail_terms_are_not_imposed_on_other_fields():
     source = SourceFacts(sku='1001', desc_es='Aroma a madera de roble', details_es='Material: Vidrio')
     result = guard_translation(source, {'description': '橡木香气'}, ('description',), semantic_facts=())
     assert not any(x['rule_id'] == 'DETAIL_CONTEXT_MISTRANSLATION' for x in result['findings'])
+
+
+@pytest.mark.parametrize('source,target', [
+    # Minimized literal own-field examples observed in the read-only replay.
+    ('Color: Multicolor; Color: de la tinta: Azul; Material: Plástico', '颜色：彩色；墨水颜色：蓝色；材质：塑料'),
+    ('Material: del candelabro: Vidrio', '烛台材质：玻璃'),
+    ('Material: del frasco: Vidrio', '瓶身材质：玻璃'),
+    ('Material: de revestimiento: Poliéster', '内衬材质：聚酯纤维'),
+    ('Material: de relleno: Poliéster', '填充材质：聚酯纤维'),
+    ('Material: capa exterior: Algodón', '外层材质：棉'),
+    ('Material: de la superficie del objetivo: Madera, Metal, Vidrio', '适用表面材质：木材、金属、玻璃'),
+    ('Color: de la maceta: Negro; Material: de la maceta: Plástico', '花盆颜色：黑色；花盆材质：塑料'),
+    ('Material: cabello: Plástico', '发丝材质：塑料'),
+    ('Material: objetivo de la sierra: Madera', '适用锯切材料：木材'),
+    ('Material: suela: Plástico', '鞋底材质：塑料'),
+    ('Material: Madera FSC; Material: patas: Madera', '材质：FSC认证木材；支脚材质：木材'),
+])
+def test_unsupported_qualified_roles_do_not_become_generic_attribute_assertions(source, target):
+    from action_tracker.localization.qa import _detail_material_color_findings
+    assert not _detail_material_color_findings(source, target)
 
 
 def test_formal_export_audit_consumes_the_same_guard():
