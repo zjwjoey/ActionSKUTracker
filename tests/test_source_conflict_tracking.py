@@ -283,3 +283,61 @@ def test_tracking_notes_use_existing_persistent_queue_contract(tmp_path, monkeyp
     assert len(rows) == 1 and rows[0]['issue_type'] == 'DATA_INCONSISTENCY'
     assert rows[0]['status'] == 'PENDING' and rows[0]['source'] == 'SOURCE_CONFLICT_TRACKING'
     assert entry()['reason'] in rows[0]['reason']
+
+
+@pytest.mark.parametrize('fails', [False, True])
+def test_readonly_cli_preserves_unicode_json_on_ascii_windows_stream(tmp_path, monkeypatch, fails):
+    import contextlib
+    import io
+    from action_tracker import cli
+    from action_tracker.exporting import difference_whitelist as module
+    registry = registry_file(tmp_path)
+    expected = {'reason': '来源Ø和中文备注', 'status': 'TRACKED_PENDING'}
+    def check(*args, **kwargs):
+        if fails:
+            raise ValueError(expected['reason'])
+        return expected
+    monkeypatch.setattr(module, 'check_current_conflicts', check)
+    stdout, stderr = io.BytesIO(), io.BytesIO()
+    out = io.TextIOWrapper(stdout, encoding='ascii', write_through=True)
+    err = io.TextIOWrapper(stderr, encoding='ascii', write_through=True)
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = cli.main(['export-difference-whitelist', '--registry', str(registry), '--check-current', 'unused.db'])
+    assert code == (2 if fails else 0)
+    payload = json.loads((stderr if fails else stdout).getvalue().decode('ascii'))
+    assert payload['reason'] == expected['reason']
+    assert payload['status'] == ('BLOCKED' if fails else 'TRACKED_PENDING')
+
+
+def test_readonly_registry_view_is_also_ascii_safe(tmp_path):
+    import contextlib
+    import io
+    from action_tracker import cli
+    item = entry(); item['reason'] = '来源Ø'
+    p = registry_file(tmp_path, [item])
+    raw = io.BytesIO(); output = io.TextIOWrapper(raw, encoding='ascii', write_through=True)
+    with contextlib.redirect_stdout(output):
+        assert cli.main(['export-difference-whitelist', '--registry', str(p), '--sku', '1']) == 0
+    assert json.loads(raw.getvalue().decode('ascii'))['entries'][0]['reason'] == item['reason']
+
+
+@pytest.mark.parametrize('fails', [False, True])
+def test_opted_in_audit_json_is_safe_on_legacy_windows_stream(tmp_path, monkeypatch, fails):
+    import contextlib
+    import io
+    from action_tracker import cli, config, log
+    from action_tracker.localization import service
+    monkeypatch.setattr(config, 'load_settings', lambda **kw: {'paths': {'logs': tmp_path/'logs'}})
+    monkeypatch.setattr(config, 'ensure_runtime_dirs', lambda cfg: None)
+    monkeypatch.setattr(log, 'setup_logging', lambda path: None)
+    def audit(*args, **kwargs):
+        if fails:
+            raise ValueError('来源Ø')
+        return {'reason': '来源Ø'}
+    monkeypatch.setattr(service, 'audit_current', audit)
+    raw = io.BytesIO(); output = io.TextIOWrapper(raw, encoding='ascii', write_through=True)
+    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+        code = cli.main(['localization-audit', '--conflict-registry', str(tmp_path/'unused.json')])
+    assert code == (2 if fails else 0)
+    payload = json.loads(raw.getvalue().decode('ascii'))
+    assert payload['error' if fails else 'reason'] == '来源Ø'

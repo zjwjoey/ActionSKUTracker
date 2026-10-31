@@ -355,10 +355,10 @@ def main(argv=None) -> int:
                     selected.registry_path = registry.registry_path
                     selected.registry_sha256 = registry.registry_sha256
                 result = check_current_conflicts(selected, args.check_current)
-                print(json.dumps(result, ensure_ascii=False))
+                print(json.dumps(result, ensure_ascii=True))
                 return 0
         except (OSError, ValueError, TypeError, sqlite3.Error) as exc:
-            print(json.dumps({'status':'BLOCKED', 'reason':str(exc)}, ensure_ascii=False), file=sys.stderr)
+            print(json.dumps({'status':'BLOCKED', 'reason':str(exc)}, ensure_ascii=True), file=sys.stderr)
             return 2
         entries = [item for item in registry.entries.values() if not args.sku or item['sku']==args.sku]
         result = {'status':'PASS','tracked_skus':len(registry.tracked_skus), 'entry_count':len(entries),
@@ -366,7 +366,7 @@ def main(argv=None) -> int:
                   'read_only':True,'production_apply':False,'whole_sku_bypass':False}
         if args.sku:
             result.update(sku=args.sku, entries=entries)
-        print(json.dumps(result,ensure_ascii=False))
+        print(json.dumps(result,ensure_ascii=True))
         return 0
     if args.command == "storage-foundation":
         from .operations.storage_cli import run_storage_command
@@ -625,9 +625,9 @@ def main(argv=None) -> int:
                     'source_conflict_tracking': {'enabled': True, 'path': str(args.conflict_registry)}}}
             result = audit_current(cfg, run_id=args.run_id)
         except Exception as exc:
-            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            print(json.dumps({"error": str(exc)}, ensure_ascii=True), file=sys.stderr)
             return 2
-        print(json.dumps(result, ensure_ascii=False)); return 0
+        print(json.dumps(result, ensure_ascii=True)); return 0
     if args.command == "research-release-audit":
         from .database.integration import database_path
         from .database.repository import ProductionRepository, ProductionRepositoryError
