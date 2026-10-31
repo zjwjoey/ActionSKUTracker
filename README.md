@@ -4,13 +4,18 @@ Action 西班牙站 SKU 自动监测、生命周期管理、西语事实入库�
 
 ## 权威数据与版本
 
+2026-10-31 全分支审查以当时最新 main `6f20529` 为基线。主线整合候选只移植经过
+行为比较确认的缺口；PR #26 持续来源冲突跟踪仍作为独立候选，不自动合并或部署。
+本次选择、调用链和回退边界见 [分支功能整合](docs/BRANCH_FUNCTION_INTEGRATION.md)。
+下列旧 SHA、路径及验收数量是历史记录，当前生产路由须读取部署清单核实。
+
 - 官网西语是商品事实来源；SQLite PRIMARY 是唯一正式存储和读取来源。
 - 中文是来源绑定的派生字段；Excel/CSV 是兼容投影或交付物，不能反向覆盖 PRIMARY。
 - 2026-10-08 核实的 origin/main：231550eb74d24c927e100bc585aa728bf7ab7f19。
 - 生产冻结标签 production/phase1-3-20261007 指向上述 SHA。
 - Phase 1–3 曾在真实 PRIMARY 验收并发布当次 5,626 SKU。这不是固定商品数量，也不代表每天自动批准或发布。
 - 收尾分支 fix/post-production-repository-closure-20261008 尚未合并/部署；本轮保持既有生产运行代码与配置不变。
-- 今日实际执行 checkout 为 F:\ActionSKUTracker_workflow_v2，分支 fix/workflow-v2-phase3-final-closure@3d28f0b；它比已冻结 main 多 snapshot-ingest，不能把实际运行 checkout 与已审查 main 基线混为一谈。
+- 历史执行 checkout 曾为 F:\ActionSKUTracker_workflow_v2，分支 fix/workflow-v2-phase3-final-closure@3d28f0b；不能据此判断当前生产路由。
 - 3d28f0b 的 snapshot-ingest 是独立新功能，不纳入本轮，需要专项审查。
 
 ## 流程和三阶段

@@ -1,5 +1,12 @@
 # 当前仓库与生产状态
 
+## 2026-10-31 全分支审查整合候选
+
+从 fetch 的 main `6f20529` 创建 `integration/branch-audit-20261031`，只选择旧分支遗漏的
+有限颜色/材质 QA 和历史 Stage 6 文件证据校验；PR #26 持续冲突跟踪独立保留。
+调用链、被替代实现及回退约束见 [分支功能整合](BRANCH_FUNCTION_INTEGRATION.md)。
+本节描述候选代码，不表示已合并、部署、修改正式数据或通过业务 Owner 验收。
+
 ## 2026-10-30 Data Foundation V3 隔离开发
 
 远端依赖 PR #24 已正常合并为 main `97afc92c5c78193e73e84d5f862ef7c20a81127f`。

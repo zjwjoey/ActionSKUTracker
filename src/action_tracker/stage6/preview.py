@@ -12,6 +12,7 @@ from typing import Any, Mapping
 from ..dictionary_apply import ALLOWLIST
 from ..services.hashing import field_source_hash, localization_source_hash
 from ..stage5.source_candidate_v2 import source_consistency_flags
+from .legacy_provenance import LEGACY_PROVENANCE_TYPE, legacy_conflicts
 
 
 CONFLICT_CLASSES = frozenset({
@@ -19,6 +20,9 @@ CONFLICT_CLASSES = frozenset({
     "CANDIDATE_STALE", "MISSING_PROVENANCE", "NOT_OWNER_APPROVED",
     "FIELD_NOT_APPLYABLE", "SOURCE_CONFLICT", "NO_SOURCE",
     "FIELD_HASH_REQUIRED", "UNSUPPORTED_HASH_SCOPE", "SOURCE_FIELD_MISMATCH",
+    "LEGACY_REAPPROVAL_REQUIRED", "MISSING_CRITICAL_EVIDENCE", "FIELD_MISMATCH",
+    "SOURCE_HASH_MISMATCH", "CANDIDATE_VALUE_MISMATCH", "OWNER_NOT_APPROVED",
+    "UNSUPPORTED_PROVENANCE_TYPE",
 })
 
 _SOURCE_FIELDS = {
@@ -47,15 +51,20 @@ def preview_one(
     field = str(owner.get("field") or "").strip()
     disposition = str(owner.get("owner_disposition") or "").strip()
     reviewed_value = owner.get("owner_final_candidate")
+    provenance_type = str(candidate.get('provenance_type') or 'NATIVE') if candidate else 'NATIVE'
     current_target_value = target.get(ALLOWLIST[field]) if target is not None and field in ALLOWLIST else None
     current_target_hash = _digest(current_target_value)
     reviewed_hash = _digest(reviewed_value)
     # New candidates must carry an explicit field-scoped provenance marker.
-    # ``legacy_overall`` is retained only for records that explicitly declare
-    # the compatibility path; a missing marker is never silently upgraded to
-    # the unsafe aggregate-hash behavior.
+    # ``legacy_overall`` can be diagnosed for historical records, but even an
+    # explicit compatibility marker never substitutes for field evidence.
     hash_scope = str(candidate.get("hash_scope") or "") if candidate else ""
     conflicts: set[str] = set()
+    if provenance_type == LEGACY_PROVENANCE_TYPE:
+        conflicts.update(legacy_conflicts(candidate.get('legacy_provenance'), owner, candidate,
+            source, target, field_target=ALLOWLIST.get(field, '')))
+    elif provenance_type != 'NATIVE':
+        conflicts.add('UNSUPPORTED_PROVENANCE_TYPE')
     current_source_hash = None
     source_value = None
     source_is_empty = False
@@ -94,6 +103,7 @@ def preview_one(
             expected_source_hash = field_source_hash(source_hash_record, field)
         elif hash_scope == "legacy_overall" and candidate.get("legacy_compatibility") is True:
             expected_source_hash = localization_source_hash(source_hash_record)
+            conflicts.add('FIELD_HASH_REQUIRED')
         elif not hash_scope:
             expected_source_hash = field_source_hash(source_hash_record, field)
             conflicts.add("FIELD_HASH_REQUIRED")
@@ -125,6 +135,7 @@ def preview_one(
         action = "BLOCKED_CONFLICT" if conflicts else ("NO_CHANGE" if current_target_value == reviewed_value else "WOULD_UPDATE")
     return {
         "sku": sku, "field": field, "candidate_id": owner.get("candidate_id"),
+        "provenance_type": provenance_type,
         "hash_scope": hash_scope or None, "current_source_hash": current_source_hash if candidate and source else None,
         "reviewed_source_hash": candidate.get("source_hash") if candidate else "",
         "current_target_value": current_target_value, "current_target_hash": current_target_hash,

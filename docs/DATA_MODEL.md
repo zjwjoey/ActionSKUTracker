@@ -1,5 +1,9 @@
 # Action SKU Tracker 数据模型
 
+本地分支整合候选不新增数据库 Schema。历史审核证据的 `LEGACY_ARTIFACT` 仅为
+Stage 6 只读预览信封，不能产生现代审批或直接 Apply；文件和精确字段身份要求见
+[分支功能整合](BRANCH_FUNCTION_INTEGRATION.md)。
+
 ## 1. 通用类型
 
 | 类型 | 规则 |

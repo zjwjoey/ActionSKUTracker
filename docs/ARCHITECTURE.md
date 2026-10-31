@@ -1,5 +1,9 @@
 # Action SKU Tracker 总体架构
 
+分支功能整合候选与稳定主线分开记录，见 [分支功能整合](BRANCH_FUNCTION_INTEGRATION.md)。
+旧 Snapshot 独立提交器不进入主链；历史中文审核证据只接入既有 Stage 6 只读预览，
+不能代替当前 QA、Owner Approval、Immutable Patch 或 Apply。
+
 ## 1. 设计目标
 
 系统长期回答四个问题：
