@@ -58,10 +58,14 @@ class DifferenceWhitelist:
 
     @classmethod
     def load(cls, path):
-        raw = json.loads(Path(path).read_text(encoding='utf-8-sig'))
+        payload = Path(path).read_bytes()
+        raw = json.loads(payload.decode('utf-8-sig'))
         if not isinstance(raw, dict) or raw.get('contract') != CONTRACT or not isinstance(raw.get('entries'), list):
             raise DifferenceWhitelistError('DIFFERENCE_WHITELIST_CONTRACT_INVALID')
-        return cls(raw['entries'])
+        registry = cls(raw['entries'])
+        registry.registry_path = str(Path(path).resolve())
+        registry.registry_sha256 = hashlib.sha256(payload).hexdigest()
+        return registry
 
     def match(self, record, field, current, reviewed, *, action='ACK_DIFFERENCE'):
         item = self.entries.get((str(record.get('sku') or ''), field, action))
@@ -119,3 +123,131 @@ def whitelist_from_config(cfg):
     if not path.is_absolute():
         path = Path(cfg['project_root']) / path
     return DifferenceWhitelist.load(path)
+
+
+def _tracking_entries(registry):
+    """Only explicitly registered unresolved conflicts, never legacy ACKs."""
+    result = []
+    for item in registry.entries.values():
+        flag = item.get('tracking_only', False)
+        if not isinstance(flag, bool):
+            raise DifferenceWhitelistError('CONFLICT_TRACKING_BOOLEAN_REQUIRED')
+        if not flag:
+            continue
+        if (item['status'] != 'PENDING' or item['action'] != 'ACK_DIFFERENCE'
+                or item.get('automatic_apply') is not False
+                or item.get('does_not_waive_qa_or_approval') is not True):
+            raise DifferenceWhitelistError('CONFLICT_TRACKING_MUST_REMAIN_PENDING_NO_APPLY')
+        result.append(item)
+    return result
+
+
+def conflict_tracking_from_config(cfg):
+    options = (cfg.get('localization') or {}).get('source_conflict_tracking', {})
+    if not isinstance(options, dict) or not isinstance(options.get('enabled', False), bool):
+        raise DifferenceWhitelistError('CONFLICT_TRACKING_ENABLED_BOOLEAN_REQUIRED')
+    if not options.get('enabled', False):
+        return None
+    if not options.get('path'):
+        raise DifferenceWhitelistError('CONFLICT_TRACKING_PATH_REQUIRED')
+    path = Path(options['path'])
+    if not path.is_absolute():
+        path = Path(cfg['project_root']) / path
+    registry = DifferenceWhitelist.load(path)
+    _tracking_entries(registry)
+    return registry
+
+
+def pending_conflict_report(registry, records, *, now=None):
+    """Observe exact field bindings without updating registry, QA or approvals."""
+    from ..localization.contracts import LOCALIZATION_FIELD_CONTRACT
+    now = now or datetime.now(timezone.utc)
+    if not now.tzinfo:
+        raise DifferenceWhitelistError('CONFLICT_TRACKING_TIMEZONE_REQUIRED')
+    current = {}
+    for record in records:
+        sku = str(record.get('sku') or record.get('official_sku') or '')
+        if not sku or sku in current:
+            raise DifferenceWhitelistError('CONFLICT_TRACKING_CURRENT_IDENTITY_INVALID')
+        current[sku] = record
+    observations, blocked = [], {}
+    for item in _tracking_entries(registry):
+        sku, field = item['sku'], item['field']
+        source = LOCALIZATION_FIELD_CONTRACT[field]['source']
+        record = current.get(sku)
+        changes = []
+        observed_source = observed_current = None
+        if record is None:
+            changes.append('NOT_IN_CHECK_SCOPE')
+        else:
+            if source not in record or record[source] is None:
+                changes.append('SOURCE_VALUE_UNAVAILABLE')
+            else:
+                observed_source = field_source_hash(record, field)
+                if observed_source != item['source_hash']:
+                    changes.append('SOURCE_HASH_CHANGED')
+            if field not in record:
+                changes.append('CURRENT_ZH_UNAVAILABLE')
+            else:
+                observed_current = value_hash(record[field])
+                if observed_current != item['current_hash']:
+                    changes.append('CURRENT_ZH_HASH_CHANGED')
+        try:
+            reviewed = datetime.fromisoformat(str(item['reviewed_at']).replace('Z', '+00:00'))
+            expiry = datetime.fromisoformat(str(item['expires_at']).replace('Z', '+00:00'))
+            if (not reviewed.tzinfo or not expiry.tzinfo or reviewed > now
+                    or expiry <= reviewed or expiry - reviewed > timedelta(days=90)
+                    or not all(item.get(k) for k in ('id', 'reason', 'evidence', 'reviewed_by'))):
+                raise ValueError('invalid metadata')
+            if now >= expiry:
+                changes.append('REGISTRATION_EXPIRED')
+        except (KeyError, TypeError, ValueError):
+            changes.append('REGISTRATION_METADATA_INVALID')
+        blocked.setdefault(sku, []).append(field)
+        observations.append({'entry_id': item.get('id'), 'sku': sku, 'field': field,
+            'status': 'PENDING', 'check_state': 'RECHECK_REQUIRED' if changes else 'KNOWN_CONFLICT_UNCHANGED',
+            'requires_recheck': bool(changes), 'changes': changes, 'reason': item.get('reason', ''),
+            'evidence': item.get('evidence', []), 'expected_source_hash': item['source_hash'],
+            'observed_source_hash': observed_source, 'expected_current_hash': item['current_hash'],
+            'observed_current_hash': observed_current, 'automatic_apply': False,
+            'does_not_waive_qa_or_approval': True})
+    attention = sum(x['requires_recheck'] for x in observations)
+    return {'contract': 'SOURCE_CONFLICT_TRACKING_REPORT_V1', 'generated_at': now.isoformat(),
+        'status': 'RECHECK_REQUIRED' if attention else 'TRACKED_PENDING' if observations else 'NO_TRACKED_CONFLICTS',
+        'registry': getattr(registry, 'registry_path', None),
+        'registry_sha256': getattr(registry, 'registry_sha256', None),
+        'tracked_field_count': len(observations), 'tracked_sku_count': len(blocked),
+        'known_unchanged_count': sum(not x['requires_recheck'] for x in observations),
+        'recheck_required_count': attention,
+        'blocked_fields_by_sku': {s: sorted(fs) for s, fs in blocked.items()}, 'entries': observations,
+        'read_only': True, 'production_apply': False, 'whole_sku_bypass': False}
+
+
+def check_current_conflicts(registry, database, *, now=None):
+    """Read CURRENT directly with mode=ro; never initialize a production DB."""
+    import sqlite3
+    path = Path(database).resolve()
+    if not path.is_file():
+        raise DifferenceWhitelistError('CONFLICT_TRACKING_DATABASE_MISSING')
+    skus = sorted({x['sku'] for x in _tracking_entries(registry)})
+    records = []
+    if skus:
+        db = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True)
+        try:
+            db.row_factory = sqlite3.Row
+            db.execute('PRAGMA query_only=ON')
+            db.execute('BEGIN')
+            sql = """SELECT p.official_sku sku,coalesce(es.name,p.name_es) name_es,
+                es.cat1 cat1_es,es.cat2 cat2_es,es.spec spec_es,es.description desc_es,es.details details_es,
+                coalesce(zh.name,p.name_zh) name_zh,zh.cat1 cat1_zh,zh.cat2 cat2_zh,
+                zh.spec spec_zh,zh.description desc_zh,zh.details details_zh
+                FROM products p
+                LEFT JOIN product_localizations es ON es.official_sku=p.official_sku AND es.language='es'
+                LEFT JOIN product_localizations zh ON zh.official_sku=p.official_sku AND zh.language='zh'
+                WHERE p.status='CURRENT' AND p.official_sku IN (""" + ','.join('?' for _ in skus) + ')'
+            records = [dict(r) for r in db.execute(sql, skus)]
+        finally:
+            db.close()
+    report = pending_conflict_report(registry, records, now=now)
+    report['database'] = str(path)
+    return report

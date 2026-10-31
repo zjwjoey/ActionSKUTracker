@@ -220,6 +220,9 @@ localization:
   production_apply_enabled: false
   auto_approval_enabled: false
   formal_daily_chain: true
+  source_conflict_tracking:
+    enabled: false  # Local audit opt-in only; never waives QA/approval or enables Apply.
+    path: null
   ai:
     # Default checkout remains fail-closed. The production deployment profile
     # enables this bounded provider explicitly at cutover time.

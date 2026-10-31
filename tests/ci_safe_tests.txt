@@ -245,3 +245,4 @@ tests/test_historical_fact_import.py
 tests/test_field_fidelity_qa.py
 tests/test_followup_localization_senses.py
 tests/test_ironing_prohibition_scope.py
+tests/test_source_conflict_tracking.py
