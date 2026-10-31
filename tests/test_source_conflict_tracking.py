@@ -307,3 +307,15 @@ def test_readonly_cli_preserves_unicode_json_on_ascii_windows_stream(tmp_path, m
     payload = json.loads((stderr if fails else stdout).getvalue().decode('ascii'))
     assert payload['reason'] == expected['reason']
     assert payload['status'] == ('BLOCKED' if fails else 'TRACKED_PENDING')
+
+
+def test_readonly_registry_view_is_also_ascii_safe(tmp_path):
+    import contextlib
+    import io
+    from action_tracker import cli
+    item = entry(); item['reason'] = '来源Ø'
+    p = registry_file(tmp_path, [item])
+    raw = io.BytesIO(); output = io.TextIOWrapper(raw, encoding='ascii', write_through=True)
+    with contextlib.redirect_stdout(output):
+        assert cli.main(['export-difference-whitelist', '--registry', str(p), '--sku', '1']) == 0
+    assert json.loads(raw.getvalue().decode('ascii'))['entries'][0]['reason'] == item['reason']

@@ -366,7 +366,7 @@ def main(argv=None) -> int:
                   'read_only':True,'production_apply':False,'whole_sku_bypass':False}
         if args.sku:
             result.update(sku=args.sku, entries=entries)
-        print(json.dumps(result,ensure_ascii=False))
+        print(json.dumps(result,ensure_ascii=True))
         return 0
     if args.command == "storage-foundation":
         from .operations.storage_cli import run_storage_command
