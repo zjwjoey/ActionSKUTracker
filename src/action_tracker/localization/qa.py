@@ -1264,11 +1264,35 @@ def _detail_boolean_findings(source_text, target):
 def _detail_care_findings(source_text, target):
     source_pairs = parse_structured_details(source_text)
     target_pairs = parse_structured_details(target)
-    no_iron = any(re.search(r"instrucciones\s+de\s+planchado", p.key, re.I)
-        and re.fullmatch(r"sin planchado|no planchar", p.value.strip(), re.I) for p in source_pairs)
-    if no_iron and any("熨烫" in p.key and re.search(r"无需|不用|免熨|不必", p.value) for p in target_pairs):
+    irons = [p for p in source_pairs if re.search(r"instrucciones\s+de\s+planchado", p.key, re.I)]
+    no_iron = lambda p: bool(re.fullmatch(r"sin planchado|no planchar", p.value.strip(), re.I))
+    if not any(no_iron(p) for p in irons):
+        return []
+    care_key = (r"(?:熨烫|熨平|熨斗|整烫|洗熨)(?:说明|须知|要求|建议|指引|方式|方法|限制|指导|标签|温度|条件)?"
+                r"|(?:是否|可否|能否)?(?:不可以|不可|不能|禁止|不得|不允许|可以|可|允许)?熨烫")
+    # Accessories such as an included ironing strip are separate facts,
+    # even though their translated labels contain the word ironing.
+    translated = [p for p in target_pairs if re.fullmatch(care_key, re.sub(r"\s+", "", p.key))]
+    # Pair duplicate care attributes in source order. A prohibition in the
+    # drying field (or another ironing row) cannot authorize this value.
+    reason = "ironing attribute missing or duplicated" if len(irons) != len(translated) else ""
+    prohibition = r"(?:请勿|切勿|不可以|不可|不能|禁止|不要|不得|不允许|不宜|不适合|不适宜|勿|不)\s*(?:熨烫|熨平|熨|(?:使用|用)熨斗(?:熨烫|熨平)?)"
+    for src, dst in zip(irons, translated):
+        if not no_iron(src):
+            continue
+        value = dst.value.strip()
+        negated_key = bool(re.search(prohibition, dst.key))
+        if negated_key and value in {"是", "对", "正确"}:
+            continue
+        remaining, matches = re.subn(prohibition, "", value)
+        standalone = bool(re.fullmatch(r"不可|不能|禁止|不允许|否", value)) and not negated_key
+        if (re.search(r"无需|不用|免熨|免烫|不必", value)
+                or (not matches and not standalone)
+                or re.search(r"熨烫|熨平|熨斗", remaining)):
+            reason = "ironing prohibition missing, weakened or contradicted"
+    if reason:
         return [QAFinding("CARE_INSTRUCTION_CHANGED", "BLOCKER", "details", {},
-            source=source_text, target=target, message="care instruction changed into an optional/easy-care claim", blocking=True)]
+            source=source_text, target=target, message=reason, blocking=True)]
     return []
 
 
