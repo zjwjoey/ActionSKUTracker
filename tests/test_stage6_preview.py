@@ -55,7 +55,7 @@ def test_stage6_missing_hash_scope_is_blocked_instead_of_legacy_default():
     assert "FIELD_HASH_REQUIRED" in result["conflict_reason"]
 
 
-def test_stage6_legacy_overall_hash_requires_explicit_compatibility_marker():
+def test_stage6_legacy_overall_hash_never_substitutes_for_field_evidence():
     source = {"name": "Producto", "description": "Para casa", "details": "Material: Plástico"}
     candidate = {"candidate_id": "c1", "sku": "1001", "source_field": "description",
                  "source_spanish_value": "Para casa", "parsed_candidate": "用于家庭",
@@ -67,7 +67,8 @@ def test_stage6_legacy_overall_hash_requires_explicit_compatibility_marker():
     assert "UNSUPPORTED_HASH_SCOPE" in blocked["conflict_reason"]
     candidate["legacy_compatibility"] = True
     allowed = preview_one(_owner(), candidate, source, {"desc_zh": "旧"}, policy_hash="p1", source_snapshot_path="snapshot.json")
-    assert allowed["apply_action"] == "WOULD_UPDATE"
+    assert allowed["apply_action"] == "BLOCKED_CONFLICT"
+    assert "FIELD_HASH_REQUIRED" in allowed["conflict_reason"]
 
 
 def test_stage6_source_field_mismatch_is_blocked():

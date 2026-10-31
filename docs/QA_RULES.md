@@ -1,5 +1,11 @@
 # Action SKU Tracker QA 规则
 
+本地整合候选在已有 `DETAIL_CONTEXT_MISTRANSLATION` 中增加有限颜色及材质词项的
+属性内校验：同角色重复项按出现顺序匹配，不能由另一个属性或品名补足事实。
+MDF、PET 复合材质和认可同义表达不拆成错误的新事实。规则只报告问题，不改译文。
+历史 Stage 6 证据即使文件与当前来源核对一致，也保留 `LEGACY_REAPPROVAL_REQUIRED`；
+旧整体 Hash 兼容标记不能替代字段 Hash。详见 `BRANCH_FUNCTION_INTEGRATION.md`。
+
 ## 1. QA 结果
 
 | 状态 | 含义 | 是否允许正式提交 |

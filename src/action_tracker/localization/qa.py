@@ -1108,7 +1108,76 @@ def _detail_contextual_translation_findings(source_text, target):
                      'target_key': dst.key, 'target_value': dst.value}, source=source_text,
                     target=target, message='reviewed attribute/value mistranslation', blocking=True))
     results.extend(_detail_attribute_role_findings(source_text, target))
+    results.extend(_detail_material_color_findings(source_text, target))
     return results
+
+
+def _detail_material_color_findings(source_text, target):
+    """Port finite own-attribute fidelity from d133dd6 into the existing QA.
+
+    No translation, repair or cross-field context. Repeated attributes are
+    matched in occurrence order inside their role, never as dictionaries.
+    """
+    sources, targets = parse_structured_details(source_text), parse_structured_details(target)
+    materials = {'dolomita': ('白云石',), 'vidrio': ('玻璃',), 'plástico': ('塑料',),
+        'poliéster': ('聚酯', '涤纶'), 'polirresina': ('聚树脂', '树脂'),
+        'silicona': ('硅胶', '硅酮'), 'algodón': ('棉',), 'madera': ('木',),
+        'polietileno': ('聚乙烯', 'PE'), 'polipropileno': ('聚丙烯', 'PP'),
+        'acero inoxidable': ('不锈钢',), 'papel': ('纸',), 'metal': ('金属',)}
+    colors = {'azul': ('蓝',), 'púrpura': ('紫',), 'amarillo': ('黄',),
+        'rojo': ('红',), 'negro': ('黑',), 'blanco': ('白',), 'verde': ('绿',),
+        'gris topo': ('灰褐', '灰棕', '褐灰', '驼灰', '鼹灰', '灰驼'), 'gris': ('灰',)}
+    roles = [('base', ('基材', '底座材质', '底座材料')),
+        ('del asa', ('把手材质', '手柄材质', '提手材质')),
+        ('del mango', ('把手材质', '手柄材质', '提手材质')),
+        ('de la cubierta', ('盖子材质', '外罩材质')),
+        ('de la lente', ('镜片材质',)), ('estructura', ('主体结构材质', '镜架材质', '框架材质', '结构材质'))]
+    groups = {}
+    for pair in sources:
+        key, value = pair.key.strip().casefold(), pair.value.strip().casefold()
+        if key == 'color':
+            role, keys, mapping = 'color', ('颜色', '色彩'), colors
+        elif key == 'material':
+            role, keys, mapping = 'material', ('材质', '材料'), materials
+            for prefix, labels in roles:
+                if re.match(re.escape(prefix) + r'(?=\s|:|：)', value):
+                    role, keys = ('handle' if prefix in {'del asa', 'del mango'} else prefix), labels
+                    value = re.sub('^' + re.escape(prefix) + r'\s*[:：]?\s*', '', value)
+                    break
+        else:
+            continue
+        groups.setdefault(role, {'values': [], 'keys': keys, 'mapping': mapping})['values'].append(value)
+    findings = []
+    for role, group in groups.items():
+        values = [p.value for p in targets if p.key in group['keys']]
+        nested = {'de la lente': '镜片', 'estructura': '镜架'}.get(role)
+        if nested:
+            values.extend(re.sub('^' + nested + r'\s*[:：]\s*', '', p.value)
+                for p in targets if p.key in {'材质', '材料'} and re.match('^' + nested + r'\s*[:：]', p.value))
+        # A single scalar attribute can be rendered as ordinary Chinese prose.
+        if not targets and len(sources) == 1:
+            values = [str(target)]
+        for index, value in enumerate(group['values']):
+            if re.search(r'\b(?:sin|no|libre de)\b', value):
+                continue  # negation uses the existing polarity QA
+            own = values[index] if index < len(values) else ''
+            remaining = value
+            if re.search(r'\bmadera\s+mdf\b', remaining) and re.search(r'MDF|中密度纤维板', own, re.I):
+                remaining = re.sub(r'\bmadera\s+mdf\b', '', remaining)
+            if 'tereftalato de polietileno' in remaining and re.search(r'PET|聚对苯二甲酸乙二醇酯', own, re.I):
+                remaining = remaining.replace('tereftalato de polietileno', '')
+            for term, aliases in group['mapping'].items():
+                if term == 'gris' and 'gris topo' in remaining:
+                    continue
+                if not re.search(r'(?<!\w)' + re.escape(term) + r'(?!\w)', remaining):
+                    continue
+                if any((re.search(r'(?<![A-Za-z])' + re.escape(a) + r'(?![A-Za-z])', own, re.I)
+                        if a.isascii() else a in own) for a in aliases):
+                    continue
+                findings.append(QAFinding('DETAIL_CONTEXT_MISTRANSLATION', 'BLOCKER', 'details',
+                    {'attribute': role, 'occurrence': index, 'source_term': term, 'target_value': own},
+                    source=source_text, target=target, message='own material/color attribute omitted or changed', blocking=True))
+    return findings
 
 
 def _detail_attribute_role_findings(source_text, target):

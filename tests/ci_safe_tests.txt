@@ -243,3 +243,5 @@ tests/test_operations_backup_first_write.py
 tests/test_registry_bounded_sources.py
 tests/test_historical_fact_import.py
 tests/test_field_fidelity_qa.py
+tests/test_branch_fidelity_backport.py
+tests/test_stage6_verified_legacy.py
