@@ -97,6 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
     ew = sub.add_parser('export-difference-whitelist', help='只读查看字段差异白名单，不加载生产配置或写入业务数据')
     ew.add_argument('--registry', required=True)
     ew.add_argument('--sku', help='只查看一个货号的登记项；不会放行整个货号')
+    ew.add_argument('--check-current', type=Path, metavar='DATABASE', help='以mode=ro核对CURRENT来源/中文变化，不采集、不翻译、不Apply')
     ims = sub.add_parser("image-sync", help="同步正式 CURRENT 的本地图片资产")
     ims.add_argument("--date", required=True, help="业务日期（YYYY-MM-DD）")
     ims.add_argument("--run-id", help="可选：指定正式 run")
@@ -127,6 +128,7 @@ def build_parser() -> argparse.ArgumentParser:
     la = sub.add_parser("localization-audit", help="审计 CURRENT 中文字段、残留西语和数字事实")
     la.add_argument("--run-id", help="指定报告 run_id")
     la.add_argument("--current", action="store_true", help="审计 SQLite PRIMARY CURRENT")
+    la.add_argument('--conflict-registry', type=Path, help='本次本地审计启用字段冲突持续登记，不修改生产配置')
     sub.add_parser("research-release-audit", help="只读执行严格 research_release 发布门禁")
     kf = sub.add_parser("localization-knowledge-feed", help="基于只读 SQLite 快照生成知识候选 Feed")
     kf.add_argument("--snapshot", required=True, help="SQLite Backup API 生成的只读快照")
@@ -342,11 +344,21 @@ def main(argv=None) -> int:
         os.environ["ACTION_TRACKER_PROJECT_ROOT"] = str(args.data_root)
     if args.command == 'export-difference-whitelist':
         from collections import Counter
-        from .exporting.difference_whitelist import DifferenceWhitelist
+        import sqlite3
+        from .exporting.difference_whitelist import DifferenceWhitelist, check_current_conflicts
         try:
             registry = DifferenceWhitelist.load(args.registry)
-        except (OSError, ValueError, TypeError) as exc:
-            print(json.dumps({'status':'BLOCKED', 'reason':str(exc)}, ensure_ascii=False), file=sys.stderr)
+            if args.check_current:
+                selected = registry
+                if args.sku:
+                    selected = DifferenceWhitelist([x for x in registry.entries.values() if x['sku'] == args.sku])
+                    selected.registry_path = registry.registry_path
+                    selected.registry_sha256 = registry.registry_sha256
+                result = check_current_conflicts(selected, args.check_current)
+                print(json.dumps(result, ensure_ascii=True))
+                return 0
+        except (OSError, ValueError, TypeError, sqlite3.Error) as exc:
+            print(json.dumps({'status':'BLOCKED', 'reason':str(exc)}, ensure_ascii=True), file=sys.stderr)
             return 2
         entries = [item for item in registry.entries.values() if not args.sku or item['sku']==args.sku]
         result = {'status':'PASS','tracked_skus':len(registry.tracked_skus), 'entry_count':len(entries),
@@ -354,7 +366,7 @@ def main(argv=None) -> int:
                   'read_only':True,'production_apply':False,'whole_sku_bypass':False}
         if args.sku:
             result.update(sku=args.sku, entries=entries)
-        print(json.dumps(result,ensure_ascii=False))
+        print(json.dumps(result,ensure_ascii=True))
         return 0
     if args.command == "storage-foundation":
         from .operations.storage_cli import run_storage_command
@@ -608,11 +620,14 @@ def main(argv=None) -> int:
     if args.command == "localization-audit":
         from .localization.service import audit_current
         try:
+            if args.conflict_registry:
+                cfg = {**cfg, 'localization': {**(cfg.get('localization') or {}),
+                    'source_conflict_tracking': {'enabled': True, 'path': str(args.conflict_registry)}}}
             result = audit_current(cfg, run_id=args.run_id)
         except Exception as exc:
-            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            print(json.dumps({"error": str(exc)}, ensure_ascii=True), file=sys.stderr)
             return 2
-        print(json.dumps(result, ensure_ascii=False)); return 0
+        print(json.dumps(result, ensure_ascii=True)); return 0
     if args.command == "research-release-audit":
         from .database.integration import database_path
         from .database.repository import ProductionRepository, ProductionRepositoryError

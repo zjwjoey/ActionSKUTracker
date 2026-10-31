@@ -35,12 +35,27 @@ def _existing_zh(db_path: Path) -> dict[str, dict[str, Any]]:
 
 def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records: list[dict[str, Any]] | None = None, persist_reviews: bool = False) -> dict[str, Any]:
     """Resolve/validate every PRIMARY CURRENT SKU without writing production data."""
+    from ..exporting.difference_whitelist import conflict_tracking_from_config, pending_conflict_report
+    tracking_registry = conflict_tracking_from_config(cfg)
     db_path = database_path(dict(cfg))
     records = records if records is not None else ProductionRepository(db_path).load_current_export_records()
     directory = Path(cfg["paths"].get("dictionary_baseline") or Path(cfg["project_root"]) / "data" / "dictionary")
     knowledge = KnowledgeLoader(directory).load()
     engine = LocalizationEngine(knowledge=knowledge)
     existing = _existing_zh(db_path) if db_path.exists() else {}
+    tracking = None
+    tracked_fields = {}
+    tracking_values = {}
+    if tracking_registry is not None:
+        observed = []
+        for record in records:
+            sku = str(record.get('sku') or record.get('official_sku') or '')
+            row = dict(record)
+            row.update({k: v for k, v in existing.get(sku, {}).items() if k in LOCALIZATION_FIELDS})
+            observed.append(row)
+            tracking_values[sku] = row
+        tracking = pending_conflict_report(tracking_registry, observed)
+        tracked_fields = tracking['blocked_fields_by_sku']
     rows: list[dict[str, Any]] = []
     candidates: list[dict[str, Any]] = []
     unknown_plans: list[tuple[dict[str, Any], Any, LocalizationEngine]] = []
@@ -123,6 +138,13 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
                "knowledge_hits": "|".join(plan.knowledge_hits), "ai_used": plan.ai_used,
                "source_run_id": str(record.get("source_run_id") or ""),
                "source_commit_id": str(record.get("source_commit_id") or "")}
+        if tracking is not None:
+            # Overall publication is still pending, without freezing the
+            # untracked fields on this same SKU during normal preparation.
+            row['qa_readiness'] = row['readiness']
+            row['tracked_conflict_fields'] = '|'.join(tracked_fields.get(sku, ()))
+            if tracked_fields.get(sku):
+                row['readiness'] = 'REVIEW_REQUIRED'
         rows.append(row)
         for fact in plan.semantic_facts:
             if fact.semantic_type in {"PRODUCT_TYPE", "TECH_TOKEN", "STANDARD_UNIT", "DETAIL_KEY"}:
@@ -135,6 +157,19 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
     with audit_path.open("w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=headers); writer.writeheader(); writer.writerows(rows)
     review_rows = _review_rows(rows, run_id or date_key)
+    if tracking is not None:
+        for item in tracking['entries']:
+            seed = json.dumps([item['entry_id'], item['observed_source_hash'],
+                               item['observed_current_hash'], item['check_state']], ensure_ascii=False)
+            review_rows.append({'review_id': hashlib.sha256(seed.encode()).hexdigest()[:24],
+                'issue_type': 'SOURCE_HASH_CHANGED' if 'SOURCE_HASH_CHANGED' in item['changes'] else 'DATA_INCONSISTENCY',
+                'sku': item['sku'], 'field': item['field'],
+                'current_value': str(tracking_values.get(item['sku'], {}).get(item['field']) or ''),
+                'suggested_value': '', 'evidence': json.dumps(item['evidence'], ensure_ascii=False),
+                'reason': item['reason'] + ' [' + ','.join(item['changes'] or [item['check_state']]) + ']',
+                'created_at': tracking['generated_at'], 'updated_at': tracking['generated_at'],
+                'status': 'PENDING', 'source': 'SOURCE_CONFLICT_TRACKING', 'resolution': ''})
+        (out / 'source_conflict_tracking.json').write_text(json.dumps(tracking, ensure_ascii=False, indent=2), encoding='utf-8')
     review_path = out / "review_queue.csv"
     review_headers = ["review_id", "issue_type", "sku", "field", "current_value", "suggested_value", "evidence", "reason", "created_at", "status", "source", "updated_at", "resolution"]
     with review_path.open("w", encoding="utf-8-sig", newline="") as fh:
@@ -160,6 +195,7 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
             requested_fields = tuple(
                 canonical for zh_field, field in plan.fields.items()
                 if field.status != "READY"
+                and zh_field not in tracked_fields.get(str(record.get('sku') or record.get('official_sku') or ''), ())
                 and field.source not in TERMINAL_FIELD_SOURCES
                 for canonical in (ZH_TO_CANONICAL[zh_field],)
                 if canonical in CANONICAL_AI_FIELDS
@@ -212,6 +248,8 @@ def audit_current(cfg: Mapping[str, Any], *, run_id: str | None = None, records:
                 "knowledge_hit_rate": knowledge_hit_count / max(1, len(rows)),
                 "ai_eligible_count": ai_eligible_count, "ai_call_count": getattr(provider, "calls", 0),
                 "ai_candidate_count": len(ai_candidates), "ai_avoidance_rate": 1.0 - (getattr(provider, "calls", 0) / max(1, len(rows))), "generated_at": datetime.now(timezone.utc).isoformat()}
+    if tracking is not None:
+        coverage['source_conflict_tracking'] = {**tracking, 'report': str(out / 'source_conflict_tracking.json')}
     (out / "coverage.json").write_text(json.dumps(coverage, ensure_ascii=False, indent=2), encoding="utf-8")
     source_commit_id = None
     if db_path.exists():
@@ -264,9 +302,15 @@ def apply_from_audit(cfg: Mapping[str, Any], *, run_id: str, commit: bool = Fals
     source_hashes: dict[str, str] = {}
     for row in csv.DictReader(Path(result["audit"]).open(encoding="utf-8-sig")):
         # Human/LOCKED localizations are immutable to automatic enrichment.
-        if row.get("readiness") in {"READY", "AUTO_READY"} and str(row.get("old_review_status") or "").upper() not in {"LOCKED", "HUMAN_APPROVED", "APPROVED"}:
-            candidates[row["sku"]] = {"name": row["new_name_zh"], "cat1": row["new_cat1_zh"], "cat2": row["new_cat2_zh"], "spec": row["new_spec_zh"], "unit_price": row["new_unit_price_zh"], "description": row["new_desc_zh"], "details": row["new_details_zh"]}
-            source_hashes[row["sku"]] = row["source_hash"]
+        held = (result.get('source_conflict_tracking') or {}).get('blocked_fields_by_sku', {}).get(row['sku'], ())
+        readiness = row.get('qa_readiness') if held else row.get('readiness')
+        if readiness in {"READY", "AUTO_READY"} and str(row.get("old_review_status") or "").upper() not in {"LOCKED", "HUMAN_APPROVED", "APPROVED"}:
+            fields = {"name": row["new_name_zh"], "cat1": row["new_cat1_zh"], "cat2": row["new_cat2_zh"], "spec": row["new_spec_zh"], "unit_price": row["new_unit_price_zh"], "description": row["new_desc_zh"], "details": row["new_details_zh"]}
+            for field in held:
+                fields.pop(ZH_TO_CANONICAL[field], None)
+            if fields:
+                candidates[row["sku"]] = fields
+                source_hashes[row["sku"]] = row["source_hash"]
     prepared = apply_localization_correction(db_path, run_id=run_id, localizations_by_sku=candidates, source_hashes=source_hashes)
     # The compatibility entry point is PREPARE-only.  A human approval step
     # and the explicit immutable-patch apply coordinator are required before
