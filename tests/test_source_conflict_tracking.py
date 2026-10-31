@@ -319,3 +319,25 @@ def test_readonly_registry_view_is_also_ascii_safe(tmp_path):
     with contextlib.redirect_stdout(output):
         assert cli.main(['export-difference-whitelist', '--registry', str(p), '--sku', '1']) == 0
     assert json.loads(raw.getvalue().decode('ascii'))['entries'][0]['reason'] == item['reason']
+
+
+@pytest.mark.parametrize('fails', [False, True])
+def test_opted_in_audit_json_is_safe_on_legacy_windows_stream(tmp_path, monkeypatch, fails):
+    import contextlib
+    import io
+    from action_tracker import cli, config, log
+    from action_tracker.localization import service
+    monkeypatch.setattr(config, 'load_settings', lambda **kw: {'paths': {'logs': tmp_path/'logs'}})
+    monkeypatch.setattr(config, 'ensure_runtime_dirs', lambda cfg: None)
+    monkeypatch.setattr(log, 'setup_logging', lambda path: None)
+    def audit(*args, **kwargs):
+        if fails:
+            raise ValueError('来源Ø')
+        return {'reason': '来源Ø'}
+    monkeypatch.setattr(service, 'audit_current', audit)
+    raw = io.BytesIO(); output = io.TextIOWrapper(raw, encoding='ascii', write_through=True)
+    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+        code = cli.main(['localization-audit', '--conflict-registry', str(tmp_path/'unused.json')])
+    assert code == (2 if fails else 0)
+    payload = json.loads(raw.getvalue().decode('ascii'))
+    assert payload['error' if fails else 'reason'] == '来源Ø'

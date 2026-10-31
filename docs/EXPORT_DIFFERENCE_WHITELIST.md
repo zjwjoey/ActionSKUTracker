@@ -54,6 +54,8 @@ python -m action_tracker export-difference-whitelist --registry '<持续登记.j
 - `NO_TRACKED_CONFLICTS`：没有显式的持续冲突登记。
 
 正常完成检查返回0，不表示来源获批；缺文件、非法合同、非法跟踪开关或数据库错误返回2。
+只读入口及本地审计的 JSON 使用 ASCII 转义保持内容完整，兼容 Windows 默认 GBK
+输出流；解码 JSON 后中文与 Ø 等字符不变。编码错误不能冒充来源或数据库 BLOCKED。
 不在核对范围不能解释为下架；缺失来源值不能解释为官网已明确为空。登记不会自动续期、
 修改 Hash 或转 CONFIRMED。其他字段的变化不会误触发同 SKU 这项字段的复核。
 

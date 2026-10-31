@@ -625,9 +625,9 @@ def main(argv=None) -> int:
                     'source_conflict_tracking': {'enabled': True, 'path': str(args.conflict_registry)}}}
             result = audit_current(cfg, run_id=args.run_id)
         except Exception as exc:
-            print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+            print(json.dumps({"error": str(exc)}, ensure_ascii=True), file=sys.stderr)
             return 2
-        print(json.dumps(result, ensure_ascii=False)); return 0
+        print(json.dumps(result, ensure_ascii=True)); return 0
     if args.command == "research-release-audit":
         from .database.integration import database_path
         from .database.repository import ProductionRepository, ProductionRepositoryError
