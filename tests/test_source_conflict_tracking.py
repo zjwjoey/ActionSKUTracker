@@ -283,3 +283,27 @@ def test_tracking_notes_use_existing_persistent_queue_contract(tmp_path, monkeyp
     assert len(rows) == 1 and rows[0]['issue_type'] == 'DATA_INCONSISTENCY'
     assert rows[0]['status'] == 'PENDING' and rows[0]['source'] == 'SOURCE_CONFLICT_TRACKING'
     assert entry()['reason'] in rows[0]['reason']
+
+
+@pytest.mark.parametrize('fails', [False, True])
+def test_readonly_cli_preserves_unicode_json_on_ascii_windows_stream(tmp_path, monkeypatch, fails):
+    import contextlib
+    import io
+    from action_tracker import cli
+    from action_tracker.exporting import difference_whitelist as module
+    registry = registry_file(tmp_path)
+    expected = {'reason': '来源Ø和中文备注', 'status': 'TRACKED_PENDING'}
+    def check(*args, **kwargs):
+        if fails:
+            raise ValueError(expected['reason'])
+        return expected
+    monkeypatch.setattr(module, 'check_current_conflicts', check)
+    stdout, stderr = io.BytesIO(), io.BytesIO()
+    out = io.TextIOWrapper(stdout, encoding='ascii', write_through=True)
+    err = io.TextIOWrapper(stderr, encoding='ascii', write_through=True)
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = cli.main(['export-difference-whitelist', '--registry', str(registry), '--check-current', 'unused.db'])
+    assert code == (2 if fails else 0)
+    payload = json.loads((stderr if fails else stdout).getvalue().decode('ascii'))
+    assert payload['reason'] == expected['reason']
+    assert payload['status'] == ('BLOCKED' if fails else 'TRACKED_PENDING')

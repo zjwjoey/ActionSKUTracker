@@ -355,10 +355,10 @@ def main(argv=None) -> int:
                     selected.registry_path = registry.registry_path
                     selected.registry_sha256 = registry.registry_sha256
                 result = check_current_conflicts(selected, args.check_current)
-                print(json.dumps(result, ensure_ascii=False))
+                print(json.dumps(result, ensure_ascii=True))
                 return 0
         except (OSError, ValueError, TypeError, sqlite3.Error) as exc:
-            print(json.dumps({'status':'BLOCKED', 'reason':str(exc)}, ensure_ascii=False), file=sys.stderr)
+            print(json.dumps({'status':'BLOCKED', 'reason':str(exc)}, ensure_ascii=True), file=sys.stderr)
             return 2
         entries = [item for item in registry.entries.values() if not args.sku or item['sku']==args.sku]
         result = {'status':'PASS','tracked_skus':len(registry.tracked_skus), 'entry_count':len(entries),
