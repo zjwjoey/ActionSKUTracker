@@ -1,0 +1,3098 @@
+{
+  "contract": "SOURCE_BOUND_REGRESSION_NOT_HUMAN_GOLD",
+  "evidence_task": "F:\\ai文件\\CodexStorage\\work\\ActionTasks\\task-1fe071f5e59a426cadd13a36dfccc076",
+  "cases": [
+    {
+      "record": {
+        "sku": "2506346",
+        "name_es": "Plástico protector TCX",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Complementos de pintura",
+        "spec_es": "25 m x 55 cm | diferentes variantes",
+        "desc_es": "Con dispensador\nProtege grandes superficies rápida y fácilmente con este plástico adherente. De este modo, protegerás el suelo de las manchas de pintura durante la pintura.",
+        "details_es": "Material: Plástico; Antideslizante: No; Previsto de anillas de fijación: No; Provisto de cinta adhesiva: Sí; Reutilizable: No; Número del artículo: 2506346",
+        "name_zh": "防护塑料膜",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-06_provenance_remediation_01_20261006_14755bf3b148",
+            "approved_by": "owner:registry_owner_review_20260917_completed_20260917",
+            "approved_at": "2026-09-17T13:29:30.764965+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "涂料配件",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "025a2b56e71eb50099049b556c4a50cf1e7229afc326a4ea23c8e4fc5437e632",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_098_c4876377eee4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:50:25.411056+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "带分配器；使用这种黏附塑料保护膜可快速方便地覆盖大面积区域，在粉刷时保护地面免受油漆污染。",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "667d1f6a08cf296f688892d6f5b96eb2c22caa67871e105130f130955b16d80c",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-12_repair114_20261012_77c2bf247f94",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-12T08:27:37+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "材质：塑料；防滑：否；带固定环：否；带胶带：是；可重复使用：否；商品编号：2506346",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "bcfcb5b46ab1a3c16830513b3bb1e094129fa10986e3d24afb11d82c17499488",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_018_cce6addee086",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:50:25.787873+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "防护塑料膜",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "67fd4eef0fe580834defc408e41a85b3cabf2d54e336a171d8f3a8b9303b9a8c",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_rebind_9e278712ed_63050a9eb5b3",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:34.861127+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "25m x 55cm｜多款可选",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c69b1c06626afff31604c7089c4b1841683588452fd6d2561df27b14fd8e0a84",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-06_provenance_remediation_01_20261006_14755bf3b148",
+            "approved_by": "owner:registry_owner_review_20260917_completed_20260917",
+            "approved_at": "2026-09-17T13:29:31.131222+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "2506346",
+        "field": "name",
+        "source_hash": "85ae2a9ba1d9f3dbf1ef1b1ee42ab7bdce1ed744f25d9381c242afa47c2bb444",
+        "field_source_hash": "67fd4eef0fe580834defc408e41a85b3cabf2d54e336a171d8f3a8b9303b9a8c",
+        "current_zh": "防护塑料膜",
+        "target": "防护塑料膜",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Plástico protector TCX",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Complementos de pintura",
+          "spec_es": "25 m x 55 cm | diferentes variantes",
+          "desc_es": "Con dispensador\nProtege grandes superficies rápida y fácilmente con este plástico adherente. De este modo, protegerás el suelo de las manchas de pintura durante la pintura.",
+          "details_es": "Material: Plástico; Antideslizante: No; Previsto de anillas de fijación: No; Provisto de cinta adhesiva: Sí; Reutilizable: No; Número del artículo: 2506346"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Plástico protector TCX",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "a95a13da3cb0150d3435d956d505df757ed7b38027e2e628949557b5daf09687",
+        "reviewed_hash": "a95a13da3cb0150d3435d956d505df757ed7b38027e2e628949557b5daf09687",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "67fd4eef0fe580834defc408e41a85b3cabf2d54e336a171d8f3a8b9303b9a8c"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "2529766",
+        "name_es": "Cinta adhesiva para alfombras TCX",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "10 m x 50 mm",
+        "desc_es": "Súper resistentes\nFáciles de cortar\nPapel con certificación FSC®: papel responsable\nMantén la alfombra en su sitio con ayuda de esta cinta de doble cara.",
+        "details_es": "Doble cara: Sí; Superficie de destino adecuada: Alfombra / tapizado; Tipo de cinta (DHZ): Cinta adhesiva; Número del artículo: 2529766",
+        "name_zh": "地毯胶带",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_025_20d5ef3b21d5",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:02:35.689356+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_025_20d5ef3b21d5",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:02:37.476516+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "超强粘性；易于裁剪；FSC®认证纸张：负责任纸张；使用这款双面胶带将地毯固定到位。",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "a4ec5f6a9332a81b6772365f4db086942c273a39ce9a717e65350f0efbdbe50c",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_025_20d5ef3b21d5",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:02:37.720587+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "双面：是；适用表面：地毯/织物；胶带类型（DHZ）：胶带；商品编号：2529766",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "a3a08a2f3de843b5b35e6cc5ba7b999be7ad623fd1e137321dfddcc6159a49ee",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_010_8be38cf319d7",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:02:37.841748+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "地毯胶带",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "fffc40afc2f6d702934b9a45240c2524f73c7d6816e3beb0441e3aff6aba4af2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_rebind_9e278712ed_63050a9eb5b3",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:35.168020+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "10m×50mm",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "f45331ae2d5f2ebd5ce636ad552823354a44336010eaa5cfa50b17659a573a3e",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_025_20d5ef3b21d5",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:02:37.583680+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "2529766",
+        "field": "name",
+        "source_hash": "223fc2afee07643d4a0af65565754222cacd33c6b3010decbea0c11470e8705b",
+        "field_source_hash": "fffc40afc2f6d702934b9a45240c2524f73c7d6816e3beb0441e3aff6aba4af2",
+        "current_zh": "地毯胶带",
+        "target": "地毯胶带",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Cinta adhesiva para alfombras TCX",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "10 m x 50 mm",
+          "desc_es": "Súper resistentes\nFáciles de cortar\nPapel con certificación FSC®: papel responsable\nMantén la alfombra en su sitio con ayuda de esta cinta de doble cara.",
+          "details_es": "Doble cara: Sí; Superficie de destino adecuada: Alfombra / tapizado; Tipo de cinta (DHZ): Cinta adhesiva; Número del artículo: 2529766"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Cinta adhesiva para alfombras TCX",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "c6bfb02071db33f50230008a00157c151cdfa66d66f213a8aa74a37c23cf7f5f",
+        "reviewed_hash": "c6bfb02071db33f50230008a00157c151cdfa66d66f213a8aa74a37c23cf7f5f",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "fffc40afc2f6d702934b9a45240c2524f73c7d6816e3beb0441e3aff6aba4af2"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "2549734",
+        "name_es": "Cinta para obras y reparaciones TCX",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "50 mm x 50 metros | diferentes variantes",
+        "desc_es": "Cinta más fuerte\nGran calidad\nResistente a la intemperie\nLa cinta adhesiva siempre va bien de tener en la caja de herramientas.",
+        "details_es": "Color: Negro, Gris; Destinado a: Para uso interior y exterior; Doble cara: No; Resistente al agua: Sí; Tipo de cinta (DHZ): Ducktape; Número del artículo: 2549734",
+        "name_zh": "施工维修胶带",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_132_120d0f626a2a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:06:48.987293+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_132_120d0f626a2a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:06:49.104214+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "更结实的胶带\n高品质\n耐候\n工具箱里备上一卷胶带总是好的。",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "479f7a59ad3527e544507addf7e9058bb19d11ac8a7ebd8ae159dead84c3b2db",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_132_120d0f626a2a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:06:49.476280+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：黑色、灰色；适用场景：室内外两用；双面：否；防水：是；胶带类型（DHZ）：布基胶带；商品编号：2549734",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "af11c8ff3fb107c3a65c4e46e4b7309d33d3a126180191df1c8c4d2cdd67c689",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_024_17120954643a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:06:49.632244+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "施工维修胶带",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "9fe7c73e817c8baa0be36a1924838d380eab068e19e35b0321359b8a913aa95b",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_rebind_9e278712ed_63050a9eb5b3",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:35.783824+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "50mm×50m｜多款可选",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "6d63999e529d5b6ac51d8ccf86de334b8ffde80a16e2ed09fccb93816afd58ba",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_132_120d0f626a2a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:06:49.232205+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "2549734",
+        "field": "name",
+        "source_hash": "a11583ab3716851b3cb4a2452e1ed9b45e7b59ffcdf69513949ff6c5d50151c6",
+        "field_source_hash": "9fe7c73e817c8baa0be36a1924838d380eab068e19e35b0321359b8a913aa95b",
+        "current_zh": "施工维修胶带",
+        "target": "施工维修胶带",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Cinta para obras y reparaciones TCX",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "50 mm x 50 metros | diferentes variantes",
+          "desc_es": "Cinta más fuerte\nGran calidad\nResistente a la intemperie\nLa cinta adhesiva siempre va bien de tener en la caja de herramientas.",
+          "details_es": "Color: Negro, Gris; Destinado a: Para uso interior y exterior; Doble cara: No; Resistente al agua: Sí; Tipo de cinta (DHZ): Ducktape; Número del artículo: 2549734"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Cinta para obras y reparaciones TCX",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "1940ad9b3b9ae238b687d0506e8749edaf2ccd82649b3ebcd98e898ae7b8874a",
+        "reviewed_hash": "1940ad9b3b9ae238b687d0506e8749edaf2ccd82649b3ebcd98e898ae7b8874a",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "9fe7c73e817c8baa0be36a1924838d380eab068e19e35b0321359b8a913aa95b"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "2549801",
+        "name_es": "Cinta de enmascarar TCX",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "36 mm x 50 m",
+        "desc_es": "Se arranca con facilidad\nNo deja restos de adhesivo\nPapel con certificación FSC®: papel sostenible\nEste rollo de cinta es indispensable para cubrir marcos de ventanas y zócalos a la hora de pintar, entre otras cosas.",
+        "details_es": "Color: Blanco; Material: Papel; Doble cara: No; Tipo de cinta (DHZ): Cinta adhesiva; Número del artículo: 2549801",
+        "name_zh": "遮蔽胶带",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_049_6fa8d49d11c4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:16:16.976772+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_049_6fa8d49d11c4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:16:17.164712+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "易撕\n不留残胶\nFSC® 认证纸张：可持续纸张\n这卷胶带在油漆时遮盖窗框和踢脚线等必不可少。",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "9db5b66289dfa71fd61c2f3b14bba7c69ae3f7f43bfc9cd8c15fa833040d10ea",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_049_6fa8d49d11c4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:16:17.420770+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：白色；材质：纸；双面：否；胶带类型（DHZ）：胶带；商品编号：2549801",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "775bdbc1ca0db06eb1b13123c6b8aeef9732a1b2bf707d1f6f6416319e74696c",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_009_6ded899fa223",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:16:17.639010+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "遮蔽胶带",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "82fb0c4f87d8ad3072ab1a7ee85b64a2df35c045be2f01a978881a67c6c197d0",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_rebind_9e278712ed_63050a9eb5b3",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:35.895054+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "36mm×50m",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "0258c10167e2436dd3a90aa980e79f1c3323ac06b77b608a1cb2a6a0a5b79b90",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_049_6fa8d49d11c4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:16:17.310864+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "2549801",
+        "field": "name",
+        "source_hash": "1a3deab8c81fbf39fa78f40b72cffb2bf4a1d6e9b50f064394181dc3d6f69a9f",
+        "field_source_hash": "82fb0c4f87d8ad3072ab1a7ee85b64a2df35c045be2f01a978881a67c6c197d0",
+        "current_zh": "遮蔽胶带",
+        "target": "遮蔽胶带",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Cinta de enmascarar TCX",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "36 mm x 50 m",
+          "desc_es": "Se arranca con facilidad\nNo deja restos de adhesivo\nPapel con certificación FSC®: papel sostenible\nEste rollo de cinta es indispensable para cubrir marcos de ventanas y zócalos a la hora de pintar, entre otras cosas.",
+          "details_es": "Color: Blanco; Material: Papel; Doble cara: No; Tipo de cinta (DHZ): Cinta adhesiva; Número del artículo: 2549801"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Cinta de enmascarar TCX",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "7a882d97228e455981494f880194993010fd09bf26519040205f7fbf9c027470",
+        "reviewed_hash": "7a882d97228e455981494f880194993010fd09bf26519040205f7fbf9c027470",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "82fb0c4f87d8ad3072ab1a7ee85b64a2df35c045be2f01a978881a67c6c197d0"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "2578747",
+        "name_es": "Cinta de embalaje de papel TCX",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "50 m x 50 mm",
+        "desc_es": "Cinta adhesiva ecológica y totalmente reciclable\nSe puede usar con un dispensador manual\nPapel con certificación FSC®: papel gestionado de manera sostenible\nEsta cinta adhesiva de papel es una solución respetuosa con el medioambiente si tienes que embalar muchas cajas.",
+        "details_es": "Color: Marrón; Material: Papel; Doble cara: No; Número del artículo: 2578747",
+        "name_zh": "纸质封箱胶带",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_090_54dd6f81de2c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:46:19.242773+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_090_54dd6f81de2c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:46:19.442360+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "环保纸质胶带，可完全回收，并可搭配手动胶带器使用；纸张通过 FSC® 可持续认证；适合批量封装纸箱",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "9e1dfd0d61a871b84ff5e739e284ca57769569d02c496ba1a293644e14a1e93d",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_090_54dd6f81de2c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:46:19.761168+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：棕色；材质：纸；双面：否；商品编号：2578747",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "d33d0a5e81f3a928824f64e0be61ab11379c638446045a066a414d8bd8dac8ca",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_017_b939c2416224",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:46:19.910130+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "纸质封箱胶带",
+            "source": "CODEX_SOURCE_FAITHFUL_CORRECTION",
+            "review_status": "APPROVED",
+            "source_hash": "e627f4eadd80dcd02ebab949289710b05344ec84cff2f6f530ef0cec977af60e",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-11_current_catalog_fix_20261011T060642953334Z_bf9981b4e835",
+            "approved_by": "human:explicit_request_20261011",
+            "approved_at": "2026-10-11T06:07:12+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "50m×50mm",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "b91cf052dfbd06cfc2c56e55b5d0da685c8216526df5d4958ff03722fd41208d",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_090_54dd6f81de2c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:46:19.587686+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "2578747",
+        "field": "name",
+        "source_hash": "d4180eaef33a7367793f00f5fa914b853d3d2068de78f12f1ece552f7d725e2d",
+        "field_source_hash": "e627f4eadd80dcd02ebab949289710b05344ec84cff2f6f530ef0cec977af60e",
+        "current_zh": "纸质封箱胶带",
+        "target": "纸质封箱胶带",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Cinta de embalaje de papel TCX",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "50 m x 50 mm",
+          "desc_es": "Cinta adhesiva ecológica y totalmente reciclable\nSe puede usar con un dispensador manual\nPapel con certificación FSC®: papel gestionado de manera sostenible\nEsta cinta adhesiva de papel es una solución respetuosa con el medioambiente si tienes que embalar muchas cajas.",
+          "details_es": "Color: Marrón; Material: Papel; Doble cara: No; Número del artículo: 2578747"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Cinta de embalaje de papel TCX",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "b89749d82a4e6c43c11a19f68b1e33c426deefc3720468d5e23e358a85a59b66",
+        "reviewed_hash": "b89749d82a4e6c43c11a19f68b1e33c426deefc3720468d5e23e358a85a59b66",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "e627f4eadd80dcd02ebab949289710b05344ec84cff2f6f530ef0cec977af60e"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "2582293",
+        "name_es": "Cinta adhesiva para exteriores TCX",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Complementos de pintura",
+        "spec_es": "25 m x 36 mm",
+        "desc_es": "Aguanta pegada unas 2 semanas\nCinta adhesiva resistente a la intemperie\nPapel con certificación FSC®: papel responsable\n¿Vas a pintar o hacer trabajos de bricolaje fuera? Entonces te hará falta la cinta adhesiva de exteriores. Resistente a la intemperie, por lo que permanece bien pegada en su sitio.",
+        "details_es": "Color: Azul; Material: Papel; Antideslizante: No; Destinado a: Exteriores; Previsto de anillas de fijación: No; Provisto de cinta adhesiva: No; Reutilizable: No; Número del artículo: 2582293",
+        "name_zh": "户外胶带",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_085_01309a625785",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:43:44.676381+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "涂料配件",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "025a2b56e71eb50099049b556c4a50cf1e7229afc326a4ea23c8e4fc5437e632",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_085_01309a625785",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:43:44.802767+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "耐候性好，可保持粘贴约 2 周；纸张通过 FSC® 可持续认证；适合户外涂装和 手工 遮蔽作业",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "32e2fcc29a431a6710f58120447b3a4dcc48b555ace49497b473066e3adf8a6a",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_085_01309a625785",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:43:45.082024+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：蓝色；材质：纸；防滑：否；适用场景：室外；带固定环：否；带胶带：否；可重复使用：否；商品编号：2582293",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "91eed71cb44dcda3ee2c071bea9987a29b0973cee3c87c86875f4cf542ef09df",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_016_92d70066499a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:43:45.209696+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "户外胶带",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ff938bf29d5d6ecf28cc2c08fb9f9427174aa6f6b08c2ad0d61b8ffef3b143db",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_rebind_9e278712ed_63050a9eb5b3",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:39.917560+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "25m×36mm",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "d136cc4ca8c04fa83e08dbeb4d0e8ecdd7c995cadb6f87b9c50d7ec59ea2e11f",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_085_01309a625785",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:43:44.932195+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "2582293",
+        "field": "name",
+        "source_hash": "c2231c63fd49cb73e35d7adf8eff90630fe8de2c5ae375ca13c124fcf7967dc8",
+        "field_source_hash": "ff938bf29d5d6ecf28cc2c08fb9f9427174aa6f6b08c2ad0d61b8ffef3b143db",
+        "current_zh": "户外胶带",
+        "target": "户外胶带",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Cinta adhesiva para exteriores TCX",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Complementos de pintura",
+          "spec_es": "25 m x 36 mm",
+          "desc_es": "Aguanta pegada unas 2 semanas\nCinta adhesiva resistente a la intemperie\nPapel con certificación FSC®: papel responsable\n¿Vas a pintar o hacer trabajos de bricolaje fuera? Entonces te hará falta la cinta adhesiva de exteriores. Resistente a la intemperie, por lo que permanece bien pegada en su sitio.",
+          "details_es": "Color: Azul; Material: Papel; Antideslizante: No; Destinado a: Exteriores; Previsto de anillas de fijación: No; Provisto de cinta adhesiva: No; Reutilizable: No; Número del artículo: 2582293"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Cinta adhesiva para exteriores TCX",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "be3c80d929577d73636f8d0675c809aef387b61b8b045290cdb7b48c558493fa",
+        "reviewed_hash": "be3c80d929577d73636f8d0675c809aef387b61b8b045290cdb7b48c558493fa",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "ff938bf29d5d6ecf28cc2c08fb9f9427174aa6f6b08c2ad0d61b8ffef3b143db"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3003490",
+        "name_es": "Cinta para enmascarar con papel TCX",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Complementos de pintura",
+        "spec_es": "20 metros x 30 cm",
+        "desc_es": "Cinta para enmascarar con papel respetuoso con el medioambiente\nIdeal para proteger el alféizar y el zócalo\nPapel con certificación FSC®: papel gestionado de manera sostenible\n¿Tienes pensado pintar las ventanas o las paredes? Protege tanto el alféizar como el zócalo de las salpicaduras con esta práctica cinta para enmascarar.",
+        "details_es": "Material: Papel; Destinado a: Interior; Hoja de papel / plástico: Papel; Provisto de cinta adhesiva: Sí; Reutilizable: No; Número del artículo: 3003490",
+        "name_zh": "带遮蔽纸的遮蔽胶带",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_056_79489699c594",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:20:19.343232+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "涂料配件",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "025a2b56e71eb50099049b556c4a50cf1e7229afc326a4ea23c8e4fc5437e632",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_056_79489699c594",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:20:19.553852+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "环保纸遮蔽胶带\n适合保护窗台和踢脚线\nFSC® 认证纸张：可持续管理纸张\n打算粉刷窗户或墙壁？用这款实用的遮蔽胶带保护窗台和踢脚线免受飞溅。",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "704b4189a6dacea9b7af0a87ee7b1422bd984ca2c2a0d790c23fd96d1e433f11",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_056_79489699c594",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:20:19.876047+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "材质：纸；适用场景：室内；纸张/塑料类型：纸；带胶带：是；可重复使用：否；商品编号：3003490",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "fe4e7eb0c35e3d47c61a7c7092a0ddf1100be43d0c6d2d64b3d6a506f0221608",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_011_f0ecfd7c27d6",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:20:20.209378+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "带遮蔽纸的遮蔽胶带",
+            "source": "CODEX_SOURCE_FAITHFUL_CORRECTION",
+            "review_status": "APPROVED",
+            "source_hash": "7d00e39f48c1efaeede8e055c43b8f5d548e20d95eb92a93d8bcfa01c5e58021",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-11_current_catalog_fix_20261011T060642953334Z_bf9981b4e835",
+            "approved_by": "human:explicit_request_20261011",
+            "approved_at": "2026-10-11T06:07:14+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "20m×30cm",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "3bfdd17639f7c1d977690062c94dc44331bbbaa907e61861496711eda60c98bd",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_056_79489699c594",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:20:19.709498+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3003490",
+        "field": "name",
+        "source_hash": "91e4ff9c4ae2b8f45f1829652cb2668f7d77a47bb28960ce5d1deecf7f628449",
+        "field_source_hash": "7d00e39f48c1efaeede8e055c43b8f5d548e20d95eb92a93d8bcfa01c5e58021",
+        "current_zh": "带遮蔽纸的遮蔽胶带",
+        "target": "带遮蔽纸的遮蔽胶带",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Cinta para enmascarar con papel TCX",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Complementos de pintura",
+          "spec_es": "20 metros x 30 cm",
+          "desc_es": "Cinta para enmascarar con papel respetuoso con el medioambiente\nIdeal para proteger el alféizar y el zócalo\nPapel con certificación FSC®: papel gestionado de manera sostenible\n¿Tienes pensado pintar las ventanas o las paredes? Protege tanto el alféizar como el zócalo de las salpicaduras con esta práctica cinta para enmascarar.",
+          "details_es": "Material: Papel; Destinado a: Interior; Hoja de papel / plástico: Papel; Provisto de cinta adhesiva: Sí; Reutilizable: No; Número del artículo: 3003490"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Cinta para enmascarar con papel TCX",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "ac821533b57bda1a39a535f76953f4c27b149a9ab4cb982a85860013ae35bec3",
+        "reviewed_hash": "ac821533b57bda1a39a535f76953f4c27b149a9ab4cb982a85860013ae35bec3",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "7d00e39f48c1efaeede8e055c43b8f5d548e20d95eb92a93d8bcfa01c5e58021"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3010407",
+        "name_es": "Cinta adhesiva de embalar TCX",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "55 m x 48 mm",
+        "desc_es": "Cinta adhesiva transparente\nHace poco ruido\nIdeal, por ejemplo, si te vas a mudar",
+        "details_es": "Medidas (incl. envase) (largo x ancho x alto): 10.1 x 9.8 x 5 cm; Color: Transparente; Material: Plástico; Antiderrames: No; Doble cara: No; Número del artículo: 3010407",
+        "name_zh": "封箱胶带",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_011_6f33bfd68842",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T00:56:48.612268+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_011_6f33bfd68842",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T00:56:48.744707+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "透明封箱胶带，撕拉噪声较低，适合搬家、打包和封箱使用",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "8a0fd7e41e934b908de6801b2b131f1de560582f8983bcc9824d31aa98851052",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_011_6f33bfd68842",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T00:56:49.021067+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "尺寸（含包装，长×宽×高）：10.1 x 9.8 x 5cm；颜色：透明；材质：塑料；防漏：否；双面：否；商品编号：3010407",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "dc31276ca33a004efae218c3dc8b1bb32c2a0f5366289b21bdf9028ebcc3a05a",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_002_5c1cc65a6e7d",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T00:56:49.127152+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "封箱胶带",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "03475321a9ef9f836cd71f99612770925b3e462878a7c79012f4f986384e0d2b",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_rebind_9e278712ed_63050a9eb5b3",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:45.666742+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "55m×48毫米",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c00315da5fc9f8087c2bef2ecd394513d615e587cc7034a99db2939925444601",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_011_6f33bfd68842",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T00:56:48.899081+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3010407",
+        "field": "name",
+        "source_hash": "2698e6483530d1a9fa410ef8dfeec21dc5b106f743300c0b4e54e9e1b0a728af",
+        "field_source_hash": "03475321a9ef9f836cd71f99612770925b3e462878a7c79012f4f986384e0d2b",
+        "current_zh": "封箱胶带",
+        "target": "封箱胶带",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Cinta adhesiva de embalar TCX",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "55 m x 48 mm",
+          "desc_es": "Cinta adhesiva transparente\nHace poco ruido\nIdeal, por ejemplo, si te vas a mudar",
+          "details_es": "Medidas (incl. envase) (largo x ancho x alto): 10.1 x 9.8 x 5 cm; Color: Transparente; Material: Plástico; Antiderrames: No; Doble cara: No; Número del artículo: 3010407"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Cinta adhesiva de embalar TCX",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "576fc2a74b55a1006425847695a4bbe5c3e57d7d5ca91e80de7a7ca20b6a0457",
+        "reviewed_hash": "576fc2a74b55a1006425847695a4bbe5c3e57d7d5ca91e80de7a7ca20b6a0457",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "03475321a9ef9f836cd71f99612770925b3e462878a7c79012f4f986384e0d2b"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3010675",
+        "name_es": "Sellador de silicona TCX Blanco",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "280 ml",
+        "desc_es": "Fácil de aplicar con una fuerte adhesión\nResistente al agua tras el secado\nRepintable\nCierra juntas y grietas fácilmente con este sellador de silicona universal.",
+        "details_es": "Color: Blanco; Número del artículo: 3010675",
+        "name_zh": "白色硅胶密封胶",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_054_c49a451c967c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:19:14.875969+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_054_c49a451c967c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:19:15.058172+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "易于涂抹且粘接力强；干燥后防水；可重新涂漆；这款通用硅酮密封胶可方便地密封接缝和裂缝。",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "258c091c3dc080ad7a9be0702ef301cc1480d78ad86f4f59d7218d84c362c6d2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-12_repair114_20261012_77c2bf247f94",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-12T08:27:42+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：白色；商品编号：3010675",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "bdc385940e009b36548903bf057a466a9eb5170c50ef64c1a8b40880a6ce9331",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_010_8be38cf319d7",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:19:15.509690+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "白色硅胶密封胶",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "85f740928cbf7f4db057c1836189fd4ebf00375174625dd17ed5df2604e37dc1",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_rebind_9e278712ed_63050a9eb5b3",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:45.772696+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "280ml",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "8d18b400965bca7d20ed02ce115fa0556ee15d329a3e8bba8e44d59476bfbdf5",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_054_c49a451c967c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:19:15.199264+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3010675",
+        "field": "name",
+        "source_hash": "6d448607e87b5679b249c10b87f092cdd6d7344c8022dec8979443754d731955",
+        "field_source_hash": "85f740928cbf7f4db057c1836189fd4ebf00375174625dd17ed5df2604e37dc1",
+        "current_zh": "白色硅胶密封胶",
+        "target": "白色硅胶密封胶",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Sellador de silicona TCX Blanco",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "280 ml",
+          "desc_es": "Fácil de aplicar con una fuerte adhesión\nResistente al agua tras el secado\nRepintable\nCierra juntas y grietas fácilmente con este sellador de silicona universal.",
+          "details_es": "Color: Blanco; Número del artículo: 3010675"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Sellador de silicona TCX Blanco",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "b20ca5ab6df1bf58319a407f1c99b22a4533a05da53524faadb8d2a0ecb7a9f8",
+        "reviewed_hash": "b20ca5ab6df1bf58319a407f1c99b22a4533a05da53524faadb8d2a0ecb7a9f8",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "85f740928cbf7f4db057c1836189fd4ebf00375174625dd17ed5df2604e37dc1"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3012150",
+        "name_es": "Adhesivo de montaje TCX Blanco",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "290 ml",
+        "desc_es": "Tiempo de secado de 24 horas\nFijación extrafuerte\nEste adhesivo de montaje TCX es perfecta para fijar fácilmente y de manera invisible diversos materiales.",
+        "details_es": "A prueba de humedad: Sí; Contenido: 290 ml; Número del artículo: 3012150",
+        "name_zh": "白色安装胶",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_106_8facafb061b0",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:54:08.187235+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_106_8facafb061b0",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:54:08.331715+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "干燥时间24小时\n超强粘接\n这款TCX安装胶可轻松、隐蔽地固定各种材料。",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ede0cc72e7b7957f9ac1f40227a5d91785b5f7e0ca08f2970269ed9af0710568",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-06_localization_rebind_approved_02_20261006_5d57867258e4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-06T09:36:59+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "防潮：是；含量：290毫升；商品编号：3012150",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7f056c284c9a847cd5e86e6e77489ac7caed3b826947201c31d262be5b4fbd7",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_019_2a09faacaef9",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:54:08.648735+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "白色安装胶",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "083bd57f1dc34928c70e39589957d045d07d9bb65c9fb895d1198b9551443a8a",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_rebind_9e278712ed_63050a9eb5b3",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:46.447449+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "290ml",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "bda32912975f26af5a732bbfdbadbe0c4971ece02a33a5e54fd645275105eb17",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_106_8facafb061b0",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:54:08.520706+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3012150",
+        "field": "name",
+        "source_hash": "c9557babe45af498a83801666fa26c15c90bad76b8420b19d97dd9a8801f1bbc",
+        "field_source_hash": "083bd57f1dc34928c70e39589957d045d07d9bb65c9fb895d1198b9551443a8a",
+        "current_zh": "白色安装胶",
+        "target": "白色安装胶",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Adhesivo de montaje TCX Blanco",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "290 ml",
+          "desc_es": "Tiempo de secado de 24 horas\nFijación extrafuerte\nEste adhesivo de montaje TCX es perfecta para fijar fácilmente y de manera invisible diversos materiales.",
+          "details_es": "A prueba de humedad: Sí; Contenido: 290 ml; Número del artículo: 3012150"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Adhesivo de montaje TCX Blanco",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "10bf59b1b10be29909106f4181446eb015e64df60c5cdf0e35fc393e7cdf2d15",
+        "reviewed_hash": "10bf59b1b10be29909106f4181446eb015e64df60c5cdf0e35fc393e7cdf2d15",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "083bd57f1dc34928c70e39589957d045d07d9bb65c9fb895d1198b9551443a8a"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3012634",
+        "name_es": "Kit de silicona TCX Sanitario",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "Blanco | 280 ml",
+        "desc_es": "Ideal para sanitarios en el baño o la cocina\nSin olor\nResistente al moho",
+        "details_es": "Color: Blanco; A prueba de humedad: Sí; Contenido: 280 ml; Inoloro: Sí; Repintable: No; Resistente a los rayos UV: Sí; Resistente al agua: Sí; Tiempo de formación de la piel: 10 minutos; Número del artículo: 3012634",
+        "name_zh": "卫浴硅胶密封胶",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_165_e25b4e11410c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:23:34.442714+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_165_e25b4e11410c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:23:34.564297+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "适用于浴室或厨房的卫浴设施\n无味\n防霉",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "d0068bbbda8df8c0b3a142ac004b036621508405624b91c2290236fb2413b6ff",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_165_e25b4e11410c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:23:34.890788+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：白色；防潮：是；含量：280毫升；无味：是；可重涂：否；防紫外线：是；防水：是；结皮时间：10分钟；商品编号：3012634",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "b180a0de7852ce8b9ac669686ffdf975e928756a892583e2eadd15bcd7b68fee",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_details_006_rebind_69d2b387ad_58b2cfe3d9e2",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:10:37.840999+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "卫浴硅胶密封胶",
+            "source": "BROWSER_OFFICIAL_CODEX_REVIEWED",
+            "review_status": "APPROVED",
+            "source_hash": "43a3c27337cb9bc34f2228428474163abc9d2fac43c926bed3b7cc6c9649a0df",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-11_browser31_confirmed5_20261011T062325023567Z_b3a465e4491d",
+            "approved_by": "human:explicit_request_20261011",
+            "approved_at": "2026-10-11T06:23:46+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "白色｜280ml",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "5e63e3a3c5a5af9061dd8bcbc6bda60853a61476858e2e56292c5848a458fd5c",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_165_e25b4e11410c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:23:34.733355+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3012634",
+        "field": "name",
+        "source_hash": "e53c03eb40b991141e48ed0b0c270659cfafdee3e4a0af4bc2b415c8f9ee85dc",
+        "field_source_hash": "43a3c27337cb9bc34f2228428474163abc9d2fac43c926bed3b7cc6c9649a0df",
+        "current_zh": "卫浴硅胶密封胶",
+        "target": "卫浴硅胶密封胶",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Kit de silicona TCX Sanitario",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "Blanco | 280 ml",
+          "desc_es": "Ideal para sanitarios en el baño o la cocina\nSin olor\nResistente al moho",
+          "details_es": "Color: Blanco; A prueba de humedad: Sí; Contenido: 280 ml; Inoloro: Sí; Repintable: No; Resistente a los rayos UV: Sí; Resistente al agua: Sí; Tiempo de formación de la piel: 10 minutos; Número del artículo: 3012634"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Kit de silicona TCX Sanitario",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "d9837c84e4da88758d274dac3edd7f765f4b7f9aeae9717c8689bd4c0bec0eeb",
+        "reviewed_hash": "d9837c84e4da88758d274dac3edd7f765f4b7f9aeae9717c8689bd4c0bec0eeb",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "43a3c27337cb9bc34f2228428474163abc9d2fac43c926bed3b7cc6c9649a0df"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3012652",
+        "name_es": "Kit de silicona TCX Sanitario",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "Transparente | 280 ml",
+        "desc_es": "Ideal para sanitarios en el baño o la cocina\nSin olor\nResistente al moho",
+        "details_es": "Color: Transparente; A prueba de humedad: Sí; Contenido: 280 ml; Inoloro: Sí; Resistente a los rayos UV: Sí; Resistente al agua: Sí; Tiempo de formación de la piel: 10 minutos; Número del artículo: 3012652",
+        "name_zh": "卫浴硅胶密封胶",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_165_e25b4e11410c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:23:35.120780+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_165_e25b4e11410c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:23:35.265699+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "适用于浴室或厨房的卫浴设施\n无味\n防霉",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "d0068bbbda8df8c0b3a142ac004b036621508405624b91c2290236fb2413b6ff",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_165_e25b4e11410c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:23:35.497285+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：透明；防潮：是；含量：280毫升；无味：是；防紫外线：是；防水：是；结皮时间：10分钟；商品编号：3012652",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "a7eafb5b0107db854d7f0fbdcc88f71aeeebd9007f2c9ac8284a8ed591f6d918",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_details_006_rebind_69d2b387ad_58b2cfe3d9e2",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:10:37.940065+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "卫浴硅胶密封胶",
+            "source": "BROWSER_OFFICIAL_CODEX_REVIEWED",
+            "review_status": "APPROVED",
+            "source_hash": "43a3c27337cb9bc34f2228428474163abc9d2fac43c926bed3b7cc6c9649a0df",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-11_browser31_confirmed5_20261011T062325023567Z_b3a465e4491d",
+            "approved_by": "human:explicit_request_20261011",
+            "approved_at": "2026-10-11T06:23:46+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "透明｜280ml",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "7196427c11575186d23731bce91e7419b92607c1ea0720f5053bf4ee2aac0bff",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_165_e25b4e11410c",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:23:35.380486+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3012652",
+        "field": "name",
+        "source_hash": "a24460610cd6f3f50e98ac7d69f3a35d29977414b1ae9a7b7eebcf5eaa4970fc",
+        "field_source_hash": "43a3c27337cb9bc34f2228428474163abc9d2fac43c926bed3b7cc6c9649a0df",
+        "current_zh": "卫浴硅胶密封胶",
+        "target": "卫浴硅胶密封胶",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Kit de silicona TCX Sanitario",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "Transparente | 280 ml",
+          "desc_es": "Ideal para sanitarios en el baño o la cocina\nSin olor\nResistente al moho",
+          "details_es": "Color: Transparente; A prueba de humedad: Sí; Contenido: 280 ml; Inoloro: Sí; Resistente a los rayos UV: Sí; Resistente al agua: Sí; Tiempo de formación de la piel: 10 minutos; Número del artículo: 3012652"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Kit de silicona TCX Sanitario",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "d9837c84e4da88758d274dac3edd7f765f4b7f9aeae9717c8689bd4c0bec0eeb",
+        "reviewed_hash": "d9837c84e4da88758d274dac3edd7f765f4b7f9aeae9717c8689bd4c0bec0eeb",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "43a3c27337cb9bc34f2228428474163abc9d2fac43c926bed3b7cc6c9649a0df"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3014094",
+        "name_es": "Masilla TCX Blanca",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "1 kg",
+        "desc_es": "Para utilizar en interior y exterior\nTiempo de secado de 1 hora\nSe puede pintar pasadas 24 horas",
+        "details_es": "Color: Blanco; Contenido: 1 kg; Destinado a: Para uso interior y exterior; Repintable: Sí; Superficie de destino adecuada: Pared; Número del artículo: 3014094",
+        "name_zh": "白色腻子",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_incremental_batch_026_44d98dcb604a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T05:43:37.823957+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_incremental_batch_026_44d98dcb604a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T05:43:37.947437+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "适用于室内和室外，约1小时干燥，24小时后可涂漆",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "2b56e38b3e8e0d9e0d79eb8822c56b7fa522fd8561750262794e85cc1af53ab5",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_incremental_batch_026_44d98dcb604a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T05:43:38.338129+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：白色；含量：1kg；适用场景：室内外两用；可重新涂刷：是；适用表面：墙面；商品编号：3014094",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "42e49508812a5797d3c9a87fb8f8bdc2fa046ec9b1da9872d94c8fcc796e57c8",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_incremental_batch_026_44d98dcb604a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T05:43:38.468158+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "白色腻子",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "3d7e0e51ebacf1f095e0cf37e7249284ae6881d4bb28e245bae9c55d174eb49b",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_rebind_9e278712ed_63050a9eb5b3",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:47.339328+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "1kg",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "a36ebac7323f705f1a06427f5939af7dbda32054f85b3506d5b1a904ec71803c",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_incremental_batch_026_44d98dcb604a",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T05:43:38.203414+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3014094",
+        "field": "name",
+        "source_hash": "75c90150cc489a3130225c6a75c9ee074f8bca65f864a88333fc3112a838d356",
+        "field_source_hash": "3d7e0e51ebacf1f095e0cf37e7249284ae6881d4bb28e245bae9c55d174eb49b",
+        "current_zh": "白色腻子",
+        "target": "白色腻子",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Masilla TCX Blanca",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "1 kg",
+          "desc_es": "Para utilizar en interior y exterior\nTiempo de secado de 1 hora\nSe puede pintar pasadas 24 horas",
+          "details_es": "Color: Blanco; Contenido: 1 kg; Destinado a: Para uso interior y exterior; Repintable: Sí; Superficie de destino adecuada: Pared; Número del artículo: 3014094"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Masilla TCX Blanca",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "a0d4d7c4c931fa47cef344a9422977d6a4269a472b3c517da1a03c2b7ca12cb9",
+        "reviewed_hash": "a0d4d7c4c931fa47cef344a9422977d6a4269a472b3c517da1a03c2b7ca12cb9",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "3d7e0e51ebacf1f095e0cf37e7249284ae6881d4bb28e245bae9c55d174eb49b"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3014095",
+        "name_es": "Masilla para madera TCX",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "400 gramos | Blanca",
+        "desc_es": "De secado rápido\nProducto apto para interiores y exteriores\nSe puede pintar al cabo de 2 horas\nCon esta masilla para madera rellenarás orificios de forma rápida y sencilla. A 20 °C, la masilla se seca en menos de una hora; al cabo de otra hora, podrás pintarla tranquilamente. Así eliminarás los daños en un abrir y cerrar de ojos.",
+        "details_es": "Contenido: 400 g; Repintable: Sí; Número del artículo: 3014095",
+        "name_zh": "木器腻子",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_096_6f5c94199d99",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:49:17.098403+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_096_6f5c94199d99",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:49:17.243299+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "可在2小时后涂漆；适用于室内和室外，可快速填补木材孔洞；在20°C环境下不到1小时即可干燥，再过约1小时可涂漆",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c61dd196b9eaad8cd4cba9766cefdbeed9209c0cef32ab6998add7001f1ab368",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_long_metadata_revalidation_634b0702caf9",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T11:21:16.175712+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "含量：400g；可重新涂刷：是；商品编号：3014095",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "27680c21134a058480d25255781606b29cd3cc5b99131612e1e629f21673e507",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_017_b939c2416224",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:49:17.542955+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "木器腻子",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "0cd29796a8654f6313850c64324081e277950622f007b104699fd681af917b2a",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_rebind_9e278712ed_63050a9eb5b3",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:47.450189+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "400g｜白色",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "26547605005a78bd2f9b5be4c0719ad45cab72c4ebec3bbe990c990086aa9e58",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_096_6f5c94199d99",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:49:17.409796+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3014095",
+        "field": "name",
+        "source_hash": "195ac3454ddfadc2ba1d889828fd69bba72d5c7f2051def82657820ddb5f598c",
+        "field_source_hash": "0cd29796a8654f6313850c64324081e277950622f007b104699fd681af917b2a",
+        "current_zh": "木器腻子",
+        "target": "木器腻子",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Masilla para madera TCX",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "400 gramos | Blanca",
+          "desc_es": "De secado rápido\nProducto apto para interiores y exteriores\nSe puede pintar al cabo de 2 horas\nCon esta masilla para madera rellenarás orificios de forma rápida y sencilla. A 20 °C, la masilla se seca en menos de una hora; al cabo de otra hora, podrás pintarla tranquilamente. Así eliminarás los daños en un abrir y cerrar de ojos.",
+          "details_es": "Contenido: 400 g; Repintable: Sí; Número del artículo: 3014095"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Masilla para madera TCX",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "33bff648acae902ad92353b6a3b325350fdeea1244166ba04f94d1c1ef3d79e0",
+        "reviewed_hash": "33bff648acae902ad92353b6a3b325350fdeea1244166ba04f94d1c1ef3d79e0",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "0cd29796a8654f6313850c64324081e277950622f007b104699fd681af917b2a"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3014167",
+        "name_es": "Tampones OB Normal",
+        "cat1_es": "Cuidado personal",
+        "cat2_es": "Cuidado corporal",
+        "spec_es": "16 unidades",
+        "desc_es": "Protección fiable\nSin sustancias nocivas añadidas, ni perfume ni lejía\nRanuras curvas para una sensación de limpieza y protección",
+        "details_es": "Cantidad: 16 unidades; Con manguito de inserción digital: No; Género: Mujer; Incluye funda aplicadora: No; Nivel de absorción: Medio; Tipo de tampón: Tampón sin acoplador de inserción; Número del artículo: 3014167",
+        "name_zh": "普通型卫生棉条",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "个人美容",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "2bd63cc4bd2659ca52b932e1d8ef56d6fa2f2841ca4e95d2522994ea6a0a9173",
+            "updated_at": "2026-10-30T14:46:42.959171+00:00",
+            "applied_commit_id": "2026-10-30_current-translation-20261030-6f20529_245136fad1d8",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-30T16:37:00+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "身体护理",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "3772530f7177dffaeced431bc7721f95a96c2adc5e2a6703fb70b631213dd6ce",
+            "updated_at": "2026-10-30T14:46:42.959171+00:00",
+            "applied_commit_id": "2026-10-30_current-translation-20261030-6f20529_245136fad1d8",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-30T16:37:01+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "可靠防护\n不添加任何有害物质，不含香精和漂白剂\n弧形凹槽设计，带来洁净与保护的双重体验",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "a51f4829dda39250f8d72a308ed194f9daceffb820a162b509477dd86073cf80",
+            "updated_at": "2026-10-30T14:46:42.959171+00:00",
+            "applied_commit_id": "2026-10-30_current-translation-20261030-6f20529_245136fad1d8",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-30T16:37:01+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "数量：16支；是否带指入辅助套：否；性别：女；是否附置入导管：否；吸收级别：中等；棉条类型：无置入导管卫生棉条；商品编号：3014167",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "5002ee641d95261dcf61fbb97c0193cbad0ad273bac4e5bcb31f40d07f107c52",
+            "updated_at": "2026-10-30T14:46:42.959171+00:00",
+            "applied_commit_id": "2026-10-30_current-followup-109-20261031_ac5e459b9f1e",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-30T19:47:42+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "普通型卫生棉条",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "cf4dc9817c3327b912cf13c0321557bbbfe2ef462fedecc5ac38caa38c09a2e4",
+            "updated_at": "2026-10-30T14:46:42.959171+00:00",
+            "applied_commit_id": "2026-10-30_current-followup-109-20261031_ac5e459b9f1e",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-30T19:47:43+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "16支",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "c0570cfa6be68f205f5a35b17dbedccc406c4860ece37608a922a133067bc9f3",
+            "updated_at": "2026-10-30T14:46:42.959171+00:00",
+            "applied_commit_id": "2026-10-30_current-translation-20261030-6f20529_245136fad1d8",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-30T16:37:01+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3014167",
+        "field": "name",
+        "source_hash": "d0c512c321af38163dde2c966ceb0c47751ca8a6d9cc4e7ea6a4125bddb8629b",
+        "field_source_hash": "cf4dc9817c3327b912cf13c0321557bbbfe2ef462fedecc5ac38caa38c09a2e4",
+        "current_zh": "普通型卫生棉条",
+        "target": "普通型卫生棉条",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Tampones OB Normal",
+          "cat1_es": "Cuidado personal",
+          "cat2_es": "Cuidado corporal",
+          "spec_es": "16 unidades",
+          "desc_es": "Protección fiable\nSin sustancias nocivas añadidas, ni perfume ni lejía\nRanuras curvas para una sensación de limpieza y protección",
+          "details_es": "Cantidad: 16 unidades; Con manguito de inserción digital: No; Género: Mujer; Incluye funda aplicadora: No; Nivel de absorción: Medio; Tipo de tampón: Tampón sin acoplador de inserción; Número del artículo: 3014167"
+        },
+        "note": "独立核对名称主体及同SKU上下文；OB为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Tampones OB Normal",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "27a48ffbc951c9ef35e657504a2c854010750cdc202a79db9e40c3030b07a6a6",
+        "reviewed_hash": "27a48ffbc951c9ef35e657504a2c854010750cdc202a79db9e40c3030b07a6a6",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "OB",
+            "value": "OB",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "cf4dc9817c3327b912cf13c0321557bbbfe2ef462fedecc5ac38caa38c09a2e4"
+          }
+        ],
+        "image_evidence": []
+      }
+    },
+    {
+      "record": {
+        "sku": "3200378",
+        "name_es": "Adhesivo de polímero TCX High Tack White",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Herramientas",
+        "spec_es": "290 ml",
+        "desc_es": "Repintable y con adherencia rápida y resistente\nPara utilizar en interior y exterior\nEnvase elaborado con un 30 % de plástico reciclado",
+        "details_es": "Contenido: 290 ml; Destinado a: Para uso interior y exterior; Sustancia: Emulsión; Número del artículo: 3200378",
+        "name_zh": "High Tack白色聚合物胶",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_201_07c4f0ac015f",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:41:55.286151+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "工具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "c7c219b88b64c251c3cfddaf82dad4a5d41e0c5edf21e1f40c70909788933fb2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_201_07c4f0ac015f",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:41:55.509047+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "初粘快、粘接牢固，干燥后可涂漆，适用于室内和室外；包装含30%再生塑料",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "57e2edc2db7d6c13c6cb639298afd7202a85174a370a58d190e92f9b57b5373d",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_201_07c4f0ac015f",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:41:55.753402+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "含量：290ml；适用场景：室内外两用；形态：乳液；商品编号：3200378",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "e2ff270944e0cf0ec6edfbf5da353ab0a36bd7f1fb5787b30044bc5aa05c1b2f",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_037_9517e93e1c0e",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:41:55.864476+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "High Tack白色聚合物胶",
+            "source": "CODEX",
+            "review_status": "APPROVED",
+            "source_hash": "1798c99927eec61e8db5b5671d9c39e3a83470aad41b92488940ce12f463b1bf",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_002_apply_3d57fc8d68_9d6b52794c6e",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:03:49+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "290ml",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "bda32912975f26af5a732bbfdbadbe0c4971ece02a33a5e54fd645275105eb17",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_201_07c4f0ac015f",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:41:55.630752+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3200378",
+        "field": "name",
+        "source_hash": "16b3415b0fd91a735fb98963b347c2f5a2344df120cd78147b83ab441527e643",
+        "field_source_hash": "1798c99927eec61e8db5b5671d9c39e3a83470aad41b92488940ce12f463b1bf",
+        "current_zh": "High Tack白色聚合物胶",
+        "target": "High Tack白色聚合物胶",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Adhesivo de polímero TCX High Tack White",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Herramientas",
+          "spec_es": "290 ml",
+          "desc_es": "Repintable y con adherencia rápida y resistente\nPara utilizar en interior y exterior\nEnvase elaborado con un 30 % de plástico reciclado",
+          "details_es": "Contenido: 290 ml; Destinado a: Para uso interior y exterior; Sustancia: Emulsión; Número del artículo: 3200378"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Adhesivo de polímero TCX High Tack White",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "844b7c93ab3a1d5363c965b6b00b5954e911b7b283b5ec4633920182cca48c43",
+        "reviewed_hash": "844b7c93ab3a1d5363c965b6b00b5954e911b7b283b5ec4633920182cca48c43",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "1798c99927eec61e8db5b5671d9c39e3a83470aad41b92488940ce12f463b1bf"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3207403",
+        "name_es": "Vehículo teledirigido Teamsterz Mighty Machines HTI",
+        "cat1_es": "Juguetes",
+        "cat2_es": "Coches de juguete",
+        "spec_es": "17 cm | diferentes variantes",
+        "desc_es": "¡Completa la colección!\nFunciona con 2 pilas AA (se venden por separado)\n¡Guau! Controla este genial vehículo con el mando a distancia y compite contra reloj con tus amigos.",
+        "details_es": "Color: Azul, Verde, Rojo, Plateado; Material: Plástico; Edad adecuada: A partir de 3 años; Bluetooth: No; Con cámara integrada: NO; Código de batería: AA; Incluye conexión USB: No; Incluye mando a distancia: Sí; Número de pilas necesarias: 2; Pilas incluidas: No; Recargable: No; Tipo de alimentación: Batería; Número del artículo: 3207403",
+        "name_zh": "遥控车",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "玩具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "f4c9dbdc5e49ac66d339c1d392278d92cee3120b9a4904e21a7fb06649b02db0",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_incremental_batch_028_48b2462e5406",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T05:44:27.324335+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "玩具车",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "bf01694707d400823f7a9681832b7d3aa6dc125da844f4ca69425be41e7ca33c",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_incremental_batch_028_48b2462e5406",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T05:44:27.750294+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "集齐全套！\n使用 2 节 AA 电池（另售）\n哇！用遥控器控制这辆酷炫的车，与朋友进行限时竞赛。",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "03c4f4ea6b7ff3104da1f1d2fa636fed4948e981d3046004da6fedae46b0e5cc",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_incremental_batch_028_48b2462e5406",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T05:44:28.061608+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：蓝色、绿色、红色、银色；材质：塑料；适用年龄：3岁以上；蓝牙：否；带集成摄像头：否；电池代码：AA；含USB连接：否；含遥控器：是；所需电池数量：2；是否附带电池：否；可充电：否；供电方式：电池；商品编号：3207403",
+            "source": "dictionary_or_fallback",
+            "review_status": "HUMAN_APPROVED",
+            "source_hash": "3de481c3c8be257be8a5f3b4b193baccfa7a07d9e8fe6b4be6a00ddd0ea7ef87",
+            "updated_at": "2026-10-19T05:51:00.461660+00:00",
+            "applied_commit_id": "chinese_reaudit_20261019_v3_detail_terminology",
+            "approved_by": "service:codex-owner-authorized-repair",
+            "approved_at": "2026-10-19T05:51:00.461660+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "遥控车",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "0ef21713aa98f56478700a18f15b3e83d531628ecc58b485084edd6d9e60b2f3",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_003_rebind_90f780cce1_adebdd2a9234",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:05:45.683945+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "17cm｜多款可选",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "04787e7d1bc124ffcbec3af354e7305e7af2da21b3e8be7f67b10377f7872639",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_incremental_batch_028_48b2462e5406",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T05:44:27.933248+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3207403",
+        "field": "name",
+        "source_hash": "1f08ea33afc6035ca7f16fb7236ee47cc6138f91ea372826511e89a4309f9b54",
+        "field_source_hash": "0ef21713aa98f56478700a18f15b3e83d531628ecc58b485084edd6d9e60b2f3",
+        "current_zh": "遥控车",
+        "target": "遥控车",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Vehículo teledirigido Teamsterz Mighty Machines HTI",
+          "cat1_es": "Juguetes",
+          "cat2_es": "Coches de juguete",
+          "spec_es": "17 cm | diferentes variantes",
+          "desc_es": "¡Completa la colección!\nFunciona con 2 pilas AA (se venden por separado)\n¡Guau! Controla este genial vehículo con el mando a distancia y compite contra reloj con tus amigos.",
+          "details_es": "Color: Azul, Verde, Rojo, Plateado; Material: Plástico; Edad adecuada: A partir de 3 años; Bluetooth: No; Con cámara integrada: NO; Código de batería: AA; Incluye conexión USB: No; Incluye mando a distancia: Sí; Número de pilas necesarias: 2; Pilas incluidas: No; Recargable: No; Tipo de alimentación: Batería; Número del artículo: 3207403"
+        },
+        "note": "独立核对名称主体及同SKU上下文；HTI为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Vehículo teledirigido Teamsterz Mighty Machines HTI",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "691bb796f6b75bebb21b893c2bad235e665557ea1b998bf269cfa7a5926e13e7",
+        "reviewed_hash": "691bb796f6b75bebb21b893c2bad235e665557ea1b998bf269cfa7a5926e13e7",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "HTI",
+            "value": "HTI",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "0ef21713aa98f56478700a18f15b3e83d531628ecc58b485084edd6d9e60b2f3"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\3207403.webp",
+            "sha256": "20c5210b147a83458f1fd7a4b58037e0f131d5867ae2a07badf8defd4a51f618",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3218564",
+        "name_es": "Cinta de carrocero adhesiva TCX",
+        "cat1_es": "Bricolaje",
+        "cat2_es": "Complementos de pintura",
+        "spec_es": "20 m x 22,5 cm",
+        "desc_es": "Protección contra las manchas\nPapel con certificación FSC®: papel sostenible",
+        "details_es": "Color: Marrón; Material: Papel; Número del artículo: 3218564",
+        "name_zh": "美纹纸胶带",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "DIY五金",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ab94e6d57aa8472acd549c96a60dc092f820033b1e0316e68b86a540a209ed29",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_174_7d2d59490fda",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:27:48.817101+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "涂料配件",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "025a2b56e71eb50099049b556c4a50cf1e7229afc326a4ea23c8e4fc5437e632",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_174_7d2d59490fda",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:27:48.930771+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "可在涂装时帮助防止污渍和溢漆；纸材通过FSC®认证",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "135d1c6bc4f30840a98369c58f403361528e101a25f62083310a3a31da5532da",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_174_7d2d59490fda",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:27:49.253648+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：棕色；材质：纸；商品编号：3218564",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "5d4315ffe9bdffda330bd38c4c3c1856e44ad95e5c8b2ccbc7af380d1e29d7b4",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_031_5567a95ae25b",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:27:49.430810+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "美纹纸胶带",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "da0f6610dee3786fab7e6cef2f698956a7c061b3c07fbf5325d0a66d99c7d020",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_003_rebind_90f780cce1_adebdd2a9234",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:06:01.772840+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "20m×22.5cm",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "a0ff1ed7654f961e13cab19c3796485682d10298fcd42ca89830bb949bf8be78",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_174_7d2d59490fda",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:27:49.087125+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3218564",
+        "field": "name",
+        "source_hash": "c0fc23ab5c55c077b512d27a849d00624fcae7c4f103d106f8f9b01ca1976f36",
+        "field_source_hash": "da0f6610dee3786fab7e6cef2f698956a7c061b3c07fbf5325d0a66d99c7d020",
+        "current_zh": "美纹纸胶带",
+        "target": "美纹纸胶带",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Cinta de carrocero adhesiva TCX",
+          "cat1_es": "Bricolaje",
+          "cat2_es": "Complementos de pintura",
+          "spec_es": "20 m x 22,5 cm",
+          "desc_es": "Protección contra las manchas\nPapel con certificación FSC®: papel sostenible",
+          "details_es": "Color: Marrón; Material: Papel; Número del artículo: 3218564"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TCX为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Cinta de carrocero adhesiva TCX",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "2d7d89bde948e3a077cc239aaf82df742b9e46a50b617402a61d5c96292cbf18",
+        "reviewed_hash": "2d7d89bde948e3a077cc239aaf82df742b9e46a50b617402a61d5c96292cbf18",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TCX",
+            "value": "TCX",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "da0f6610dee3786fab7e6cef2f698956a7c061b3c07fbf5325d0a66d99c7d020"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\2506346.webp",
+            "sha256": "88910ce9869bbacab6af5041ef44804b26a8fcd2ef2c0ff65b71c404c8a3af58",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3218854",
+        "name_es": "Batidora inalámbrica TMC Home",
+        "cat1_es": "Cocina",
+        "cat2_es": "Aparatos de cocina",
+        "spec_es": "30 vatios | varios colores",
+        "desc_es": "Para picar, mezclar y batir\nIncluye 4 accesorios\nRecargable mediante UBS-C (incluido)\n¡Mezclar, batir y picar será un juego de niños! Esta potente batidora es ideal para preparar masas, salsas y mucho más. Con varios accesorios, cualquier tarea en la cocina se realiza de forma fácil y rápida.",
+        "details_es": "Color: Beige, Verde, Negro; Material: Plástico; Accesorios: Batidora, Batidor; Accionamiento manual: Sí; Con cuchilla giratoria: Sí; Inalámbrica: Sí; Tipo de alimentación: Batería; Número del artículo: 3218854",
+        "name_zh": "无线搅拌机",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "厨房餐具",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "0aa06ca4d0c96739467119a0c029e594ab04fafbbbdd5ee1181d80c334465fbd",
+            "updated_at": "2026-09-30T01:14:48.071404+00:00",
+            "applied_commit_id": "2026-10-05_2026-10-05_full_cn_category_cleanup_apply_db2d22708feb",
+            "approved_by": "human:codex-model-review",
+            "approved_at": "2026-10-05T01:31:20+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "厨房电器",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "b828d5131a1b7ef1e8174db09f28328f19eef217af9238acf173038948189d0d",
+            "updated_at": "2026-09-30T01:14:48.071404+00:00",
+            "applied_commit_id": "2026-10-06_localization_rebind_approved_resume_03_20261006_96e0d0faf32d",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-06T09:42:22+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "用于切碎、混合和搅拌\n包含4个配件\n可通过UBS-C充电（含）\n混合、搅拌和切碎都将变得轻而易举！这款强劲的搅拌机非常适合制作面团、酱料等。配备多种配件，让厨房里的任何任务都轻松快捷地完成。",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "96ad56ee030034c8184cbae8e5ed79c39a5a5aa105d4a3161e1d94322240e119",
+            "updated_at": "2026-09-30T01:14:48.071404+00:00",
+            "applied_commit_id": "2026-10-06_localization_rebind_approved_resume_03_20261006_96e0d0faf32d",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-06T09:42:22+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：米色、绿色、黑色；材质：塑料；配件：搅拌器、打蛋器；手动操作：是；带旋转刀片：是；无线：是；电源类型：电池；商品编号：3218854",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "a3b96db26a74fee5ae6f30881f279ca972bc85bd7fbedd60534ea09114688e17",
+            "updated_at": "2026-09-30T01:14:48.071404+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_incremental_batch_063_dd701df10529",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T06:00:59.459416+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "无线搅拌机",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "d88261770a9c5179aeeb97480e7d060f0b9f8b844b86c3ca458e9d3622e19f54",
+            "updated_at": "2026-09-30T01:14:48.071404+00:00",
+            "applied_commit_id": "2026-10-02_qwen-mt-flash-untranslated-20261002_0d8246cca3a1",
+            "approved_by": "human:project-owner",
+            "approved_at": "2026-10-02T10:35:20+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "30瓦 | 多种颜色",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "b2a1e610bbfa93da215a6c8fd871a58526650a1f61f3365eef0b478e35856f61",
+            "updated_at": "2026-09-30T01:14:48.071404+00:00",
+            "applied_commit_id": "2026-10-02_qwen-mt-flash-untranslated-20261002_0d8246cca3a1",
+            "approved_by": "human:project-owner",
+            "approved_at": "2026-10-02T10:35:20+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3218854",
+        "field": "name",
+        "source_hash": "7ac23e91338ecbe77c9027c4387370c4a4977e7f478d12c6644b05d3a4a3b778",
+        "field_source_hash": "d88261770a9c5179aeeb97480e7d060f0b9f8b844b86c3ca458e9d3622e19f54",
+        "current_zh": "无线搅拌机",
+        "target": "无线搅拌机",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Batidora inalámbrica TMC Home",
+          "cat1_es": "Cocina",
+          "cat2_es": "Aparatos de cocina",
+          "spec_es": "30 vatios | varios colores",
+          "desc_es": "Para picar, mezclar y batir\nIncluye 4 accesorios\nRecargable mediante UBS-C (incluido)\n¡Mezclar, batir y picar será un juego de niños! Esta potente batidora es ideal para preparar masas, salsas y mucho más. Con varios accesorios, cualquier tarea en la cocina se realiza de forma fácil y rápida.",
+          "details_es": "Color: Beige, Verde, Negro; Material: Plástico; Accesorios: Batidora, Batidor; Accionamiento manual: Sí; Con cuchilla giratoria: Sí; Inalámbrica: Sí; Tipo de alimentación: Batería; Número del artículo: 3218854"
+        },
+        "note": "独立核对名称主体及同SKU上下文；TMC Home为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Batidora inalámbrica TMC Home",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "fcc5a689f1cfd986c5513c6f0a60bd6d181a564f802b0d251a66deb7bca11008",
+        "reviewed_hash": "fcc5a689f1cfd986c5513c6f0a60bd6d181a564f802b0d251a66deb7bca11008",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "TMC Home",
+            "value": "TMC Home",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "d88261770a9c5179aeeb97480e7d060f0b9f8b844b86c3ca458e9d3622e19f54"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\3218854.webp",
+            "sha256": "6698d820ada8c80cf4480d7ccb4bae356496a96f120091e5f2c38b4585389eea",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3221183",
+        "name_es": "Mascarilla facial y sérum the MASK Dr. 2 en 1",
+        "cat1_es": "Cuidado personal",
+        "cat2_es": "Cuidado facial",
+        "spec_es": "Diferentes variantes",
+        "desc_es": "Con mascarilla de hoja y un sérum aparte\nPara elegir entre cuidado personal hidratante, suavizante o reafirmante\nFórmula vegana\nRegálate un momento de relajación y cuidado con este set de mascarillas faciales de 2 pasos de The Mask Dr. Primero, ponte la mascarilla de hoja y déjala actuar entre 15 y 20 minutos. A continuación, masajea suavemente el producto que haya quedado en la piel y, después, aplícate el sérum facial de la bolsita aparte. Fácil de usar en casa para lucir un aspecto fresco y cuidado.",
+        "details_es": "Aclarado: No; Apto para tipo de parte del cuerpo: Rostro; Efecto hidratante: Sí; Número del artículo: 3221183",
+        "name_zh": "二合一面膜与精华",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "个人美容",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "2bd63cc4bd2659ca52b932e1d8ef56d6fa2f2841ca4e95d2522994ea6a0a9173",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_044_a89243d419ca",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:13:22.927871+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "面部护理",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "ec81461c6204327feaeb641ad62a45c117c6f6f3d2ef6c9b3888f3ca1a95d204",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_044_a89243d419ca",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:13:23.265175+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "The Mask Dr.两步护理套装含片状面膜和独立精华，可选择保湿、柔肤或紧致护理；纯素配方。先敷面膜15—20分钟，再轻轻按摩皮肤上的残留产品，然后涂抹独立袋中的面部精华，在家享受放松护理。",
+            "source": "EXISTING_BASELINE_CODEX_REVIEWED",
+            "review_status": "APPROVED",
+            "source_hash": "92a3c4fb20758d46a495ecefed97d3798e6309044784f99060da1cc5e146e2eb",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-10_desc_details_repair_20261010T180308518582Z_c0f6b8cee2de",
+            "approved_by": "human:user_explicit_repair_request_20261011",
+            "approved_at": "2026-10-10T18:09:16+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "冲洗：否；适用身体部位：面部；保湿效果：是；商品编号：3221183",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "56d1f06517eeb4e88bb7d399a44d8ea48bfd727967c03c02e7df75c4010b13f2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_rebased_batch_008_88c35b2eba3b",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:13:23.631334+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "二合一面膜与精华",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "7c8621bd4357a46c5dbc1423c977e5994f42ad339c73739928e09c50b5d8f2e9",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_names_003_rebind_90f780cce1_adebdd2a9234",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:06:08.939220+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "多款可选",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "9a25135cb9a2fbe8c80baa674acb4e7af4a294c1791021d957abbafef6c9fa70",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_044_a89243d419ca",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T01:13:23.383484+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3221183",
+        "field": "name",
+        "source_hash": "c9781b63d903ffaf829978dbefdc580a95d00765da05fa08912b4fc138e953ae",
+        "field_source_hash": "7c8621bd4357a46c5dbc1423c977e5994f42ad339c73739928e09c50b5d8f2e9",
+        "current_zh": "二合一面膜与精华",
+        "target": "二合一面膜与精华",
+        "decision": "KEEP",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Mascarilla facial y sérum the MASK Dr. 2 en 1",
+          "cat1_es": "Cuidado personal",
+          "cat2_es": "Cuidado facial",
+          "spec_es": "Diferentes variantes",
+          "desc_es": "Con mascarilla de hoja y un sérum aparte\nPara elegir entre cuidado personal hidratante, suavizante o reafirmante\nFórmula vegana\nRegálate un momento de relajación y cuidado con este set de mascarillas faciales de 2 pasos de The Mask Dr. Primero, ponte la mascarilla de hoja y déjala actuar entre 15 y 20 minutos. A continuación, masajea suavemente el producto que haya quedado en la piel y, después, aplícate el sérum facial de la bolsita aparte. Fácil de usar en casa para lucir un aspecto fresco y cuidado.",
+          "details_es": "Aclarado: No; Apto para tipo de parte del cuerpo: Rostro; Efecto hidratante: Sí; Número del artículo: 3221183"
+        },
+        "note": "独立核对名称主体及同SKU上下文；the MASK Dr.为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。",
+        "source_value": "Mascarilla facial y sérum the MASK Dr. 2 en 1",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "643d74ea0452626f8c986495ac0dc25bc535e0683a13d46e775b20d22ef795fd",
+        "reviewed_hash": "643d74ea0452626f8c986495ac0dc25bc535e0683a13d46e775b20d22ef795fd",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "the MASK Dr.",
+            "value": "the MASK Dr.",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "7c8621bd4357a46c5dbc1423c977e5994f42ad339c73739928e09c50b5d8f2e9"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\3221183.webp",
+            "sha256": "792a44f709315cfbb5e6cf26ead2bb62981a33874c241555755fdeddc10dec89",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3225710",
+        "name_es": "Turbo Fire Dartblaster Zuru XSHOT",
+        "cat1_es": "Juguetes",
+        "cat2_es": "Juguetes de exterior",
+        "spec_es": "49 piezas",
+        "desc_es": "Lanza hasta 48 dardos consecutivos\nAlcance de hasta unos 27 metros\nIncluye dardos\n¡Vive la acción con el lanzador de dardos XSHOT Turbo Fire! Este potente bláster dispara hasta 48 dardos consecutivos en un abrir y cerrar de ojos, perfecto para batallas emocionantes.",
+        "details_es": "Color: Rojo; Edad adecuada: A partir de 8 años; Número del artículo: 3225710",
+        "name_zh": "涡轮火力软弹发射器",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "玩具",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "f4c9dbdc5e49ac66d339c1d392278d92cee3120b9a4904e21a7fb06649b02db0",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-12_current_localization_20261012_batch02_0c31bebe1a36",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-12T01:15:56+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "户外玩具",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "68909bcd0cf2d4a014759d58f7ad29d04f9758d52eaa7b3d01845f230c3d26e2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-12_current_localization_20261012_batch02_0c31bebe1a36",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-12T01:15:56+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "XSHOT Turbo Fire飞镖发射器可快速连续发射最多48枚飞镖，射程最远约27米，附飞镖，适合刺激的对战游戏。",
+            "source": "EXISTING_BASELINE_CODEX_REVIEWED",
+            "review_status": "APPROVED",
+            "source_hash": "358f61f092f3e462004229ab4a3cb88568818f2a8107aa5bafc578f9d3ef1137",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-10_desc_details_repair_20261010T180308518582Z_c0f6b8cee2de",
+            "approved_by": "human:user_explicit_repair_request_20261011",
+            "approved_at": "2026-10-10T18:11:01+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "details": {
+            "value": "颜色：红色；适用年龄：8岁及以上；商品编号：3225710",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "eaed1c308608f6f61d7fc319095b98b3e3f86650347bc6e3928270dcc4c7e079",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-12_current_localization_20261012_batch02_0c31bebe1a36",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-12T01:15:56+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "涡轮火力软弹发射器",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "43fe80ba63b64ded946c7b3fc49bbc7211a08ac3b4552ce984405f0d21441fc2",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-19_chinese_master_repair_20261019_02-apply_80523e76eb90",
+            "approved_by": "service:codex-owner-proxy",
+            "approved_at": "2026-10-19T01:33:21+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "spec": {
+            "value": "49件",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "b7756c4692f7a31d4458ee7177594b7890d63660e1cde775469425b3682f977f",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-12_current_localization_20261012_batch02_0c31bebe1a36",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-10-12T01:15:56+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3225710",
+        "field": "name",
+        "source_hash": "5d28ad055f6124c028462d8499e39ddccb57b1196d51a0524dbaf16926c51421",
+        "field_source_hash": "43fe80ba63b64ded946c7b3fc49bbc7211a08ac3b4552ce984405f0d21441fc2",
+        "current_zh": "涡轮火力软弹发射器",
+        "target": "Turbo Fire软弹发射器",
+        "decision": "CORRECTED",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Turbo Fire Dartblaster Zuru XSHOT",
+          "cat1_es": "Juguetes",
+          "cat2_es": "Juguetes de exterior",
+          "spec_es": "49 piezas",
+          "desc_es": "Lanza hasta 48 dardos consecutivos\nAlcance de hasta unos 27 metros\nIncluye dardos\n¡Vive la acción con el lanzador de dardos XSHOT Turbo Fire! Este potente bláster dispara hasta 48 dardos consecutivos en un abrir y cerrar de ojos, perfecto para batallas emocionantes.",
+          "details_es": "Color: Rojo; Edad adecuada: A partir de 8 años; Número del artículo: 3225710"
+        },
+        "note": "独立核对名称主体及同SKU上下文；XSHOT为本标题商业标识，按现有NO_BRAND名称策略省略；数字、功能、颜色与技术型号继续保留。只确认当前字段/来源/译文，不晋升品牌字典、不豁免其他SKU或字段。 Turbo Fire保留原型号拼写，不以品牌判断删除产品型号。",
+        "source_value": "Turbo Fire Dartblaster Zuru XSHOT",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "a152170b581cc8e6453e49bba5c906383dd9d0f752d9e6ad3ed5a4e8bbdfbf4e",
+        "reviewed_hash": "a30ec87ccf1bc5fee5d178b63203bd40b349378bdc9f7200f8a9dbdd382ae258",
+        "semantic_facts_additions": [
+          {
+            "semantic_type": "BRAND",
+            "source_text": "XSHOT",
+            "value": "XSHOT",
+            "source_field": "name_es",
+            "evidence": "当前PRIMARY官方标题、完整SKU原文及原字段审批记录；TCX另核对2506346官方缓存包装品牌标记，TMC Home/the MASK Dr./XSHOT核对本SKU本地图像品牌标记。",
+            "fact_source_hash": "43fe80ba63b64ded946c7b3fc49bbc7211a08ac3b4552ce984405f0d21441fc2"
+          },
+          {
+            "semantic_type": "MODEL",
+            "source_text": "Turbo Fire",
+            "value": "Turbo Fire",
+            "source_field": "name_es",
+            "evidence": "官方标题和描述均为完整XSHOT Turbo Fire产品标识；现有同类回归要求保留Turbo Fire型号，不作为品牌删除。",
+            "fact_source_hash": "43fe80ba63b64ded946c7b3fc49bbc7211a08ac3b4552ce984405f0d21441fc2"
+          }
+        ],
+        "image_evidence": [
+          {
+            "path": "F:\\ActionSKUTracker\\runtime\\images\\catalog_originals\\3225710.webp",
+            "sha256": "23ac0d62401284efcaf1fadd1732b8a5de10989768c4e1ed0c48c3910cb396f5",
+            "role": "visual_context_only_no_new_facts"
+          }
+        ]
+      }
+    },
+    {
+      "record": {
+        "sku": "3006417",
+        "name_es": "Calcetines de bambú para hombre",
+        "cat1_es": "Moda",
+        "cat2_es": "Textil parte inferior",
+        "spec_es": "Números 39-42 | 3 pares",
+        "desc_es": "Suaves y confortables\nAntibacteriano y absorbente\nPara pies calientes\nCuando pruebes los calcetines de bambú, ya no querrás otros. Calcetines de lujo, suaves y cómodos, fabricados principalmente con materiales naturales. Con ellos tus pies estarán contentísimos. Los calcetines de bambú son transpirables, antibacterianos y termorreguladores. De esta forma, nunca tendrás los pies demasiado fríos ni demasiado calientes.",
+        "details_es": "Talla de los calcetines: 39-42; Color: Negro; Material: Viscosa / rayón, Poliéster, Poliamida, Compuesto elastomérico; Cantidad: 3 pares; Género: Hombre; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud calcetines: Largo hasta la pantorrilla; Número del artículo: 3006417",
+        "name_zh": "竹纤维袜子",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "服饰鞋包",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "2c52d033b167ce2a5cf3af713b1e69d7492dea9bd9bdeb6092c0a770f71549fc",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:33.920426+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "下装纺织",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "3fecf05fbf24743f8f63f792649eb2c2322f93a27042668c5452279a2b9797c1",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:34.102329+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "含 65% 竹纤维，柔软舒适，透气、吸湿、抗菌并具有温度调节作用，可减少皮肤刺激；通过 OEKO-TEX Standard 100 认证",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "2fd56de16ddf331b09ca4805f7a8e317fa268db044a5099c0ae9e14e73e6dfc8",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_description_007_rebind_c7f105d35a_1956855722aa",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:12:19.794258+00:00",
+            "freshness_status": "STALE"
+          },
+          "details": {
+            "value": "袜子尺码：39-42；颜色：黑色；材质：黏胶纤维/人造丝、涤纶、锦纶、弹性体复合材料；数量：3 双；适用性别：男；洗涤说明：可机洗、最高40°C；熨烫说明：不可熨烫；干燥说明：不可烘干机烘干；袜子长度：及小腿；商品编号：3006417",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "b1ec27596b935ab88024d1b1e7cc9718082039346f980aa3042db782406f28d9",
+            "updated_at": "2026-10-19T05:38:10.871114+00:00",
+            "applied_commit_id": "2026-11-01_zh-fields-reviewed-20261102_7aabacaad958",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-11-01T23:54:44+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "竹纤维袜子",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "3ddc621ea437cd0ce81572abe586c02badd8ee136bde11fee021cddcb90a7420",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:33.776241+00:00",
+            "freshness_status": "STALE"
+          },
+          "spec": {
+            "value": "尺码 39–42｜3 双",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "7749e6360e00513cc84190953000465712eb9d062347419de952ff6b23d195a0",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-11-01_zh-fields-reviewed-20261102_7aabacaad958",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-11-01T23:54:45+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3006417",
+        "field": "description",
+        "source_hash": "4e4ae82b1486d83972d0363f4c0c7e0164b6bfffd5e7fbb4e0ff484c59337a21",
+        "field_source_hash": "2fd56de16ddf331b09ca4805f7a8e317fa268db044a5099c0ae9e14e73e6dfc8",
+        "current_zh": "含 65% 竹纤维，柔软舒适，透气、吸湿、抗菌并具有温度调节作用，可减少皮肤刺激；通过 OEKO-TEX Standard 100 认证",
+        "target": "柔软舒适\n抗菌、吸湿\n保持双脚温暖\n试过竹纤维袜后，您就不想换别的袜子。这款袜子柔软舒适，主要采用天然材料制成。竹纤维袜透气、抗菌并能调节温度，让双脚保持舒适，避免过冷或过热。",
+        "decision": "CORRECTED",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Calcetines de bambú para hombre",
+          "cat1_es": "Moda",
+          "cat2_es": "Textil parte inferior",
+          "spec_es": "Números 39-42 | 3 pares",
+          "desc_es": "Suaves y confortables\nAntibacteriano y absorbente\nPara pies calientes\nCuando pruebes los calcetines de bambú, ya no querrás otros. Calcetines de lujo, suaves y cómodos, fabricados principalmente con materiales naturales. Con ellos tus pies estarán contentísimos. Los calcetines de bambú son transpirables, antibacterianos y termorreguladores. De esta forma, nunca tendrás los pies demasiado fríos ni demasiado calientes.",
+          "details_es": "Talla de los calcetines: 39-42; Color: Negro; Material: Viscosa / rayón, Poliéster, Poliamida, Compuesto elastomérico; Cantidad: 3 pares; Género: Hombre; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud calcetines: Largo hasta la pantorrilla; Número del artículo: 3006417"
+        },
+        "note": "逐句核对本字段西语和现有中文；竹纤维为袜类语境的材料译法，保留性别、68%及原文主张，删除旧版本添加的认证/比例/功能。",
+        "source_value": "Suaves y confortables\nAntibacteriano y absorbente\nPara pies calientes\nCuando pruebes los calcetines de bambú, ya no querrás otros. Calcetines de lujo, suaves y cómodos, fabricados principalmente con materiales naturales. Con ellos tus pies estarán contentísimos. Los calcetines de bambú son transpirables, antibacterianos y termorreguladores. De esta forma, nunca tendrás los pies demasiado fríos ni demasiado calientes.",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "d1361b22cc6c53bb13d9efe5c10634d2067742b765de53e14d39026769aa17ee",
+        "reviewed_hash": "467a4a0311fe20f79ce3931523f8b59f359a0db0e08fc7a2f143c35351eb4260",
+        "semantic_facts_additions": [],
+        "image_evidence": []
+      }
+    },
+    {
+      "record": {
+        "sku": "3006417",
+        "name_es": "Calcetines de bambú para hombre",
+        "cat1_es": "Moda",
+        "cat2_es": "Textil parte inferior",
+        "spec_es": "Números 39-42 | 3 pares",
+        "desc_es": "Suaves y confortables\nAntibacteriano y absorbente\nPara pies calientes\nCuando pruebes los calcetines de bambú, ya no querrás otros. Calcetines de lujo, suaves y cómodos, fabricados principalmente con materiales naturales. Con ellos tus pies estarán contentísimos. Los calcetines de bambú son transpirables, antibacterianos y termorreguladores. De esta forma, nunca tendrás los pies demasiado fríos ni demasiado calientes.",
+        "details_es": "Talla de los calcetines: 39-42; Color: Negro; Material: Viscosa / rayón, Poliéster, Poliamida, Compuesto elastomérico; Cantidad: 3 pares; Género: Hombre; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud calcetines: Largo hasta la pantorrilla; Número del artículo: 3006417",
+        "name_zh": "竹纤维袜子",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "服饰鞋包",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "2c52d033b167ce2a5cf3af713b1e69d7492dea9bd9bdeb6092c0a770f71549fc",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:33.920426+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "下装纺织",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "3fecf05fbf24743f8f63f792649eb2c2322f93a27042668c5452279a2b9797c1",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:34.102329+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "含 65% 竹纤维，柔软舒适，透气、吸湿、抗菌并具有温度调节作用，可减少皮肤刺激；通过 OEKO-TEX Standard 100 认证",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "2fd56de16ddf331b09ca4805f7a8e317fa268db044a5099c0ae9e14e73e6dfc8",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_description_007_rebind_c7f105d35a_1956855722aa",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:12:19.794258+00:00",
+            "freshness_status": "STALE"
+          },
+          "details": {
+            "value": "袜子尺码：39-42；颜色：黑色；材质：黏胶纤维/人造丝、涤纶、锦纶、弹性体复合材料；数量：3 双；适用性别：男；洗涤说明：可机洗、最高40°C；熨烫说明：不可熨烫；干燥说明：不可烘干机烘干；袜子长度：及小腿；商品编号：3006417",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "b1ec27596b935ab88024d1b1e7cc9718082039346f980aa3042db782406f28d9",
+            "updated_at": "2026-10-19T05:38:10.871114+00:00",
+            "applied_commit_id": "2026-11-01_zh-fields-reviewed-20261102_7aabacaad958",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-11-01T23:54:44+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "竹纤维袜子",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "3ddc621ea437cd0ce81572abe586c02badd8ee136bde11fee021cddcb90a7420",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:33.776241+00:00",
+            "freshness_status": "STALE"
+          },
+          "spec": {
+            "value": "尺码 39–42｜3 双",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "7749e6360e00513cc84190953000465712eb9d062347419de952ff6b23d195a0",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-11-01_zh-fields-reviewed-20261102_7aabacaad958",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-11-01T23:54:45+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3006417",
+        "field": "name",
+        "source_hash": "4e4ae82b1486d83972d0363f4c0c7e0164b6bfffd5e7fbb4e0ff484c59337a21",
+        "field_source_hash": "3ddc621ea437cd0ce81572abe586c02badd8ee136bde11fee021cddcb90a7420",
+        "current_zh": "竹纤维袜子",
+        "target": "男式竹纤维袜子",
+        "decision": "CORRECTED",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Calcetines de bambú para hombre",
+          "cat1_es": "Moda",
+          "cat2_es": "Textil parte inferior",
+          "spec_es": "Números 39-42 | 3 pares",
+          "desc_es": "Suaves y confortables\nAntibacteriano y absorbente\nPara pies calientes\nCuando pruebes los calcetines de bambú, ya no querrás otros. Calcetines de lujo, suaves y cómodos, fabricados principalmente con materiales naturales. Con ellos tus pies estarán contentísimos. Los calcetines de bambú son transpirables, antibacterianos y termorreguladores. De esta forma, nunca tendrás los pies demasiado fríos ni demasiado calientes.",
+          "details_es": "Talla de los calcetines: 39-42; Color: Negro; Material: Viscosa / rayón, Poliéster, Poliamida, Compuesto elastomérico; Cantidad: 3 pares; Género: Hombre; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud calcetines: Largo hasta la pantorrilla; Número del artículo: 3006417"
+        },
+        "note": "逐句核对本字段西语和现有中文；竹纤维为袜类语境的材料译法，保留性别、68%及原文主张，删除旧版本添加的认证/比例/功能。",
+        "source_value": "Calcetines de bambú para hombre",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "4ad9f3718e620425dc7e61088825ff80a074d78bbe497162cea7f67fe8377eff",
+        "reviewed_hash": "428b210ce5b450d2c04cc26b98d36f5f6418605eb79f29453b611adb1104fab4",
+        "semantic_facts_additions": [],
+        "image_evidence": []
+      }
+    },
+    {
+      "record": {
+        "sku": "3006419",
+        "name_es": "Calcetines de bambú para mujer",
+        "cat1_es": "Moda",
+        "cat2_es": "Textil parte inferior",
+        "spec_es": "Números 35-38 | 3 pares",
+        "desc_es": "68 % bambú\nEvita la irritación de la piel\nMuy suave\nCuando pruebes los calcetines de bambú, ya no querrás otros. Calcetines de lujo, suaves y cómodos. Con ellos tus pies estarán contentísimos.",
+        "details_es": "Talla de los calcetines: 35-38; Color: Negro; Material: Bambú, Poliéster, Poliamida; Cantidad: Paquete de 3; Género: Mujer; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud calcetines: Largo hasta la pantorrilla; Número del artículo: 3006419",
+        "name_zh": "竹纤维袜子",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "服饰鞋包",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "2c52d033b167ce2a5cf3af713b1e69d7492dea9bd9bdeb6092c0a770f71549fc",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:35.275563+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "下装纺织",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "3fecf05fbf24743f8f63f792649eb2c2322f93a27042668c5452279a2b9797c1",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:35.463112+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "含 68% 竹纤维，柔软舒适，透气、抗菌并具有温度调节作用，可减少皮肤刺激；通过 OEKO-TEX Standard 100 认证",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "35ae67145c77c8302cfa3b08852ca819d089f1c2c3fe076ba4ece0d018201ee7",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_description_007_rebind_c7f105d35a_1956855722aa",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:12:19.983009+00:00",
+            "freshness_status": "STALE"
+          },
+          "details": {
+            "value": "袜子尺码：35-38；颜色：黑色；材质：竹、涤纶、锦纶；数量：3双装；适用性别：女；洗涤说明：可机洗、最高40°C；熨烫说明：不可熨烫；干燥说明：不可烘干机烘干；袜子长度：及小腿；商品编号：3006419",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "ab778ae29bf47f5ac5d7887eada35456ca8c8add3e46a128a1e3290d5b24224e",
+            "updated_at": "2026-10-19T05:38:10.871114+00:00",
+            "applied_commit_id": "2026-11-01_zh-fields-reviewed-20261102_7aabacaad958",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-11-01T23:54:45+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "竹纤维袜子",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "fac2e5d1dbe4e753d73582d5ea4603e7fe69089e62f85549d1dd08b140beeebc",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:35.105834+00:00",
+            "freshness_status": "STALE"
+          },
+          "spec": {
+            "value": "尺码35-38｜3双",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "6719fce623888e93eb18317b7e9e8fd4ac8e9dce3c06378d3019f283b1bf0279",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:35.609251+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3006419",
+        "field": "description",
+        "source_hash": "9960c00f483d9f29dea159ae0e405c5c4cb7309e0ea1291f1990540346724a07",
+        "field_source_hash": "35ae67145c77c8302cfa3b08852ca819d089f1c2c3fe076ba4ece0d018201ee7",
+        "current_zh": "含 68% 竹纤维，柔软舒适，透气、抗菌并具有温度调节作用，可减少皮肤刺激；通过 OEKO-TEX Standard 100 认证",
+        "target": "含68%竹纤维\n避免皮肤刺激\n触感非常柔软\n试过竹纤维袜后，您就不想换别的袜子。这款袜子柔软舒适，让双脚倍感舒适。",
+        "decision": "CORRECTED",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Calcetines de bambú para mujer",
+          "cat1_es": "Moda",
+          "cat2_es": "Textil parte inferior",
+          "spec_es": "Números 35-38 | 3 pares",
+          "desc_es": "68 % bambú\nEvita la irritación de la piel\nMuy suave\nCuando pruebes los calcetines de bambú, ya no querrás otros. Calcetines de lujo, suaves y cómodos. Con ellos tus pies estarán contentísimos.",
+          "details_es": "Talla de los calcetines: 35-38; Color: Negro; Material: Bambú, Poliéster, Poliamida; Cantidad: Paquete de 3; Género: Mujer; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud calcetines: Largo hasta la pantorrilla; Número del artículo: 3006419"
+        },
+        "note": "逐句核对本字段西语和现有中文；竹纤维为袜类语境的材料译法，保留性别、68%及原文主张，删除旧版本添加的认证/比例/功能。",
+        "source_value": "68 % bambú\nEvita la irritación de la piel\nMuy suave\nCuando pruebes los calcetines de bambú, ya no querrás otros. Calcetines de lujo, suaves y cómodos. Con ellos tus pies estarán contentísimos.",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "40b96272fb29529a656d57aedde64f6011824c77f3e3ab70585a6775f774effd",
+        "reviewed_hash": "554ad515e25eff6381360d9a7725528221ac9a08a12307b6d7bc716b104c6357",
+        "semantic_facts_additions": [],
+        "image_evidence": []
+      }
+    },
+    {
+      "record": {
+        "sku": "3006419",
+        "name_es": "Calcetines de bambú para mujer",
+        "cat1_es": "Moda",
+        "cat2_es": "Textil parte inferior",
+        "spec_es": "Números 35-38 | 3 pares",
+        "desc_es": "68 % bambú\nEvita la irritación de la piel\nMuy suave\nCuando pruebes los calcetines de bambú, ya no querrás otros. Calcetines de lujo, suaves y cómodos. Con ellos tus pies estarán contentísimos.",
+        "details_es": "Talla de los calcetines: 35-38; Color: Negro; Material: Bambú, Poliéster, Poliamida; Cantidad: Paquete de 3; Género: Mujer; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud calcetines: Largo hasta la pantorrilla; Número del artículo: 3006419",
+        "name_zh": "竹纤维袜子",
+        "zh_field_provenance": {
+          "cat1": {
+            "value": "服饰鞋包",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "2c52d033b167ce2a5cf3af713b1e69d7492dea9bd9bdeb6092c0a770f71549fc",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:35.275563+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "cat2": {
+            "value": "下装纺织",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "3fecf05fbf24743f8f63f792649eb2c2322f93a27042668c5452279a2b9797c1",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:35.463112+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "description": {
+            "value": "含 68% 竹纤维，柔软舒适，透气、抗菌并具有温度调节作用，可减少皮肤刺激；通过 OEKO-TEX Standard 100 认证",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "35ae67145c77c8302cfa3b08852ca819d089f1c2c3fe076ba4ece0d018201ee7",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_content_remediation_20261007_next_description_007_rebind_c7f105d35a_1956855722aa",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T12:12:19.983009+00:00",
+            "freshness_status": "STALE"
+          },
+          "details": {
+            "value": "袜子尺码：35-38；颜色：黑色；材质：竹、涤纶、锦纶；数量：3双装；适用性别：女；洗涤说明：可机洗、最高40°C；熨烫说明：不可熨烫；干燥说明：不可烘干机烘干；袜子长度：及小腿；商品编号：3006419",
+            "source": "REGISTRY_APPROVED",
+            "review_status": "APPROVED",
+            "source_hash": "ab778ae29bf47f5ac5d7887eada35456ca8c8add3e46a128a1e3290d5b24224e",
+            "updated_at": "2026-10-19T05:38:10.871114+00:00",
+            "applied_commit_id": "2026-11-01_zh-fields-reviewed-20261102_7aabacaad958",
+            "approved_by": "service:current-localization-review",
+            "approved_at": "2026-11-01T23:54:45+00:00",
+            "freshness_status": "CURRENT"
+          },
+          "name": {
+            "value": "竹纤维袜子",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "fac2e5d1dbe4e753d73582d5ea4603e7fe69089e62f85549d1dd08b140beeebc",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:35.105834+00:00",
+            "freshness_status": "STALE"
+          },
+          "spec": {
+            "value": "尺码35-38｜3双",
+            "source": "dictionary_or_fallback",
+            "review_status": "APPROVED",
+            "source_hash": "6719fce623888e93eb18317b7e9e8fd4ac8e9dce3c06378d3019f283b1bf0279",
+            "updated_at": "2026-09-28T02:10:50.521956+00:00",
+            "applied_commit_id": "2026-10-07_localization_rebind_closure_20261007_batch_153_107c551088a4",
+            "approved_by": "human:owner",
+            "approved_at": "2026-10-07T02:17:35.609251+00:00",
+            "freshness_status": "CURRENT"
+          }
+        }
+      },
+      "review": {
+        "sku": "3006419",
+        "field": "name",
+        "source_hash": "9960c00f483d9f29dea159ae0e405c5c4cb7309e0ea1291f1990540346724a07",
+        "field_source_hash": "fac2e5d1dbe4e753d73582d5ea4603e7fe69089e62f85549d1dd08b140beeebc",
+        "current_zh": "竹纤维袜子",
+        "target": "女式竹纤维袜子",
+        "decision": "CORRECTED",
+        "review_model": "CODEX",
+        "context": {
+          "name_es": "Calcetines de bambú para mujer",
+          "cat1_es": "Moda",
+          "cat2_es": "Textil parte inferior",
+          "spec_es": "Números 35-38 | 3 pares",
+          "desc_es": "68 % bambú\nEvita la irritación de la piel\nMuy suave\nCuando pruebes los calcetines de bambú, ya no querrás otros. Calcetines de lujo, suaves y cómodos. Con ellos tus pies estarán contentísimos.",
+          "details_es": "Talla de los calcetines: 35-38; Color: Negro; Material: Bambú, Poliéster, Poliamida; Cantidad: Paquete de 3; Género: Mujer; Instrucciones de lavado: Lavado a máquina hasta 40 °C; Instrucciones de planchado: Sin planchado; Instrucciones de secado: No secar en tambor de secado; Longitud calcetines: Largo hasta la pantorrilla; Número del artículo: 3006419"
+        },
+        "note": "逐句核对本字段西语和现有中文；竹纤维为袜类语境的材料译法，保留性别、68%及原文主张，删除旧版本添加的认证/比例/功能。",
+        "source_value": "Calcetines de bambú para mujer",
+        "risk_level": "MEDIUM",
+        "candidate_source": "EXISTING_APPROVED_BASELINE",
+        "resolution_source": "CODEX",
+        "review_policy_version": "ACTION_LOCALIZATION_REVIEW_CONTRACT_V2",
+        "approval_mode": "OWNER_AUTHORIZED_PROXY",
+        "approval_evidence": "用户2026-11-02：继续核对剩下102项，先修复QA误拦并补回归；能确认且通过QA和审批的直接Apply，25项原有待核保留，不导出、不推送、不部署。",
+        "qwen_calls_for_review": 0,
+        "candidate_hash": "4ad9f3718e620425dc7e61088825ff80a074d78bbe497162cea7f67fe8377eff",
+        "reviewed_hash": "2ac2eeb24c643b41516485654ffabc45574a03cc186282b0bdf1790b926275b7",
+        "semantic_facts_additions": [],
+        "image_evidence": []
+      }
+    }
+  ]
+}

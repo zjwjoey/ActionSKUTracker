@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Mapping
 
-from .contracts import SourceFacts
+from .contracts import SourceFacts, SemanticFact
 from .policy import FIXED_CAT1, has_ordinary_spanish
 from .body_names import mask_source_bound_body_names
 from .source_notes import mask_verified_detail_source_notes
@@ -453,26 +453,100 @@ def _is_allowed_translated_tech_token(source_text: str, source_token: str, targe
 
 def _is_omittable_display_brand_tech(source_text: str, source_token: str, target: str, *, semantic_facts=(), field_name="") -> bool:
     token = str(source_token or "").casefold()
-    if _has_casefold_token(target, source_token):
-        return False
-    if field_name == "name" and token == "fab":
+    if field_name == "name" and token == "fab" and not _has_casefold_token(target, source_token):
         # FAB Factory is a complete commercial name, not a FAB model. A
         # separate occurrence outside that span still needs preservation.
         remaining = re.sub(r"\bFAB\s+Factory\b", " ", source_text, flags=re.I)
         if remaining != source_text and not _has_casefold_token(remaining, source_token):
             return True
-    if token in _OMITTABLE_DISPLAY_BRAND_TECH and _source_term_present(source_text, source_token):
+    if (token in _OMITTABLE_DISPLAY_BRAND_TECH and _source_term_present(source_text, source_token)
+            and not _has_casefold_token(target, source_token)):
         return True
     # A source-scoped, trusted BRAND fact resolves an uppercase brand such
     # as DAY. Unknown acronyms remain technical identifiers, never brands
     # inferred solely from their spelling.
-    return field_name == 'name' and any(
-        str(getattr(fact,'semantic_type','')) == 'BRAND'
-        and _fact_applies_to_field(fact,field_name)
-        and str(getattr(fact,'source_text','')).casefold() == token
-        and _source_term_present(source_text,source_token)
-        for fact in semantic_facts
-    )
+    if field_name != 'name':
+        return False
+    if source_token.upper() in {'USB', 'USB-C', 'USB-A', 'HDMI', 'LED', 'AA', 'AAA', 'MDF', 'FSC', 'A4', 'A3', 'XL', 'XXL'}:
+        return False
+    remaining = source_text
+    for fact in semantic_facts:
+        span = str(getattr(fact, 'source_text', '') or '')
+        if (getattr(fact, 'semantic_type', '') != 'BRAND'
+                or not _fact_applies_to_field(fact, field_name)
+                or not span or not _has_casefold_token(span, source_token)):
+            continue
+        # Consume one reviewed commercial span, not every occurrence of its
+        # acronym. A separate model/code with the same spelling stays protected.
+        remaining = re.sub(r'(?<![\w])' + re.escape(span) + r'(?![\w])',
+                           ' ', remaining, count=1, flags=re.I)
+    return (remaining != source_text and
+            _casefold_token_count(target, source_token) == _casefold_token_count(remaining, source_token))
+
+
+def approved_name_review_facts(record: Mapping[str, Any]) -> tuple[SemanticFact, ...]:
+    """Reuse only approved, current, exact-value own-name review evidence.
+
+    The repository supplies the current registry revision; this never promotes
+    dictionary candidates, exempts a whole SKU, or imports facts from prose.
+    """
+    from ..services.hashing import localization_field_source_hash
+    proofs = record.get('_approved_name_semantic_review')
+    if isinstance(proofs, list):
+        # Multiple historical aggregate versions can exist. Validate each
+        # against the current field binding; never depend on query row order.
+        for proof in proofs:
+            facts = approved_name_review_facts({**record, '_approved_name_semantic_review': proof})
+            if facts:
+                return facts
+        return ()
+    proof = proofs
+    meta = (record.get('zh_field_provenance') or {}).get('name') or {}
+    if not isinstance(proof, dict):
+        return ()
+    review = proof.get('review')
+    if not isinstance(review, dict):
+        return ()
+    try:
+        source_hash = localization_field_source_hash(dict(record), 'name')
+    except (KeyError, TypeError, ValueError):
+        return ()
+    if (proof.get('review_status') != 'APPROVED' or proof.get('qa_status') != 'PASS'
+            or proof.get('canonical_qa_status') not in {'PASS', 'NOT_REQUIRED'}
+            or meta.get('review_status') not in {'APPROVED', 'VERIFIED', 'HUMAN_REVIEWED'}
+            or meta.get('freshness_status') != 'CURRENT'
+            or not proof.get('approved_by') or proof['approved_by'] != meta.get('approved_by')
+            or proof.get('target_text') != record.get('name_zh')
+            or meta.get('value') != record.get('name_zh')
+            or review.get('target') != record.get('name_zh')
+            or meta.get('source_hash') != source_hash
+            or review.get('field_source_hash') != source_hash
+            or review.get('field') != 'name' or review.get('sku') != record.get('sku')
+            or review.get('decision') not in {'KEEP', 'CORRECTED'}
+            or review.get('review_model') != 'CODEX'
+            or review.get('approval_mode') != 'OWNER_AUTHORIZED_PROXY'
+            or not review.get('approval_evidence')
+            or not isinstance(review.get('context'), dict)
+            or review['context'].get('name_es') != record.get('name_es')):
+        return ()
+    additions = review.get('semantic_facts_additions')
+    if not isinstance(additions, list):
+        return ()
+    facts = []
+    for data in additions:
+        if not isinstance(data, dict):
+            return ()
+        try:
+            fact = SemanticFact(**data)
+        except (TypeError, ValueError):
+            return ()
+        if (fact.semantic_type not in {'BRAND', 'MODEL'} or fact.source_field != 'name_es'
+                or fact.fact_source_hash != source_hash or not fact.evidence
+                or fact.value != fact.source_text or fact.canonical_value not in {'', fact.source_text}
+                or not fact.source_text or not _source_term_present(str(record.get('name_es') or ''), fact.source_text)):
+            return ()
+        facts.append(fact)
+    return tuple(facts)
 
 
 def _is_ordinary_spanish_uppercase_token(source_text: str, source_token: str) -> bool:
@@ -714,6 +788,9 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bmadera\b", remaining, re.I):
             return ("木纹", "木质外观", "木材外观")
+        remaining = re.sub(r'\bmasilla\s+para\s+madera\b', ' ', source_text, flags=re.I)
+        if remaining != source_text and not re.search(r'\bmadera\b', remaining, re.I):
+            return ('木器', '木材', '木用')
     if re.fullmatch(r"papel\s+sin\s+madera", source_term, re.I):
         return ("化学浆纸", "化学浆绘图纸", "无机械木浆纸", "无磨木浆纸")
     if re.fullmatch(r"cinceles?\s+de\s+madera", source_term, re.I) and canonical == "木工":
@@ -722,6 +799,17 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         remaining = re.sub(r"\bfibras?\s+de\s+bambú\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bbambú\b", remaining, re.I):
             return ("竹纤维",)
+        # Retail sock titles/prose use calcetines de bambú for bamboo textile.
+        # A percentage may qualify that same textile; another bamboo object,
+        # an accessory or negated material must not inherit this equivalence.
+        textile = r'\bcalcetines\s+de\s+bambú\b'
+        if (re.search(textile, source_text, re.I)
+                and not re.search(r'\b(?:no|sin)\b[^.;\n]{0,35}' + textile, source_text, re.I)
+                and not re.search(r'\b(?:para|de)\s+' + textile, source_text, re.I)):
+            remaining = re.sub(textile, ' ', source_text, flags=re.I)
+            remaining = re.sub(r'\b\d+(?:[.,]\d+)?\s*%\s*(?:de\s+)?bambú\b', ' ', remaining, flags=re.I)
+            if not re.search(r'\bbambú\b', remaining, re.I):
+                return ('竹纤维',)
     if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
         # A contextual eraser fact must not inherit the rubber/band alias.
         return ("橡皮擦", "橡皮")
@@ -1448,6 +1536,16 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
         allowed_display_tokens = _allowed_display_latin_tokens(source_text, target)
         for fact in semantic_facts:
             model_name = str(getattr(fact, "source_text", "") or "").strip()
+            if (getattr(fact, 'semantic_type', '') == 'MODEL'
+                    and _fact_applies_to_field(fact, field_name)
+                    and getattr(fact, 'fact_source_hash', '')
+                    and _source_term_present(source_text, model_name)):
+                from ..services.hashing import localization_field_source_hash
+                if (fact.fact_source_hash == localization_field_source_hash(source.as_record(), field_name)
+                        and not _has_casefold_token(target, model_name)):
+                    findings.append(QAFinding('MODEL_DROPPED', 'BLOCKER', field_name,
+                        {'token_type':'MODEL','value':model_name}, source=source_text, target=target,
+                        message='reviewed own-field model must remain identifiable', blocking=True))
             if (str(getattr(fact, "semantic_type", "")) == "MODEL"
                     and _fact_applies_to_field(fact, field_name)
                     and _source_term_present(source_text, model_name)

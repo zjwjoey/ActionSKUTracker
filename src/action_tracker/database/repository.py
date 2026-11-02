@@ -289,6 +289,7 @@ class ProductionRepository:
                 "SELECT official_sku,observed_at,old_price,new_price,change_type "
                 "FROM price_history ORDER BY observed_at,id"
             ).fetchall()
+            reviewed_name_facts = _read_approved_name_reviews(db)
             presence_head = _complete_presence_head(db)
             lineage = _read_fact_lineage(db, rows) if include_field_lineage else {}
             pending_ids = {str(row[1]) for row in rows if row[11] == 'UNKNOWN' and not (row[14] or row[15])}
@@ -363,7 +364,35 @@ class ProductionRepository:
                                     price_history.get(str(row[1]), []), period_date,
                                     last_valid_price=row[44]),
             })
+        for record in records:
+            if record['sku'] in reviewed_name_facts:
+                record['_approved_name_semantic_review'] = reviewed_name_facts[record['sku']]
         return records
+
+
+def _read_approved_name_reviews(db) -> dict[str, list[dict[str, Any]]]:
+    """Read existing current registry evidence without promoting dictionary rows."""
+    try:
+        rows = db.execute("""SELECT s.official_sku,r.target_text,r.review_status,
+                    r.qa_status,r.canonical_qa_status,r.approved_by,r.provenance_json
+                FROM translation_units u
+                JOIN translation_source_versions s ON s.source_version_id=u.source_version_id
+                JOIN translation_revisions r ON r.revision_id=u.current_revision_id
+                WHERE u.field_name IN ('name','name_es') AND r.review_status='APPROVED'
+                  AND r.qa_status='PASS' AND json_valid(r.provenance_json)
+                  AND json_type(r.provenance_json,'$.review.semantic_facts_additions')='array'""").fetchall()
+    except sqlite3.OperationalError as exc:
+        if 'no such table' in str(exc) or 'no such column' in str(exc):
+            return {}
+        raise
+    result = {}
+    for row in rows:
+        raw = json.loads(row[6])
+        review = raw.get('review') if isinstance(raw, dict) else None
+        if isinstance(review, dict):
+            result.setdefault(str(row[0]), []).append(dict(zip(
+                ('target_text','review_status','qa_status','canonical_qa_status','approved_by'),row[1:6]),review=review))
+    return result
 
 
 def _localization_source_values(product_name, localized_values) -> dict[str, Any]:

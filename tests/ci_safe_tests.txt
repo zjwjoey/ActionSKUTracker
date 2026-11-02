@@ -248,3 +248,6 @@ tests/test_stage6_verified_legacy.py
 tests/test_followup_localization_senses.py
 tests/test_ironing_prohibition_scope.py
 tests/test_source_conflict_tracking.py
+
+# CI_SAFE: own-source QA aliases and approval-bound commercial-name evidence.
+tests/test_current102_qa.py
