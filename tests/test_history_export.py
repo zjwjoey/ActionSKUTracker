@@ -68,7 +68,7 @@ def test_export_history_writes_union_and_manifest(tmp_path):
 
     manifest = json.loads(Path(result["manifest"]).read_text(encoding="utf-8"))
     assert manifest["template_id"] == "action_history_presence"
-    assert manifest["template_version"] == 2
+    assert manifest["template_version"] == 3
     assert manifest["history_union_sku_count"] == 2
     assert manifest["history_dates"] == ["2026-08-24", "2026-08-25"]
     assert manifest["unknown_presence_count"] == 0
@@ -86,7 +86,9 @@ def test_unknown_seed_roundtrip_and_template1_columns_agree(tmp_path):
     result = export_history(cfg, export_date="2026-08-30")
     manifest = json.loads(Path(result["manifest"]).read_text("utf8"))
     assert manifest["unknown_presence_count"] == 1
-    # Feeding the module's own output back into the same reader must retain UNKNOWN.
+    w = openpyxl.load_workbook(result["output"], data_only=True)
+    assert w["商品上下架明细"]["F3"].value is None
+    w.close()
     again_cfg = _history_cfg(tmp_path, Path(result["output"]))
     text = again_cfg["history_sources_path"].read_text("utf8").replace("sheet: ACTION商品上下架明细", "sheet: 商品上下架明细")
     again_cfg["history_sources_path"].write_text(text, "utf8")
@@ -98,6 +100,31 @@ def test_unknown_seed_roundtrip_and_template1_columns_agree(tmp_path):
     assert tuple(c.value for c in w.active[1][:5]) == HISTORY_HEADERS
     assert w.active.max_column == 5 + len(history.dates)
     w.close()
+
+
+def test_committed_observations_are_appended_only_when_coverage_passes(tmp_path, monkeypatch):
+    import sqlite3
+    import action_tracker.database.integration as integration
+    seed = tmp_path / 'seed.xlsx'; _write_seed(seed)
+    cfg = _history_cfg(tmp_path, seed)
+    db_path = tmp_path / 'primary.sqlite3'; snapshot = tmp_path / 'snapshot'; snapshot.mkdir()
+    qa_path = snapshot / 'qa_report.json'
+    qa_path.write_text(json.dumps({'state':'PASS','passed':True,'counts':{'sitemap_count':2,'listing_count':2}}), encoding='utf8')
+    with sqlite3.connect(db_path) as db:
+        db.executescript('CREATE TABLE runs(run_id,run_date,status,qa_state,dry_run); CREATE TABLE commit_batches(run_id,snapshot_path,observation_count,status); CREATE TABLE observations(run_id,official_sku,presence_state,observation_complete,absence_capable); CREATE TABLE products(official_sku,name_zh,image_url,product_url);')
+        db.execute('INSERT INTO runs VALUES(?,?,?,?,?)', ('run1','2026-08-26','COMMITTED','PASS',0))
+        db.execute('INSERT INTO commit_batches VALUES(?,?,?,?)', ('run1',str(snapshot),3,'COMMITTED'))
+        db.executemany('INSERT INTO observations VALUES(?,?,?,?,?)', [('run1','9001','PRESENT',1,1),('run1','9002','ABSENT',1,1),('run1','9003','PRESENT',1,1)])
+    monkeypatch.setattr(integration, 'database_path', lambda cfg: db_path)
+    cfg['history_include_committed_observations'] = True
+    h=load_presence_history(cfg)
+    assert h.dates[-1]=='2026-08-26'
+    assert h.presence_by_sku['9001']['2026-08-26']==1
+    assert h.presence_by_sku['9002']['2026-08-26']==0
+    assert h.presence_by_sku['9003']['2026-08-24']=='UNKNOWN'
+    qa_path.write_text(json.dumps({'state':'PASS','passed':True,'counts':{'sitemap_count':3,'listing_count':2}}), encoding='utf8')
+    with pytest.raises(HistoryExportError, match='HISTORY_RUN_COVERAGE_MISMATCH'):
+        load_presence_history(cfg)
 
 
 def _matrix(path, rows, header="26.08.26"):

@@ -371,7 +371,21 @@ def _export_catalog_impl(
         es_projection_report = build_es_projection_report(source.records, rows)
         rows, delivery_note_cleanup = _clean_delivery_notes(cfg, rows, language="es")
     elif language == "zh":
-        projection = build_final_zh_projection(cfg, source, release_mode=release_mode)
+        projection_cfg = cfg
+        if release_mode == ANNOTATED_RELEASE and annotation_plan.get('from_tracking') is True:
+            from .difference_whitelist import conflict_tracking_from_config, DifferenceWhitelistError
+            try:
+                tracking_registry = conflict_tracking_from_config(cfg)
+            except DifferenceWhitelistError as exc:
+                raise ExportValidationError(str(exc)) from exc
+            if tracking_registry is None:
+                raise ExportValidationError('ANNOTATED_TRACKING_NOT_ENABLED')
+            # The existing difference registry has independent, exact-match
+            # CONFIRMED brand exceptions. Enable them only for this explicit
+            # annotated run; unresolved tracking entries still grant no QA waiver.
+            projection_cfg = {**cfg, 'export_difference_whitelist': {
+                'enabled': True, 'path': tracking_registry.registry_path}}
+        projection = build_final_zh_projection(projection_cfg, source, release_mode=release_mode)
         rows = [dict(row) for row in projection.rows]
         fallback_counts = projection.fallback_counts
         dictionary_hash = projection.dictionary_hash
@@ -390,16 +404,31 @@ def _export_catalog_impl(
     annotation_audit = None
     baseline_rows = None
     if release_mode == ANNOTATED_RELEASE:
-        from .annotated import apply_annotation_plan, AnnotatedDeliveryError
+        from .annotated import apply_annotation_plan, build_tracking_annotation_plan, original_price_notices, AnnotatedDeliveryError
+        from .difference_whitelist import conflict_tracking_from_config, DifferenceWhitelistError
         validate_spanish_source_fields(source.records)
-        strict_result, _ = _research_release_result(cfg, source, rows)
+        strict_result, master_quality = _research_release_result(cfg, source, rows)
         baseline_rows = [dict(row) for row in rows]
         try:
+            registry = conflict_tracking_from_config(cfg)
+            if annotation_plan.get('from_tracking') is True:
+                price_disclosure = annotation_plan.get('retain_invalid_original_prices', False)
+                if not isinstance(price_disclosure, bool):
+                    raise AnnotatedDeliveryError('ANNOTATED_PRICE_POLICY_BOOLEAN_REQUIRED')
+                annotation_plan = build_tracking_annotation_plan(
+                    source, registry, repair_audit or {},
+                    authorization_ref=annotation_plan.get('authorization_ref'),
+                    authorization_text=annotation_plan.get('authorization_text'),
+                )
+                if price_disclosure and master_quality.get('issues'):
+                    annotation_plan['original_price_notices'] = original_price_notices(source, rows, master_quality)
             rows, annotation_audit = apply_annotation_plan(
                 source, rows, annotation_plan, source_hash=canonical_source_hash(source.records),
                 repair_audit=repair_audit or {}, strict_audit=strict_result.as_dict(),
+                conflict_registry=registry,
+                master_quality=master_quality,
             )
-        except AnnotatedDeliveryError as exc:
+        except (AnnotatedDeliveryError, DifferenceWhitelistError) as exc:
             raise ExportValidationError(str(exc)) from exc
         validate_zh_rows_against_source(rows, source.records)
         validate_output_rows(rows)

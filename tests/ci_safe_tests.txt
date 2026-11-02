@@ -205,6 +205,9 @@ tests/test_source_note_language_qa.py
 
 # CI_SAFE: pure annotation bindings plus temporary workbook publication fixtures.
 tests/test_annotated_projection.py
+tests/test_tracking_annotated_export.py
+tests/test_annotated_original_prices.py
+tests/test_source_bound_gate_20261102.py
 tests/test_annotated_export_service.py
 
 # CI_SAFE: current applied-field export precedence; public text and temporary CSV only.
@@ -248,3 +251,6 @@ tests/test_stage6_verified_legacy.py
 tests/test_followup_localization_senses.py
 tests/test_ironing_prohibition_scope.py
 tests/test_source_conflict_tracking.py
+
+# CI_SAFE: own-source QA aliases and approval-bound commercial-name evidence.
+tests/test_current102_qa.py

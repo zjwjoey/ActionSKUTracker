@@ -77,7 +77,7 @@ def test_template1_builds_history_union_and_three_sheets(tmp_path):
     assert manifest["history_union_sku_count"] == 2
     assert manifest["current_valid_sku_count"] == 1
     assert manifest["presence_one_count"] == 1
-    assert manifest["template_version"] == 2
+    assert manifest["template_version"] == 3
     assert manifest["history_fixed_headers"] == ["序号", "编号", "中文品名", "图片链接", "商品链接"]
 
     first_workbook = openpyxl.load_workbook(result["output"], read_only=True, data_only=True)

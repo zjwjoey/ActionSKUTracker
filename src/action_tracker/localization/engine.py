@@ -79,6 +79,8 @@ class LocalizationEngine:
             quality_facts = parse_semantic_facts(source, known_brands=known_brands, dictionaries=record_knowledge)
             quality_plan = plan_localization(source, quality_facts, knowledge=record_knowledge, existing=existing)
             plan = replace(plan, semantic_facts=quality_plan.semantic_facts)
+        from .qa import approved_name_review_facts
+        plan = replace(plan, semantic_facts=(*plan.semantic_facts, *approved_name_review_facts(record)))
         existing_hash = str((existing or {}).get("source_hash") or "")
         if existing_hash and existing_hash != source.source_hash and not bool((existing or {}).get("retranslate")):
             # Daily observation may detect changed Spanish facts before a new

@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import re
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -132,6 +134,50 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         stats.append(stat)
         source_by_date[date] = stat
 
+    if cfg.get("history_include_committed_observations"):
+        from ..database.integration import database_path
+        db_path = Path(database_path(cfg)).resolve()
+        if not db_path.is_file():
+            raise HistoryExportError(f"HISTORY_DATABASE_MISSING: {db_path}")
+        cutoff = max(dates) if dates else "0000-00-00"
+        end_date = cfg.get("history_observation_end_date", "9999-12-31")
+        with sqlite3.connect(db_path.as_uri() + "?mode=ro", uri=True) as db:
+            db.row_factory = sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            runs = db.execute("""SELECT r.run_id,r.run_date,c.snapshot_path,c.observation_count
+              FROM runs r JOIN commit_batches c ON c.run_id=r.run_id
+              WHERE r.run_date>? AND r.run_date<=? AND r.status='COMMITTED'
+                AND r.qa_state='PASS' AND r.dry_run=0 AND c.status='COMMITTED'
+                AND c.observation_count>0 ORDER BY r.run_date,r.run_id""", (cutoff, end_date)).fetchall()
+            for run in runs:
+                date = run['run_date']
+                if date in seen_dates:
+                    raise HistoryExportError(f"HISTORY_MULTIPLE_COMMITTED_RUNS: {date}")
+                if not run['snapshot_path']:
+                    raise HistoryExportError(f"HISTORY_RUN_SNAPSHOT_MISSING: {run['run_id']}")
+                qa_path = Path(run['snapshot_path']) / 'qa_report.json'
+                try:
+                    qa = json.loads(qa_path.read_text(encoding='utf-8-sig'))
+                except (OSError, ValueError) as exc:
+                    raise HistoryExportError(f"HISTORY_RUN_QA_MISSING: {run['run_id']}") from exc
+                if qa.get('state') != 'PASS' or qa.get('passed') is not True:
+                    raise HistoryExportError(f"HISTORY_RUN_QA_FAILED: {run['run_id']}")
+                obs = db.execute("SELECT official_sku,presence_state,observation_complete,absence_capable FROM observations WHERE run_id=?", (run['run_id'],)).fetchall()
+                if len(obs) != run['observation_count'] or not obs or any(r['observation_complete'] != 1 or r['absence_capable'] != 1 or r['presence_state'] not in ('PRESENT','ABSENT') for r in obs):
+                    raise HistoryExportError(f"HISTORY_RUN_OBSERVATIONS_INCOMPLETE: {run['run_id']}")
+                counts = qa.get('counts') or {}
+                present_count = sum(r['presence_state'] == 'PRESENT' for r in obs)
+                if counts.get('sitemap_count') != present_count or counts.get('listing_count') != present_count:
+                    raise HistoryExportError(f"HISTORY_RUN_COVERAGE_MISMATCH: {run['run_id']}")
+                for r in obs:
+                    presence.setdefault(str(r['official_sku']), {})[date] = int(r['presence_state'] == 'PRESENT')
+                dates.add(date); seen_dates.add(date)
+                source_by_date[date] = HistorySourceStat(date, str(qa_path), len(obs), len(obs), 0, True, True, True, 'A', 'COMMITTED_QA_PASS:' + run['run_id'])
+            for row in db.execute("SELECT official_sku,name_zh,image_url,product_url FROM products"):
+                sku = str(row['official_sku'])
+                if sku in presence and sku not in seed_rows:
+                    latest[sku] = {'name_zh': row['name_zh'], 'image_url': row['image_url'], 'product_url': row['product_url']}
+
     # Fill absence only when the source explicitly proves completeness and
     # absence capability. Partial sources remain UNKNOWN; not observed is not 0.
     # Matrix rows containing only 0/UNKNOWN are not positive SKU membership evidence.
@@ -141,7 +187,10 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
     for date, stat in source_by_date.items():
         default: PresenceValue = 0 if stat.absence_capability and stat.observation_complete else PRESENCE_UNKNOWN
         for sku in all_skus:
-            presence.setdefault(sku, {}).setdefault(date, default)
+            # A matrix can prove the recorded cells for its own SKUs; a SKU
+            # added by a later run has no row-level historical evidence.
+            absent = PRESENCE_UNKNOWN if seed_path and stat.path == seed_path and sku not in seed_rows else default
+            presence.setdefault(sku, {}).setdefault(date, absent)
 
     return PresenceHistory(
         dates=tuple(sorted(dates)),
@@ -255,7 +304,8 @@ def _read_seed(path: Path, seed_cfg: dict[str, Any]) -> tuple[list[dict[str, Any
             continue
         values: dict[str, PresenceValue] = {}
         for header, date in date_columns.items():
-            values[date] = _presence_value(raw.get(header), f"HISTORY_SEED_BAD_PRESENCE: {path}/{sku}/{header}")
+            value = raw.get(header)
+            values[date] = PRESENCE_UNKNOWN if value is None or value == "" else _presence_value(value, f"HISTORY_SEED_BAD_PRESENCE: {path}/{sku}/{header}")
         fields = {key: raw.get(header) for key, header in field_map.items() if header in raw}
         output.append({"sku": sku, "presence": values, **fields, "fields": fields})
     return output, set(date_columns.values())

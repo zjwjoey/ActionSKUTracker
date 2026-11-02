@@ -645,7 +645,9 @@ def audit_repaired_rows(
         source_facts = SourceFacts.from_record(record)
         # Legacy canonical-spec builders retain their explicit relocation API.
         # Exported field translations bind to their OWN Spanish source.
-        qa_findings = audit_translation(source_facts, targets, AUDIT_LOGICAL_FIELDS, allow_spec_relocation=False)
+        from ..localization.qa import approved_name_review_facts
+        qa_findings = audit_translation(source_facts, targets, AUDIT_LOGICAL_FIELDS,
+            semantic_facts=approved_name_review_facts(source), allow_spec_relocation=False)
         spec_source = _text(source.get('spec_es'))
         spec_target = _text(output.get('规格'))
         if spec_source and spec_target:

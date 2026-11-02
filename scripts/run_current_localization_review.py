@@ -31,7 +31,12 @@ FIELDS = dict(zip(("name", "cat1", "cat2", "spec", "description", "details"),
 ZH = dict(zip(FIELDS, ("name_zh", "cat1_zh", "cat2_zh", "spec_zh", "desc_zh", "details_zh")))
 
 
-def field_already_ready(record, field, target):
+def field_already_ready(record, field, target, *, reviewed_facts=()):
+    if reviewed_facts:
+        from action_tracker.localization.qa import approved_name_review_facts
+        existing = approved_name_review_facts(record) if field == 'name' else ()
+        if not all(SemanticFact(**f) in existing for f in reviewed_facts):
+            return False
     provenance = (record.get("zh_field_provenance") or {}).get(field) or {}
     return (record.get(ZH[field]) == target and provenance.get("value") == target
             and provenance.get("review_status") in {"APPROVED", "VERIFIED", "HUMAN_REVIEWED"}
@@ -84,7 +89,8 @@ def main():
                 raise ValueError("CURRENT_REVIEW_SOURCE_CHANGED")
             if record.get(ZH[field]) != review["current_zh"] and record.get(ZH[field]) != review["target"]:
                 raise ValueError("CURRENT_REVIEW_TARGET_CHANGED")
-            if field_already_ready(record, field, review["target"]):
+            if field_already_ready(record, field, review["target"],
+                                   reviewed_facts=review.get('semantic_facts_additions', ())):
                 outcomes.append({"sku": sku, "field": field, "status": "ALREADY_READY"})
                 continue
             if field in {"cat1", "cat2"}:

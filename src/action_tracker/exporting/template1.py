@@ -15,7 +15,7 @@ from .history import PresenceHistory
 
 
 HISTORY_HEADERS = ("序号", "编号", "中文品名", "图片链接", "商品链接")
-TEMPLATE1_VERSION = 2
+TEMPLATE1_VERSION = 3
 CATALOG_HEADERS = (
     "图片", "编号", "标题", "分类1", "分类2", "规格", "折后价", "原价", "单价",
     "描述", "产品详情", "图片链接", "商品链接", "备注",
@@ -143,7 +143,7 @@ def _write_history_sheet(ws: Any, rows: list[dict[str, Any]], dates: tuple[str, 
     ws.append(list(fixed_headers) + [_compact_date(date) for date in dates])
     for number, row in enumerate(rows, 1):
         values = [number] + [row.get(header, "") for header in fixed_headers[1:]]
-        values += [row.get(date, "UNKNOWN") for date in dates]
+        values += [None if row.get(date, "UNKNOWN") == "UNKNOWN" else row[date] for date in dates]
         ws.append(values)
     _format_sheet(ws, wrap_columns={"中文品名"})
     headers = list(fixed_headers)
