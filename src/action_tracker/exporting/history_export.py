@@ -32,7 +32,7 @@ def export_history(cfg: dict[str, Any], *, export_date: str) -> dict[str, Any]:
     manifest_path = output.with_suffix(".manifest.json")
     manifest = {
         "template_id": "action_history_presence",
-        "template_version": 2,
+        "template_version": 3,
         "fixed_headers": list(STANDALONE_HISTORY_HEADERS),
         "excluded_months": list(history.excluded_months),
         "output_sha256": _file_hash(output),
@@ -78,7 +78,7 @@ def verify_history_xlsx(path: Path, *, history_dates: tuple[str, ...], expected_
         for date in history_dates:
             col = headers.index(_compact_date(date)) + 1
             values = [ws.cell(row=row, column=col).value for row in range(2, ws.max_row + 1)]
-            if any(value not in (0, 1, PRESENCE_UNKNOWN) for value in values):
+            if any(value not in (0, 1, None) for value in values):
                 raise HistoryExportError(f"HISTORY_EXPORT_BAD_PRESENCE: {date}")
         audit = workbook["历史来源审计"]
         if audit.max_row - 1 != len(history_dates):

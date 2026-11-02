@@ -51,6 +51,10 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--selection-id", help="可选：仅导出已保存 Selection 的 SKU")
     e.add_argument("--research-release", action="store_true", help="启用严格 research_release 门禁（仅 SQLite 已 Apply 中文来源）")
     e.add_argument("--annotation-plan", type=Path, help="使用已授权、精确来源绑定的计划导出带来源待核备注中文版")
+    e.add_argument("--tracked-conflicts", action="store_true", help="按持续白名单生成来源待核备注版")
+    e.add_argument("--annotate-original-prices", action="store_true", help="研究备注版对等于或低于现价的原价留空并披露原值")
+    e.add_argument("--tracking-authorization-ref", help="本次备注版的授权依据")
+    e.add_argument("--tracking-authorization-text", help="本次备注版授权内容")
     x = sub.add_parser("extract", help="统一商品提取（SQLite PRIMARY 只读）")
     x.add_argument("--query-json", help="查询 JSON 文件或 JSON 字符串")
     x.add_argument("--keyword")
@@ -94,6 +98,8 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--research-release", action="store_true", help="启用严格中文修复发布门禁")
     he = sub.add_parser("export-history", help="导出历史 Presence 上下架矩阵")
     he.add_argument("--date", required=True, help="导出标记日期（YYYY-MM-DD）")
+    he.add_argument("--history-sources", type=Path, help="本次导出使用的历史来源配置")
+    he.add_argument("--include-committed-observations", action="store_true", help="追加截至导出日期、QA 通过的正式采集观测")
     ew = sub.add_parser('export-difference-whitelist', help='只读查看字段差异白名单，不加载生产配置或写入业务数据')
     ew.add_argument('--registry', required=True)
     ew.add_argument('--sku', help='只查看一个货号的登记项；不会放行整个货号')
@@ -437,6 +443,17 @@ def main(argv=None) -> int:
         from .exporting.service import ExportValidationError, export_catalog
         try:
             extra = {}
+            if args.annotate_original_prices and not args.tracked_conflicts:
+                raise ExportValidationError('ANNOTATED_PRICE_POLICY_REQUIRES_TRACKED_MODE')
+            if args.tracked_conflicts:
+                if args.annotation_plan is not None or args.research_release:
+                    raise ExportValidationError("ANNOTATED_MODES_ARE_EXCLUSIVE")
+                if not args.tracking_authorization_ref or not args.tracking_authorization_text:
+                    raise ExportValidationError("ANNOTATED_TRACKING_AUTHORIZATION_REQUIRED")
+                extra = {"release_mode": "ANNOTATED_RELEASE", "annotation_plan": {
+                    "from_tracking": True, "authorization_ref": args.tracking_authorization_ref,
+                    "authorization_text": args.tracking_authorization_text,
+                    "retain_invalid_original_prices": args.annotate_original_prices}}
             if args.annotation_plan is not None:
                 if args.research_release:
                     raise ExportValidationError("ANNOTATED_AND_STRICT_MODES_ARE_EXCLUSIVE")
@@ -471,6 +488,11 @@ def main(argv=None) -> int:
     if args.command == "export-history":
         from .exporting.history_export import HistoryExportError, export_history
         try:
+            if args.history_sources:
+                cfg["history_sources_path"] = args.history_sources
+            if args.include_committed_observations:
+                cfg["history_include_committed_observations"] = True
+                cfg["history_observation_end_date"] = args.date
             result = export_history(cfg, export_date=args.date)
         except (HistoryExportError, OSError, ValueError) as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)

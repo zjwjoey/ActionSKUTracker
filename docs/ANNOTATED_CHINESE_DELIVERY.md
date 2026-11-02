@@ -8,7 +8,7 @@ localizations, freshness, approvals, Master, State or dictionaries.
 Run the existing catalog exporter with a reviewed plan:
 
 ```powershell
-python -m action_tracker export --lang zh --date 2026-10-26 --annotation-plan <approved-plan.json>
+python -m action_tracker export --lang zh --date 2026-10-26 --no-images --annotation-plan <approved-plan.json>
 ```
 
 The plan contract is `ANNOTATED_DELIVERY_V1`. It binds the CURRENT commit,
@@ -33,6 +33,23 @@ Supported field actions:
   in the manifest. This is required for STALE and contested assertions.
 - RETAIN_WITH_CONFLICT_NOTE: keep source-faithful approved content that has no
   other blocking repair finding, and disclose the source conflict.
+- RETAIN_PENDING_BLANK: preserve an empty PENDING/REVIEW_REQUIRED field only
+  when a current, exact-field tracking entry exists; disclose the missing
+  Chinese value and its source. It never approves or writes a translation.
+
+An operator can request a plan from the configured persistent conflict tracker
+for the current run, supplying the explicit authorization reference and text:
+
+```powershell
+python -m action_tracker export --lang zh --date 2026-10-26 --no-images --tracked-conflicts --tracking-authorization-ref 'user:request' --tracking-authorization-text '保留来源异常和备注'
+```
+
+This explicit mode reads the current tracker without modifying configuration.
+It uses existing exact-match confirmed brand exceptions for this run. Tracking
+entries with changed source/Chinese hashes, expired registrations, or other
+unhandled QA findings fail closed. An unmatched price, Master quality or other
+independent blocking finding remains a blocker. The generated plan is tied to
+the current commit and expires after one hour; it does not approve an Apply.
 
 Every reviewed item receives a visible remark. All undeclared cells remain
 unchanged. New or changed findings, stale retained content, invalid approvals,
@@ -47,4 +64,15 @@ source price/URL parity are mandatory. An intact bundle may be reused only
 with the identical plan/source/head, audit and workbook content; unknown or
 changed existing files are never overwritten.
 
-No automated plan approval or scheduled annotated publication is enabled.
+No scheduled annotated publication or automatic translation Apply is enabled.
+
+For this internal research mode only, `--annotate-original-prices` may be added
+to `--tracked-conflicts`. The current committed Master quality report must
+contain only `INVALID_ORIGINAL_PRICE` blocking issues. Every affected SKU must
+have finite positive current/original prices, an original price no higher than
+the current price, and a blank exported original price. Its exact source values
+are preserved in the manifest and disclosed in a visible remark. No source
+prices or QA outcomes are changed; `research_verified` remains false. Missing
+original prices do not create notices, and promotions never invent an original
+price. Any other Master issue or unmatched price still blocks. Strict release
+and the default annotated mode are unchanged.

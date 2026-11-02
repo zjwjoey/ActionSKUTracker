@@ -25,11 +25,12 @@ Template 1 会把同一套历史 Presence 构建结果作为工作簿第一张�
 ## 输出列
 
 独立 `export-history` 的固定列为：`序号、编号、中文品名、图片链接、商品链接`；随后
-按实际来源日期排列 Presence 列。Presence 写 `1/0/UNKNOWN`，不追加当前状态判断，也不
+按实际来源日期排列 Presence 列。表格以 `1/0/空白` 展示：空白表示无法确认；内部和
+manifest 保留 UNKNOWN 状态和数量。导入空白状态时按 UNKNOWN 处理，不推断为 0。不追加当前状态判断，也不
 把历史表冒充实时 CURRENT。Template 1 的第一张表使用同样5个固定列，
 复用同一 Presence 构建服务，不能改变 Presence 事实。
 
-独立模板和Template 1版本均为2，统一上述5列契约；Template 1的另两张清单不变。
+独立模板和Template 1版本均为3，统一上述5列契约；Template 1的另两张清单不变。
 Seed 和指定 `presence_header` 的来源均接受 `0/1/UNKNOWN`，显式 UNKNOWN 不因
 来源声明完整而改写为0。指定的日期列不存在、值非法或同SKU同日冲突时阻断。
 矩阵来源中只有0或UNKNOWN且不属于已有Seed的行，不能单独证明该SKU曾在售。
@@ -51,6 +52,10 @@ Manifest记录排除范围、固定列、各来源Hash和成品Hash。生产配�
 ```powershell
 python -m action_tracker export-history --date YYYY-MM-DD
 ```
+
+需要以指定基表配置追加已正式提交且 QA 通过的采集日期时，可显式使用
+`--history-sources <配置文件> --include-committed-observations`；追加范围截至 `--date`。
+覆盖率或观测不完整时阻断导出；未启用该参数时不读取采集数据库。
 
 命令只读 `config/history_sources.yaml` 中的来源，不访问官网，不修改 Master、State 或
 Dictionary，并在同目录生成对应 `.manifest.json`。

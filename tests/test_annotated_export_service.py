@@ -135,6 +135,51 @@ def test_annotated_service_publishes_explicit_notes_and_keeps_strict_result(curr
     ]
 
 
+def test_tracking_registry_generates_source_notes_without_skipping_other_skus(current_source, tmp_path):
+    cfg, source, original, _ = current_source
+    rec = source.records[0]
+    rec['zh_field_provenance']['details']['freshness_status'] = 'CURRENT'
+    now = datetime.now(timezone.utc)
+    path = tmp_path / 'tracking.json'
+    path.write_text(json.dumps({'contract':'EXPORT_DIFFERENCE_WHITELIST_V1','entries':[{
+        'id':'tracked-1001','sku':'1001','field':'details_zh','action':'ACK_DIFFERENCE',
+        'status':'PENDING','source_hash':localization_field_source_hash(rec,'details'),
+        'current_hash':value_hash(rec['details_zh']),'reviewed_hash':value_hash(rec['details_zh']),
+        'reviewed_by':'reviewer','reviewed_at':now.isoformat(),'expires_at':(now+timedelta(days=1)).isoformat(),
+        'reason':'官网物态异常','evidence':['source'],'tracking_only':True,'automatic_apply':False,
+        'does_not_waive_qa_or_approval':True}]},ensure_ascii=False),encoding='utf-8')
+    cfg['localization'] = {'source_conflict_tracking':{'enabled':True,'path':str(path)}}
+    result = _export(current_source,annotation_plan={'from_tracking':True,'authorization_ref':'user:test','authorization_text':'保留来源备注'})
+    rows = _read(result['output']); assert [r['编号'] for r in rows]==['1001','1002']
+    assert rows[0]['产品详情']==original[0]['产品详情'] and 'Sustancia: Válido' in rows[0]['备注']
+    assert rows[1]==original[1]
+    manifest=json.loads(Path(result['manifest']).read_text(encoding='utf-8'))
+    assert manifest['annotated_delivery_audit']['research_verified'] is False
+
+
+def test_original_price_disclosure_requires_opt_in_and_preserves_failed_audit(current_source, tmp_path, monkeypatch):
+    from test_tracking_annotated_export import registry_for
+    from action_tracker.data_quality import master_gate
+    cfg,source,rows,_=current_source;rec=source.records[0]
+    rec['zh_field_provenance']['details']['freshness_status']='CURRENT'
+    rec['original_price']=rec['current_price'];rows[0]['原价']=None
+    path=tmp_path/'tracking.json';registry=registry_for(rec,'details_zh')
+    path.write_text(json.dumps({'contract':'EXPORT_DIFFERENCE_WHITELIST_V1','entries':list(registry.entries.values())}),encoding='utf-8')
+    cfg['localization']={'source_conflict_tracking':{'enabled':True,'path':str(path)}}
+    quality={'status':'FAIL','release_ready':False,'commit_id':source.source_commit_id,'records_checked':2,
+             'counts':{'INVALID_ORIGINAL_PRICE':1},'issues':['INVALID_ORIGINAL_PRICE:1001']}
+    monkeypatch.setattr(master_gate,'audit_master_quality',lambda *a,**k:SimpleNamespace(as_dict=lambda:deepcopy(quality)))
+    request={'from_tracking':True,'authorization_ref':'user:price','authorization_text':'异常原价留空并披露原值'}
+    with pytest.raises(service.ExportValidationError,match='MASTER_QUALITY_BLOCKED'):
+        _export(current_source,annotation_plan=deepcopy(request))
+    request['retain_invalid_original_prices']=True
+    result=_export(current_source,annotation_plan=request);final=_read(result['output'])
+    assert final[0]['原价'] is None and final[0]['折后价']==rows[0]['折后价'] and '原价待核' in final[0]['备注']
+    manifest=json.loads(Path(result['manifest']).read_text(encoding='utf-8'));audit=manifest['annotated_delivery_audit']
+    assert len(audit['original_price_notices'])==1 and audit['master_quality_audit']==quality
+    assert audit['strict_source_audit']['status']=='FAIL' and audit['research_verified'] is False
+
+
 def test_normal_preview_unchanged_and_strict_release_still_blocks(current_source):
     cfg, _, original, _ = current_source
     result = service.export_catalog(cfg, language='zh', export_date=DATE, no_images=True)

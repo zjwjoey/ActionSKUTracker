@@ -37,7 +37,7 @@ FIELDS = {
 }
 _FIELD_NAMES = {**{k: k for k in FIELDS}, **{v[1]: k for k, v in FIELDS.items()}}
 _APPROVED = {'VERIFIED', 'APPROVED', 'HUMAN_APPROVED', 'HUMAN_REVIEWED'}
-ACTIONS = {'RETAIN_SOURCE_NOTE', 'QUARANTINE', 'RETAIN_WITH_CONFLICT_NOTE'}
+ACTIONS = {'RETAIN_SOURCE_NOTE', 'QUARANTINE', 'RETAIN_WITH_CONFLICT_NOTE', 'RETAIN_PENDING_BLANK'}
 QUARANTINE_TEXT = '待复核：来源字段存在异常，详见备注'
 _QUARANTINE_CODES = {
     'SOURCE_DETAILS_TYPED_VALUE_INVALID', 'SPANISH_RESIDUAL',
@@ -176,33 +176,50 @@ def _repair_codes(repair_audit):
     return result
 
 
-def _validate_strict(strict_audit, entries):
+def _validate_strict(strict_audit, entries, *, disclosed_original_prices=False):
     if not isinstance(strict_audit, dict) or strict_audit.get('status') not in {'PASS', 'FAIL'}:
         _fail('ANNOTATED_STRICT_AUDIT_REQUIRED')
     counts = strict_audit.get('counts') or {}
-    permitted = {'STALE_ZH', 'SPANISH_RESIDUAL'}
+    permitted = {'STALE_ZH', 'SPANISH_RESIDUAL', 'UNAPPROVED_ZH', 'MISSING_REQUIRED_ZH'}
+    if disclosed_original_prices:
+        permitted.add('MASTER_QUALITY_BLOCKED')
     for code, count in counts.items():
         if int(count or 0) and code not in permitted:
             _fail('ANNOTATED_UNHANDLED_STRICT_RULE:' + str(code))
     traced = Counter()
+    missing_skus = set()
     for issue in strict_audit.get('issues') or []:
+        if issue == 'MASTER_QUALITY_BLOCKED' and disclosed_original_prices:
+            traced['MASTER_QUALITY_BLOCKED'] += 1
+            continue
         parts = str(issue).split(':')
-        if len(parts) < 3 or parts[0] not in permitted:
+        if len(parts) < 3 or parts[0] not in permitted or parts[0] == 'MISSING_REQUIRED_ZH':
             _fail('ANNOTATED_UNHANDLED_STRICT_ISSUE:' + str(issue))
         pair = (parts[1], _canonical_field(parts[2]))
-        if pair not in entries or entries[pair]['action'] != 'QUARANTINE':
+        action = entries.get(pair, {}).get('action')
+        if not (action == 'QUARANTINE' and parts[0] in {'STALE_ZH', 'SPANISH_RESIDUAL'} or
+                action == 'RETAIN_PENDING_BLANK' and parts[0] == 'UNAPPROVED_ZH'):
             _fail('ANNOTATED_STRICT_FIELD_NOT_QUARANTINED:' + str(issue))
-        traced[parts[0]] += 1
-    for code in permitted:
+        if parts[0] == 'UNAPPROVED_ZH' and len(parts) == 3:
+            missing_skus.add(parts[1])
+        else:
+            traced[parts[0]] += 1
+    traced['UNAPPROVED_ZH'] += len(missing_skus)
+    for code in permitted - {'MISSING_REQUIRED_ZH'}:
         if int(counts.get(code) or 0) != traced[code]:
             _fail('ANNOTATED_STRICT_COUNTS_UNTRACED:' + code)
-    if strict_audit['status'] == 'FAIL' and not traced:
+    missing_traced = sum(1 for issue in strict_audit.get('issues') or []
+                         if str(issue).startswith('UNAPPROVED_ZH:') and len(str(issue).split(':')) == 3)
+    if int(counts.get('MISSING_REQUIRED_ZH') or 0) != missing_traced:
+        _fail('ANNOTATED_STRICT_COUNTS_UNTRACED:MISSING_REQUIRED_ZH')
+    if strict_audit['status'] == 'FAIL' and not any(traced.values()):
         _fail('ANNOTATED_UNEXPLAINED_STRICT_FAILURE')
 
 
 def _remarks(entry):
     label = FIELDS[entry['field']][2]
-    kind = '未发布旧中文，待复核' if entry['action'] == 'QUARANTINE' else '来源异常/冲突待核'
+    kind = ('中文缺失，待复核' if entry['action'] == 'RETAIN_PENDING_BLANK' else
+            '未发布旧中文，待复核' if entry['action'] == 'QUARANTINE' else '来源异常/冲突待核')
     important = [p.source_text for p in parse_structured_details(entry['source_es'])
                  if p.key in {'Sustancia', 'Incluye oído'}]
     excerpt = '; '.join(important) if important else entry['source_es']
@@ -214,8 +231,99 @@ def _remarks(entry):
             f'处理：{entry["action"]}；来源事实未确认。')
 
 
+def original_price_notices(source, rows, master_quality):
+    """Disclose only verified absent display of equal/lower original prices."""
+    if not isinstance(master_quality, dict):
+        _fail('ANNOTATED_PRICE_QUALITY_REQUIRED')
+    issues = master_quality.get('issues') or []
+    if (master_quality.get('status') != 'FAIL' or master_quality.get('release_ready') is not False
+            or master_quality.get('commit_id') != source.source_commit_id
+            or master_quality.get('records_checked') != len(source.records) or not issues):
+        _fail('ANNOTATED_PRICE_QUALITY_BINDING_INVALID')
+    expected = []
+    for issue in issues:
+        parts = str(issue).split(':')
+        if len(parts) != 2 or parts[0] != 'INVALID_ORIGINAL_PRICE' or not parts[1]:
+            _fail('ANNOTATED_NON_PRICE_MASTER_ISSUE')
+        expected.append(parts[1])
+    if len(set(expected)) != len(expected) or master_quality.get('counts', {}).get('INVALID_ORIGINAL_PRICE') != len(expected):
+        _fail('ANNOTATED_PRICE_COUNTS_UNTRACED')
+    records = {str(r.get('sku') or ''): r for r in source.records}
+    displayed = {str(r.get('编号') or ''): r for r in rows}
+    notices = []
+    for sku in sorted(expected):
+        rec, row = records.get(sku), displayed.get(sku)
+        if rec is None or row is None:
+            _fail('ANNOTATED_PRICE_SKU_MISSING')
+        # Repository CURRENT intentionally masks invalid observation fields.
+        # Its retained PRIMARY value is evidence only, never a current price fallback.
+        retained_original = rec.get('last_valid_original_price', rec.get('original_price'))
+        if any(isinstance(x, bool) for x in (rec.get('current_price'), retained_original, row.get('折后价'))):
+            _fail('ANNOTATED_PRICE_VALUE_INVALID:' + sku)
+        try:
+            current = float(str(rec.get('current_price')).strip().replace(',', '.'))
+            original = float(str(retained_original).strip().replace(',', '.'))
+            shown = float(row.get('折后价'))
+        except (ValueError, TypeError):
+            _fail('ANNOTATED_PRICE_VALUE_INVALID:' + sku)
+        if (not all(math.isfinite(x) for x in (current, original, shown)) or
+                current <= 0 or original <= 0 or original > current or shown != current or
+                row.get('原价') not in (None, '')):
+            _fail('ANNOTATED_PRICE_DISPLAY_NOT_SAFE:' + sku)
+        note = (f'【原价待核】PRIMARY保留原价：{original:g}欧元；当前售价：{current:g}欧元；'
+                '保留原价不高于当前售价，导出原价留空；保留值不代表当前有效原价，未修改来源价格，不能据此计算折扣。')
+        notices.append({'sku': sku, 'source_current_price': rec.get('current_price'),
+            'source_original_price': retained_original, 'effective_original_price': rec.get('original_price'), 'note': note,
+            'price_source_hash': _digest([sku, rec.get('current_price'), rec.get('original_price'), retained_original])})
+    return notices
+
+
+def build_tracking_annotation_plan(source, registry, repair_audit, *, authorization_ref, authorization_text, now=None):
+    """Build explicit delivery evidence from unchanged, source-bound tracking entries."""
+    from .difference_whitelist import DifferenceWhitelist, pending_conflict_report
+    from .service import canonical_source_hash
+    _required_text(authorization_ref, 'ANNOTATED_AUTHORIZATION_REQUIRED:authorization_ref')
+    _required_text(authorization_text, 'ANNOTATED_AUTHORIZATION_REQUIRED:authorization_text')
+    if registry is None:
+        _fail('ANNOTATED_TRACKING_NOT_ENABLED')
+    by_sku = {str(r.get('sku') or ''): r for r in source.records}
+    selected = [x for x in registry.entries.values() if x.get('tracking_only') is True and x['sku'] in by_sku]
+    scoped = DifferenceWhitelist(selected)
+    state = pending_conflict_report(scoped, source.records, now=now)
+    if state['recheck_required_count']:
+        changed = next(x for x in state['entries'] if x['requires_recheck'])
+        _fail('ANNOTATED_TRACKING_RECHECK_REQUIRED:' + changed['sku'] + ':' + changed['field'] + ':' + ','.join(changed['changes']))
+    actual_codes = _repair_codes(repair_audit)
+    fields = []
+    for item in selected:
+        sku = item['sku']; field = _canonical_field(item['field']); rec = by_sku[sku]
+        source_key, target_key, _ = FIELDS[field]
+        target = rec.get(target_key); codes = actual_codes.get((sku, field), set())
+        if not str(target or '').strip():
+            action = 'RETAIN_PENDING_BLANK'
+        elif codes == {'SOURCE_DETAILS_TYPED_VALUE_INVALID'} and field == 'details':
+            action = 'RETAIN_SOURCE_NOTE'
+        elif not codes:
+            action = 'RETAIN_WITH_CONFLICT_NOTE'
+        else:
+            _fail('ANNOTATED_TRACKING_UNSUPPORTED_FINDING:' + sku + ':' + field)
+        fields.append({'sku': sku, 'field': field, 'source_es': rec.get(source_key), 'current_zh': target,
+            'source_hash': localization_source_hash(rec), 'field_source_hash': localization_field_source_hash(rec, field),
+            'current_target_hash': value_hash(target), 'action': action, 'reason': item['reason'],
+            'allowed_repair_codes': sorted(codes), 'tracking_entry_id': item['id']})
+    if not fields:
+        _fail('ANNOTATED_FIELDS_REQUIRED')
+    now = now or datetime.now(timezone.utc)
+    return {'contract': CONTRACT, 'base_commit_id': source.source_commit_id,
+        'source_hash': canonical_source_hash(source.records), 'export_date': source.export_date,
+        'authorization_ref': authorization_ref, 'authorization_text': authorization_text,
+        'approved_by': CURRENT_ACTOR, 'approval_mode': 'OWNER_AUTHORIZED_PROXY',
+        'approved_at': now.isoformat(), 'expires_at': (now + timedelta(hours=1)).isoformat(), 'fields': fields}
+
+
 def apply_annotation_plan(source: 'ExportSource', rows: list[dict], plan: dict, *,
-                          source_hash: str, repair_audit: dict, strict_audit: dict) -> tuple[list[dict], dict]:
+                          source_hash: str, repair_audit: dict, strict_audit: dict,
+                          conflict_registry=None, master_quality=None) -> tuple[list[dict], dict]:
     """Create an audited delivery copy while retaining the original failed gate."""
     records = _validate_source(source, rows, plan, source_hash)
     baseline = deepcopy(rows)
@@ -251,9 +359,20 @@ def apply_annotation_plan(source: 'ExportSource', rows: list[dict], plan: dict, 
         metadata = coerce_field_provenance(rec.get('zh_field_provenance')).get(field) or {}
         if metadata.get('source_hash') != field_hash or metadata.get('value') != target:
             _fail('ANNOTATED_PROVENANCE_MISMATCH:' + sku + ':' + field)
-        if str(metadata.get('review_status') or '').upper() not in _APPROVED:
-            _fail('ANNOTATED_UNAPPROVED_FIELD:' + sku + ':' + field)
         action = entry.get('action')
+        if action == 'RETAIN_PENDING_BLANK':
+            from .difference_whitelist import DifferenceWhitelist, pending_conflict_report
+            item = (conflict_registry.entries.get((sku, target_key, 'ACK_DIFFERENCE'))
+                    if conflict_registry is not None else None)
+            if not item or item.get('id') != entry.get('tracking_entry_id'):
+                _fail('ANNOTATED_PENDING_BLANK_TRACKING_REQUIRED:' + sku + ':' + field)
+            checked = pending_conflict_report(DifferenceWhitelist([item]), [rec])
+            if checked['tracked_field_count'] != 1 or checked['recheck_required_count']:
+                _fail('ANNOTATED_TRACKING_RECHECK_REQUIRED')
+            if str(target or '').strip() or str(metadata.get('review_status') or '').upper() not in {'PENDING', 'REVIEW_REQUIRED'}:
+                _fail('ANNOTATED_PENDING_BLANK_REQUIRED:' + sku + ':' + field)
+        elif str(metadata.get('review_status') or '').upper() not in _APPROVED:
+            _fail('ANNOTATED_UNAPPROVED_FIELD:' + sku + ':' + field)
         if action not in ACTIONS:
             _fail('ANNOTATED_UNKNOWN_ACTION:' + str(action))
         if str(metadata.get('freshness_status') or '').upper() != 'CURRENT' and action != 'QUARANTINE':
@@ -269,7 +388,7 @@ def apply_annotation_plan(source: 'ExportSource', rows: list[dict], plan: dict, 
             if field != 'details' or codes - {'SOURCE_DETAILS_TYPED_VALUE_INVALID'}:
                 _fail('ANNOTATED_SOURCE_NOTE_CANNOT_COVER_REPAIR:' + sku)
             _validated_note(source_es, str(target or ''), str(by_sku[sku].get(column) or ''))
-        elif action == 'RETAIN_WITH_CONFLICT_NOTE':
+        elif action in {'RETAIN_WITH_CONFLICT_NOTE', 'RETAIN_PENDING_BLANK'}:
             if codes:
                 _fail('ANNOTATED_CONFLICT_NOTE_CANNOT_COVER_REPAIR:' + sku)
         elif codes - _QUARANTINE_CODES:
@@ -293,7 +412,18 @@ def apply_annotation_plan(source: 'ExportSource', rows: list[dict], plan: dict, 
                        'source_fact_resolved': False})
     if set(actual_codes) - set(entries):
         _fail('ANNOTATED_UNDECLARED_BLOCKING_FIELD')
-    _validate_strict(strict_audit, entries)
+    price_notes = plan.get('original_price_notices', [])
+    if price_notes:
+        if strict_audit.get('status') != 'FAIL' or strict_audit.get('counts', {}).get('MASTER_QUALITY_BLOCKED') != 1:
+            _fail('ANNOTATED_PRICE_STRICT_AUDIT_MISMATCH')
+        if price_notes != original_price_notices(source, baseline, master_quality):
+            _fail('ANNOTATED_PRICE_PLAN_CHANGED')
+        for notice in price_notes:
+            row = by_sku[notice['sku']]
+            row['备注'] = (row.get('备注') + '\n' if row.get('备注') else '') + notice['note']
+            if len(row['备注']) > 32767:
+                _fail('ANNOTATED_REMARKS_EXCEED_EXCEL_LIMIT')
+    _validate_strict(strict_audit, entries, disclosed_original_prices=bool(price_notes))
     report = {
         'contract': CONTRACT, 'source_commit_id': source.source_commit_id,
         'source_hash': source_hash, 'export_date': source.export_date,
@@ -307,6 +437,7 @@ def apply_annotation_plan(source: 'ExportSource', rows: list[dict], plan: dict, 
         'full_rows_hash': full_delivery_rows_hash(final, HEADERS),
         'annotated_delivery_ready': True, 'research_verified': False,
         'source_fact_resolved': False, 'source_or_provenance_modified': False,
+        'original_price_notices': deepcopy(price_notes), 'master_quality_audit': deepcopy(master_quality),
     }
     verify_annotation_delivery(source, baseline, final, report)
     return final, report
@@ -366,5 +497,14 @@ def verify_annotation_delivery(source, baseline_rows, final_rows, report) -> Non
             _fail('ANNOTATED_REPORT_ACTION_MISMATCH')
         row[column] = after
         row['备注'] = (row['备注'] + '\n' if row.get('备注') else '') + _remarks(entry)
+    price_notes = plan.get('original_price_notices', [])
+    if report.get('original_price_notices', []) != price_notes:
+        _fail('ANNOTATED_PRICE_REPORT_CHANGED')
+    if price_notes:
+        if price_notes != original_price_notices(source, baseline_rows, report.get('master_quality_audit')):
+            _fail('ANNOTATED_PRICE_PLAN_CHANGED')
+        for notice in price_notes:
+            row = mapping[notice['sku']]
+            row['备注'] = (row.get('备注') + '\n' if row.get('备注') else '') + notice['note']
     if full_delivery_rows_hash(expected, HEADERS) != full_delivery_rows_hash(final_rows, HEADERS):
         _fail('ANNOTATED_UNAUTHORIZED_CELL_CHANGE')
