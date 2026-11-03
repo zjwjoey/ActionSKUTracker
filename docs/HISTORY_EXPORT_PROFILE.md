@@ -56,6 +56,11 @@ python -m action_tracker export-history --date YYYY-MM-DD
 需要以指定基表配置追加已正式提交且 QA 通过的采集日期时，可显式使用
 `--history-sources <配置文件> --include-committed-observations`；追加范围截至 `--date`。
 覆盖率或观测不完整时阻断导出；未启用该参数时不读取采集数据库。
+追加观测以基表最后日期为下限；后续单独配置的较晚来源不会遮蔽中间的正式采集日期。
+同一日期已有显式来源时保持原来源优先；多个正式采集提交落在同一日期时阻断。
+独立导出持有共享写锁，在隔离临时文件完成数据和 manifest 构建后使用现有成对发布流程；
+发布步骤抛出异常时恢复原有文件。进程或机器在文件替换之间被强制中断不属于跨文件原子事务，
+应核对 manifest 的工作簿哈希后再使用成品。
 
 命令只读 `config/history_sources.yaml` 中的来源，不访问官网，不修改 Master、State 或
 Dictionary，并在同目录生成对应 `.manifest.json`。

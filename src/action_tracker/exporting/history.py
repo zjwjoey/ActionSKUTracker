@@ -72,6 +72,7 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
     stats: list[HistorySourceStat] = []
     seed_path: str | None = None
     seed_row_count = 0
+    seed_cutoff = "0000-00-00"
     source_by_date: dict[str, HistorySourceStat] = {}
 
     if seed.get("path"):
@@ -88,6 +89,7 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
                 continue
             filtered.append({**record, "presence": retained})
         seed_records, seed_dates = filtered, kept_dates
+        seed_cutoff = max(seed_dates) if seed_dates else seed_cutoff
         dates.update(seed_dates)
         seed_row_count = len(seed_records)
         seed_cfg = _capabilities(seed, source_name="seed")
@@ -139,7 +141,8 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         db_path = Path(database_path(cfg)).resolve()
         if not db_path.is_file():
             raise HistoryExportError(f"HISTORY_DATABASE_MISSING: {db_path}")
-        cutoff = max(dates) if dates else "0000-00-00"
+        # Explicit later sources do not cover intervening committed dates.
+        cutoff = seed_cutoff
         end_date = cfg.get("history_observation_end_date", "9999-12-31")
         with sqlite3.connect(db_path.as_uri() + "?mode=ro", uri=True) as db:
             db.row_factory = sqlite3.Row
@@ -149,10 +152,16 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
               WHERE r.run_date>? AND r.run_date<=? AND r.status='COMMITTED'
                 AND r.qa_state='PASS' AND r.dry_run=0 AND c.status='COMMITTED'
                 AND c.observation_count>0 ORDER BY r.run_date,r.run_id""", (cutoff, end_date)).fetchall()
+            committed_dates: set[str] = set()
             for run in runs:
                 date = run['run_date']
-                if date in seen_dates:
+                if date[:7] in excluded_months:
+                    continue
+                if date in committed_dates:
                     raise HistoryExportError(f"HISTORY_MULTIPLE_COMMITTED_RUNS: {date}")
+                committed_dates.add(date)
+                if date in seen_dates:
+                    continue
                 if not run['snapshot_path']:
                     raise HistoryExportError(f"HISTORY_RUN_SNAPSHOT_MISSING: {run['run_id']}")
                 qa_path = Path(run['snapshot_path']) / 'qa_report.json'
