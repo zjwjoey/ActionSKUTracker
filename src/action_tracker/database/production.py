@@ -269,11 +269,14 @@ class ProductionWriter:
                 raise ProductionDatabaseError('POSITIVE_FACT_IDENTITY_MISMATCH')
             if prior:
                 for key, column in frozen.items():
-                    incoming = record.get(key, record.get({'first_seen_at': 'first_seen', 'last_seen_at': 'last_seen'}.get(key, key)))
+                    aliases = {'first_seen_at': 'first_seen', 'last_seen_at': 'last_seen',
+                               'action_new_badge': 'is_new_badge', 'promotion_active': 'promotion',
+                               'sustainable_badge': 'sustainable'}
+                    incoming = record.get(key, record.get(aliases.get(key, key)))
                     if key == 'consecutive_missing':
                         incoming = int(incoming or 0)
                     elif key in {'action_new_badge', 'promotion_active', 'sustainable_badge'}:
-                        incoming = int(bool(incoming))
+                        incoming = int(_to_bool(incoming))
                     if incoming != prior[column]:
                         raise ProductionDatabaseError('POSITIVE_FACT_LIFECYCLE_CHANGED:' + key)
             elif (record.get('status') != 'UNKNOWN' or record.get('first_seen_at')
