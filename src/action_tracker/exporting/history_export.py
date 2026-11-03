@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import tempfile
+import yaml
 from pathlib import Path
 from typing import Any
 
@@ -25,13 +26,27 @@ def export_history(cfg: dict[str, Any], *, export_date: str) -> dict[str, Any]:
 
 
 def _export_history_locked(cfg: dict[str, Any], *, export_date: str) -> dict[str, Any]:
+    output = Path(cfg["paths"]["exports"]) / f"{export_date.replace('-', '')}_Action商品上下架明细.xlsx"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    from .history_publish import recover_history_publication
+    recover_history_publication(output)
     try:
-        history = load_presence_history(cfg)
+        config_path = Path(cfg.get("history_sources_path") or Path(cfg["project_root"]) / "config" / "history_sources.yaml")
+        raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+        include_committed = cfg.get("history_include_committed_observations", raw.get("include_committed_observations", False))
+        if not isinstance(include_committed, bool):
+            raise HistoryExportError("HISTORY_INCLUDE_COMMITTED_INVALID")
+        scoped_cfg = {**cfg, "history_observation_end_date": export_date, "history_include_committed_observations": include_committed}
+        history = load_presence_history(scoped_cfg)
+        if any(date > export_date for date in history.dates):
+            raise HistoryExportError("HISTORY_FUTURE_SOURCE_AFTER_EXPORT_DATE: " + export_date)
+        if include_committed is True and export_date not in history.dates:
+            raise HistoryExportError("HISTORY_EXPORT_DATE_WITHOUT_VERIFIED_OBSERVATION: " + export_date)
+        if include_committed is True and not any(s.date == export_date and s.observation_complete and s.absence_capability for s in history.source_stats):
+            raise HistoryExportError("HISTORY_EXPORT_DATE_OBSERVATION_INCOMPLETE: " + export_date)
         rows = build_presence_rows(history)
     except HistoryExportError:
         raise
-    output = Path(cfg["paths"]["exports"]) / f"{export_date.replace('-', '')}_Action商品上下架明细.xlsx"
-    output.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix=f'.{output.stem}.', suffix='.preview.xlsx', dir=output.parent)
     os.close(fd)
     temporary = Path(name)
@@ -62,8 +77,8 @@ def _export_history_locked(cfg: dict[str, Any], *, export_date: str) -> dict[str
             "validation_results": {"workbook": "PASS", "presence_values": "PASS"},
             "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         }
-        from .service import _publish_export_pair
-        _publish_export_pair(temporary, output, manifest_path, manifest)
+        from .history_publish import publish_history_pair
+        publish_history_pair(temporary, output, manifest)
         return {"output": str(output), "manifest": str(manifest_path), "sku_count": len(rows), "date_count": len(history.dates), "verification": verification}
     finally:
         temporary.unlink(missing_ok=True)

@@ -11,6 +11,7 @@ Action 西班牙站 SKU 自动监测、生命周期管理、西语事实入库�
 
 - 官网西语是商品事实来源；SQLite PRIMARY 是唯一正式存储和读取来源。
 - 中文是来源绑定的派生字段；Excel/CSV 是兼容投影或交付物，不能反向覆盖 PRIMARY。
+- 以下版本与生产状态为 2026-10-08 的历史记录；当前版本应查看 `docs/CURRENT_STATE.md`、远端 main 和生产部署清单。
 - 2026-10-08 核实的 origin/main：231550eb74d24c927e100bc585aa728bf7ab7f19。
 - 生产冻结标签 production/phase1-3-20261007 指向上述 SHA。
 - Phase 1–3 曾在真实 PRIMARY 验收并发布当次 5,626 SKU。这不是固定商品数量，也不代表每天自动批准或发布。
