@@ -186,6 +186,34 @@ def test_real_partial_write_preserves_full_head_and_masks_unobserved_price_field
         assert db.execute("SELECT qa_state FROM runs WHERE run_id='partial'").fetchone()[0] == 'FAIL'
 
 
+@pytest.mark.parametrize('column,alias', [('action_new_badge','is_new_badge'),
+                                           ('promotion_active','promotion'),
+                                           ('sustainable_badge','sustainable')])
+def test_positive_fact_preserves_existing_badge_and_rejects_actual_change(tmp_path, column, alias):
+    path=tmp_path/'badges.db'; writer, full_head=_seed(path)
+    with connect(path) as db:
+        db.execute(f'UPDATE products SET {column}=1 WHERE official_sku=?', ('1001',))
+        db.commit()
+    baseline=ProductionRepository(path).load_product_baseline()
+    assert baseline['1001'][alias] is True
+    row=_current();scope,quality=_persist_scope(path,row)
+    bundle=_build(row,baseline,scope=scope,report={'collection_quality_state':quality.state,
+                                                  'collection_metrics_hash':quality.metrics_hash})
+    changed=dict(bundle.current_products[0]);changed[column]=False
+    forged=replace(bundle,current_products=(changed,))
+    with pytest.raises(ProductionDatabaseError,match='POSITIVE_FACT_LIFECYCLE_CHANGED:'+column):
+        writer.commit(forged)
+    with connect(path) as db:
+        assert db.execute(f'SELECT {column} FROM products WHERE official_sku=?',('1001',)).fetchone()[0]==1
+        assert db.execute('SELECT count(*) FROM commit_batches WHERE run_id=?',('partial',)).fetchone()[0]==0
+    commit=writer.commit(bundle)
+    assert writer.commit(bundle)==commit
+    with connect(path) as db:
+        assert db.execute(f'SELECT {column} FROM products WHERE official_sku=?',('1001',)).fetchone()[0]==1
+        assert db.execute('SELECT count(*) FROM event_history WHERE run_id=?',('partial',)).fetchone()[0]==0
+    assert ProductionRepository(path).latest_observation_commit_info()['commit_id']==full_head
+
+
 def test_partial_without_any_complete_presence_does_not_invent_head(tmp_path):
     path = tmp_path / 'no-full.db'; writer = ProductionWriter(path, role='SHADOW')
     row = _current(); scope, quality = _persist_scope(path, row)
