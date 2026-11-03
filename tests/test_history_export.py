@@ -175,12 +175,16 @@ def test_history_manifest_replace_failure_restores_existing_pair(tmp_path, monke
     seed = tmp_path / 'seed.xlsx'; _write_seed(seed); cfg = _history_cfg(tmp_path, seed)
     out = tmp_path / 'exports' / '20260830_Action商品上下架明细.xlsx'; out.parent.mkdir(parents=True)
     manifest = out.with_suffix('.manifest.json'); out.write_bytes(b'old workbook'); manifest.write_bytes(b'old manifest')
-    replace = Path.replace
-    def fail_manifest_once(self, target):
-        if Path(target) == manifest and self.suffix == '.tmp':
+    from action_tracker.exporting import history_publish
+    install = history_publish._install
+    failed = False
+    def fail_manifest_once(source, target):
+        nonlocal failed
+        if Path(target) == manifest and not failed:
+            failed = True
             raise OSError('injected manifest publication failure')
-        return replace(self, target)
-    monkeypatch.setattr(Path, 'replace', fail_manifest_once)
+        return install(source, target)
+    monkeypatch.setattr(history_publish, '_install', fail_manifest_once)
     with pytest.raises(OSError, match='injected'):
         export_history(cfg, export_date='2026-08-30')
     assert out.read_bytes() == b'old workbook' and manifest.read_bytes() == b'old manifest'
@@ -193,6 +197,57 @@ def test_history_export_does_not_run_while_writer_lock_is_held(tmp_path):
         with pytest.raises(HistoryExportError, match='RUN_ALREADY_ACTIVE'):
             export_history(cfg, export_date='2026-08-30')
     assert not (tmp_path / 'exports' / '20260830_Action商品上下架明细.xlsx').exists()
+
+
+def test_default_daily_history_requires_actual_date_and_scopes_database(tmp_path, monkeypatch):
+    from action_tracker.exporting import history_export
+    seed = tmp_path / 'seed.xlsx'; _write_seed(seed); cfg = _history_cfg(tmp_path, seed)
+    config = cfg['history_sources_path']
+    config.write_text(config.read_text(encoding='utf8') + '\ninclude_committed_observations: true\n', encoding='utf8')
+    real_load = history_export.load_presence_history
+    seen = {}
+    def without_committed(scoped):
+        seen.update(scoped)
+        return real_load({**scoped, 'history_include_committed_observations': False})
+    monkeypatch.setattr(history_export, 'load_presence_history', without_committed)
+    with pytest.raises(HistoryExportError, match='HISTORY_EXPORT_DATE_WITHOUT_VERIFIED_OBSERVATION'):
+        export_history(cfg, export_date='2026-08-30')
+    assert seen['history_include_committed_observations'] is True
+    assert seen['history_observation_end_date'] == '2026-08-30'
+
+
+def test_history_export_rejects_base_data_newer_than_requested_date(tmp_path):
+    seed = tmp_path / 'seed.xlsx'; _write_seed(seed); cfg = _history_cfg(tmp_path, seed)
+    with pytest.raises(HistoryExportError, match='HISTORY_FUTURE_SOURCE_AFTER_EXPORT_DATE'):
+        export_history(cfg, export_date='2026-08-24')
+    assert not (tmp_path / 'exports' / '20260824_Action商品上下架明细.xlsx').exists()
+
+
+def test_configured_daily_export_appends_committed_date_and_resumes_without_future_data(tmp_path, monkeypatch):
+    import sqlite3
+    import action_tracker.database.integration as integration
+    seed = tmp_path / 'seed.xlsx'; _write_seed(seed); cfg = _history_cfg(tmp_path, seed)
+    config = cfg['history_sources_path']
+    config.write_text(config.read_text(encoding='utf8') + '\ninclude_committed_observations: true\n', encoding='utf8')
+    db_path=tmp_path/'db.sqlite3'
+    with sqlite3.connect(db_path) as db:
+        db.executescript('CREATE TABLE runs(run_id,run_date,status,qa_state,dry_run); CREATE TABLE commit_batches(run_id,snapshot_path,observation_count,status); CREATE TABLE observations(run_id,official_sku,presence_state,observation_complete,absence_capable); CREATE TABLE products(official_sku,name_zh,image_url,product_url);')
+        for run,day in [('r1','2026-08-26'),('r2','2026-08-27')]:
+            snap=tmp_path/run; snap.mkdir()
+            (snap/'qa_report.json').write_text(json.dumps({'state':'PASS','passed':True,'counts':{'sitemap_count':1,'listing_count':1}}), encoding='utf8')
+            db.execute('INSERT INTO runs VALUES(?,?,?,?,?)',(run,day,'COMMITTED','PASS',0))
+            db.execute('INSERT INTO commit_batches VALUES(?,?,?,?)',(run,str(snap),2,'COMMITTED'))
+            db.executemany('INSERT INTO observations VALUES(?,?,?,?,?)',[(run,'9001','PRESENT',1,1),(run,'9002','ABSENT',1,1)])
+    monkeypatch.setattr(integration,'database_path',lambda cfg:db_path)
+    first=export_history(cfg,export_date='2026-08-26')
+    manifest=json.loads(Path(first['manifest']).read_text(encoding='utf8'))
+    assert manifest['history_dates']==['2026-08-24','2026-08-25','2026-08-26']
+    w=openpyxl.load_workbook(first['output'],read_only=True,data_only=True)
+    rows={str(r[1]):r for r in list(w['商品上下架明细'].values)[1:]};w.close()
+    assert rows['9001'][-1]==1 and rows['9002'][-1]==0
+    second=export_history(cfg,export_date='2026-08-26')
+    assert second['sku_count']==first['sku_count']==2
+    assert json.loads(Path(second['manifest']).read_text(encoding='utf8'))['history_dates']==manifest['history_dates']
 
 
 @pytest.mark.parametrize("complete", [False, True])

@@ -136,7 +136,10 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
         stats.append(stat)
         source_by_date[date] = stat
 
-    if cfg.get("history_include_committed_observations"):
+    include_committed = cfg.get("history_include_committed_observations", False)
+    if not isinstance(include_committed, bool):
+        raise HistoryExportError("HISTORY_INCLUDE_COMMITTED_INVALID")
+    if include_committed:
         from ..database.integration import database_path
         db_path = Path(database_path(cfg)).resolve()
         if not db_path.is_file():
