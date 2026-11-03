@@ -134,6 +134,67 @@ def _matrix(path, rows, header="26.08.26"):
     w.save(path); w.close()
 
 
+def test_committed_date_between_seed_and_later_explicit_source_is_not_skipped(tmp_path, monkeypatch):
+    import sqlite3
+    import yaml
+    import action_tracker.database.integration as integration
+    seed = tmp_path / 'seed.xlsx'; _write_seed(seed)
+    source = tmp_path / 'later.xlsx'; _matrix(source, [['9001', 1]], header='26.08.28')
+    cfg = _history_cfg(tmp_path, seed)
+    config = yaml.safe_load(cfg['history_sources_path'].read_text(encoding='utf8'))
+    config['sources'] = [{'date':'2026-08-28','path':str(source),'sheet':'ACTION商品上下架明细',
+                          'sku_header':'编号','presence_header':'26.08.28','presence_capability':True,
+                          'absence_capability':True,'observation_complete':True,'evidence_level':'A','fields':{}}]
+    cfg['history_sources_path'].write_text(yaml.safe_dump(config, allow_unicode=True), encoding='utf8')
+    db_path = tmp_path / 'db.sqlite3'; snap = tmp_path / 'snapshot'; snap.mkdir()
+    (snap / 'qa_report.json').write_text(json.dumps({'state':'PASS','passed':True,'counts':{'sitemap_count':1,'listing_count':1}}), encoding='utf8')
+    with sqlite3.connect(db_path) as db:
+        db.executescript('CREATE TABLE runs(run_id,run_date,status,qa_state,dry_run); CREATE TABLE commit_batches(run_id,snapshot_path,observation_count,status); CREATE TABLE observations(run_id,official_sku,presence_state,observation_complete,absence_capable); CREATE TABLE products(official_sku,name_zh,image_url,product_url);')
+        db.execute('INSERT INTO runs VALUES(?,?,?,?,?)', ('run1','2026-08-26','COMMITTED','PASS',0))
+        db.execute('INSERT INTO commit_batches VALUES(?,?,?,?)', ('run1',str(snap),1,'COMMITTED'))
+        db.execute('INSERT INTO observations VALUES(?,?,?,?,?)', ('run1','9001','PRESENT',1,1))
+    monkeypatch.setattr(integration, 'database_path', lambda cfg: db_path)
+    cfg['history_include_committed_observations']=True
+    h=load_presence_history(cfg)
+    assert h.dates == ('2026-08-24','2026-08-25','2026-08-26','2026-08-28')
+    assert h.presence_by_sku['9001']['2026-08-26']==1
+
+
+def test_history_manifest_preparation_failure_preserves_existing_pair(tmp_path, monkeypatch):
+    from action_tracker.exporting import history_export
+    seed = tmp_path / 'seed.xlsx'; _write_seed(seed); cfg = _history_cfg(tmp_path, seed)
+    out = tmp_path / 'exports' / '20260830_Action商品上下架明细.xlsx'; out.parent.mkdir(parents=True)
+    manifest = out.with_suffix('.manifest.json'); out.write_bytes(b'old workbook'); manifest.write_bytes(b'old manifest')
+    monkeypatch.setattr(history_export, '_file_hash', lambda path: (_ for _ in ()).throw(OSError('injected')))
+    with pytest.raises(OSError, match='injected'):
+        export_history(cfg, export_date='2026-08-30')
+    assert out.read_bytes() == b'old workbook' and manifest.read_bytes() == b'old manifest'
+
+
+def test_history_manifest_replace_failure_restores_existing_pair(tmp_path, monkeypatch):
+    seed = tmp_path / 'seed.xlsx'; _write_seed(seed); cfg = _history_cfg(tmp_path, seed)
+    out = tmp_path / 'exports' / '20260830_Action商品上下架明细.xlsx'; out.parent.mkdir(parents=True)
+    manifest = out.with_suffix('.manifest.json'); out.write_bytes(b'old workbook'); manifest.write_bytes(b'old manifest')
+    replace = Path.replace
+    def fail_manifest_once(self, target):
+        if Path(target) == manifest and self.suffix == '.tmp':
+            raise OSError('injected manifest publication failure')
+        return replace(self, target)
+    monkeypatch.setattr(Path, 'replace', fail_manifest_once)
+    with pytest.raises(OSError, match='injected'):
+        export_history(cfg, export_date='2026-08-30')
+    assert out.read_bytes() == b'old workbook' and manifest.read_bytes() == b'old manifest'
+
+
+def test_history_export_does_not_run_while_writer_lock_is_held(tmp_path):
+    from action_tracker.operations.storage_foundation import storage_lock
+    seed = tmp_path / 'seed.xlsx'; _write_seed(seed); cfg = _history_cfg(tmp_path, seed)
+    with storage_lock(cfg['paths']['state'], run_id='other-operation'):
+        with pytest.raises(HistoryExportError, match='RUN_ALREADY_ACTIVE'):
+            export_history(cfg, export_date='2026-08-30')
+    assert not (tmp_path / 'exports' / '20260830_Action商品上下架明细.xlsx').exists()
+
+
 @pytest.mark.parametrize("complete", [False, True])
 def test_presence_header_preserves_zero_unknown_and_excludes_zero_only_skus(tmp_path, complete):
     seed = tmp_path / "seed.xlsx"; _write_seed(seed)
