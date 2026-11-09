@@ -389,6 +389,17 @@ def _token_equivalence_allows(rule_id: str, evidence: Mapping[str, Any], source:
         return True
     if token and token_is_preserved(token, target):
         return True
+    if (token_type == "TECH" and token.casefold() == "mano"
+            and rule_id in {"PROTECTED_TOKEN_MISSING", "PROTECTED_TOKEN_CHANGED"}):
+        # In the mounting attribute this phrase means handheld. MANO in
+        # another attribute can still be a model and must remain protected.
+        remaining = re.sub(
+            r"(?:^|[;；\r\n])\s*Tipo de fijaci[oó]n para el micr[oó]fono\s*[:：]\s*"
+            r"micr[oó]fono de mano(?=\s*(?:[;；\r\n]|$))", "", source, flags=re.I,
+        )
+        if (remaining != source and not re.search(r"\bmano\b", remaining, re.I)
+                and re.search(r"(?:^|[;；\r\n])\s*麦克风固定方式\s*[:：]\s*手持式(?=\s*(?:[;；\r\n]|$))", target)):
+            return True
     # Unit/standard labels can touch their numeric value. Keep that value
     # bound to the SAME field; GB must not match Gb, GByte models or 32GBX.
     if token in {'GB', 'MB', 'TB'}:

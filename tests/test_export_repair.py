@@ -468,3 +468,15 @@ def test_catalog_template1_publish_same_approved_clean_projection(tmp_path, monk
         assert all(item["source_commit_id"] == source_commit and item["row_count"] == 1 for item in artifacts)
     again = service.export_catalog(cfg, language="zh", export_date="2026-08-26", no_images=True, selection_id=selection_id)
     assert published == read(again["output"])
+
+
+def test_mano_is_only_equivalent_in_microphone_mounting_attribute():
+    from action_tracker.exporting.repair_report import _token_equivalence_allows
+
+    evidence = {"token_type": "TECH", "value": "mano"}
+    phrase = "Tipo de fijación para el micrófono: MICRÓFONO DE MANO"
+    target = "麦克风固定方式：手持式"
+    assert _token_equivalence_allows("PROTECTED_TOKEN_CHANGED", evidence, phrase, target)
+    assert not _token_equivalence_allows("PROTECTED_TOKEN_CHANGED", evidence, phrase, "麦克风固定方式：桌面式")
+    assert not _token_equivalence_allows("PROTECTED_TOKEN_CHANGED", evidence, phrase + "; Modelo: MANO", target)
+    assert not _token_equivalence_allows("PROTECTED_TOKEN_CHANGED", evidence, "Modelo: MANO", target)
