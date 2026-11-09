@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -771,6 +772,23 @@ def _resolve_existing_chinese_field(
     return fallback, True
 
 
+def _discount_percent_text(value: Any) -> str | None:
+    """Format the signed source discount for display, including legacy exports."""
+    text = str(value if value is not None else "").strip()
+    explicit_percent = text.endswith(("%", "％"))
+    try:
+        amount = Decimal(text.removesuffix("%").removesuffix("％").strip().replace(",", ".").replace("−", "-"))
+    except InvalidOperation:
+        return None
+    if not amount.is_finite() or abs(amount) > 100:
+        return None
+    # Current records store a ratio. Older records can use percentage points.
+    if not explicit_percent and abs(amount) <= 1:
+        amount *= 100
+    rounded = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return f"{rounded:f}".rstrip("0").rstrip(".") + "%"
+
+
 def _zh_remarks(record: dict[str, Any], fallbacks: list[str]) -> str:
     values = ["在售状态：在售"]
     if parse_bool_zh(record.get("is_new_badge")):
@@ -779,9 +797,9 @@ def _zh_remarks(record: dict[str, Any], fallbacks: list[str]) -> str:
         values.append("促销")
     if parse_bool_zh(record.get("sustainable")):
         values.append("可持续")
-    discount = parse_price(record.get("discount"))
+    discount = _discount_percent_text(record.get("discount"))
     if discount is not None:
-        values.append(f"折扣：{float(discount):g}")
+        values.append(f"折扣：{discount}")
     raw_tags = _none_or_text(record.get("raw_tags"))
     if raw_tags:
         values.append(f"官网官方标签：{_translate_official_tags(raw_tags)}")

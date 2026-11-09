@@ -106,6 +106,10 @@ def test_committed_observations_are_appended_only_when_coverage_passes(tmp_path,
     import sqlite3
     import action_tracker.database.integration as integration
     seed = tmp_path / 'seed.xlsx'; _write_seed(seed)
+    seed_book = openpyxl.load_workbook(seed)
+    seed_book.active['C3'] = None
+    seed_book.save(seed)
+    seed_book.close()
     cfg = _history_cfg(tmp_path, seed)
     db_path = tmp_path / 'primary.sqlite3'; snapshot = tmp_path / 'snapshot'; snapshot.mkdir()
     qa_path = snapshot / 'qa_report.json'
@@ -115,6 +119,11 @@ def test_committed_observations_are_appended_only_when_coverage_passes(tmp_path,
         db.execute('INSERT INTO runs VALUES(?,?,?,?,?)', ('run1','2026-08-26','COMMITTED','PASS',0))
         db.execute('INSERT INTO commit_batches VALUES(?,?,?,?)', ('run1',str(snapshot),3,'COMMITTED'))
         db.executemany('INSERT INTO observations VALUES(?,?,?,?,?)', [('run1','9001','PRESENT',1,1),('run1','9002','ABSENT',1,1),('run1','9003','PRESENT',1,1)])
+        db.executemany('INSERT INTO products VALUES(?,?,?,?)', [
+            ('9001', '补全旧货号', '', ''),
+            ('9002', '不覆盖基表品名', '', ''),
+            ('9003', '补全新货号', '', ''),
+        ])
     monkeypatch.setattr(integration, 'database_path', lambda cfg: db_path)
     cfg['history_include_committed_observations'] = True
     h=load_presence_history(cfg)
@@ -122,6 +131,17 @@ def test_committed_observations_are_appended_only_when_coverage_passes(tmp_path,
     assert h.presence_by_sku['9001']['2026-08-26']==1
     assert h.presence_by_sku['9002']['2026-08-26']==0
     assert h.presence_by_sku['9003']['2026-08-24']=='UNKNOWN'
+    cfg['history_observation_end_date'] = '2026-08-26'
+    exported = export_history(cfg, export_date='2026-08-26')
+    workbook = openpyxl.load_workbook(exported['output'], read_only=True, data_only=True)
+    try:
+        rows = {row[1]: row for row in workbook['商品上下架明细'].iter_rows(min_row=2, values_only=True)}
+        assert {sku: row[2] for sku, row in rows.items()} == {
+            '9001': '补全旧货号', '9002': '历史商品2', '9003': '补全新货号',
+        }
+        assert rows['9003'][5] is None
+    finally:
+        workbook.close()
     qa_path.write_text(json.dumps({'state':'PASS','passed':True,'counts':{'sitemap_count':3,'listing_count':2}}), encoding='utf8')
     with pytest.raises(HistoryExportError, match='HISTORY_RUN_COVERAGE_MISMATCH'):
         load_presence_history(cfg)

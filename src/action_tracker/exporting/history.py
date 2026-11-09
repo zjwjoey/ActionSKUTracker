@@ -187,8 +187,15 @@ def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
                 source_by_date[date] = HistorySourceStat(date, str(qa_path), len(obs), len(obs), 0, True, True, True, 'A', 'COMMITTED_QA_PASS:' + run['run_id'])
             for row in db.execute("SELECT official_sku,name_zh,image_url,product_url FROM products"):
                 sku = str(row['official_sku'])
-                if sku in presence and sku not in seed_rows:
-                    latest[sku] = {'name_zh': row['name_zh'], 'image_url': row['image_url'], 'product_url': row['product_url']}
+                if sku not in presence:
+                    continue
+                fields = latest.setdefault(sku, {})
+                if sku not in seed_rows:
+                    fields['name_zh'] = _first(row['name_zh'], fields.get('name_zh'))
+                    fields['image_url'] = row['image_url']
+                    fields['product_url'] = row['product_url']
+                elif not _first(fields.get('name_zh')) and _first(row['name_zh']):
+                    fields['name_zh'] = row['name_zh']
 
     # Fill absence only when the source explicitly proves completeness and
     # absence capability. Partial sources remain UNKNOWN; not observed is not 0.
@@ -254,7 +261,7 @@ def build_presence_rows(
             brand = _first((dictionary.brand_by_id.get(str(brand_id)) or {}).get("canonical_name"), brand_id)
         row: dict[str, Any] = {
             "编号": sku,
-            "中文品名": _first(zh.get("标题"), seed.get("name_zh")),
+            "中文品名": _first(zh.get("标题"), seed.get("name_zh"), old.get("name_zh")),
             "品牌": brand,
             "一级类目（中文）": _first(zh.get("分类1"), seed.get("cat1_zh")),
             "二级类目（中文）": _first(zh.get("分类2"), seed.get("cat2_zh")),

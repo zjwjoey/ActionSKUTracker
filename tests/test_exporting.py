@@ -18,6 +18,7 @@ from action_tracker.dictionary import (
 )
 from action_tracker.excel.reader import ES_MAP, ZH_MAP
 from action_tracker.excel.writer import RUN_LOG_HEADERS
+from action_tracker.exporting.dictionary_join import _zh_remarks
 from action_tracker.exporting.excel_writer import write_catalog_xlsx
 from action_tracker.exporting.service import ExportValidationError, export_catalog
 from action_tracker.exporting.service import _clean_display_text, _es_remarks
@@ -634,12 +635,33 @@ def test_manifest_has_sku_set_hash_and_row_height_is_capped(tmp_path):
         workbook.close()
 
 
-def test_with_images_export_reads_local_derivative_and_preserves_sku(tmp_path):
+@pytest.mark.parametrize(("discount", "expected"), [
+    (-0.12, "折扣：-12%"),
+    ("-0.111732", "折扣：-11.17%"),
+    (10, "折扣：10%"),
+    ("−12,5%", "折扣：-12.5%"),
+    (0, "折扣：0%"),
+    (None, None),
+    ("NaN", None),
+])
+def test_chinese_discount_remarks_format_source_value(discount, expected):
+    parts = _zh_remarks({"discount": discount, "raw_tags": "Nuevo"}, []).split("；")
+    assert [part for part in parts if part.startswith("折扣：")] == ([expected] if expected else [])
+    assert "官网官方标签：新品" in parts
+
+
+@pytest.mark.parametrize("language,discount_note", [
+    ("zh", "折扣：-11.17%"),
+    ("es", "Descuento calculado: 16.67%"),
+])
+@pytest.mark.parametrize("no_images", [True, False])
+def test_catalog_export_formats_discount_for_both_image_modes(tmp_path, language, discount_note, no_images):
     cfg = _cfg(tmp_path)
     run_id = "2026-08-24_010000"
-    record = _record("1001")
+    record = {**_record("1001"), "discount": -0.111732}
     _write_master(cfg["paths"]["master"], [_run_log(run_id, "2026-08-24")], [record])
     _write_snapshot(cfg["paths"]["snapshots"], run_id, "2026-08-24", [record])
+    _write_dictionary(cfg["paths"]["dictionary_baseline"], record)
     image_root = tmp_path / "images"
     cfg["paths"]["images"] = image_root
     derivative = image_root / "derivatives" / "excel_250"
@@ -655,15 +677,16 @@ def test_with_images_export_reads_local_derivative_and_preserves_sku(tmp_path):
         download_status="AVAILABLE", normalize_status="PASS", qa_status="PASS", derivative_status="PASS",
     ))
     manifest.save()
-    result = export_catalog(cfg, language="es", export_date="2026-08-24", no_images=False)
+    result = export_catalog(cfg, language=language, export_date="2026-08-24", no_images=no_images)
     workbook = openpyxl.load_workbook(result["output"], data_only=True)
     try:
         ws = workbook["商品全量"]
         assert ws.cell(2, 2).value == "1001"
-        assert len(ws._images) == 1
+        assert discount_note in ws.cell(2, 14).value.split("；")
+        assert len(ws._images) == (0 if no_images else 1)
     finally:
         workbook.close()
-    assert result["image_embedded_count"] == 1
+    assert result["image_embedded_count"] == (0 if no_images else 1)
     assert result["image_missing_count"] == 0
 
 
