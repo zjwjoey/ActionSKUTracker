@@ -64,6 +64,7 @@ if ($Command -eq 'daily-run') {
     if ($Command -ne 'export-history' -and $ReleaseMode -eq 'production_release') { $argsList += '--research-release' }
     if ($Command -ne 'export-history' -and $RunId) { $argsList += @('--run-id',$RunId) }
     if ($Command -ne 'export-history' -and $WithImages) { $argsList += '--with-images' }
+    elseif ($Command -eq 'export') { $argsList += '--no-images' }
 }
 Set-Location -LiteralPath $dataRoot
 & $python @argsList

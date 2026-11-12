@@ -58,3 +58,13 @@ def test_export_uses_same_bound_entry_and_isolated_output(bound,tmp_path):
     assert payload['args']==['export-history','--date','2026-11-09']
     assert Path(payload['root'])==bound[0]
     assert Path(payload['output'])==out
+
+@pytest.mark.parametrize('with_images,expected',[(False,'--no-images'),(True,'--with-images')])
+def test_catalog_forwards_required_exclusive_image_flag(bound,with_images,expected):
+    args=['-Command','export','-Date','2026-11-09','-Language','es']
+    if with_images:args.append('-WithImages')
+    r=invoke(bound,*args)
+    assert r.returncode==0,r.stderr
+    flags=json.loads(r.stdout)['args']
+    assert expected in flags
+    assert ('--with-images' in flags)+('--no-images' in flags)==1
