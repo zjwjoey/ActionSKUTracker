@@ -54,7 +54,8 @@ def export_template1(
         profile = load_profile(cfg, language="es", no_images=True)
         source = resolve_formal_source(cfg, export_date=export_date, requested_run_id=run_id, profile=profile)
         artifact_source_commit_id = source.source_commit_id or _commit_id_for_run(_database_path(cfg), source.run_id)
-        records = list(source.records)
+        history = load_presence_history({**cfg, "history_observation_end_date": export_date})
+        records = [r for r in source.records if str(r.get("sku") or "") not in history.excluded_skus]
         selection_source_commit_id = None
         if selection_id:
             from ..extraction.selections import SelectionService
@@ -94,7 +95,6 @@ def export_template1(
                 f"unresolved={repair_audit.get('unresolved_blocking_count', 0)};"
                 f"field_pass_rate={repair_audit.get('field_pass_rate', 0):.4f}"
             )
-        history = load_presence_history(cfg)
         history_rows = build_presence_rows(
             history, export_date=export_date, current_records=records,
             zh_rows=zh_rows, dictionary=dictionary,
@@ -151,7 +151,7 @@ def export_template1(
     repair_report_path = output.with_suffix(".repair-report.json")
     manifest = {
         "template_id": "action_full_template_1",
-        "template_version": TEMPLATE1_VERSION,
+        "template_version": 4 if history.strict_weekly else TEMPLATE1_VERSION,
         "history_fixed_headers": list(HISTORY_HEADERS),
         "delivery_note_cleanup": {"es": es_note_cleanup, "zh": final_zh.delivery_note_cleanup},
         "release_mode": mode.casefold(),

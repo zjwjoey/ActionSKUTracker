@@ -10,6 +10,7 @@ import csv
 import datetime as dt
 import hashlib
 import logging
+import math
 import os
 import shutil
 import uuid
@@ -288,6 +289,26 @@ def _refresh_long_term_catalog(wb) -> None:
 
     zh = current_records("01_SKU_ZH_CURRENT")
     es = current_records("02_SKU_ES_CURRENT")
+    historical_prices: dict[str, list[float]] = {}
+    def positive_price(value):
+        if isinstance(value, bool):
+            return None
+        try:
+            price = float(value)
+        except (TypeError, ValueError):
+            return None
+        return price if math.isfinite(price) and price > 0 else None
+    if "03_PRICE_HISTORY" in wb.sheetnames:
+        history = wb["03_PRICE_HISTORY"]
+        history_headers = [c.value for c in history[1]]
+        if "SKU" in history_headers:
+            for raw in history.iter_rows(min_row=2, values_only=True):
+                record = dict(zip(history_headers, raw))
+                sku = str(record.get("SKU") or "").strip()
+                for column in ("旧售价 (€)", "新售价 (€)"):
+                    price = positive_price(record.get(column))
+                    if sku and price is not None:
+                        historical_prices.setdefault(sku, []).append(price)
     current_skus = set(zh) | set(es)
     catalog_rows: dict[str, int] = {}
     for row_no in range(8, catalog.max_row + 1):
@@ -327,6 +348,14 @@ def _refresh_long_term_catalog(wb) -> None:
         set_if_present(row_no, "规格（中文）", zr.get("规格（中文）"))
         set_if_present(row_no, "规格（西语）", er.get("规格（西语）") or zr.get("规格（西语）"))
         set_if_present(row_no, "当前售价 (€)", er.get("当前售价 (€)") or zr.get("当前售价 (€)"))
+        prices = list(historical_prices.get(sku, []))
+        for column in ("当前售价 (€)", "历史最低价 (€)", "历史最高价 (€)"):
+            price = positive_price(catalog.cell(row_no, idx[column]).value)
+            if price is not None:
+                prices.append(price)
+        if prices:
+            catalog.cell(row_no, idx["历史最低价 (€)"]).value = min(prices)
+            catalog.cell(row_no, idx["历史最高价 (€)"]).value = max(prices)
         set_if_present(row_no, "首次观察日期", er.get("首次发现日期") or zr.get("首次发现日期"))
         set_if_present(row_no, "最后观察日期", er.get("最后确认存在日期") or zr.get("最后确认存在日期"))
         set_if_present(row_no, "商品链接", er.get("商品链接") or zr.get("商品链接"))

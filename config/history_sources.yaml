@@ -1,107 +1,184 @@
-# 历史 Presence 的唯一事实来源。每增加一期，只增加一项；禁止由 first_seen/
-# last_seen 或商品字典反推某一期的在售状态。F:\按日期整理 仅只读。
-excluded_months: ['2026-04']
-seed:
-  # User-confirmed historical matrix; read only. Other dated sources remain explicit below.
-  path: "F:/按日期整理/action表格/20261019/20261019_Action商品上下架明细.xlsx"
-  sheet: "商品上下架明细"
-  sku_header: "编号"
+mode: weekly_raw_catalog_v2
+profile_version: 2
+display_source:
+  date: '2026-11-09'
+  path: F:/按日期整理/action表格/20261109/20261109_Action商品上下架明细.xlsx
+  sheet: 商品上下架明细
+baseline_dates:
+- '2026-01-09'
+excluded_skus: []
+discover:
+  enabled: true
+  root: F:/按日期整理/action表格
   presence_capability: true
   absence_capability: true
   observation_complete: true
-  evidence_level: A
-  fields:
-    name_zh: "中文品名"
-    image_url: "图片链接"
-    product_url: "商品链接"
 sources:
-  - date: "2026-01-09"
-    path: "F:/按日期整理/action表格/20260109/20260109Action商品全量_西语版_不带图.xlsx"
-    sheet: "数据"
-    sku_header: "编号"
-    presence_capability: true
-    absence_capability: true
-    observation_complete: true
-    evidence_level: A
-    fields: {name_es: "标题", cat1_es: "分类1", cat2_es: "分类2", spec_es: "规格", product_url: "商品链接"}
-  - date: "2026-04-05"
-    path: "F:/按日期整理/action表格/20260405/20260405Action商品全量_西语版_不带图.xlsx"
-    sheet: "Sheet1"
-    sku_header: "Product ID"
-    presence_capability: true
-    absence_capability: true
-    observation_complete: true
-    evidence_level: A
-    fields: {name_es: "Nombre del producto", cat1_es: "Categoria", spec_es: "Especificación"}
-  - date: "2026-07-01"
-    path: "F:/按日期整理/action表格/20260701/20260701Action商品全量_西语版_不带图.xlsx"
-    sheet: "格式化模板"
-    sku_header: "编号"
-    presence_capability: true
-    absence_capability: true
-    observation_complete: true
-    evidence_level: A
-    fields: {name_es: "西语品名", cat1_es: "分类1", cat2_es: "分类2", spec_es: "规格", product_url: "商品链接"}
-  - date: "2026-07-06"
-    path: "F:/按日期整理/action表格/20260706/20260706Action商品全量_西语版_不带图.xlsx"
-    sheet: "Action ES 商品"
-    sku_header: "编号"
-    presence_capability: true
-    absence_capability: true
-    observation_complete: true
-    evidence_level: A
-    fields: {name_es: "标题（商品名）", cat1_es: "分类1（一级类目）", cat2_es: "分类2（二级类目）", spec_es: "规格", product_url: "商品链接"}
-  - date: "2026-07-13"
-    path: "F:/按日期整理/action表格/20260713/20260713Action商品全量_西语版_不带图.xlsx"
-    sheet: "商品全量"
-    sku_header: "编号"
-    presence_capability: true
-    absence_capability: true
-    observation_complete: true
-    evidence_level: A
-    fields: {name_es: "标题", cat1_es: "分类1", cat2_es: "分类2", spec_es: "规格", product_url: "商品链接"}
-  - date: "2026-07-20"
-    path: "F:/按日期整理/action表格/20260720/20260720Action商品全量_西语版_不带图.xlsx"
-    sheet: "商品全量"
-    sku_header: "编号"
-    presence_capability: true
-    absence_capability: true
-    observation_complete: true
-    evidence_level: A
-    fields: {name_es: "标题", cat1_es: "分类1", cat2_es: "分类2", spec_es: "规格", product_url: "商品链接"}
-  - date: "2026-07-27"
-    path: "F:/按日期整理/action表格/20260727/20260727Action商品全量_西语版_不带图.xlsx"
-    sheet: "商品全量"
-    sku_header: "编号"
-    presence_capability: true
-    absence_capability: true
-    observation_complete: true
-    evidence_level: A
-    fields: {name_es: "西班牙语品名", cat1_es: "一级类目", cat2_es: "二级类目", spec_es: "规格", product_url: "商品链接"}
-  - date: "2026-08-02"
-    path: "F:/按日期整理/action表格/20260802/20260802Action商品全量_西语版_不带图.xlsx"
-    sheet: "products_current"
-    sku_header: "编号"
-    presence_capability: true
-    absence_capability: true
-    observation_complete: true
-    evidence_level: A
-    fields: {name_es: "西班牙语品名", cat1_es: "一级类目", cat2_es: "二级类目", spec_es: "规格", product_url: "商品链接"}
-  - date: "2026-08-10"
-    path: "F:/按日期整理/action表格/20260810/20260810Action商品全量_西语版_不带图.xlsx"
-    sheet: "productos"
-    sku_header: "编号"
-    presence_capability: true
-    absence_capability: true
-    observation_complete: true
-    evidence_level: A
-    fields: {name_es: "品名", cat1_es: "一级类目", cat2_es: "二级类目", spec_es: "规格", product_url: "商品链接"}
-  - date: "2026-08-24"
-    path: "F:/按日期整理/action表格/20260824/20260824Action商品全量_西班牙语版_不带图.xlsx"
-    sheet: "商品全量"
-    sku_header: "编号"
-    presence_capability: true
-    absence_capability: true
-    observation_complete: true
-    evidence_level: A
-    fields: {name_es: "标题（西语）", cat1_es: "分类1（西语）", cat2_es: "分类2（西语）", spec_es: "规格（西语）", product_url: "商品链接"}
+- date: '2026-01-09'
+  path: F:\按日期整理\action表格\20260109\20260109Action商品全量_中文版_不带图.xlsx
+  sheet: 数据
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 164d433a44f4cf61acc36299989a1257142910006c8ffa87f8b821ac7dbc0515
+  expected_sku_count: 4846
+- date: '2026-06-29'
+  path: F:\按日期整理\action表格\20260701\20260701Action商品全量_中文版_不带图.xlsx
+  sheet: 格式化模板
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 2f83809bfd08ef940a98e63008fe520d9ed762e58a0df06583c4f1e024bf997b
+  expected_sku_count: 5511
+- date: '2026-07-06'
+  path: F:\按日期整理\action表格\20260706\20260706Action商品全量_中文版_不带图.xlsx
+  sheet: Action ES 商品
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 7dfb5b5765ac387f7b0bf67a205697bf8489862c3380dcb9eb4cc26dac5c4349
+  expected_sku_count: 5633
+- date: '2026-07-13'
+  path: F:\按日期整理\action表格\20260713\20260713Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: faedf00d2d27f4dba7c31901383620b1639eb8449cf68b76d428a468e779f120
+  expected_sku_count: 5608
+- date: '2026-07-20'
+  path: F:\按日期整理\action表格\20260720\20260720Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 8f6ec6bd78d02aa113ec47812badfd5d7ba8894f26c4087ea78309217e43a832
+  expected_sku_count: 5595
+- date: '2026-07-27'
+  path: F:\按日期整理\action表格\20260727\20260727Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: e6f29099787ce3a9c786329971566ac638bbd45f3e7238843331e6b4be04f07c
+  expected_sku_count: 5525
+- date: '2026-08-03'
+  path: F:\按日期整理\action表格\20260802\20260802Action商品全量_中文版_不带图.xlsx
+  sheet: 主表
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: d8f589aeeae5ef2c5afbf89485d8dd801d0804b84ecd542b6aa68e26100a0270
+  expected_sku_count: 5496
+- date: '2026-08-10'
+  path: F:\按日期整理\action表格\20260810\20260810Action商品全量_中文版_不带图.xlsx
+  sheet: productos
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 225b026d15119dd2dc8dcc2665b7057c1ccacc390675cde0347f199cfcd5b15b
+  expected_sku_count: 5537
+- date: '2026-08-17'
+  path: F:\按日期整理\action表格\20260817\20260817Action商品全量_中文版_不带图.xlsx
+  sheet: 在售清单（中文）
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: ff78468ddc4ab2bcd572e220670c929aaee11999108fb487a1c16220a6a9c433
+  expected_sku_count: 5496
+- date: '2026-08-24'
+  path: F:\按日期整理\action表格\20260824\20260824Action商品全量_中文版_不带图.xlsx
+  sheet: 今日中文清单
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: f97180a607d726061b090d6553ce6ef004926e4be0a00a61f2ebbc99f938b1dd
+  expected_sku_count: 5476
+- date: '2026-08-31'
+  path: F:\按日期整理\action表格\20260831\20260831Action商品全量_中文版_不带图.xlsx
+  sheet: 今日中文清单
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 3a55c0eea60853eefc44c57496a73c2d48464047c2d0687ab721e213d0e53397
+  expected_sku_count: 5379
+- date: '2026-09-07'
+  path: F:\按日期整理\action表格\20260907\20260907Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 4a33d22bd946451904eb9ea99f955136769721d853ddb2a2d57c4122cc8855ff
+  expected_sku_count: 5552
+- date: '2026-09-14'
+  path: F:\按日期整理\action表格\20260914\20260914Action今日在售SKU_中文不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 1791351bdf301ad0adf57004706408d58f53cd7731ea4b5f322f640714e4640a
+  expected_sku_count: 5404
+- date: '2026-09-21'
+  path: F:\按日期整理\action表格\20260921\20260921Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 64ae7657ab050cf6908f6d106d410c21273cfb5d982eede210b91f0e5fbaca13
+  expected_sku_count: 5510
+- date: '2026-09-28'
+  path: F:\按日期整理\action表格\20260928\20260928Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: cd773ec10b928d9b0e02c1af72130d20307998a6225b84c81eaa2af8832a6852
+  expected_sku_count: 5496
+- date: '2026-10-05'
+  path: F:\按日期整理\action表格\20261005\20261005Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 52c4626a372fe04e26897a9aad692b9e70c07f7e96a76b2d2bb18c89ca78ce55
+  expected_sku_count: 5595
+- date: '2026-10-12'
+  path: F:\按日期整理\action表格\20261012\20261012Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: c5ef9aa9ced2ecc36df8d056a5b84496fadf83756132e35f76d35a30130b8bf6
+  expected_sku_count: 5666
+- date: '2026-10-19'
+  path: F:\按日期整理\action表格\20261019\20261019Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 58d69190479fed42584fb564ae9f50f97f32df5a0665d9bc0bd833afd1efcb89
+  expected_sku_count: 5726
+- date: '2026-10-26'
+  path: F:\按日期整理\action表格\20261026\261026Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 6701d259edabe402f318d46a55a78ce208a9fcfebe0c92e2adb71092346e8b61
+  expected_sku_count: 5749
+- date: '2026-11-02'
+  path: F:\按日期整理\action表格\20261102\20261102Action商品全量_中文版_不带图.xlsx
+  sheet: 商品全量
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: f75a46ae00f8fc5a7048f3299b7d073cb511c474c40f54893406615dd8da13f4
+  expected_sku_count: 5753
+- date: '2026-11-09'
+  path: F:\按日期整理\action表格\20261109\20261109Action商品全量_中文版_不带图.xlsx
+  sheet: 中文_不带图
+  presence_capability: true
+  absence_capability: true
+  observation_complete: true
+  sha256: 6a602f4db3bb7afeaac73a56049097f4c834205cb144a8a9ffd49dfbc05834f9
+  expected_sku_count: 5784

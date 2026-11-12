@@ -52,11 +52,14 @@ def _export_history_locked(cfg: dict[str, Any], *, export_date: str) -> dict[str
     temporary = Path(name)
     try:
         write_history_xlsx(temporary, history_rows=rows, history_dates=history.dates, source_stats=history.source_stats)
-        verification = verify_history_xlsx(temporary, history_dates=history.dates, expected_skus={row["编号"] for row in rows})
+        verification = verify_history_xlsx(temporary, history_dates=history.dates,
+                                           expected_skus={row["编号"] for row in rows}, require_binary=history.strict_weekly)
         manifest_path = output.with_suffix(".manifest.json")
         manifest = {
             "template_id": "action_history_presence",
-            "template_version": 3,
+            "template_version": 4 if history.strict_weekly else 3,
+            "presence_authority": "ORIGINAL_WEEKLY_CATALOG" if history.strict_weekly else "LEGACY_HISTORY",
+            "excluded_skus": sorted(history.excluded_skus),
             "fixed_headers": list(STANDALONE_HISTORY_HEADERS),
             "excluded_months": list(history.excluded_months),
             "output_sha256": _file_hash(temporary),
@@ -84,7 +87,7 @@ def _export_history_locked(cfg: dict[str, Any], *, export_date: str) -> dict[str
         temporary.unlink(missing_ok=True)
 
 
-def verify_history_xlsx(path: Path, *, history_dates: tuple[str, ...], expected_skus: set[str]) -> dict[str, int]:
+def verify_history_xlsx(path: Path, *, history_dates: tuple[str, ...], expected_skus: set[str], require_binary: bool = False) -> dict[str, int]:
     import openpyxl
 
     workbook = openpyxl.load_workbook(path, read_only=False, data_only=True)
@@ -105,7 +108,7 @@ def verify_history_xlsx(path: Path, *, history_dates: tuple[str, ...], expected_
         for date in history_dates:
             col = headers.index(_compact_date(date)) + 1
             values = [ws.cell(row=row, column=col).value for row in range(2, ws.max_row + 1)]
-            if any(value not in (0, 1, None) for value in values):
+            if any(value not in ((0, 1) if require_binary else (0, 1, None)) for value in values):
                 raise HistoryExportError(f"HISTORY_EXPORT_BAD_PRESENCE: {date}")
         audit = workbook["历史来源审计"]
         if audit.max_row - 1 != len(history_dates):

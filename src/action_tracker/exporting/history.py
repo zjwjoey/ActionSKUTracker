@@ -45,6 +45,8 @@ class PresenceHistory:
     seed_path: str | None
     seed_row_count: int
     excluded_months: tuple[str, ...] = ()
+    strict_weekly: bool = False
+    excluded_skus: frozenset[str] = frozenset()
 
 
 def build_history_only_rows(history: PresenceHistory) -> list[dict[str, Any]]:
@@ -55,11 +57,16 @@ def build_history_only_rows(history: PresenceHistory) -> list[dict[str, Any]]:
 _DATE_HEADER_RE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{2})$")
 
 
-def load_presence_history(cfg: dict[str, Any]) -> PresenceHistory:
+def load_presence_history(cfg: dict[str, Any], *, as_of_date: str | None = None) -> PresenceHistory:
+    if as_of_date is not None:
+        cfg = {**cfg, "history_observation_end_date": _parse_iso_date(as_of_date)}
     config_path = Path(cfg.get("history_sources_path") or Path(cfg["project_root"]) / "config" / "history_sources.yaml")
     if not config_path.exists():
         raise HistoryExportError(f"HISTORY_CONFIG_MISSING: {config_path}")
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    if raw.get("mode") == "weekly_raw_catalog_v2":
+        from .weekly_history import load_weekly_history
+        return load_weekly_history(cfg, raw, as_of_date=cfg.get("history_observation_end_date"))
     excluded = raw.get("excluded_months", [])
     if not isinstance(excluded, list) or any(not isinstance(m, str) or not re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", m) for m in excluded):
         raise HistoryExportError("HISTORY_EXCLUDED_MONTHS_INVALID")
@@ -237,8 +244,16 @@ def build_presence_rows(
     current_records = current_records or []
     zh_rows = zh_rows or []
     current_by_sku = {str(row.get("sku") or "").strip(): row for row in current_records}
+    current_by_sku = {sku: row for sku, row in current_by_sku.items() if sku not in history.excluded_skus}
     zh_by_sku = {str(row.get("编号") or "").strip(): row for row in zh_rows}
     all_skus = set(history.presence_by_sku) | set(current_by_sku)
+    all_skus -= history.excluded_skus
+    if history.strict_weekly and export_date is not None:
+        if export_date not in history.dates:
+            raise HistoryExportError(f"HISTORY_UNREGISTERED_PERIOD: {export_date}")
+        expected = {sku for sku, values in history.presence_by_sku.items() if values[export_date] == 1}
+        if set(current_by_sku) != expected:
+            raise HistoryExportError(f"HISTORY_CURRENT_SOURCE_CONFLICT: {export_date}")
     dates = list(history.dates)
     stats_by_date = {stat.date: stat for stat in history.source_stats}
     if export_date is not None and export_date not in dates:

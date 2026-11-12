@@ -22,6 +22,9 @@ tests/test_term_candidates.py
 tests/test_exporting.py
 tests/test_template1.py
 tests/test_history_export.py
+tests/test_weekly_history.py
+tests/test_riskfix_release.py
+tests/test_bound_production_entry.py
 tests/test_history_publication_recovery.py
 tests/test_image_foundation.py
 tests/test_lifecycle.py

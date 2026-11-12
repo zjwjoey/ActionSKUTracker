@@ -116,6 +116,16 @@ def load_settings(path: Path | str | None = None, *, overlay_paths: Iterable[Pat
         cfg["browser"]["profile_dir"] = profile
     _apply_fail_closed_defaults(cfg)
     cfg["project_root"] = root
+    # Export validation may select an isolated output directory; no other
+    # production path or policy can be changed through this override.
+    export_override = os.environ.get("ACTION_TRACKER_EXPORT_ROOT")
+    if export_override:
+        target = Path(export_override).resolve()
+        protected = [root / 'runtime/db', root / 'runtime/master', root / 'runtime/state',
+                     root / 'runtime/dictionary', root / 'runtime/snapshots', Path('F:/按日期整理')]
+        if any(target == p.resolve() or target.is_relative_to(p.resolve()) for p in protected):
+            raise ValueError('EXPORT_OVERRIDE_PROTECTED_PATH')
+        cfg['paths']['exports'] = target
     canonical = json.dumps(_json_safe(cfg), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     cfg["_config_evidence"] = {
         "base_config_path": str(base_path),
