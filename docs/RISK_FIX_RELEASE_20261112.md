@@ -71,3 +71,9 @@ wrapper. Source-data approval conflicts remain blocked by the original gates.
 No scraping, model calls, ProductCollector changes, remote push or old-program
 deletion are part of this release. Exact counts, hashes and execution receipts
 belong in the local activation report, not this stable contract.
+
+Actual-entry verification additionally exposed serialized SQLite name-provenance
+metadata reaching the semantic-review reader. It now accepts either a mapping or
+a valid JSON object, preserving every existing hash/actor/current-value check.
+Missing review, invalid/nested non-object metadata and duplicate JSON keys grant
+no reviewed facts. This compatibility read does not rewrite data or approvals.

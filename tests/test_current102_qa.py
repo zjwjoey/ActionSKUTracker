@@ -33,6 +33,39 @@ def approved_record(case):
     return record
 
 
+def test_serialized_sqlite_name_provenance_preserves_exact_review_binding():
+    record=approved_record(NAMES[0])
+    expected=approved_name_review_facts(record)
+    assert expected
+    record['zh_field_provenance']=json.dumps(record['zh_field_provenance'],ensure_ascii=False)
+    assert approved_name_review_facts(record)==expected
+
+
+@pytest.mark.parametrize('value',[None,'','not-json','[]','null','1',[],42,{'name':'APPROVED'},{'name':[]},'{"name":"APPROVED"}'])
+def test_invalid_serialized_name_provenance_cannot_grant_review_facts(value):
+    record=approved_record(NAMES[0]);record['zh_field_provenance']=value
+    assert approved_name_review_facts(record)==()
+
+
+@pytest.mark.parametrize('field,value',[('source_hash','changed'),('approved_by','other-actor'),('freshness_status','STALE')])
+def test_serialized_name_provenance_retains_all_approval_checks(field,value):
+    record=approved_record(NAMES[0]);record['zh_field_provenance']['name'][field]=value
+    record['zh_field_provenance']=json.dumps(record['zh_field_provenance'],ensure_ascii=False)
+    assert approved_name_review_facts(record)==()
+
+
+def test_duplicate_serialized_provenance_keys_cannot_grant_review_facts():
+    record=approved_record(NAMES[0]);meta=json.dumps(record['zh_field_provenance']['name'])
+    record['zh_field_provenance']='{"name":'+meta+',"name":'+meta+'}'
+    assert approved_name_review_facts(record)==()
+
+
+def test_missing_review_does_not_read_untyped_legacy_provenance():
+    record=approved_record(NAMES[0]);record.pop('_approved_name_semantic_review')
+    record['zh_field_provenance']='legacy-invalid-json'
+    assert approved_name_review_facts(record)==()
+
+
 @pytest.mark.parametrize('case', CASES, ids=lambda x:x['review']['sku']+'-'+x['review']['field'])
 def test_real_source_bound_review_passes_full_guard(case):
     review=case['review'];source=SourceFacts.from_record(case['record'])

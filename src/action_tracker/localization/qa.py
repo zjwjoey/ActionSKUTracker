@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import json
 from collections import Counter
 from dataclasses import dataclass
 from decimal import Decimal
@@ -501,8 +502,28 @@ def approved_name_review_facts(record: Mapping[str, Any]) -> tuple[SemanticFact,
                 return facts
         return ()
     proof = proofs
-    meta = (record.get('zh_field_provenance') or {}).get('name') or {}
     if not isinstance(proof, dict):
+        return ()
+    provenance = record.get('zh_field_provenance')
+    if isinstance(provenance, str):
+        # SQLite source rows retain the serialized JSON column. Decode only
+        # its object representation; malformed or ambiguous evidence grants
+        # no reviewed semantic facts and never changes approval requirements.
+        def unique_object(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError('DUPLICATE_PROVENANCE_KEY')
+                value[key] = item
+            return value
+        try:
+            provenance = json.loads(provenance, object_pairs_hook=unique_object)
+        except (ValueError, TypeError):
+            return ()
+    if not isinstance(provenance, dict):
+        return ()
+    meta = provenance.get('name')
+    if not isinstance(meta, dict):
         return ()
     review = proof.get('review')
     if not isinstance(review, dict):
