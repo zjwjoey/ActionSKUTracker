@@ -373,6 +373,14 @@ class KopiaBackend:
         self._connected, self._readonly = True, readonly
         return self._read_repository_status()
 
+    def bound_private_cache(self):
+        """Bound this private client's cache; never modify repository policy."""
+        self._enabled()
+        if not self._connected:raise BackendError('KOPIA_NOT_CONNECTED')
+        self._run(['cache','set','--content-cache-size-mb=8','--content-cache-size-limit-mb=16',
+                   '--metadata-cache-size-mb=4','--metadata-cache-size-limit-mb=8'])
+        return {'content_hard_limit_mib':16,'metadata_hard_limit_mib':8,'scope':'PRIVATE_CLIENT_ONLY'}
+
     def _read_repository_status(self, *, bind_created: bool = False):
         raw = self._run(["repository", "status", "--json"], readonly=True, json_result=True)
         repository_id = raw.get("uniqueIDHex") if isinstance(raw, dict) else None

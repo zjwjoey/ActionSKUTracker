@@ -20,6 +20,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument('--backup-task-id',help='完整写入任务标识；多个批次及恢复运行使用同一个值')
     from .operations.backup_pool_cli import register as register_backup_pool
     register_backup_pool(sub)
+    from .operations.pool_kopia_cli import register as register_pool_kopia
+    register_pool_kopia(sub)
 
     d = sub.add_parser("daily-run", help="采集诊断；SQLite PRIMARY 正式入口使用 data-update")
     d.add_argument("--dry-run", action="store_true", default=None, help="只出证据不写 Master")
@@ -347,6 +349,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == 'pool-kopia':
+        from .operations.pool_kopia_cli import run as run_pool_kopia
+        return run_pool_kopia(args)
     if args.command == 'backup-pool':
         from .operations.backup_pool_cli import run as run_backup_pool
         return run_backup_pool(args)

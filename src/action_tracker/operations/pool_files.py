@@ -71,14 +71,22 @@ def os_lock(path, *, wait=0):
         ctx.__exit__(None, None, None)
 
 
-def delete_group(files, *, root, final_check):
-    """Claim and verify ALL members before deleting any member; flat files only."""
+def delete_group(files, *, root, final_check, owned_directory=None):
+    """Claim every file before deletion; optional explicitly owned bundle tree."""
     root = Path(root).resolve()
+    if owned_directory is not None:
+        import re
+        owned_directory=cleanup.safe_path(Path(owned_directory))
+        if (owned_directory.parent!=root/'staging'
+                or not re.fullmatch(r'bundle-[0-9a-f]{32}',owned_directory.name)):
+            raise StorageError('POOL_DELETE_DIRECTORY_NOT_OWNED')
     with ExitStack() as stack:
         held = []
         for item in files:
             path = cleanup.safe_path(Path(item['path']))
-            if not path.is_relative_to(root) or path.parent not in {root/'active', root/'staging'}:
+            allowed=(path.is_relative_to(owned_directory) if owned_directory is not None
+                     else path.parent in {root/'active',root/'staging'})
+            if not path.is_relative_to(root) or not allowed:
                 raise StorageError('POOL_DELETE_OUTSIDE_OWNED_NAMESPACE')
             stream, kernel, handle = stack.enter_context(cleanup._held_file(path))
             st = os.fstat(stream.fileno())
