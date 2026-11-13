@@ -93,6 +93,14 @@ def database_fingerprint(db):
 
 def verified_backup(database, destination, *, scratch_root=None):
     """Keep logical parity and old result keys, without a permanent restore DB."""
+    from ..operations.task_backup import current_task, manager_for
+    active=current_task(database) or manager_for(database)
+    if active is not None:
+        report=active[0].ensure()
+        return {**report,'backup':report['backup_path'],'restore':None,'integrity':'ok',
+                'foreign_key_violations':[],'logical_parity':True,
+                'restore_validation':{'status':'PASS','integrity':'PASS','foreign_keys':'PASS',
+                    'backup_sha256':report['sha256'],'commit_id':report['base_commit_id']}}
     from ..operations.storage_foundation import verified_backup as storage_backup, rehearse_restore, read_database
     from ..operations.storage_lifecycle import ScratchTask
     destination = Path(destination)
@@ -121,6 +129,51 @@ def verified_backup(database, destination, *, scratch_root=None):
             "foreign_key_violations": [], "logical_parity": equal,
             "sha256": manifest['sha256'], "tables": before, 'restore_validation': restore,
             'permanent_restore_copy_created': False}
+
+
+def validate_backup_report(database, report):
+    """Validate an immutable baseline and proof; a permanent restore is optional.
+
+    Task reports can follow their own verified Commit chain. Legacy reports
+    remain same-HEAD only and cannot be promoted to task-level evidence.
+    """
+    from ..operations.task_backup import current_task, TaskBackupManager
+    from ..operations.backup_pool import BackupPool
+    from ..operations.storage_foundation import read_database, database_identity, sha256_file
+    if report.get('contract')=='TASK_BACKUP_REPORT_V1':
+        active=current_task(database)
+        if active:
+            if active[0].task_id!=report['task_id']:raise ValueError('RECOVERY_BACKUP_TASK_MISMATCH')
+            manager=active[0]
+        else:manager=TaskBackupManager(BackupPool(report['pool_root']),database,task_id=report['task_id'])
+        current=manager.ensure()
+        if any(current[k]!=report[k] for k in ('pool_asset_id','sha256','task_manifest')):
+            raise ValueError('RECOVERY_BACKUP_BINDING_CHANGED')
+        return {**report,'reused_for_recovery':True,'expected_head':current['expected_head']}
+    from ..operations.cleanup_executor import safe_path
+    import os
+    backup_path=safe_path(Path(report['backup']).absolute())
+    source_path=safe_path(Path(database).absolute())
+    if os.path.samefile(backup_path,source_path) or backup_path.stat().st_nlink!=1:
+        raise ValueError('RECOVERY_BACKUP_SOURCE_ALIAS_NOT_INDEPENDENT')
+    if (report.get('logical_parity') is not True or report.get('integrity')!='ok'
+            or report.get('foreign_key_violations') or sha256_file(Path(report['backup']))!=report['sha256']):
+        raise ValueError('RECOVERY_BACKUP_NOT_VERIFIED')
+    proof=report.get('restore_validation') or {}
+    if (proof.get('status')!='PASS' or proof.get('backup_sha256')!=report['sha256']
+            or proof.get('integrity')!='PASS' or proof.get('foreign_keys')!='PASS'):
+        raise ValueError('RECOVERY_BACKUP_RESTORE_PROOF_REQUIRED')
+    with read_database(database) as source,read_database(Path(report['backup']),immutable=True) as base:
+        if database_identity(source)!=database_identity(base):raise ValueError('RECOVERY_BACKUP_NOT_VALID_FOR_CURRENT_HEAD')
+        if base.execute('PRAGMA integrity_check').fetchone()[0]!='ok' or base.execute('PRAGMA foreign_key_check').fetchall():
+            raise ValueError('RECOVERY_BACKUP_INTEGRITY_FAILED')
+    active=current_task(database)
+    if active:
+        current=active[0].ensure()
+        return {**current,'backup':current['backup_path'],'restore':None,'integrity':'ok',
+                'foreign_key_violations':[],'logical_parity':True,'reused_for_recovery':True,
+                'legacy_evidence_sha256':digest(report)}
+    return {**report,'reused_for_recovery':True}
 
 
 def choose_evidence(candidates):

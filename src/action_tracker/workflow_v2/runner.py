@@ -93,7 +93,20 @@ class WorkflowV2Runner:
         self._production_lock.acquire(self.context.workflow_run_id, command='data-update-v2')
         try:
             self._expected_primary_head = latest_commit_id(self.temp_db)
-            return self._run(resume=resume)
+            from ..operations.task_backup import task_scope
+            with task_scope(self.cfg,task_id=self.context.workflow_run_id,batch_id=self.context.workflow_run_id,source=self.temp_db,inherit=True) as task:
+                if task is not None and task.path.exists():task.ensure()
+                result=self._run(resume=resume)
+                if task is not None and task.path.exists():
+                    try:result.report['backup_task']=task.finish(state='COMPLETED' if result.state=='SUCCESS' else 'FAILED')
+                    except Exception as exc:
+                        result.report['backup_task']={'status':'BLOCKED','reason':str(exc),'business_rollback':False}
+                        if result.state=='SUCCESS':result.state='DEGRADED'
+                    result.report['FINAL_STATUS']=result.state
+                    payload=_state_payload(self.context,self.stages,result.state,result.report)
+                    _write_json(self.directory/'workflow_state.json',payload)
+                    _write_json(self.directory/'workflow_report.json',payload)
+                return result
         finally:
             self._production_lock.release()
 

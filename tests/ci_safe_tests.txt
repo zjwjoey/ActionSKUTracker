@@ -258,3 +258,4 @@ tests/test_current102_qa.py
 
 # CI_SAFE: generated owned backup pools; quota, locks, CLI and recovery guards.
 tests/test_backup_pool.py
+tests/test_task_backup.py

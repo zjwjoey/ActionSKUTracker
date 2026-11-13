@@ -18,7 +18,8 @@ from action_tracker.knowledge.storage import KnowledgeStore
 from action_tracker.localization.contracts import SourceFacts, SemanticFact
 from action_tracker.localization.delegated_approval import CURRENT_ACTOR, CURRENT_VERSION
 from action_tracker.localization.hashes import value_hash
-from action_tracker.localization.history_audit import verified_backup
+from action_tracker.localization.history_audit import verified_backup, validate_backup_report
+from action_tracker.operations.task_backup import task_scope, current_task
 from action_tracker.localization.product_family import context_for_field
 from action_tracker.localization.qa import guard_translation
 from action_tracker.localization.runtime_builder import build_translation_runtime
@@ -51,11 +52,31 @@ def main():
     parser.add_argument("--scope", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--batch-id", required=True)
+    parser.add_argument("--task-id", help="完整修复任务标识；各批次和 Resume 使用同一个值")
+    parser.add_argument("--finish-task", action="store_true", help="仅在整个任务最后一批成功时结束任务")
     parser.add_argument("--commit", action="store_true")
     parser.add_argument("--verified-backup-report", type=Path,
-                        help="Reuse a verified task-start backup only while committed HEAD is unchanged")
+                        help="复用已验证任务基准和本任务提交链；旧格式报告仍只允许同 HEAD")
     args = parser.parse_args()
+    if args.finish_task and not args.commit:raise ValueError('TASK_FINISH_REQUIRES_COMMIT')
     cfg = load_settings()
+    if (cfg.get('task_backup') or {}).get('enabled') is True and args.commit and not args.task_id:
+        raise ValueError('TASK_BACKUP_TASK_ID_REQUIRED_FOR_BATCH_APPLY')
+    with task_scope(cfg,task_id=args.task_id or args.batch_id,batch_id=args.batch_id):
+        result=_run(args,cfg)
+        active=current_task(database_path_for(cfg))
+        if args.finish_task and active and active[0].path.exists():
+            if not result or result.get('blocked'):raise ValueError('TASK_FINISH_HAS_UNRESOLVED_FIELDS')
+            active[0].finish()
+        return result
+
+
+def database_path_for(cfg):
+    from action_tracker.database.integration import database_path
+    return database_path(cfg)
+
+
+def _run(args,cfg):
     runtime = build_translation_runtime(cfg, allow_provider=False)
     repo = ProductionRepository(runtime.db_path)
     scope = json.loads(args.scope.read_text(encoding="utf-8"))
@@ -120,19 +141,15 @@ def main():
                       "apply": {"status": "NO_OP", "applied_fields": 0}, "qwen_calls": 0}
             (args.output / "resume_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
             print(json.dumps(report, ensure_ascii=False))
-            return
+            return report
         backup_path = Path(cfg["paths"]["backups"]) / "current_localization" / (args.batch_id + ".sqlite3")
         backup_report = args.output / "backup.json"
-        if not backup_report.exists():
+        if backup_report.exists():
+            validate_backup_report(runtime.db_path,json.loads(backup_report.read_text(encoding='utf-8')))
+        else:
             if args.verified_backup_report:
                 backup = json.loads(args.verified_backup_report.read_text(encoding="utf-8"))
-                restored = Path(backup["restore"])
-                if (not backup.get("logical_parity") or backup.get("integrity") != "ok"
-                        or backup.get("foreign_key_violations")
-                        or hashlib.sha256(Path(backup["backup"]).read_bytes()).hexdigest() != backup["sha256"]
-                        or ProductionRepository(restored).current_head() != repo.current_head()):
-                    raise ValueError("RECOVERY_BACKUP_NOT_VALID_FOR_CURRENT_HEAD")
-                backup = {**backup, "reused_for_recovery": True}
+                backup = validate_backup_report(runtime.db_path,backup)
             else:
                 backup = verified_backup(runtime.db_path, backup_path)
             backup_report.write_text(json.dumps(backup, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -183,6 +200,7 @@ def main():
                   "apply": applied, "sync": sync, "qwen_calls": 0}
         (args.output / "apply_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
         print(json.dumps({"reviewed": len(prepared), "blocked": len(blocked), "apply": applied}, ensure_ascii=False, default=str))
+        return report
     finally:
         lock.release()
 

@@ -215,6 +215,7 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
         return StepResult("SUCCESS", {"delegated": True, "commit_status": status, "commit_id": result.get("commit_id"), "reason": "compatibility export handled by delegated chain"})
 
     managed_pool = None
+    managed_task = None
     def backup_step():
         nonlocal managed_pool
         from .backup_pool import configured_pool, PoolCapacityError
@@ -248,6 +249,10 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
     # backup step is still safe if the destination is fixed per business date.
     # Resume can skip BACKUP and COLLECTION, so gate every resumed write here.
     saved = prior.get('steps', {}).get('BACKUP', {}).get('details', {})
+    if (resume and saved and (cfg.get('task_backup') or {}).get('enabled') is True
+            and saved.get('contract')!='TASK_BACKUP_REPORT_V1'):
+        from .storage_foundation import StorageError
+        raise StorageError('TASK_BACKUP_LEGACY_RESUME_REQUIRES_EXPLICIT_BASE_BINDING')
     if resume and saved.get('pool_asset_id'):
         from .backup_pool import configured_pool
         from .storage_foundation import StorageError
@@ -256,10 +261,18 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
             raise StorageError('BACKUP_POOL_RESUME_CONFIG_CHANGED')
         managed_pool.verify(saved['pool_asset_id'])
         managed_pool.checkpoint()
-    result = runner.run(resume=resume, from_step=from_step)
-    if managed_pool is not None:
+    from .task_backup import task_scope
+    with task_scope(cfg,task_id=run_id,batch_id=run_id,source=db,inherit=True) as managed_task:
+        if resume and saved.get('contract')=='TASK_BACKUP_REPORT_V1':
+            if managed_task is None:raise StorageError('TASK_BACKUP_RESUME_DISABLED')
+            if saved.get('task_id')!=managed_task.task_id:raise StorageError('TASK_BACKUP_RESUME_ID_CHANGED')
+            managed_task.ensure()
+        result = runner.run(resume=resume, from_step=from_step)
+    if managed_pool is not None or (managed_task is not None and managed_task.path.exists()):
         try:
-            result['backup_pool']=managed_pool.finish_task(run_id,state='COMPLETED' if result['state']=='SUCCESS' else 'FAILED')
+            finish_state='COMPLETED' if result['state']=='SUCCESS' else 'FAILED'
+            result['backup_pool']=(managed_task.finish(state=finish_state) if managed_task is not None
+                                   else managed_pool.finish_task(run_id,state=finish_state))
         except Exception as exc:
             # A post-commit maintenance failure is not a business rollback.
             result['backup_pool']={'status':'BLOCKED','reason':type(exc).__name__,

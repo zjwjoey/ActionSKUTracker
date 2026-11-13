@@ -236,7 +236,9 @@ def _finalized_run(fn):
         context["snap_dir"].mkdir(parents=True, exist_ok=True)
         result = None
         try:
-            result = fn(cfg, dry_run=dry_run, _run_context=context, **kwargs)
+            from ..operations.task_backup import task_scope
+            with task_scope(cfg,task_id=run_id,batch_id=run_id,inherit=True):
+                result = fn(cfg, dry_run=dry_run, _run_context=context, **kwargs)
         except BaseException as error:
             _persist_fatal_run_evidence(cfg, context, error)
             raise

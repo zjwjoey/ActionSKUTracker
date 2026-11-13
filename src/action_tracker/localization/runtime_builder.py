@@ -83,6 +83,8 @@ def build_translation_runtime(cfg: Mapping[str, Any] | None = None, *, db_path: 
     """
     cfg = dict(cfg or load_settings())
     path = Path(db_path or database_path(cfg))
+    from ..operations.task_backup import register_policy
+    register_policy(cfg,path)
     role = _database_role(path)
     registry = LocalizationRegistry(path, role=role)
     dictionary_dir = Path((cfg.get("paths") or {}).get("dictionary") or Path(cfg["project_root"]) / "runtime" / "dictionary")

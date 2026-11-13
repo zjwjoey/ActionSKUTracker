@@ -17,6 +17,7 @@ from pathlib import Path
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="action_tracker", description="Action 西班牙站商品每日监测程序")
     sub = p.add_subparsers(dest="command")
+    p.add_argument('--backup-task-id',help='完整写入任务标识；多个批次及恢复运行使用同一个值')
     from .operations.backup_pool_cli import register as register_backup_pool
     register_backup_pool(sub)
 
@@ -397,6 +398,20 @@ def main(argv=None) -> int:
     # Keep compatibility with small test/scheduler adapters that expose the
     # historical zero-argument loader when no profile was requested.
     cfg = load_settings(overlay_paths=profile_paths) if profile_paths else load_settings()
+    from .operations.task_backup import task_scope
+    # Operations/daily create stable run identities themselves. Other commands
+    # get one task envelope across Registry, approvals and formal Apply.
+    if args.command in ('daily-run','data-update','production-run','data-update-v2') and not args.backup_task_id:
+        return _run_configured(args,cfg,profile_paths)
+    import uuid
+    task_id=args.backup_task_id or ('cli-'+str(args.command)+'-'+str(getattr(args,'run_id',None) or uuid.uuid4().hex))
+    with task_scope(cfg,task_id=task_id,batch_id=getattr(args,'run_id',None) or args.command):
+        return _run_configured(args,cfg,profile_paths)
+
+
+def _run_configured(args,cfg,profile_paths):
+    from .config import ensure_runtime_dirs
+    from .log import setup_logging
     ensure_runtime_dirs(cfg)
     setup_logging(cfg["paths"]["logs"])
 

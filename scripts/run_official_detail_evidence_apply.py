@@ -16,6 +16,7 @@ from action_tracker.database.production import apply_detail_corrections
 from action_tracker.database.repository import ProductionRepository
 from action_tracker.exporting.service import validate_source_records, validate_spanish_source_fields
 from action_tracker.localization.history_audit import verified_backup
+from action_tracker.operations.task_backup import task_scope
 from action_tracker.products.parser import normalize_verified_specification_rows
 from action_tracker.services.runtime import RunLock
 from action_tracker.services.hashing import localization_source_hash
@@ -26,8 +27,15 @@ def main():
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--commit", action="store_true")
+    parser.add_argument("--task-id")
     args = parser.parse_args()
     cfg = load_settings()
+    task_id=args.task_id or ('official-detail-'+hashlib.sha256(args.evidence.read_bytes()).hexdigest()[:24])
+    with task_scope(cfg,task_id=task_id,batch_id=hashlib.sha256(args.evidence.read_bytes()).hexdigest()):
+        return _run(args,cfg)
+
+
+def _run(args,cfg):
     db_path = database_path(cfg)
     repo = ProductionRepository(db_path)
     args.output.mkdir(parents=True, exist_ok=True)

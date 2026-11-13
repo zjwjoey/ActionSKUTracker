@@ -35,6 +35,10 @@ def validate_original_price_absence(item: dict, product: dict, business_date: st
         raise ProductionDatabaseError("PRICE_ABSENCE_SKU_NOT_CURRENT")
 
 
+from ..operations.task_backup import formal_write
+
+
+@formal_write
 def apply_verified_original_price_absence(path: Path, *, items: list[dict],
         expected_base_commit_id: str, business_date: str, dry_run: bool = False) -> dict:
     """Only original_price may change; evidence/QA/base are checked atomically."""

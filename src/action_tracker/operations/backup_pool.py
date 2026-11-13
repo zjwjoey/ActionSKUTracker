@@ -125,6 +125,7 @@ class BackupPool:
         total=logical=0;seen=set();uncertain=[];unknown=[]
         index=self._load()
         known={Path(p) for a in index['assets'].values() for p in a['paths']}
+        known.update(Path(p) for p in index.get('task_manifests',{}).values())
         for parent, dirs, files in os.walk(self.root, followlinks=False):
             for name in list(dirs):
                 p=Path(parent)/name
@@ -139,7 +140,8 @@ class BackupPool:
                     if key not in seen:total+=pool_files.allocation(p);seen.add(key)
                     control=(p in {self.root/'pool.json',self.root/'index.json',self.root/'pool.lock'}
                              or p.parent==self.root/'cleanup'
-                             or (p.parent==self.root/'leases' and p.stem in index['assets']))
+                             or (p.parent==self.root/'leases' and (p.stem in index['assets']
+                                 or p.name in index.get('source_locks',{}))))
                     if p not in known and not control:unknown.append(str(p))
                 except (OSError,StorageError):uncertain.append(str(p))
         return {'allocated_bytes':total,'logical_bytes':logical,'uncertain_paths':uncertain,'unknown_files':unknown,
@@ -272,7 +274,7 @@ class BackupPool:
                 if task['state']!='RUNNING':raise StorageError('POOL_TASK_NOT_RUNNING')
                 token=uuid.uuid4().hex;index['sequence']+=1
                 folder='active' if s['kind']=='database_backup' else 'staging'
-                suffix='.sqlite3' if s['kind']!='temporary' else '.bin'
+                suffix='.sqlite3' if s['kind']!='temporary' else ('.json' if s.get('format')=='json' else '.bin')
                 path=self.root/folder/(token+suffix)
                 a={**s,'asset_id':token,'path':str(path),'paths':[str(path)],'sequence':index['sequence'],
                    'state':'CREATING','created_at':now(),'references':[],
@@ -321,10 +323,11 @@ class BackupPool:
             self._audit('OPERATION_FAILED',asset_ids=[a['asset_id'] for a in assets],error_type=type(error).__name__)
 
     @contextmanager
-    def temporary(self,*,task_id,expected_bytes,source,purpose,discardable=False):
+    def temporary(self,*,task_id,expected_bytes,source,purpose,discardable=False,file_format='binary'):
         if type(discardable) is not bool:raise StorageError('POOL_DISCARDABLE_BOOLEAN_REQUIRED')
+        if file_format not in ('binary','json'):raise StorageError('POOL_FORMAT_INVALID')
         a=self._reserve([{'task_id':task_id,'kind':'temporary','expected_bytes':expected_bytes,
-                         'source':str(source),'purpose':purpose,'recovery_required':not discardable}])[0]
+                         'source':str(source),'purpose':purpose,'recovery_required':not discardable,'format':file_format}])[0]
         try:
             with pool_files.os_lock(self.root/'leases'/(a['asset_id']+'.lock')):
                 yield a

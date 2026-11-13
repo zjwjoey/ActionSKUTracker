@@ -146,6 +146,7 @@ def main():
     parser.add_argument("--source-manifest", type=Path)
     parser.add_argument("--backup", type=Path)
     parser.add_argument("--batch-id", default="historical_reviewed_pilot_20261009")
+    parser.add_argument("--task-id")
     parser.add_argument("--rebind-kept-values", action="store_true",
                         help="Restore approved source bindings for independently reviewed KEEP values through existing immutable noop patches")
     args = parser.parse_args()
@@ -153,12 +154,23 @@ def main():
     for key in ("state", "temp", "backups", "exports"):
         cfg["paths"][key] = args.projection_root / key
     cfg["paths"]["master"] = args.projection_root / "master" / "Action_Master.xlsx"
+    if (cfg.get('task_backup') or {}).get('enabled') is True and not args.task_id:
+        raise ValueError('TASK_BACKUP_TASK_ID_REQUIRED_FOR_BATCH_APPLY')
+    from action_tracker.operations.task_backup import task_scope
+    with task_scope(cfg,task_id=args.task_id or args.batch_id,batch_id=args.batch_id,source=args.database):
+        return _run(args,cfg)
+
+
+def _run(args,cfg):
     if not cfg["paths"]["master"].exists():
         raise ValueError("PILOT_MASTER_COPY_REQUIRED")
     args.output.mkdir(parents=True, exist_ok=True)
     lock = RunLock(cfg["paths"]["state"]); lock.acquire("historical-reviewed-pilot", command="historical-localization")
     try:
-        backup = verified_backup(args.database, args.backup) if args.backup else None
+        from action_tracker.operations.task_backup import current_task
+        active=current_task(args.database)
+        backup = (verified_backup(args.database,args.backup or args.output/'task_baseline.sqlite3')
+                  if args.backup or active else None)
         source_result = None
         if args.source_manifest:
             source_rows = [json.loads(line) for line in args.source_manifest.read_text(encoding="utf-8").splitlines() if line.strip()]

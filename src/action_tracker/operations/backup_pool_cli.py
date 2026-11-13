@@ -20,13 +20,26 @@ def register(sub):
     verify=actions.add_parser('verify');verify.add_argument('--asset-id',required=True)
     finish=actions.add_parser('finish-task');finish.add_argument('--task-id',required=True)
     finish.add_argument('--state',choices=('COMPLETED','FAILED','UNKNOWN'),default='COMPLETED')
+    for name in ('task-status','task-verify','task-finish','task-recovery-plan'):
+        task=actions.add_parser(name)
+        task.add_argument('--source',type=Path,required=True);task.add_argument('--task-id',required=True)
+        if name=='task-finish':task.add_argument('--state',choices=('COMPLETED','FAILED','UNKNOWN'),default='COMPLETED')
 
 
 def run(args):
     try:
         pool=BackupPool(args.root,protected_paths=args.protected_path,initialize=args.pool_action=='init')
         action=args.pool_action
-        if action in ('init','status','usage','history'):
+        if action.startswith('task-'):
+            from .task_backup import TaskBackupManager
+            manager=TaskBackupManager(pool,args.source,task_id=args.task_id)
+            if not manager.path.exists():raise StorageError('TASK_BACKUP_NOT_FOUND')
+            if action=='task-status':result=manager.load()
+            elif action=='task-finish':result=manager.finish(state=args.state)
+            elif action=='task-recovery-plan':
+                result=manager.recovery_plan()
+            else:result=manager.ensure()
+        elif action in ('init','status','usage','history'):
             result=pool.status()
             if action=='usage':result={'root':result['root'],'policy':result['policy'],'usage':result['usage'],
                                       'outstanding_reserved_bytes':result['outstanding_reserved_bytes']}

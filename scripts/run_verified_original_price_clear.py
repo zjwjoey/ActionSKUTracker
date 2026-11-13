@@ -9,14 +9,23 @@ from pathlib import Path
 from action_tracker.config import load_settings
 from action_tracker.database.integration import database_path, regenerate_compatibility_exports
 from action_tracker.database.price_correction import apply_verified_original_price_absence
-from action_tracker.localization.history_audit import verified_backup
+from action_tracker.localization.history_audit import verified_backup, validate_backup_report
+from action_tracker.operations.task_backup import task_scope
 from action_tracker.services.runtime import RunLock
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--evidence',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--commit',action='store_true')
     p.add_argument('--verified-backup-report',type=Path)
-    a=p.parse_args();cfg=load_settings();e=json.loads(a.evidence.read_text(encoding='utf-8'))
+    p.add_argument('--task-id')
+    a=p.parse_args();cfg=load_settings()
+    task_id=a.task_id or ('original-price-'+hashlib.sha256(a.evidence.read_bytes()).hexdigest()[:24])
+    with task_scope(cfg,task_id=task_id,batch_id=hashlib.sha256(a.evidence.read_bytes()).hexdigest()):
+        return _run(a,cfg)
+
+
+def _run(a,cfg):
+    e=json.loads(a.evidence.read_text(encoding='utf-8'))
     if not e.get('authorization_text'):raise ValueError('PRICE_CORRECTION_AUTHORIZATION_REQUIRED')
     a.output.mkdir(parents=True,exist_ok=True);lock=RunLock(Path(cfg['paths']['state']));lock.acquire('original-price-clear',command='verified-original-price-clear')
     try:
@@ -27,15 +36,7 @@ def main():
         if not a.commit or preview['status']=='NOOP':return
         if a.verified_backup_report:
             backup=json.loads(a.verified_backup_report.read_text(encoding='utf-8'))
-            if backup.get('integrity')!='ok' or backup.get('foreign_key_violations') or backup.get('logical_parity') is not True:
-                raise ValueError('PRICE_BACKUP_NOT_VERIFIED')
-            digest=hashlib.sha256()
-            with Path(backup['backup']).open('rb') as f:
-                for block in iter(lambda:f.read(1024*1024),b''):digest.update(block)
-            if digest.hexdigest()!=backup['sha256']:raise ValueError('PRICE_BACKUP_DIGEST_CHANGED')
-            with closing(sqlite3.connect('file:'+Path(backup['restore']).resolve().as_posix()+'?mode=ro',uri=True)) as db:
-                old=db.execute("SELECT commit_id FROM commit_batches WHERE status='COMMITTED' ORDER BY committed_at DESC,commit_id DESC LIMIT 1").fetchone()
-            if not old or old[0]!=e['expected_base_commit_id']:raise ValueError('PRICE_BACKUP_BASE_MISMATCH')
+            backup=validate_backup_report(database_path(cfg),backup)
         else:
             dest=Path(cfg['paths']['backups'])/'original_price_clear'/(datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')+'.sqlite3')
             backup=verified_backup(database_path(cfg),dest)
