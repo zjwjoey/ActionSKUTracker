@@ -62,6 +62,15 @@ def test_disabled_backend_never_reads_or_creates(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == []
 
 
+def test_cache_bounds_apply_only_to_private_client(backend,monkeypatch):
+    calls=mock_cli(monkeypatch,lambda args:{})
+    result=backend.bound_private_cache()
+    args=calls[0][0]
+    assert 'cache' in args and '--content-cache-size-limit-mb=16' in args
+    assert '--metadata-cache-size-limit-mb=8' in args
+    assert result['scope']=='PRIVATE_CLIENT_ONLY'
+
+
 @pytest.mark.parametrize("kwargs", [{"enabled": "false"}, {"max_parallel": 0}, {"max_parallel": 5},
     {"read_retries": 3}, {"timeout_seconds": True}, {"provider": "unknown"},
     {"prefix": "../existing/"}, {"prefix": "/existing/"}, {"endpoint": "http://host"},

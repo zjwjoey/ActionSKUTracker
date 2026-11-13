@@ -126,6 +126,7 @@ class BackupPool:
         index=self._load()
         known={Path(p) for a in index['assets'].values() for p in a['paths']}
         known.update(Path(p) for p in index.get('task_manifests',{}).values())
+        known.update(Path(p) for p in index.get('kopia_controls',{}).values())
         for parent, dirs, files in os.walk(self.root, followlinks=False):
             for name in list(dirs):
                 p=Path(parent)/name
@@ -139,6 +140,7 @@ class BackupPool:
                     logical+=st.st_size
                     if key not in seen:total+=pool_files.allocation(p);seen.add(key)
                     control=(p in {self.root/'pool.json',self.root/'index.json',self.root/'pool.lock'}
+                             or (p.is_relative_to(self.root/'kopia') and index.get('kopia_owned_root')==str(self.root/'kopia'))
                              or p.parent==self.root/'cleanup'
                              or (p.parent==self.root/'leases' and (p.stem in index['assets']
                                  or p.name in index.get('source_locks',{}))))
@@ -182,9 +184,12 @@ class BackupPool:
             alternate=index['assets'].get(a.get('alternative_id'))
             if not alternate or alternate['asset_id']==a['asset_id'] or not self._valid(alternate):return 'NO_INDEPENDENT_RECOVERY'
             if alternate.get('sha256')!=a.get('sha256') or alternate.get('identity')!=a.get('identity'):return 'ALTERNATIVE_VERSION_MISMATCH'
-        elif a['kind'] in ('restore_test','kopia_stage'):
+        elif a['kind'] in ('restore_test','kopia_stage','kopia_bundle'):
             source=index['assets'].get(a.get('source_asset'))
             if not source or not self._valid(source):return 'SOURCE_RECOVERY_NOT_VALID'
+            if a['kind']=='kopia_bundle':
+                from .pool_bundles import valid_release_proof
+                if not valid_release_proof(self,a):return 'KOPIA_ROUNDTRIP_NOT_VERIFIED'
         elif a['kind']!='temporary':return 'UNKNOWN_KIND'
         return None
 
@@ -200,7 +205,13 @@ class BackupPool:
                 # A durable intent makes a partial file-group deletion visible after a crash.
                 self._audit('DELETE_INTENT',asset_id=a['asset_id'],files=a['files'])
                 mutation_started=True
-                pool_files.delete_group(a['files'],root=self.root,final_check=check)
+                if a['kind']=='kopia_bundle':
+                    from .pool_bundles import check_tree,check_layout,remove_empty_directories
+                    check_tree(self,a)
+                    pool_files.delete_group(a['files'],root=self.root,final_check=lambda:(check(),check_layout(self,a)),
+                                            owned_directory=Path(a['path']))
+                    remove_empty_directories(self,a)
+                else:pool_files.delete_group(a['files'],root=self.root,final_check=check)
                 a['state']='DELETED';a['deleted_at']=now()
                 self._write('index.json',index)
                 after=self._usage()['allocated_bytes'];free_after=shutil.disk_usage(self.root).free
@@ -261,7 +272,7 @@ class BackupPool:
     def _reserve(self,specs):
         for s in specs:
             if (type(s.get('expected_bytes')) is not int or s['expected_bytes']<0
-                    or s.get('kind') not in ('database_backup','restore_test','kopia_stage','temporary')):
+                    or s.get('kind') not in ('database_backup','restore_test','kopia_stage','temporary','kopia_bundle')):
                 raise StorageError('POOL_RESERVATION_INVALID')
         with self._lock() as index:
             expected=sum(s['expected_bytes']+OVERHEAD for s in specs)
@@ -276,12 +287,15 @@ class BackupPool:
                 folder='active' if s['kind']=='database_backup' else 'staging'
                 suffix='.sqlite3' if s['kind']!='temporary' else ('.json' if s.get('format')=='json' else '.bin')
                 path=self.root/folder/(token+suffix)
+                if s['kind']=='kopia_bundle':path=self.root/'staging'/('bundle-'+token)
                 a={**s,'asset_id':token,'path':str(path),'paths':[str(path)],'sequence':index['sequence'],
                    'state':'CREATING','created_at':now(),'references':[],
                    'recovery_required':s.get('recovery_required',True),
                    'reservation_bytes':s['expected_bytes']+OVERHEAD,'files':[],
                    'integrity_verified':False,'restore_verified':False}
                 if s['kind']=='database_backup':a['paths'] += [str(path)+'.asset.json',str(path)+'.failure.json']
+                if s['kind']=='kopia_bundle':
+                    a['paths']=[str(path/'backup-set.json')]+[str(path/v['snapshot_path']) for v in s['plan']['assets']]
                 index['assets'][token]=a;result.append(dict(a))
             self._write('index.json',index)
             return result
