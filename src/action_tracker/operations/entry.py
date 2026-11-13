@@ -22,6 +22,7 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
     db = database_path(cfg)
     report_root = Path(cfg["project_root"]) / "runtime" / "reports" / "daily"
     auto_selected = False
+    prior = {}
     if run_id and not resume:
         raise ValueError("RUN_ID_ONLY_ALLOWED_WITH_RESUME")
     if resume:
@@ -213,9 +214,23 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
             return StepResult("SUCCESS", {"delegated": True, "commit_status": "FULL_COMMIT", "commit_id": commit_id, "recovery": recovered})
         return StepResult("SUCCESS", {"delegated": True, "commit_status": status, "commit_id": result.get("commit_id"), "reason": "compatibility export handled by delegated chain"})
 
+    managed_pool = None
+    def backup_step():
+        nonlocal managed_pool
+        from .backup_pool import configured_pool, PoolCapacityError
+        managed_pool = configured_pool(cfg)
+        destination = Path(cfg['paths']['backups']) / business_date / f'{run_id}.sqlite3'
+        try:
+            kwargs = {'pool':managed_pool} if managed_pool is not None else {}
+            return StepResult('SUCCESS',backup_sqlite(db,destination,run_id=run_id,
+                                                     code_version=git_commit_info(),**kwargs))
+        except PoolCapacityError as exc:
+            return StepResult('BLOCKED',{'reason':'BACKUP_POOL_CAPACITY_BLOCKED','capacity_report':exc.report},
+                              error_code='BACKUP_POOL_CAPACITY_BLOCKED')
+
     steps: dict[str, Any] = {
         "PREFLIGHT": lambda: StepResult("SUCCESS", {**production_preflight(cfg, db, report_root), "code_version": git_commit_info()}),
-        "BACKUP": lambda: StepResult("SUCCESS", backup_sqlite(db, Path(cfg["paths"]["backups"]) / business_date / f"{run_id}.sqlite3", run_id=run_id, code_version=git_commit_info())),
+        "BACKUP": backup_step,
         "COLLECTION": collect_existing_chain,
         "QA": qa_step,
         "DB_COMMIT": db_commit_step,
@@ -231,7 +246,41 @@ def run_production(cfg: dict[str, Any], *, business_date: str, resume: bool = Fa
     runner = ProductionRunner(root=root, business_date=business_date, run_id=run_id, steps=steps, lock_dir=Path(cfg["paths"]["state"]))
     # Backup artifact needs the generated run id in its manifest; runner's
     # backup step is still safe if the destination is fixed per business date.
+    # Resume can skip BACKUP and COLLECTION, so gate every resumed write here.
+    saved = prior.get('steps', {}).get('BACKUP', {}).get('details', {})
+    if resume and saved.get('pool_asset_id'):
+        from .backup_pool import configured_pool
+        from .storage_foundation import StorageError
+        managed_pool = configured_pool(cfg)
+        if managed_pool is None or str(managed_pool.root) != saved.get('pool_root'):
+            raise StorageError('BACKUP_POOL_RESUME_CONFIG_CHANGED')
+        managed_pool.verify(saved['pool_asset_id'])
+        managed_pool.checkpoint()
     result = runner.run(resume=resume, from_step=from_step)
+    if managed_pool is not None:
+        try:
+            result['backup_pool']=managed_pool.finish_task(run_id,state='COMPLETED' if result['state']=='SUCCESS' else 'FAILED')
+        except Exception as exc:
+            # A post-commit maintenance failure is not a business rollback.
+            result['backup_pool']={'status':'BLOCKED','reason':type(exc).__name__,
+                                   'report':getattr(exc,'report',None)}
+            if result['state']=='SUCCESS':result['state']='DEGRADED'
+            result['errors'].append({'step':'BACKUP_POOL','code':'BACKUP_POOL_MAINTENANCE_FAILED',
+                                     'message':str(exc),'retryable':True})
+        from .contracts import EXIT_CODES
+        from .reporter import write_daily_report
+        result['exit_code']=EXIT_CODES[result['state']]
+        result['steps']['REPORT']['details']['backup_pool']=result['backup_pool']
+        try:
+            write_daily_report(root,business_date,run_id,
+                {k:result[k] for k in ('run_id','business_date','state','started_at','finished_at','exit_code')},
+                [{'step':k,**v} for k,v in result['steps'].items()],result['errors'])
+        except Exception as exc:
+            result['errors'].append({'step':'REPORT','code':'REPORT_WRITE_FAILED','message':str(exc),'retryable':True})
+            result['steps']['REPORT']['status']='FAILED'
+            if result['state']=='SUCCESS':result['state']='DEGRADED'
+            result['exit_code']=EXIT_CODES[result['state']]
+        runner._save(result)
     if transient_task is not None:
         try:
             result['transient_workspace'] = record_run_workspace(transient_task)

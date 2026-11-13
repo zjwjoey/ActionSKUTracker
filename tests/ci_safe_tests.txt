@@ -268,3 +268,5 @@ tests/test_qualified_light_firstaid_scent.py
 tests/test_oven_mitt_own_field.py
 
 tests/test_repair75_precision.py
+# CI_SAFE: generated owned backup pools; quota, locks, CLI and recovery guards.
+tests/test_backup_pool.py

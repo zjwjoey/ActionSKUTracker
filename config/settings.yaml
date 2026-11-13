@@ -65,6 +65,15 @@ storage:
   mode: SQLITE_PRIMARY
   db_path: runtime/db/action_tracker.db
 
+# Phase 2 development capability. Deployment/activation is separate; no historic
+# backup adoption, production migration, Kopia upload or old-backup deletion.
+backup_pool:
+  enabled: false
+  root: runtime/backup_pool
+  max_bytes: 5368709120
+  target_bytes: 4294967296
+  automatic_cleanup: true
+
 # Storage Foundation P1 is operator driven. These settings never enable cleanup
 # or relocation in data-update. Archive offline means ASSET_UNAVAILABLE.
 storage_foundation:

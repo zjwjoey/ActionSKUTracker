@@ -5,5 +5,7 @@ from .storage_foundation import verified_backup
 
 
 def backup_sqlite(source: Path, destination: Path, *, run_id: str,
-                  code_version: str | None = None) -> dict:
+                  code_version: str | None = None, pool=None) -> dict:
+    if pool is not None:
+        return pool.backup(source,task_id=run_id,code_version=code_version)
     return verified_backup(source, destination, run_id=run_id, code_version=code_version)
