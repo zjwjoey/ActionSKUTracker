@@ -17,6 +17,8 @@ from pathlib import Path
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="action_tracker", description="Action 西班牙站商品每日监测程序")
     sub = p.add_subparsers(dest="command")
+    from .operations.backup_pool_cli import register as register_backup_pool
+    register_backup_pool(sub)
 
     d = sub.add_parser("daily-run", help="采集诊断；SQLite PRIMARY 正式入口使用 data-update")
     d.add_argument("--dry-run", action="store_true", default=None, help="只出证据不写 Master")
@@ -344,6 +346,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == 'backup-pool':
+        from .operations.backup_pool_cli import run as run_backup_pool
+        return run_backup_pool(args)
     if getattr(args, "data_root", ""):
         # Must be set before load_settings() so database_path() resolves the
         # explicit production data root rather than an empty worktree DB.
