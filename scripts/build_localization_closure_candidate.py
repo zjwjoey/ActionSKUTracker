@@ -42,9 +42,11 @@ def _sha256(path: Path) -> str:
 
 
 def _copy_db(source: Path, target: Path) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
+    if source.resolve()==target.resolve():
+        raise ValueError('CANDIDATE_SOURCE_TARGET_MUST_DIFFER')
     if target.exists():
-        target.unlink()
+        raise ValueError('EXISTING_CANDIDATE_NOT_OVERWRITTEN')
+    target.parent.mkdir(parents=True, exist_ok=True)
     source_uri = f"file:{Path(source).absolute().as_posix()}?mode=ro"
     with sqlite3.connect(source_uri, uri=True) as src, sqlite3.connect(target) as dst:
         src.backup(dst)

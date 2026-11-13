@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from .connection import connect
+from ..operations.task_backup import formal_write
 from .schema import migrate_v2
 from ..services.hashing import localization_field_source_hashes, localization_source_hash
 from ..services.normalization import normalize_official_text
@@ -135,6 +136,7 @@ class ProductionWriter:
                 raise ProductionDatabaseError("DB_ROLE_MISMATCH_REQUIRES_EXPLICIT_CUTOVER")
         migrate_v2(self.path, role=role)
 
+    @formal_write
     def commit(self, bundle: CommitBundle) -> str:
         field_only = bundle.run_record.get('commit_scope') == 'POSITIVE_FACTS_ONLY'
         if field_only and not bundle.requires_collection_integrity:
@@ -1055,6 +1057,11 @@ def backup_database(source: Path, destination: Path) -> dict[str, Any]:
     source remains open and is therefore the only supported production backup
     primitive.
     """
+    from ..operations.task_backup import manager_for
+    active=manager_for(source)
+    if active is not None:
+        report=active[0].ensure()
+        return {**report,'source':str(source),'destination':report['backup_path']}
     source = Path(source)
     destination = Path(destination)
     if not source.exists():
@@ -1092,6 +1099,7 @@ _LOCALIZATION_RESTORE_FIELDS = {
 }
 
 
+@formal_write
 def repair_primary_localization_regression(
     path: Path,
     *,
@@ -1349,6 +1357,7 @@ _DETAIL_CORRECTION_FIELDS = {
 }
 
 
+@formal_write
 def apply_detail_corrections(
     path: Path,
     *,
@@ -1568,6 +1577,7 @@ def apply_detail_corrections(
             "content_change_events": content_events, "mode": mode}
 
 
+@formal_write
 def apply_localization_correction(
     path: Path,
     *,
@@ -1628,6 +1638,7 @@ def apply_localization_correction(
     }
 
 
+@formal_write
 def apply_approved_localization_patches(
     path: Path,
     *,

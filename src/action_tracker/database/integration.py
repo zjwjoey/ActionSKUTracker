@@ -36,6 +36,8 @@ def database_path(cfg: Mapping[str, Any]) -> Path:
     path = Path(raw or (Path(cfg["project_root"]) / "runtime" / "db" / "action_tracker.db"))
     if not path.is_absolute():
         path = Path(cfg["project_root"]) / path
+    from ..operations.task_backup import register_policy
+    register_policy(cfg,path)
     return path
 
 

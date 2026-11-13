@@ -67,6 +67,9 @@ storage:
 
 # Phase 2 development capability. Deployment/activation is separate; no historic
 # backup adoption, production migration, Kopia upload or old-backup deletion.
+task_backup:
+  enabled: false
+
 backup_pool:
   enabled: false
   root: runtime/backup_pool
