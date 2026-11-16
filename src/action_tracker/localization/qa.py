@@ -1058,6 +1058,14 @@ def _normalize_numeric_syntax(value: str) -> str:
     return text
 
 
+def _explicit_included_pencil_count(value: str) -> int:
+    """Count singular items only in this complete positive inclusion list."""
+    return len(re.findall(
+        r"(?:^|[\n.;])\s*incluye\s+[1-9]\d*\s+dados\s+y\s+un\s+l[áa]piz\b",
+        str(value or ""), re.I,
+    ))
+
+
 def _numbers(value: str) -> Counter[str]:
     text = _normalize_numeric_syntax(value)
     # A literal protected 3D/2D token cannot authorize an unrelated 3/2-piece
@@ -1070,6 +1078,13 @@ def _numbers(value: str) -> Counter[str]:
     quadruple_outlets = re.findall(r"\bregleta\s+de\s+enchufes\s+cu[áa]druple\b", text, re.I)
     if quadruple_outlets:
         numbers["4"] += len(quadruple_outlets)
+    # An explicit inclusion-list item is a count, not a generic article.
+    # Keep this tied to a complete own-field dice-and-pencil enumeration;
+    # arbitrary ``un`` text, other fields and negative/prose prefixes must
+    # not authorize an otherwise unsupported one-item claim.
+    included_pencils = _explicit_included_pencil_count(text)
+    if included_pencils:
+        numbers["1"] += included_pencils
     # Spelled-out quantities are still own-field source facts. Restrict this
     # to complete cardinal + counted-noun phrases, not brand/game names or
     # pronouns. Unsupported compound numbers must not become their last digit.
@@ -1794,6 +1809,14 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             extra = count - allowed_source_numbers.get(value, 0)
             if extra > 0:
                 duplicated[value] += extra
+        # This newly recognized singular item permits its source occurrence,
+        # never arbitrary additional one-item claims elsewhere in the target.
+        # Keep the check scoped to the complete inclusion phrase above; other
+        # existing repetition/equivalence contracts remain unchanged.
+        if _explicit_included_pencil_count(source_text):
+            extra_ones = target_numbers.get("1", 0) - source_numbers.get("1", 0)
+            if extra_ones > 0:
+                duplicated["1"] = max(duplicated.get("1", 0), extra_ones)
         if dropped:
             findings.append(QAFinding("NUMERIC_DROPPED", "BLOCKER", field_name, {"source": dict(source_numbers), "target": dict(target_numbers), "missing": dict(dropped)}, source=source_text, target=target, message="numeric fact dropped", blocking=True))
         if duplicated:
