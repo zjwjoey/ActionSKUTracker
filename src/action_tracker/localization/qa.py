@@ -1080,7 +1080,7 @@ def _numbers(value: str) -> Counter[str]:
     for match in re.finditer(r'\buna\s+hora\b', text, re.I):
         if not re.search(r'\b(?:veinti|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|mil)\s*(?:y\s*)?$', text[:match.start()], re.I):
             numbers['1'] += 1
-    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas|pendientes|cajas|colores|posiciones)"
+    counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas|pendientes|cajas|colores|posiciones|intensidades\s+de\s+luz)"
     for match in re.finditer(rf"\b({'|'.join(spanish_cardinals)})\s+(?:pequeñ[oa]s\s+)?{counted_nouns}\b", text, re.I):
         prefix = text[:match.start()]
         # A conjunction after a counted noun starts another quantity, e.g.

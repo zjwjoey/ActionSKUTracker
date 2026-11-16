@@ -76,6 +76,17 @@ def test_one_hour_and_chinese_control_positions_keep_numbers_protected():
     assert 'NUMERIC_ADDED' in rules(check('Una máscara','面罩需1小时'))
     assert 'NUMERIC_DROPPED' in rules(check('3 posiciones','两档'))
 
+def test_repeated_spelled_lighting_counts_are_each_source_facts():
+    # Real postscan case3221537: both source sentences state three settings.
+    source='Con tres intensidades de luz; con tres posiciones de luz'
+    target='三种亮度可选；三档灯光'
+    assert _numbers(source)==_numbers(target)=={'3':2}
+    assert 'NUMERIC_ADDED' not in rules(check(source,target))
+    assert 'NUMERIC_DROPPED' in rules(check(source,'三档灯光'))
+    assert 'NUMERIC_ADDED' in rules(check('Con tres intensidades de luz',target))
+    assert 'NUMERIC_ADDED' in rules(check('Intensidades de luz','3档灯光'))
+    assert 'NUMERIC_ADDED' in rules(check('treinta y tres intensidades de luz','3档灯光'))
+
 @pytest.mark.parametrize('name',['Better Cotton Initiative','Action'])
 def test_complete_own_field_body_identity_only(name):
     assert mask_source_bound_body_names(name,name).strip()==''
