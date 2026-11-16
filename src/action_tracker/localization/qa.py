@@ -403,6 +403,15 @@ def _is_allowed_translated_strict_token(source_text: str, token: str, target: st
 
 
 def _is_allowed_translated_tech_token(source_text: str, source_token: str, target: str) -> bool:
+    if str(source_token or '').casefold() == 'mano':
+        # MANO is an ordinary word only inside this typed handheld-microphone
+        # attribute. A second MANO model/code occurrence remains protected.
+        phrase = (r'(?:^|[;；\n])\s*Tipo de fijación para el micrófono\s*[:：]\s*'
+                  r'MICRÓFONO DE MANO\s*(?=[;；\n]|$)')
+        remaining = re.sub(phrase, ' ', source_text, flags=re.I)
+        affirmative = re.sub(r'(?:并非|不是|没有|无|非|不)\s*手持麦克风', '', target)
+        return (remaining != source_text and '手持麦克风' in affirmative
+                and _casefold_token_count(target, 'MANO') >= _casefold_token_count(remaining, 'MANO'))
     if str(source_token or '').casefold() == '3d':
         standalone = r'(?<![A-Za-z0-9_-])3D(?![A-Za-z0-9_-])'
         if (not re.search(standalone, source_text, re.I) or
@@ -585,6 +594,11 @@ def _is_ordinary_spanish_uppercase_token(source_text: str, source_token: str) ->
     token = str(source_token or "").strip()
     source = str(source_text or "")
     upper = token.upper()
+    if upper == "MANO":
+        # This spelling can also be a model. Only the complete typed
+        # microphone attribute in _is_allowed_translated_tech_token resolves
+        # its ordinary sense; vowel shape alone cannot waive a model.
+        return False
     # ``_TOKEN_RE`` is ASCII-oriented and splits accented words into a
     # prefix/suffix pair: ``COLCHÓN`` -> ``COLCH`` and ``ÓN``.  Detect the
     # prefix before applying the acronym-shape heuristic; short fragments
@@ -773,6 +787,9 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
                 r"\btipo\s+de\s+guantes\s*[:：]\s*manoplas\s*(?=[;；\n]|$)"):
             return ("连指手套", "并指手套")
         if _source_term_only_in_phrases(
+                source_text, r"\bmanoplas\b", r"\bgorro\s+y\s+manoplas\b(?!\s+(?:de|para)\b)"):
+            return ("连指手套", "并指手套")
+        if _source_term_only_in_phrases(
                 source_text, r"\bmanoplas\b",
                 r"\bmanoplas\s+(?:de|para\s+el)\s+(?:baño|ducha)\b"):
             return ("沐浴手套", "洗澡手套")
@@ -790,7 +807,13 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         return ("洁厕剂", "马桶清洁剂", "厕所清洁剂")
     if term in {"paño", "paños"} and _source_term_only_in_phrases(
             source_text, r"\bpaños?\b", r"\bpaños?\s+hidrof[ií]licos?\b"):
-        return ("吸水布", "亲水布")
+        return ("吸水布", "亲水布", "亲水巾", "吸水巾")
+    if term == "paño" and re.search(
+            r'\bTipo de peeling\s*/\s*mascarilla\s*[:：]\s*Mascarilla hidratante\b', source_text, re.I
+    ) and _source_term_only_in_phrases(
+            source_text, r'\bpaño\b',
+            r'(?:^|[;；\n])\s*(?:Sustancia|Tipo de dispensador)\s*[:：]\s*Paño\s*(?=[;；\n]|$)'):
+        return ("巾片", "布片", "面膜布")
     if term == "goma":
         gummy_phrases = [r"\bositos\s+de\s+goma\b"]
         # Exact affirmative attribute values only. A negated or merely
@@ -806,9 +829,9 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # consume it when no separate wood occurrence remains in this field.
     # Bamboo fibre likewise names a textile material, not a solid bamboo item.
     if source_term.casefold() == "madera":
-        remaining = re.sub(r"\baspecto\s+de\s+madera\b", " ", source_text, flags=re.I)
+        remaining = re.sub(r"\b(?:aspecto\s+de|imitación)\s+madera\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bmadera\b", remaining, re.I):
-            return ("木纹", "木质外观", "木材外观")
+            return ("仿木纹", "木纹", "木质外观", "木材外观")
         remaining = re.sub(r'\bmasilla\s+para\s+madera\b', ' ', source_text, flags=re.I)
         if remaining != source_text and not re.search(r'\bmadera\b', remaining, re.I):
             return ('木器', '木材', '木用')
@@ -817,7 +840,7 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     if re.fullmatch(r"cinceles?\s+de\s+madera", source_term, re.I) and canonical == "木工":
         return ("木工凿", "木工用凿", "木材加工凿")
     if source_term.casefold() == "bambú":
-        remaining = re.sub(r"\bfibras?\s+de\s+bambú\b", " ", source_text, flags=re.I)
+        remaining = re.sub(r"\b(?:fibras?|viscosa)\s+de\s+bambú\b", " ", source_text, flags=re.I)
         if remaining != source_text and not re.search(r"\bbambú\b", remaining, re.I):
             return ("竹纤维",)
         # Retail sock titles/prose use calcetines de bambú for bamboo textile.
@@ -828,6 +851,8 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
                 and not re.search(r'\b(?:no|sin)\b[^.;\n]{0,35}' + textile, source_text, re.I)
                 and not re.search(r'\b(?:para|de)\s+' + textile, source_text, re.I)):
             remaining = re.sub(textile, ' ', source_text, flags=re.I)
+            remaining = re.sub(r'\bviscosa\s+de\s+bambú\b', ' ', remaining, flags=re.I)
+            remaining = re.sub(r'\bproducto\s+hecho\s+con\s+bambú\b', ' ', remaining, flags=re.I)
             remaining = re.sub(r'\b\d+(?:[.,]\d+)?\s*%\s*(?:de\s+)?bambú\b', ' ', remaining, flags=re.I)
             if not re.search(r'\bbambú\b', remaining, re.I):
                 return ('竹纤维',)
@@ -844,6 +869,29 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # rather than an additional lamp product. Do not waive generic product
     # nouns or borrow the qualifying phrase from another source field.
     if source_term.casefold() == "iluminación":
+        # A qualified lighting function/effect is not an extra lamp product.
+        # Consume every occurrence, so an unrelated second product keeps its
+        # original canonical check. Do not borrow context from other fields.
+        lighting_functions = (
+            (r'\biluminación\s+acogedora\b', ("温馨照明", "温馨灯光")),
+            (r'\biluminación\s+sutil\b', ("柔和灯光", "柔和照明")),
+            (r'\biluminación\s+ambiente\b', ("氛围照明", "环境照明")),
+            (r'\bfunciones\s+de\s+iluminación\b', ("灯光模式", "照明模式")),
+            (r'\biluminación\s+de\s+pared\s+multicolor\b', ("多彩墙面灯", "多彩墙面照明")),
+        )
+        for phrase, localized in lighting_functions:
+            if _source_term_only_in_phrases(source_text, r'\biluminación\b', phrase):
+                aliases.extend(localized)
+        if (re.search(r'\btablero\s+de\s+dibujo\b', source_text, re.I)
+                and _source_term_only_in_phrases(source_text, r'\biluminación\b', r'\biluminación\s+LED\b')):
+            aliases.extend(("LED亮度", "LED 亮度"))
+        if (re.search(r'\blámpara\s+de\s+pared\s+solar\b', source_text, re.I)
+                and _source_term_only_in_phrases(source_text, r'\biluminación\b', r'\biluminación\s+automática\b')):
+            aliases.append("照明")
+        if (re.search(r'\bguirnalda\s+de\s+luces\b', source_text, re.I)
+                and _source_term_only_in_phrases(source_text, r'\biluminación\b',
+                     r'\b(?:controla\s+la|encender\s+y\s+apagar\s+la)\s+iluminación\b')):
+            aliases.extend(("照明", "灯光"))
         # Here illumination is the function of the explicitly named wall
         # lamp, not another product. Require both phrases in this field;
         # a lamp title cannot authorize an unrelated prose omission.
@@ -1027,6 +1075,11 @@ def _numbers(value: str) -> Counter[str]:
     # pronouns. Unsupported compound numbers must not become their last digit.
     spanish_cardinals = {"dos": "2", "tres": "3", "cuatro": "4", "cinco": "5",
                          "seis": "6", "siete": "7", "ocho": "8", "nueve": "9", "diez": "10"}
+    # A measured duration, not an arbitrary article/pronoun. Compound-number
+    # suffixes must not silently authorize a one-hour claim.
+    for match in re.finditer(r'\buna\s+hora\b', text, re.I):
+        if not re.search(r'\b(?:veinti|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|mil)\s*(?:y\s*)?$', text[:match.start()], re.I):
+            numbers['1'] += 1
     counted_nouns = r"(?:unidades|piezas|pares|rollos|dispositivos|puertos|pestañas|altavoces|bolsillos|modos|horas|pendientes|cajas|colores|posiciones)"
     for match in re.finditer(rf"\b({'|'.join(spanish_cardinals)})\s+(?:pequeñ[oa]s\s+)?{counted_nouns}\b", text, re.I):
         prefix = text[:match.start()]
@@ -1053,7 +1106,7 @@ def _numbers(value: str) -> Counter[str]:
     # such as ``一种``/``一天`` occur in ordinary descriptions even when the
     # Spanish source contains no number.  ``块`` is included for phrases such
     # as ``三块面板``.
-    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋卷双位端口环块层伏瓦毫升升克公斤厘米毫米米小时款")
+    quantity_units = set("个件只片颗粒张页套人组支条把盒包瓶罐袋卷双位端口环块层伏瓦毫升升克公斤厘米毫米米小时款档")
     digit_chars = set(chinese_digits) | set("0123456789")
     for index, char in enumerate(text):
         if char not in chinese_digits:
@@ -1603,7 +1656,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
             represented = any(alias.casefold() in target.casefold() for alias in aliases)
-            if (source_term.casefold() in {"calcetines", "detergente", "detergentes", "paño", "paños", "goma"}
+            if (source_term.casefold() in {"calcetines", "detergente", "detergentes", "paño", "paños", "goma", "manoplas"}
                     and not re.search(r"\b(?:sin|no contiene|no incluye|no es|no son)\s+" + re.escape(source_term) + r"\b", source_text, re.I)):
                 # An explicitly negated rendering is not preservation of a
                 # positive source fact. Keep all other hard guards active.
@@ -1626,6 +1679,13 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                                and not re.search(r"洗洁精|洗衣粉|洗衣凝珠|洗涤凝珠|洗碗粉|洗碗机粉", target))
             if fact_type == "MATERIAL":
                 represented = represented or _structured_material_atom(source_term, source_text, target, field_name)
+                if (source_term.casefold() in {"madera", "bambú"}
+                        and not re.search(r'\b(?:sin|no contiene|no es)\s+' + re.escape(source_term) + r'\b', source_text, re.I)):
+                    affirmative = target
+                    for alias in sorted(aliases, key=len, reverse=True):
+                        affirmative = re.sub(r'(?:不是|并非|不采用|不含|没有|无|非|不)\s*' + re.escape(alias), '', affirmative)
+                    represented = (any(alias.casefold() in affirmative.casefold() for alias in aliases)
+                                   or _structured_material_atom(source_term, source_text, affirmative, field_name))
             if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
                 affirmative_target = re.sub(
                     r"(?:不含|没有|无|非|不是)\s*橡皮(?:擦)?|橡皮(?:筋|圈|带)", "", target)

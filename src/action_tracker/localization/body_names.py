@@ -8,6 +8,8 @@ import re
 
 
 REVIEWED_BODY_NAMES = (
+    "Better Cotton Initiative",
+    "Action",
     "La Maison Rêve",
     "Play-Doh Create & Celebrate",
     # Complete own-field identities reviewed in the export-brand25 audit.
