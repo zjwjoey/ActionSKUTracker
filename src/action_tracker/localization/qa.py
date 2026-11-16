@@ -494,6 +494,37 @@ def _is_omittable_display_brand_tech(source_text: str, source_token: str, target
             _casefold_token_count(target, source_token) == _casefold_token_count(remaining, source_token))
 
 
+def _reviewed_name_brand_scan_source(source: SourceFacts, text: str, facts: tuple[Any, ...]) -> str:
+    """Resolve a reviewed brand's model-like spelling, never an actual model.
+
+    Only exact own-title, current-hash BRAND evidence is consumed, once.
+    Technical facts, compound codes and independent occurrences stay visible.
+    """
+    from ..services.hashing import localization_field_source_hash
+    expected = localization_field_source_hash(source.as_record(), 'name')
+    remaining = text
+    used = set()
+    for fact in facts:
+        span = str(getattr(fact, 'source_text', '') or '')
+        if (getattr(fact, 'semantic_type', '') != 'BRAND'
+                or getattr(fact, 'source_field', '') != 'name_es'
+                or getattr(fact, 'fact_source_hash', '') != expected
+                or getattr(fact, 'coverage_status', '') != 'VERIFIED'
+                or not getattr(fact, 'evidence', '') or not span
+                or span.casefold() in used
+                or span.upper() in {'USB', 'USB-C', 'USB-A', 'HDMI', 'LED', 'AA', 'AAA', 'MDF', 'FSC', 'A4', 'A3', 'XL', 'XXL'}):
+            continue
+        if any(getattr(other, 'semantic_type', '') == 'MODEL'
+               and getattr(other, 'source_field', '') == 'name_es'
+               and span.casefold() in str(getattr(other, 'source_text', '')).casefold()
+               for other in facts):
+            continue
+        remaining = re.sub(r'(?<![\w/-])' + re.escape(span) + r'(?![\w/-])',
+                           ' ', remaining, count=1, flags=re.I)
+        used.add(span.casefold())
+    return remaining
+
+
 def approved_name_review_facts(record: Mapping[str, Any]) -> tuple[SemanticFact, ...]:
     """Reuse only approved, current, exact-value own-name review evidence.
 
@@ -742,9 +773,21 @@ def _is_source_bound_laundry_liquid(source: SourceFacts, source_text: str, field
     if re.search(r"\b(?:para|de|del)\s+(?:(?:el|un|tu|su)\s+)?detergentes?\b", source_text, re.I):
         return False
     texts = "\n".join((source.name_es, source.spec_es, source.desc_es, source.details_es))
-    if (not re.search(liquid, texts, re.I)
+    # Bare detergent titles can use affirmative structured washer/laundry
+    # attributes plus a content volume as noun disambiguation. No number or
+    # unit is relocated, and other fields still need their own liquid phrase.
+    pairs = parse_structured_details(source.details_es)
+    structured_liquid_laundry = (bare_title
+        and any(p.key.strip().casefold() == 'apto para tipo de aparato'
+                and p.value.strip().casefold() == 'lavadora' for p in pairs)
+        and any(p.key.strip().casefold() == 'apto para tipo de colada a color'
+                and p.value.strip().casefold() in {'colada a color', 'colada blanca'} for p in pairs)
+        and any(p.key.strip().casefold() == 'contenido'
+                and re.fullmatch(r'[1-9]\d*(?:[.,]\d+)?\s*(?:ml|litros?|l)', p.value.strip(), re.I)
+                for p in pairs))
+    if ((not re.search(liquid, texts, re.I) and not structured_liquid_laundry)
             or re.search(r"\b(?:lavavajillas|vajillas?|platos?|inodoros?|suelos?|alfombras?|moquetas?)\b", texts, re.I)
-            or re.search(r"\bdetergentes?\s+(?:en\s+(?:polvo|c[aá]psulas|gel)|s[oó]lidos?)\b", texts, re.I)
+            or re.search(r"\b(?:polvo|c[aá]psulas?|gel|s[oó]lidos?)\b", texts, re.I)
             or re.search(r"\b(?:no|sin)\b[^.;\n；!?]{0,50}\bdetergentes?\b", texts, re.I)
             or re.search(r"\bno\b[^.;\n；!?]{0,50}\b(?:ropa|colada|lavadora)\b", texts, re.I)):
         return False
@@ -869,6 +912,9 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # rather than an additional lamp product. Do not waive generic product
     # nouns or borrow the qualifying phrase from another source field.
     if source_term.casefold() == "iluminación":
+        if _source_term_only_in_phrases(source_text, r'\biluminación\b',
+                r'\bcon\s+iluminación\s+blanca\s+o\s+de\s+color\b'):
+            aliases.extend(('白色或彩色照明', '白光或彩光'))
         # A qualified lighting function/effect is not an extra lamp product.
         # Consume every occurrence, so an unrelated second product keeps its
         # original canonical check. Do not borrow context from other fields.
@@ -1826,6 +1872,7 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             # A verified complete brand span is not a size. Scan any XXL
             # outside that span normally, including when both roles occur.
             technical_source = re.sub(r'\bXXL\s+Nutrition\b', ' ', technical_source, flags=re.I)
+            technical_source = _reviewed_name_brand_scan_source(source, technical_source, semantic_facts)
         protected = protect_text(_capacity_scan_view(technical_source))
         target_protected = protect_text(_capacity_scan_view(target))
         def strict_key(kind, value):
