@@ -259,3 +259,6 @@ tests/test_source_conflict_tracking.py
 
 # CI_SAFE: own-source QA aliases and approval-bound commercial-name evidence.
 tests/test_current102_qa.py
+
+# CI_SAFE: quantity QA with no production writes, database mutations or network.
+tests/test_explicit_dice_pencil_quantity.py
