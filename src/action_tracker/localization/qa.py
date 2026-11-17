@@ -822,6 +822,21 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # These QA aliases neither generate translations nor relax other uses
     # of rubber, cloth, detergent or lamp products.
     term = source_term.casefold()
+    if term == "paño" and _source_term_only_in_phrases(
+            source_text, r"\bpaño\b",
+            r"(?:^|[;；\n])\s*tipo\s+de\s+paño\s*/\s*pañuelo\s+de\s+mano\s*[:：]"):
+        # This complete attribute is a tissue/handkerchief type label, not
+        # a cleaning-cloth claim. Require this field's own paper material;
+        # a title, another field, or a separate paño occurrence cannot waive
+        # ordinary cloth preservation. Never generate or alter target text.
+        pairs = parse_structured_details(source_text)
+        materials = [p.value.strip().casefold() for p in pairs
+                     if p.key.strip().casefold() == "material"]
+        tissue_types = [p.value.strip() for p in pairs
+                        if re.fullmatch(r"tipo\s+de\s+paño\s*/\s*pañuelo\s+de\s+mano",
+                                        p.key.strip(), re.I)]
+        if materials and all(v == "papel" for v in materials) and tissue_types and all(tissue_types):
+            return ("手帕/纸巾类型", "纸巾类型", "手帕类型")
     if term == "manoplas":
         # A complete glove-type attribute names mittens. Bath mitts are a
         # different qualified sense; never borrow winter context from a title.
