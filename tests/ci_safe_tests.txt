@@ -264,3 +264,4 @@ tests/test_current102_qa.py
 tests/test_explicit_dice_pencil_quantity.py
 tests/test_reviewed_brand_and_qualified_senses.py
 tests/test_paper_tissue_attribute_sense.py
+tests/test_qualified_light_firstaid_scent.py

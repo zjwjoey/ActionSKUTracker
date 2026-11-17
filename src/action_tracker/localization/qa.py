@@ -486,10 +486,16 @@ def _is_omittable_display_brand_tech(source_text: str, source_token: str, target
                 or not _fact_applies_to_field(fact, field_name)
                 or not span or not _has_casefold_token(span, source_token)):
             continue
-        # Consume one reviewed commercial span, not every occurrence of its
-        # acronym. A separate model/code with the same spelling stays protected.
-        remaining = re.sub(r'(?<![\w])' + re.escape(span) + r'(?![\w])',
-                           ' ', remaining, count=1, flags=re.I)
+        if str(getattr(fact, 'coverage_reason', '')).startswith('COMMERCIAL_PRODUCT_LINE:'):
+            # Commercial-line review is a current-field proof, not a new
+            # global dictionary brand. Keep its strict primary-scanner checks
+            # in this fallback too; existing dictionary contracts are unchanged.
+            remaining = _reviewed_name_brand_scan_source(
+                SourceFacts.from_record({'name_es': source_text}), remaining, (fact, *(
+                    other for other in semantic_facts if getattr(other, 'semantic_type', '') == 'MODEL')))
+        else:
+            remaining = re.sub(r'(?<![\w])' + re.escape(span) + r'(?![\w])',
+                               ' ', remaining, count=1, flags=re.I)
     return (remaining != source_text and
             _casefold_token_count(target, source_token) == _casefold_token_count(remaining, source_token))
 
@@ -516,7 +522,8 @@ def _reviewed_name_brand_scan_source(source: SourceFacts, text: str, facts: tupl
             continue
         if any(getattr(other, 'semantic_type', '') == 'MODEL'
                and getattr(other, 'source_field', '') == 'name_es'
-               and span.casefold() in str(getattr(other, 'source_text', '')).casefold()
+               and (span.casefold() in str(getattr(other, 'source_text', '')).casefold()
+                    or _has_casefold_token(span, str(getattr(other, 'source_text', '') or '')))
                for other in facts):
             continue
         remaining = re.sub(r'(?<![\w/-])' + re.escape(span) + r'(?![\w/-])',
@@ -822,6 +829,25 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
     # These QA aliases neither generate translations nor relax other uses
     # of rubber, cloth, detergent or lamp products.
     term = source_term.casefold()
+    if term == "paño" and _source_term_only_in_phrases(
+            source_text, r"\bpaño\b",
+            r"(?:^|[;；\n])\s*incluye\s+paño\s+de\s+respiraci[oó]n\s*[:：]\s*(?:s[ií]|no)\s*(?=[;；\n]|$)"):
+        # A complete first-aid inclusion attribute names a breathing cloth,
+        # not a cleaning-cloth product. Separate cloth uses stay protected;
+        # structured yes/no validation still checks the inclusion value.
+        return ("呼吸面巾", "人工呼吸面巾", "人工呼吸防护面巾")
+    if term == "madera" and _source_term_only_in_phrases(
+            source_text, r"\bmadera\b",
+            r"(?:^|[;；\n])\s*olor\s*[:：]?\s*(?![^;；\n]*\b(?:sin|no)\b)[^;；\n]*\bmadera\b[^;；\n]*(?=[;；\n]|$)"):
+        # Olor qualifies this field's wood occurrence as a scent. It grants
+        # no permission to drop an independent actual wood-material fact.
+        return ("木香", "木质香", "木质香调")
+    if term == "iluminación":
+        if _source_term_only_in_phrases(source_text, r"\biluminación\b", r"\biluminación\s+led\b"):
+            return ("LED灯光", "LED照明", "LED灯效", "LED灯")
+        if _source_term_only_in_phrases(
+                source_text, r"\biluminación\b", r"\bcon\s+iluminación\b(?=\s*(?:$|[;；,.!]))"):
+            return ("带灯", "带灯光", "带照明", "灯饰", "照明灯")
     if term == "paño" and _source_term_only_in_phrases(
             source_text, r"\bpaño\b",
             r"(?:^|[;；\n])\s*tipo\s+de\s+paño\s*/\s*pañuelo\s+de\s+mano\s*[:：]"):
@@ -1546,7 +1572,8 @@ def _detail_boolean_findings(source_text, target):
         (r"\bgluten\b", r"麸质"), (r"\blactosa\b", r"乳糖"),
         (r"\b(?:perfume|perfumad[oa])\b", r"香(?:料|精|型|味)|(?:无|有)香|^(?:是否)?香[薰氛]$"),
         (r"\bjab[oó]n\b", r"皂"), (r"\baz[uú]car(?:es)?\b", r"(?<!乳)糖"),
-        (r"^aclarado$", r"冲洗|免洗"))
+        (r"^aclarado$", r"冲洗|免洗"),
+        (r"^incluye\s+paño\s+de\s+respiraci[oó]n$", r"^(?:是否)?含(?:人工)?呼吸(?:防护)?面巾$"))
     bools = {"si": True, "sí": True, "yes": True, "true": True, "是": True,
              "no": False, "false": False, "否": False}
     source_pairs = parse_structured_details(source_text)
