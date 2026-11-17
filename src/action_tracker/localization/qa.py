@@ -841,7 +841,8 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             r"(?:^|[;；\n])\s*olor\s*[:：]?\s*(?![^;；\n]*\b(?:sin|no)\b)[^;；\n]*\bmadera\b[^;；\n]*(?=[;；\n]|$)"):
         # Olor qualifies this field's wood occurrence as a scent. It grants
         # no permission to drop an independent actual wood-material fact.
-        return ("木香", "木质香", "木质香调")
+        return tuple(dict.fromkeys((canonical, *_SEMANTIC_TARGET_ALIASES.get(term, ()),
+                                    "木香", "木质香", "木质香调")))
     if term == "iluminación":
         if _source_term_only_in_phrases(source_text, r"\biluminación\b", r"\biluminación\s+led\b"):
             qualified = (canonical, "LED灯光", "LED 灯光", "LED照明", "LED 照明",
