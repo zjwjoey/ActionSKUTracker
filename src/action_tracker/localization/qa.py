@@ -844,7 +844,11 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         return ("木香", "木质香", "木质香调")
     if term == "iluminación":
         if _source_term_only_in_phrases(source_text, r"\biluminación\b", r"\biluminación\s+led\b"):
-            return ("LED灯光", "LED照明", "LED灯效", "LED灯")
+            qualified = (canonical, "LED灯光", "LED 灯光", "LED照明", "LED 照明",
+                         "LED灯效", "LED 灯效", "LED灯", "LED 灯")
+            if re.search(r'\btablero\s+de\s+dibujo\b', source_text, re.I):
+                qualified += ("LED亮度", "LED 亮度")
+            return qualified
         if _source_term_only_in_phrases(
                 source_text, r"\biluminación\b", r"\bcon\s+iluminación\b(?=\s*(?:$|[;；,.!]))"):
             return ("带灯", "带灯光", "带照明", "灯饰", "照明灯")
