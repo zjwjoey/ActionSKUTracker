@@ -920,6 +920,13 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             source_text, r'\bpaño\b',
             r'(?:^|[;；\n])\s*(?:Sustancia|Tipo de dispensador)\s*[:：]\s*Paño\s*(?=[;；\n]|$)'):
         return ("巾片", "布片", "面膜布")
+    if term == "goma" and _source_term_only_in_phrases(
+            source_text, r"\bgomas?\b", r"\bregaliz\s+dulce\s+de\s+goma\b"):
+        return ("甘草软糖", "软质甘草糖")
+    if term == "iluminación" and _source_term_only_in_phrases(
+            source_text, r"\biluminación\b",
+            r"\bdespertador\s+digital\s+con\s+iluminación\s+que\s+cambia\s+de\s+color\b"):
+        return ("变色照明", "变色灯光", "可变色灯光")
     if term == "goma":
         gummy_phrases = [r"\bositos\s+de\s+goma\b"]
         # Exact affirmative attribute values only. A negated or merely

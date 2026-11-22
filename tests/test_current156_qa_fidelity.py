@@ -102,3 +102,29 @@ def test_verified_ip_brand_numbers_cannot_hide_quantities_or_cross_field():
     assert 'NUMERIC_DROPPED' in rules(check('KitKat Fórmula 1, 1 unidad','赛车造型巧克力','name',(brand,)))
     assert 'NUMERIC_DROPPED' in rules(check('KitKat Fórmula 1','赛车造型巧克力','description',(brand,)))
     assert 'NUMERIC_DROPPED' in rules(check('Modelo F1, 1 unidad','赛车造型巧克力','name',(brand,)))
+
+
+@pytest.mark.parametrize("phrase,term,canonical,target,extra,wrong", [
+    ("Regaliz dulce de goma", "goma", "橡胶", "甘草软糖",
+     "junta de goma", "甘草硬糖"),
+    ("Despertador digital con iluminación que cambia de color", "iluminación",
+     "照明灯", "带变色灯光的数字闹钟", "otra iluminación", "数字闹钟"),
+])
+def test_repair2_qualifies_only_the_complete_source_phrase(
+        phrase, term, canonical, target, extra, wrong):
+    kind = "MATERIAL" if term == "goma" else "PRODUCT_TYPE"
+    fact = SemanticFact(kind, term, canonical, source_field="desc_es")
+
+    def findings(source_text, translated_text):
+        result = guard_translation(
+            SourceFacts(sku="regression", desc_es=source_text),
+            {"description": translated_text}, ("description",),
+            semantic_facts=(fact,), production=True)
+        return rules(result)
+
+    assert "SEMANTIC_FACT_DROPPED" not in findings(phrase, target)
+    assert "SEMANTIC_FACT_DROPPED" in findings(phrase, wrong)
+    assert "SEMANTIC_FACT_DROPPED" in findings(extra, target)
+    assert "SEMANTIC_FACT_DROPPED" in findings(phrase + "; " + extra, target)
+    assert "SEMANTIC_FACT_DROPPED" not in findings(
+        phrase + "; " + extra, target + "；" + canonical)
