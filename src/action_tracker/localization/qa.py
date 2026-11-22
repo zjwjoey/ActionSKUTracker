@@ -409,6 +409,55 @@ def _is_allowed_translated_strict_token(source_text: str, token: str, target: st
     )
 
 
+def _paired_mdf_material(source_text: str, target: str, *, allow_literal: bool = False) -> bool:
+    """Recognize the material's full Chinese name only in its aligned value."""
+    source_parts = parse_structured_details(source_text)
+    target_parts = parse_structured_details(target)
+    if not source_parts or len(source_parts) != len(target_parts):
+        return False
+    accounted = 0
+    for left, right in zip(source_parts, target_parts):
+        left_values = [value.strip().casefold() for value in left.value.split(",")]
+        mdf_positions = [index for index, value in enumerate(left_values) if value == "madera mdf"]
+        if not mdf_positions:
+            continue
+        if left.key.casefold() != "material" or right.key != "材质":
+            return False
+        right_values = [value.strip() for value in re.split(r"[,，、]", right.value)]
+        if len(right_values) != len(left_values):
+            return False
+        pattern = r"中密度纤维板(?:\s*[（(]MDF[）)])?" if allow_literal else "中密度纤维板"
+        if not all(re.fullmatch(pattern, right_values[index], re.I) for index in mdf_positions):
+            return False
+        accounted += len(mdf_positions)
+    return accounted > 0 and accounted == _casefold_token_count(source_text, "MDF")
+
+
+def _paired_facial_cloth_format(source_text: str, target: str) -> bool:
+    """Match each facial cloth value to its corresponding typed property."""
+    source_parts = parse_structured_details(source_text)
+    target_parts = parse_structured_details(target)
+    if not source_parts or len(source_parts) != len(target_parts):
+        return False
+    if not any(part.key.casefold() == "apto para tipo de parte del cuerpo"
+               and part.value.casefold() == "rostro" for part in source_parts):
+        return False
+    fields = {"sustancia": {"产品形态", "形态"}, "tipo de dispensador": {"分配器类型"}}
+    matched = 0
+    for left, right in zip(source_parts, target_parts):
+        if left.value.casefold() != "paño":
+            continue
+        if right.key not in fields.get(left.key.casefold(), set()) or right.value not in {"布片", "巾片", "布巾"}:
+            return False
+        matched += 1
+    return matched > 0 and matched == len(re.findall(r"\bpaño\b", source_text, re.I))
+
+
+def _din_standard_scan_view(text: str) -> str:
+    """Keep all digits exact, allowing the separator in DIN 13164."""
+    return re.sub(r"(?<![A-Za-z0-9_/-])DIN[ \t]+(?=13164(?![A-Za-z0-9_/-]))", "DIN", text)
+
+
 def _is_allowed_translated_tech_token(source_text: str, source_token: str, target: str) -> bool:
     if str(source_token or '').casefold() == 'mano':
         # MANO is an ordinary word only inside this typed handheld-microphone
@@ -851,6 +900,10 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         return tuple(dict.fromkeys((canonical, *_SEMANTIC_TARGET_ALIASES.get(term, ()),
                                     "木香", "木质香", "木质香调")))
     if term == "iluminación":
+        if _source_term_only_in_phrases(
+                source_text, r"\biluminación\b", r"\biluminación\s+LED\s+con\s+efecto\s+infinito\b"):
+            return (canonical, "LED无限灯光效果", "LED 无限灯光效果", "LED灯光", "LED 灯光",
+                    "LED照明", "LED 照明", "LED灯效", "LED 灯效", "LED灯", "LED 灯")
         if _source_term_only_in_phrases(source_text, r"\biluminación\b", r"\biluminación\s+led\b"):
             qualified = (canonical, "LED灯光", "LED 灯光", "LED照明", "LED 照明",
                          "LED灯效", "LED 灯效", "LED灯", "LED 灯")
@@ -908,6 +961,9 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             source_text, r"\bpaños?\b", r"\bpaños?\s+de\s+cocina\b"):
         return tuple(dict.fromkeys((canonical, *_SEMANTIC_TARGET_ALIASES.get(term, ()),
             "厨房用布", "厨房巾", "厨房抹布", "厨房毛巾", "厨房清洁布")))
+    if term == "detergente" and _source_term_only_in_phrases(
+            source_text, r"\bdetergentes?\b", r"\bdetergente\s+para\s+lavadoras\b"):
+        return ("洗衣机清洁剂", "洗衣机清洗剂")
     if term in {"detergente", "detergentes"} and _source_term_only_in_phrases(
             source_text, r"\bdetergentes?\b", r"\btipo de detergente de limpieza de WC\s*[:：]"):
         return ("洁厕剂", "马桶清洁剂", "厕所清洁剂")
@@ -990,6 +1046,7 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         # original canonical check. Do not borrow context from other fields.
         lighting_functions = (
             (r'\biluminación\s+acogedora\b', ("温馨照明", "温馨灯光")),
+            (r'\biluminación\s+festiva\b', ("节日照明",)),
             (r'\biluminación\s+sutil\b', ("柔和灯光", "柔和照明")),
             (r'\biluminación\s+ambiente\b', ("氛围照明", "环境照明")),
             (r'\bfunciones\s+de\s+iluminación\b', ("灯光模式", "照明模式")),
@@ -1077,6 +1134,28 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
                 and re.search(r"\bcomo\s+un\s+paño\s+sobre\s+la\s+cara\b", source_text, re.I)):
             aliases.extend(("布片", "面膜布", "面膜"))
     if source_term.casefold() == 'calcetines':
+        # Complete title senses. Isolated qualifiers elsewhere in a paragraph
+        # do not satisfy a missing sock noun or identify a separate item.
+        title_senses = (
+            (r"calcetines\s+noruegos", ("挪威袜",)),
+            (r"calcetines\s+(?:para|de)\s+estar\s+por\s+casa", ("居家袜", "家居袜")),
+            (r"calcetines\s+de\s+estar\s+por\s+casa\s+para\s+niña", ("女童居家袜", "女童家居袜")),
+            (r"calcetines\s+navideños\s+infantiles", ("儿童圣诞袜",)),
+            (r"calcetines\s+exfoliantes\s+footsteps", ("去角质袜",)),
+            (r"calcetines\s+de\s+viaje", ("旅行袜",)),
+            (r"calcetines\s+de\s+mezcla\s+de\s+lana", ("羊毛混纺袜",)),
+            (r"calcetines\s+de\s+felpa", ("毛圈袜",)),
+            (r"calcetines\s+de\s+chenilla", ("雪尼尔袜",)),
+            (r"calcetines\s+infantiles", ("儿童袜",)),
+            (r"calcetines\s+de\s+esquí\s+de\s+lana\s+para\s+mujer", ("女士羊毛滑雪袜",)),
+            (r"calcetines\s+de\s+esquí\s+de\s+lana\s+para\s+hombre", ("男士羊毛滑雪袜",)),
+            (r"calcetines\s+de\s+senderismo", ("徒步袜",)),
+            (r"calcetines\s+footies", ("船袜",)),
+            (r"calcetines\s+de\s+trabajo", ("工作袜",)),
+        )
+        for pattern, localized in title_senses:
+            if re.fullmatch(pattern, source_text.strip(), re.I):
+                aliases.extend(localized)
         for pattern, alias in (
             (r"\bcalcetines\s+calados\b", "镂空袜"),
             (r"\bcalcetines(?:\s+de\s+senderismo)?\s+t[eé]rmicos?\b", "保暖袜"),
@@ -1825,6 +1904,17 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                 affirmative = re.sub(r"(?:不是|并非|不属于|不含|没有|无|非|不)\s*(?:液体衣物洗涤剂|洗衣液)", "", target)
                 represented = (any(alias in affirmative for alias in ("洗衣液", "液体衣物洗涤剂"))
                                and not re.search(r"洗洁精|洗衣粉|洗衣凝珠|洗涤凝珠|洗碗粉|洗碗机粉", target))
+            if (fact_type == "PRODUCT_TYPE" and source_term.casefold() == "detergente"
+                    and re.search(r"\bdetergente\s+para\s+lavadoras\b", source_text, re.I)
+                    and re.search(r"\bdetergente\s+para\s+platos\b", source_text, re.I)
+                    and not re.search(r"\b(?:sin|no contiene|no incluye|no es)\s+detergente\b", source_text, re.I)):
+                # Two explicitly different products need their own positive
+                # matches. A generic 清洁剂 is not evidence for both.
+                qualified = ("洗衣机清洁剂", "洗衣机清洗剂", "洗洁精", "餐具洗涤剂")
+                positive = re.sub(r"(?:不是|并非|不含|没有|无|非|不)\s*(?:"
+                                  + "|".join(qualified) + ")", "", target)
+                represented = (any(term in positive for term in qualified[:2])
+                               and any(term in positive for term in qualified[2:]))
             if fact_type == "MATERIAL":
                 represented = represented or _structured_material_atom(source_term, source_text, target, field_name)
                 if (source_term.casefold() in {"madera", "bambú"}
@@ -1834,6 +1924,12 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                         affirmative = re.sub(r'(?:不是|并非|不采用|不含|没有|无|非|不)\s*' + re.escape(alias), '', affirmative)
                     represented = (any(alias.casefold() in affirmative.casefold() for alias in aliases)
                                    or _structured_material_atom(source_term, source_text, affirmative, field_name))
+                if (not represented and field_name == "details" and source_term.casefold() == "madera"
+                        and _source_term_only_in_phrases(source_text, r"\bmadera\b", r"\bmadera\s+MDF\b")):
+                    represented = _paired_mdf_material(source_text, target, allow_literal=True)
+            if (not represented and field_name == "details" and fact_type == "PRODUCT_TYPE"
+                    and source_term.casefold() == "paño" and canonical == "清洁布"):
+                represented = _paired_facial_cloth_format(source_text, target)
             if source_term.casefold() in {"goma", "gomas"} and canonical == "橡皮擦":
                 affirmative_target = re.sub(
                     r"(?:不含|没有|无|非|不是)\s*橡皮(?:擦)?|橡皮(?:筋|圈|带)", "", target)
@@ -1960,8 +2056,14 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             # outside that span normally, including when both roles occur.
             technical_source = re.sub(r'\bXXL\s+Nutrition\b', ' ', technical_source, flags=re.I)
             technical_source = _reviewed_name_brand_scan_source(source, technical_source, semantic_facts)
+        technical_source = _din_standard_scan_view(technical_source)
+        technical_target = _din_standard_scan_view(target)
         protected = protect_text(_capacity_scan_view(technical_source))
-        target_protected = protect_text(_capacity_scan_view(target))
+        target_protected = protect_text(_capacity_scan_view(technical_target))
+        mdf_material_preserved = (field_name == "details"
+            and target_protected.tokens != protected.tokens
+            and _has_casefold_token(technical_source, "MDF")
+            and _paired_mdf_material(source_text, target))
         def strict_key(kind, value):
             # Quantified technical tokens already use whitespace equivalence
             # below for preservation; their changed/added comparison must
@@ -1976,7 +2078,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     continue
                 if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                     continue
-                if kind == "TECH" and _is_allowed_translated_tech_token(source_text, value, target):
+                if kind == "TECH" and (mdf_material_preserved and value.casefold() == "mdf"
+                        or _is_allowed_translated_tech_token(source_text, value, target)):
                     continue
                 if kind == "TECH" and _has_casefold_token(target, value):
                     continue
@@ -2005,6 +2108,9 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     actual_count = _casefold_token_count(target, value)
                 else:
                     expected_count, actual_count = source_text.count(value), target.count(value)
+                    if value == "DIN13164":
+                        expected_count = technical_source.count(value)
+                        actual_count = technical_target.count(value)
                 if kind in {"CAPACITY", "BATTERY_CAPACITY", "POWER", "VOLTAGE"}:
                     compact_value = re.sub(r"\s+", "", value).casefold()
                     compact_source = re.sub(r"\s+", "", _capacity_scan_view(source_text)).casefold()
@@ -2012,7 +2118,8 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
                     expected_count = compact_source.count(compact_value)
                     actual_count = compact_target.count(compact_value)
                 if actual_count < expected_count:
-                    if kind == "TECH" and _is_allowed_translated_tech_token(source_text, value, target):
+                    if kind == "TECH" and (mdf_material_preserved and value.casefold() == "mdf"
+                        or _is_allowed_translated_tech_token(source_text, value, target)):
                         continue
                     if kind == "TECH" and _is_omittable_display_brand_tech(source_text, value, target, semantic_facts=semantic_facts, field_name=field_name):
                         continue

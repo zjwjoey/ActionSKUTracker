@@ -128,3 +128,112 @@ def test_repair2_qualifies_only_the_complete_source_phrase(
     assert "SEMANTIC_FACT_DROPPED" in findings(phrase + "; " + extra, target)
     assert "SEMANTIC_FACT_DROPPED" not in findings(
         phrase + "; " + extra, target + "；" + canonical)
+
+
+@pytest.mark.parametrize("source,target", [
+    ("Calcetines footies", "船袜"),
+    ("Calcetines de estar por casa", "家居袜"),
+    ("Calcetines de estar por casa para niña", "女童居家袜"),
+    ("Calcetines de mezcla de lana", "羊毛混纺袜"),
+    ("Calcetines de trabajo", "工作袜"),
+])
+def test_reviewed_sock_title_noun_has_narrow_source_scope(source, target):
+    fact = SemanticFact("PRODUCT_TYPE", "calcetines", "袜子", source_field="name_es")
+    def has_error(text, localized):
+        qa = guard_translation(
+            SourceFacts(sku="regression", name_es=text), {"name": localized},
+            ("name",), semantic_facts=(fact,), production=True)
+        return "SEMANTIC_FACT_DROPPED" in rules(qa)
+    assert not has_error(source, target)
+    assert has_error(source, "毛线手套")
+    assert has_error(source, "不含" + target)
+    assert has_error("Calcetines", target)
+    assert has_error(source + "; incluye otros calcetines", target)
+
+
+def test_known_din_standard_accepts_format_without_accepting_other_numbers():
+    failures = {"MODEL_DROPPED", "MODEL_CHANGED", "PROTECTED_TOKEN_ADDED",
+                "PROTECTED_TOKEN_CHANGED", "PROTECTED_TOKEN_MISSING"}
+    assert not findings_for_standard("Conforme a DIN13164", "符合DIN 13164标准") & failures
+    assert not findings_for_standard("Conforme a DIN 13164", "符合DIN13164标准") & failures
+    assert findings_for_standard("Conforme a DIN13164", "符合DIN 13165标准") & failures
+    assert findings_for_standard("Conforme a DIN13164", "符合DIN标准") & failures
+    assert findings_for_standard("Conforme a DIN13164; modelo GS27", "符合DIN 13164标准") & failures
+
+
+def findings_for_standard(source, target):
+    return rules(guard_translation(
+        SourceFacts(sku="regression", desc_es=source), {"description": target},
+        ("description",), production=True))
+
+
+def test_mdf_translation_requires_the_exact_material_atom_and_position():
+    source = "Material: Vidrio, Madera MDF; Color: Negro"
+    target = "材质：玻璃、中密度纤维板；颜色：黑色"
+    assert "PROTECTED_TOKEN_MISSING" not in rules(check(source, target, "details"))
+    for invalid in (
+        "材质：玻璃、木材；颜色：黑色",
+        "材质：中密度纤维板、玻璃；颜色：黑色",
+        "材质：玻璃、非中密度纤维板；颜色：黑色",
+        "材质：玻璃、木材；颜色：中密度纤维板",
+    ):
+        assert "PROTECTED_TOKEN_MISSING" in rules(check(source, invalid, "details"))
+    assert "PROTECTED_TOKEN_MISSING" in rules(check(
+        source + "; Modelo: MDF", target + "；型号：普通", "details"))
+
+
+def test_washing_machine_cleaner_does_not_accept_other_detergent_uses():
+    fact = SemanticFact("PRODUCT_TYPE", "detergente", "洗洁精", source_field="desc_es")
+    def missing(source,target):
+        return "SEMANTIC_FACT_DROPPED" in rules(check(source,target,facts=(fact,)))
+    assert not missing("Limpia con detergente para lavadoras", "使用洗衣机清洁剂清洁")
+    assert missing("Limpia con detergente para lavadoras", "使用洗洁精清洁")
+    assert missing("Limpia con detergente para lavadoras", "不含洗衣机清洁剂")
+    assert missing("Detergente para lavadoras; incluye detergente para platos", "含洗衣机清洁剂")
+
+    assert not missing("Detergente para lavadoras; incluye detergente para platos", "含洗衣机清洁剂和餐具洗涤剂")
+
+
+@pytest.mark.parametrize("source,target", [
+    ("como iluminación festiva", "用于节日照明"),
+    ("con iluminación LED con efecto infinito", "带LED无限灯光效果"),
+])
+def test_qualified_lighting_keeps_unrelated_mentions_and_negation_checked(source, target):
+    fact = SemanticFact("PRODUCT_TYPE", "iluminación", "照明灯", source_field="desc_es")
+
+    def missing(original, translated):
+        return "SEMANTIC_FACT_DROPPED" in rules(check(original, translated, facts=(fact,)))
+
+    assert not missing(source, target)
+    assert missing(source, "节日摆件")
+    assert missing(source, target.replace("用于", "不具备").replace("带LED", "不带LED"))
+    assert missing(source + "; incluye otra iluminación", target)
+
+
+def test_facial_cloth_format_requires_every_typed_position():
+    source = ("Apto para tipo de parte del cuerpo: Rostro; Sustancia: Paño; "
+              "Tipo de dispensador: Paño")
+    target = "适用身体部位：面部；产品形态：布片；分配器类型：布片"
+    fact = SemanticFact("PRODUCT_TYPE", "paño", "清洁布", source_field="details_es")
+
+    def missing(original, translated):
+        return "SEMANTIC_FACT_DROPPED" in rules(check(original, translated, "details", facts=(fact,)))
+
+    assert not missing(source, target)
+    assert missing(source, target.replace("分配器类型：布片", "分配器类型：塑料"))
+    assert missing(source, target.replace("分配器类型：布片", "材料：布片"))
+    assert missing(source.replace("Rostro", "Manos"), target)
+    assert missing(source + "; Accesorio: Paño", target + "；配件：刷子")
+
+
+def test_mdf_material_fact_does_not_replace_a_separate_wood_claim():
+    source = "Material: Vidrio, Madera MDF"
+    target = "材质：玻璃、中密度纤维板（MDF）"
+    fact = SemanticFact("MATERIAL", "madera", "木质", source_field="details_es")
+
+    def missing(original, translated):
+        return "SEMANTIC_FACT_DROPPED" in rules(check(original, translated, "details", facts=(fact,)))
+
+    assert not missing(source, target)
+    assert missing(source, "材质：中密度纤维板（MDF）、玻璃")
+    assert missing(source + "; Material: Madera", target + "；材质：塑料")
