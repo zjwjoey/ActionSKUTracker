@@ -869,6 +869,16 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
         if materials and all(v == "papel" for v in materials) and tissue_types and all(tissue_types):
             return ("手帕/纸巾类型", "纸巾类型", "手帕类型")
     if term == "manoplas":
+        oven = r'\bmanoplas\s+(?:para(?:\s+el)?|de)\s+horno\b'
+        if re.search(oven, source_text, re.I) and not re.search(
+                r'\b(?:sin|no)\b[^.;\n]{0,30}\bmanoplas\b', source_text, re.I):
+            phrases = [oven]
+            # A repeated noun is licensed only by an explicit reference to
+            # the same numbered oven-mitt set, never a separate bath mitt.
+            for size in re.findall(r'\bjuego\s+de\s+(\d+)\s+manoplas\s+(?:para(?:\s+el)?|de)\s+horno\b', source_text, re.I):
+                phrases.append(r'\bel\s+juego\s+est[aá]\s+compuesto\s+por\s+' + re.escape(size) + r'\s+manoplas\b')
+            if _source_term_only_in_phrases(source_text, r'\bmanoplas\b', *phrases):
+                return ('烤箱手套', '烤箱隔热手套', '厨房隔热手套', '隔热手套')
         # A complete glove-type attribute names mittens. Bath mitts are a
         # different qualified sense; never borrow winter context from a title.
         if _source_term_only_in_phrases(
