@@ -1,3 +1,12 @@
+## 2026-11-22 字段纠错精准复验
+
+同字段完整 Dr. Candy 品牌仅作为商业名称保留，不豁免附近普通西语。
+灯光功能校验允许忽略完整属性键 Tipo de instalación de iluminación，
+不忽略键的值或独立照明商品。标题明确 Tapones con reducción de ruido
+且描述为硅胶降噪保护、无音频设备线索时，仅消歧 auriculares 本体为耳塞；
+不从标题引入数字、单位、型号。mAh千位点与一/两位小数电压逗号仅在
+完整测量token内等值比较，错误单位、数值、型号仍阻断。见反例测试。
+
 # Action SKU Tracker QA 规则
 
 ## 纸巾类型属性的字段内消歧

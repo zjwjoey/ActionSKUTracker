@@ -69,9 +69,16 @@ _CHINESE_CAPACITY_QA_RE = re.compile(
 
 
 def _capacity_scan_view(value: str) -> str:
-    return _CHINESE_CAPACITY_QA_RE.sub(
+    text = _CHINESE_CAPACITY_QA_RE.sub(
         lambda match: match[1] + _CHINESE_CAPACITY_QA_UNITS[match[2]], value
     )
+    # Numeric display equivalence only inside explicit measured tokens.
+    # Spanish dot grouping in battery capacity is not a decimal or model ID.
+    text = re.sub(r"(?<![A-Za-z0-9.,])(\d{1,3})\.(\d{3})(?=\s*mAh\b)",
+                  lambda m: m[1] + m[2], text, flags=re.I)
+    # A one/two-place Spanish voltage decimal has the same measured value.
+    return re.sub(r"(?<![A-Za-z0-9.,])(\d+),(\d{1,2})(?=\s*V\b)",
+                  lambda m: m[1] + "." + m[2], text, flags=re.I)
 
 # Deterministic semantic facts use one canonical target, while natural
 # Chinese allows a small set of equivalent renderings.  These aliases are
@@ -258,7 +265,7 @@ def _source_bound_display_tokens(source_text: str, target: str) -> set[str]:
                 allowed.add("www")
     # Multiword commercial spans must occur complete in this same field.
     # Interior prose words (of/the/mini) are not general residual exceptions.
-    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini", "Play-Doh Create & Celebrate", "Max & More", "Dr. Candy Lolli Popperz", "Full HD", "Epson EcoTank"):
+    for phrase in ("Snacks of the World", "Stretcherz Stretch Squad mini", "Play-Doh Create & Celebrate", "Max & More", "Dr. Candy Lolli Popperz", "Dr. Candy", "Full HD", "Epson EcoTank"):
         pattern = rf"(?<![A-Za-z0-9]){re.escape(phrase)}(?![A-Za-z0-9])"
         if re.search(pattern, source, re.I) and re.search(pattern, rendered, re.I):
             allowed.update(re.findall(r"[A-Za-z]+", phrase))
@@ -982,7 +989,12 @@ def _semantic_aliases(source_term: str, source_text: str, canonical: str) -> tup
             (r'\biluminación\s+de\s+pared\s+multicolor\b', ("多彩墙面灯", "多彩墙面照明")),
         )
         for phrase, localized in lighting_functions:
-            if _source_term_only_in_phrases(source_text, r'\biluminación\b', phrase):
+            # A schema key naming a lighting installation is not a second
+            # lamp claim. Strip only the complete key, never its value.
+            function_source = re.sub(
+                r'(?:^|[;；\n])\s*Tipo de instalación de iluminación\s*[:：]',
+                '; ', source_text, flags=re.I)
+            if _source_term_only_in_phrases(function_source, r'\biluminación\b', phrase):
                 aliases.extend(localized)
         if (re.search(r'\btablero\s+de\s+dibujo\b', source_text, re.I)
                 and _source_term_only_in_phrases(source_text, r'\biluminación\b', r'\biluminación\s+LED\b')):
@@ -1773,8 +1785,19 @@ def audit_translation(source: SourceFacts, fields: Mapping[str, Any], requested_
             if not _fact_applies_to_field(fact, field_name):
                 continue
             aliases = _semantic_aliases(source_term, source_text, canonical)
+            # The same SKU title may disambiguate an ambiguous noun, but
+            # cannot supply a missing measurement/model. Explicit tapones
+            # identity plus passive silicone ear-protection prose is required;
+            # generic audio headphones and additional audio objects stay gated.
+            if (field_name == 'description' and source_term.casefold() == 'auriculares'
+                    and re.match(r'^Tapones con reducción de ruido\s*$', source.name_es, re.I)
+                    and re.search(r'\bauriculares con cancelación de ruido\b', source_text, re.I)
+                    and re.search(r'\bsilicona\b', source_text, re.I)
+                    and not re.search(r'\b(?:bluetooth|música|micrófono|altavoz|batería|USB)\b', source_text, re.I)
+                    and not re.search(r'\b(?:otros|otros tipos de|también incluye)\s+auriculares\b', source_text, re.I)):
+                aliases = tuple(aliases) + ('降噪耳塞', '隔音耳塞')
             represented = any(alias.casefold() in target.casefold() for alias in aliases)
-            if (source_term.casefold() in {"calcetines", "detergente", "detergentes", "paño", "paños", "goma", "manoplas"}
+            if (source_term.casefold() in {"calcetines", "detergente", "detergentes", "paño", "paños", "goma", "manoplas", "auriculares"}
                     and not re.search(r"\b(?:sin|no contiene|no incluye|no es|no son)\s+" + re.escape(source_term) + r"\b", source_text, re.I)):
                 # An explicitly negated rendering is not preservation of a
                 # positive source fact. Keep all other hard guards active.
