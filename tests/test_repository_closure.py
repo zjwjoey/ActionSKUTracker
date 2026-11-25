@@ -11,13 +11,29 @@ from action_tracker.orchestrator import daily
 from test_exporting import _cfg, _record, _write_master, _write_snapshot, _write_dictionary, _run_log
 
 
+def isolated_history_fixture(cfg, tmp_path):
+    """Release gates must not read the developer's real weekly workbooks."""
+    from test_template1 import _write_seed
+    seed = tmp_path / 'history-seed.xlsx'
+    _write_seed(seed)
+    history = tmp_path / 'history-sources.yaml'
+    history.write_text(
+        f"seed:\n  path: '{seed.as_posix()}'\n  sheet: ACTION商品上下架明细\n"
+        "  sku_header: 编号\n  presence_capability: true\n  absence_capability: true\n"
+        "  observation_complete: true\n  evidence_level: A\nsources: []\n",
+        encoding='utf-8',
+    )
+    cfg['history_sources_path'] = history
+    return cfg
+
+
 def catalog_fixture(tmp_path):
     cfg = _cfg(tmp_path)
     record = _record()
     _write_master(cfg['paths']['master'], [_run_log('r1', '2026-08-24')], [record])
     _write_snapshot(cfg['paths']['snapshots'], 'r1', '2026-08-24', [record])
     _write_dictionary(cfg['paths']['dictionary_baseline'], record)
-    return cfg
+    return isolated_history_fixture(cfg, tmp_path)
 
 
 @pytest.mark.parametrize('language', ['es', 'zh'])
@@ -349,7 +365,7 @@ def approved_export_fixture(tmp_path):
     for filename in ('known_skus.csv', 'offline_skus.csv'):
         (cfg['paths']['state'] / filename).write_bytes(b'compatibility-fixture')
     acknowledge_compatibility_exports(cfg, commit)
-    return cfg
+    return isolated_history_fixture(cfg, tmp_path)
 
 
 def test_formal_catalog_passes_real_complete_gate_then_preview_preserves_it(tmp_path):
