@@ -1,5 +1,9 @@
 # 临时任务文件与容量
 
+15GB全局候选复用本模块；显式启用global_storage后，临时工作区不能关闭，
+默认root在全局控制根下的tasks。所有旧临时目录仍纳入全局盘点；配置开关不会
+迁移或删除旧材料。详见GLOBAL_STORAGE_15GB.md，未部署不表示现行生产已切换。
+
 生产启用遵循 GIT_SYNC_AND_RELEASE。数据根的现有正式入口使用版本化模板
 `scripts/run_active_production.ps1`，严格校验active.json中的SHA、data_root和main/release分支身份，
 再调用候选源码的原有daily入口。`-ValidateOnly`仅核对代码路由，不执行备份、采集或入库。

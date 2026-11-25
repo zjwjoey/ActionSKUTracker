@@ -1,0 +1,45 @@
+# Development candidate only. NOT a production activation or migration.
+# Current legacy inventory exceeds this cap and the existing F: is unbounded;
+# both must BLOCK. Enabling does not delete or relocate a single asset.
+project_root: F:/ActionSKUTracker
+global_storage:
+  enabled: true
+  max_bytes: 15000000000
+  peak_bytes: 4000000000
+  root: F:/ai文件/ActionManaged15GB/control
+  roots:
+    - F:/ActionSKUTracker
+    - F:/Action_Master
+    - F:/ActionSelectionSkill
+    - F:/按日期整理/action表格
+    - F:/ai文件/ActionProduction
+    - F:/ai文件/ActionManaged15GB
+  write_roots:
+    - F:/ActionSKUTracker
+    - F:/ai文件/ActionProduction
+    - F:/ai文件/ActionManaged15GB
+  discovery:
+    - path: F:/
+      prefixes: [Action, 260719_action]
+    - path: F:/ai文件
+      prefixes: [Action]
+    - path: F:/ai文件/CodexStorage/work
+      prefixes: [Action, action-, PostgreSQL_Action, ProductCollector_Action]
+    - path: F:/按日期整理
+      prefixes: [action]
+
+# Use this same file through the existing --profile option to opt in to the
+# management adapters together. --storage-policy alone applies only the global
+# outer fence, including early storage tools.
+backup_pool:
+  enabled: true
+  root: F:/ai文件/ActionManaged15GB/pool
+  max_bytes: 7000000000
+  target_bytes: 5000000000
+  automatic_cleanup: true  # Only owned, explicitly released temporaries.
+task_backup:
+  enabled: true
+transient_tasks:
+  enabled: true
+  root: F:/ai文件/ActionManaged15GB/control/tasks
+  budget_mib: 256

@@ -272,3 +272,4 @@ tests/test_repair75_precision.py
 tests/test_backup_pool.py
 tests/test_task_backup.py
 tests/test_pool_kopia.py
+tests/test_global_capacity.py

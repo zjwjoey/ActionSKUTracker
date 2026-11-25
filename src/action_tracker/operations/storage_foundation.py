@@ -129,6 +129,12 @@ def verified_backup(source: Path, destination: Path, *, run_id: str,
                     code_version: str | None = None, max_seconds: float = 180) -> dict:
     """One immutable Backup API artifact; no permanent restore-check duplicate."""
     source, destination = Path(source).resolve(), Path(destination).resolve()
+    from .global_capacity import active_checkpoint
+    # A validated backup and its temporary SQLite state consume this lease too.
+    if source.is_file():
+        wal = Path(str(source) + '-wal')
+        active_checkpoint(source.stat().st_size + (wal.stat().st_size if wal.exists() else 0)
+                          + 65536, path=destination)
     if not source.is_file():
         raise StorageError("DB_MISSING")
     if source == destination:

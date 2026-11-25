@@ -20,6 +20,8 @@ def now():
 
 
 def write_new(path: Path, value):
+    from .global_capacity import active_path
+    active_path(path)
     with Path(path).open('x', encoding='utf-8') as stream:
         json.dump(value, stream, ensure_ascii=False, indent=2, default=str)
 
@@ -39,6 +41,8 @@ def relative_target(root: Path, relative: str) -> Path:
 
 def create_candidate(root: Path, *, protected_roots: list[Path]) -> dict:
     root = Path(root).resolve()
+    from .global_capacity import active_path
+    active_path(root)
     for protected in protected_roots:
         protected = Path(protected).resolve()
         if root.is_relative_to(protected) or protected.is_relative_to(root):
@@ -66,7 +70,7 @@ def default_task_root() -> Path:
         if os.name == 'nt' else Path.home() / '.cache' / 'actionskutracker' / 'tasks')
 
 
-def prepare_run_workspace(cfg: dict, *, run_id: str, report_dir: Path):
+def prepare_run_workspace(cfg: dict, *, run_id: str, report_dir: Path, owner_task='daily-run'):
     """Redirect only transient staging; preserve durable evidence and writer locks.
 
     Absent/disabled configuration preserves legacy adapters. A persisted pointer
@@ -75,10 +79,13 @@ def prepare_run_workspace(cfg: dict, *, run_id: str, report_dir: Path):
     from .storage_foundation import storage_lock
 
     options = cfg.get('transient_tasks') or {}
-    enabled = options.get('enabled', False)
+    global_enabled = (cfg.get('global_storage') or {}).get('enabled') is True
+    enabled = options.get('enabled', global_enabled)
     if not isinstance(enabled, bool):
         raise StorageError('TRANSIENT_ENABLED_BOOLEAN_REQUIRED')
     if not enabled:
+        if global_enabled:
+            raise StorageError('GLOBAL_TRANSIENT_WORKSPACE_REQUIRED')
         return cfg, None
     budget = options.get('budget_mib', 256)
     if isinstance(budget, bool) or not isinstance(budget, int) or budget <= 0:
@@ -86,12 +93,18 @@ def prepare_run_workspace(cfg: dict, *, run_id: str, report_dir: Path):
     report_dir = Path(report_dir)
     pointer = report_dir / 'transient_workspace.json'
     explicit_root = options.get('root') or os.environ.get('ACTION_TRACKER_TASK_ROOT')
+    if global_enabled and not explicit_root:
+        from .global_capacity import configured_capacity
+        explicit_root = configured_capacity(cfg).root / 'tasks'
     selected_root = explicit_root or default_task_root()
     if pointer.exists() and not explicit_root:
         # Changing the default for NEW work must not strand an older run.
         # The recorded root still passes all boundary/ownership checks below.
         selected_root = json.loads(pointer.read_text(encoding='utf-8'))['root']
     root = Path(selected_root).resolve()
+    if global_enabled:
+        from .global_capacity import active_checkpoint
+        active_checkpoint(path=root)
     protected = [Path(cfg['project_root']).resolve(), Path(__file__).resolve().parents[3],
                  *[Path(p).resolve() for p in ('F:/ActionSKUTracker', 'F:/Action_Master', 'F:/按日期整理')],
                  *[Path(p).resolve() for p in cfg['paths'].values() if isinstance(p, (str, Path))]]
@@ -110,15 +123,15 @@ def prepare_run_workspace(cfg: dict, *, run_id: str, report_dir: Path):
                 raise StorageError('SCRATCH_BOUNDARY_VIOLATION')
             if binding.get('original_temp') != str(cfg['paths']['temp']):
                 raise StorageError('SCRATCH_RUNTIME_ANCHOR_CHANGED')
-            task = ScratchTask.resume(root, Path(binding['task_dir']), owner_task='daily-run', run_id=run_id)
+            task = ScratchTask.resume(root, Path(binding['task_dir']), owner_task=owner_task, run_id=run_id)
         else:
             if not root.exists():
                 create_candidate(root, protected_roots=protected)
-            task = ScratchTask(root, owner_task='daily-run', run_id=run_id, budget_bytes=budget * 1024**2)
+            task = ScratchTask(root, owner_task=owner_task, run_id=run_id, budget_bytes=budget * 1024**2)
             for name in ('scripts', 'data', 'debug'):
                 (task.directory / name).mkdir()
             binding = {'root': str(root), 'task_dir': str(task.directory), 'run_id': run_id,
-                       'owner_task': 'daily-run', 'budget_bytes': task.budget_bytes,
+                       'owner_task': owner_task, 'budget_bytes': task.budget_bytes,
                        'original_temp': str(cfg['paths']['temp']), 'automatic_cleanup': False}
             write_new(pointer, binding)
     effective = dict(cfg)
@@ -383,6 +396,8 @@ def cleanup_preview(items: list[dict], *, at: datetime | None = None) -> dict:
 class ScratchTask:
     """A freshly created task directory. Only its own registered bytes can expire."""
     def __init__(self, root: Path, *, owner_task: str, run_id: str, budget_bytes: int):
+        from .global_capacity import active_path
+        active_path(root)
         self.root = require_candidate(root)
         self.owner_task, self.run_id = owner_task, run_id
         self.token = uuid.uuid4().hex
@@ -396,6 +411,8 @@ class ScratchTask:
 
     @classmethod
     def resume(cls, root: Path, directory: Path, *, owner_task: str, run_id: str):
+        from .global_capacity import active_path
+        active_path(directory)
         obj = cls.__new__(cls)
         obj.root = require_candidate(root)
         obj.directory = Path(directory).resolve()
@@ -440,6 +457,8 @@ class ScratchTask:
         return record
 
     def _event(self, record, event):
+        from .global_capacity import active_path
+        active_path(self.directory)
         with (self.directory / 'lifecycle.jsonl').open('a', encoding='utf-8') as stream:
             stream.write(json.dumps({**record, 'event': event, 'event_at': now()}, ensure_ascii=False) + '\n')
 

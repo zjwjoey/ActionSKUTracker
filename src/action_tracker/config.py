@@ -170,4 +170,6 @@ def ensure_runtime_dirs(cfg: dict[str, Any]) -> None:
         if key == "master":
             continue
         if isinstance(p, Path):
+            from .operations.global_capacity import active_checkpoint
+            active_checkpoint(path=p)
             p.mkdir(parents=True, exist_ok=True)

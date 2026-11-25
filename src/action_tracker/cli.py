@@ -18,6 +18,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="action_tracker", description="Action 西班牙站商品每日监测程序")
     sub = p.add_subparsers(dest="command")
     p.add_argument('--backup-task-id',help='完整写入任务标识；多个批次及恢复运行使用同一个值')
+    p.add_argument('--storage-policy', type=Path,
+                   help='全局15GB容量配置；也可使用ACTION_TRACKER_STORAGE_POLICY')
+    sub.add_parser('storage-capacity', help='只读检查全部登记数据与临时峰值，不创建运行目录')
     from .operations.backup_pool_cli import register as register_backup_pool
     register_backup_pool(sub)
     from .operations.pool_kopia_cli import register as register_pool_kopia
@@ -349,6 +352,34 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    from .operations.global_capacity import configured_capacity, command_scope, CapacityBlocked
+    from .operations.storage_foundation import StorageError
+    policy_path = getattr(args, 'storage_policy', None) or os.environ.get('ACTION_TRACKER_STORAGE_POLICY')
+    policy_cfg = None
+    try:
+        if policy_path:
+            import yaml
+            policy_cfg = yaml.safe_load(Path(policy_path).read_text(encoding='utf-8-sig'))
+            if not isinstance(policy_cfg, dict) or configured_capacity(policy_cfg) is None:
+                raise StorageError('GLOBAL_EXPLICIT_POLICY_MUST_BE_ENABLED')
+        if args.command == 'storage-capacity':
+            if policy_cfg is None:
+                raise StorageError('GLOBAL_EXPLICIT_POLICY_REQUIRED')
+            result = configured_capacity(policy_cfg).inspect()
+            print(json.dumps(result, ensure_ascii=True))
+            return 0 if result['status'] == 'PASS' else 2
+        if policy_cfg:
+            # Also covers early storage/Kopia tools, before they create a pool.
+            with command_scope(policy_cfg, args):
+                return _main_parsed(args, policy_cfg)
+        return _main_parsed(args, None)
+    except (StorageError, OSError, KeyError, ValueError) as exc:
+        payload = getattr(exc, 'report', {'status': 'BLOCKED', 'reason': str(exc)})
+        print(json.dumps(payload, ensure_ascii=True), file=sys.stderr)
+        return 2
+
+
+def _main_parsed(args, policy_cfg):
     if args.command == 'pool-kopia':
         from .operations.pool_kopia_cli import run as run_pool_kopia
         return run_pool_kopia(args)
@@ -403,6 +434,14 @@ def main(argv=None) -> int:
     # Keep compatibility with small test/scheduler adapters that expose the
     # historical zero-argument loader when no profile was requested.
     cfg = load_settings(overlay_paths=profile_paths) if profile_paths else load_settings()
+    if policy_cfg:
+        from .operations.global_capacity import configured_capacity
+        if Path(cfg['project_root']).resolve() != Path(policy_cfg['project_root']).resolve():
+            raise ValueError('GLOBAL_PROJECT_ROOT_CHANGED')
+        if cfg.get('global_storage', {}).get('enabled') and (
+                configured_capacity(cfg).binding != configured_capacity(policy_cfg).binding):
+            raise ValueError('GLOBAL_NESTED_SCOPE_CHANGED')
+        cfg = {**cfg, 'global_storage': policy_cfg['global_storage']}
     from .operations.task_backup import task_scope
     # Operations/daily create stable run identities themselves. Other commands
     # get one task envelope across Registry, approvals and formal Apply.
@@ -415,6 +454,12 @@ def main(argv=None) -> int:
 
 
 def _run_configured(args,cfg,profile_paths):
+    from .operations.global_capacity import command_scope
+    with command_scope(cfg, args) as guarded:
+        return _run_configured_body(args, guarded, profile_paths)
+
+
+def _run_configured_body(args,cfg,profile_paths):
     from .config import ensure_runtime_dirs
     from .log import setup_logging
     ensure_runtime_dirs(cfg)

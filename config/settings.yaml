@@ -282,6 +282,14 @@ translation:
   auto_approval_policy: auto_approval_v1
 
 # ---- AI（预留）：后续翻译用 AI API 配置，不接外部翻译服务 ----
+# Development only: production activation requires consolidated inventory and
+# an independently bounded backing volume. Never weaken a cap to admit legacy
+# overage. See config/storage_global_15gb.example.yaml and the acceptance guide.
+global_storage:
+  enabled: false
+  max_bytes: 15000000000
+  peak_bytes: 4000000000
+
 # 密钥不落盘：运行时从环境变量 ACTION_AI_API_KEY 读取
 ai:
   translation_provider: ""   # 例如 openai / anthropic / deepseek

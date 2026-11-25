@@ -11,6 +11,8 @@ def connect(path: Path):
     close the connection.  That leaked WAL handles on Windows and prevented
     atomic replacement of staged cutover databases.
     """
+    from ..operations.global_capacity import active_checkpoint
+    active_checkpoint(path=path)
     path.parent.mkdir(parents=True, exist_ok=True)
     from ..operations.task_connection import TaskConnection
     conn = sqlite3.connect(path, factory=TaskConnection)

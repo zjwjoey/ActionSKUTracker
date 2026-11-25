@@ -55,6 +55,8 @@ class PoolPolicy:
 class BackupPool:
     def __init__(self, root, *, policy=None, protected_paths=(), initialize=False):
         self.root = safe_path(Path(root).absolute(), must_exist=False)
+        from .global_capacity import active_checkpoint
+        active_checkpoint(path=self.root)
         self.policy = policy or PoolPolicy()
         self.protected = [safe_path(Path(p).absolute(), must_exist=False) for p in protected_paths]
         if os.name == 'nt':
@@ -112,6 +114,8 @@ class BackupPool:
 
     @contextmanager
     def _lock(self):
+        from .global_capacity import active_path
+        active_path(self.root)
         self._marker()
         with pool_files.os_lock(self.root/'pool.lock', wait=30):
             yield self._load()
@@ -229,6 +233,9 @@ class BackupPool:
 
     def _checkpoint(self,index,expected=0,*,force_temporaries=False,preview=False):
         if type(expected) is not int or expected<0:raise StorageError('POOL_RESERVATION_INVALID')
+        if not preview:
+            from .global_capacity import active_checkpoint
+            active_checkpoint(expected, path=self.root)
         before=self._usage();outstanding=self._outstanding(index)
         control_reserve=max(OVERHEAD,2*(self.root/'index.json').stat().st_size+OVERHEAD)
         projected=before['allocated_bytes']+outstanding+expected+control_reserve
@@ -388,8 +395,53 @@ class BackupPool:
                 return {'status':'PASS','asset_id':asset_id,'sha256':a['sha256'],'identity':a.get('identity')}
 
     def backup(self,source,*,task_id,code_version=None):
+        if not isinstance(task_id, str) or not task_id:
+            raise StorageError('POOL_ASSET_IDENTITY_REQUIRED')
+        name = 'capture-' + hashlib.sha256(task_id.encode()).hexdigest() + '.lock'
+        with self._lock() as index:
+            locks = index.setdefault('source_locks', {})
+            if name not in locks:
+                locks[name] = {'task_id': task_id, 'purpose': 'serialize raw baseline capture'}
+                self._write('index.json', index)
+        with pool_files.os_lock(self.root / 'leases' / name, wait=30):
+            return self._backup_locked(source, task_id=task_id, code_version=code_version)
+
+    def _backup_locked(self,source,*,task_id,code_version=None):
         source=safe_path(Path(source).absolute())
         if source.is_relative_to(self.root):raise StorageError('POOL_BACKUP_SOURCE_IS_POOL_ASSET')
+        with self._lock() as index:
+            prior = [dict(a) for a in index['assets'].values()
+                     if a['task_id'] == task_id and a['kind'] == 'database_backup'
+                     and a['state'] != 'DELETED']
+        if prior:
+            if len(prior) != 1 or prior[0]['source'] != str(source):
+                raise StorageError('POOL_TASK_BASELINE_AMBIGUOUS_OR_SOURCE_CHANGED')
+            base = prior[0]
+            # Raw CLI retries get the same protection as managed tasks. A
+            # changed source must enter its original journaled task, not cause
+            # another full copy under the same task identity.
+            self.verify(base['asset_id'])
+            p1 = json.loads(Path(base['path'] + '.asset.json').read_text('utf-8'))
+            if p1.get('code_version') != (code_version or 'unknown'):
+                raise StorageError('POOL_TASK_BASELINE_CODE_CHANGED')
+            from ..localization.history_audit import database_fingerprint
+            from .storage_foundation import source_signature
+            before = source_signature(source)
+            with read_database(source) as src, read_database(Path(base['path']), immutable=True) as restored:
+                schema_sql = 'SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name'
+                if ([tuple(r) for r in src.execute(schema_sql)] !=
+                        [tuple(r) for r in restored.execute(schema_sql)] or
+                        any(src.execute('PRAGMA ' + key).fetchone()[0] !=
+                            restored.execute('PRAGMA ' + key).fetchone()[0]
+                            for key in ('user_version', 'application_id'))):
+                    raise StorageError('POOL_TASK_BASELINE_SCHEMA_CHANGED')
+                if database_fingerprint(src) != database_fingerprint(restored):
+                    raise StorageError('POOL_TASK_BASELINE_SOURCE_CHANGED')
+            if before != source_signature(source):
+                raise StorageError('POOL_TASK_BASELINE_SOURCE_CHANGED')
+            return {**p1, 'pool_asset_id': base['asset_id'], 'pool_root': str(self.root),
+                    'restore_rehearsed': True, 'restore_report': base['restore_report'],
+                    'permanent_restore_copy_created': False, 'reused': True}
         wal=Path(str(source)+'-wal');size=source.stat().st_size+(wal.stat().st_size if wal.exists() else 0)
         verify_task='verify_'+uuid.uuid4().hex
         assets=self._reserve([{'task_id':task_id,'kind':'database_backup','expected_bytes':size+OVERHEAD,
@@ -431,7 +483,13 @@ def configured_pool(cfg):
     allowed={'enabled','root','max_bytes','target_bytes','automatic_cleanup'}
     if set(raw)-allowed:raise StorageError('POOL_CONFIG_UNKNOWN_FIELDS')
     policy=PoolPolicy(**{k:raw[k] for k in ('max_bytes','target_bytes','automatic_cleanup') if k in raw})
-    if policy.max_bytes!=5*GIB or policy.target_bytes!=4*GIB:raise StorageError('POOL_PRODUCTION_LIMIT_MUST_BE_5_AND_4_GIB')
+    if (cfg.get('global_storage') or {}).get('enabled') is True:
+        from .global_capacity import configured_capacity
+        gate = configured_capacity(cfg)
+        if policy.max_bytes > gate.policy.max_bytes:
+            raise StorageError('POOL_LIMIT_EXCEEDS_GLOBAL_CAPACITY')
+    elif policy.max_bytes!=5*GIB or policy.target_bytes!=4*GIB:
+        raise StorageError('POOL_PRODUCTION_LIMIT_MUST_BE_5_AND_4_GIB')
     root=Path(raw.get('root','runtime/backup_pool'))
     if not root.is_absolute():root=Path(cfg['project_root'])/root
     protected=[Path(v) for k,v in cfg.get('paths',{}).items() if k in ('master','backups')]

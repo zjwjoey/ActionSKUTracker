@@ -59,6 +59,14 @@ def current_task(path):
 
 @contextmanager
 def task_scope(cfg, *, task_id, batch_id=None, source=None, inherit=False):
+    from .global_capacity import operation_scope
+    with operation_scope(cfg, task_id='backup-task:' + str(task_id), resume=True):
+        with _task_scope(cfg, task_id=task_id, batch_id=batch_id, source=source, inherit=inherit) as result:
+            yield result
+
+
+@contextmanager
+def _task_scope(cfg, *, task_id, batch_id=None, source=None, inherit=False):
     raw=cfg.get('task_backup') or {}
     if type(raw.get('enabled',False)) is not bool:raise StorageError('TASK_BACKUP_BOOLEAN_REQUIRED')
     if not raw.get('enabled'):

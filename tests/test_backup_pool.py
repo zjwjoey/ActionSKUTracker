@@ -150,6 +150,7 @@ def test_forged_registry_checksum_blocks_cleanup(pool):
 
 
 def worker(pool, code, *args):
+    code = 'import sys; sys.path.insert(0,' + repr(str(Path(__file__).parents[1] / 'src')) + ');\n' + code
     return subprocess.Popen([sys.executable,'-B','-c',code,str(pool.root),*map(str,args)],
                             stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
 

@@ -210,6 +210,7 @@ def test_cross_process_resume_keeps_same_baseline(tmp_path):
     with task_scope(cfg,task_id='process') as task:update(source,1)
     result=subprocess.run([sys.executable,'-B','-c',
         "import sys; from pathlib import Path; sys.path.insert(0,sys.argv[1]); "
+        "sys.path.insert(0,str(Path(sys.argv[1]).parent/'src')); "
         "from test_task_backup import config,update; from action_tracker.operations.task_backup import task_scope; "
         "p=Path(sys.argv[2]); ctx=task_scope(config(p.parent,p),task_id='process',batch_id='child'); "
         "ctx.__enter__(); update(p,2); ctx.__exit__(None,None,None)",
